@@ -1,3 +1,5 @@
+import statistics as stats
+
 from django.db import models
 import pandas as pd
 
@@ -36,7 +38,10 @@ class Spectrum(models.Model):
 
     filters = {}
 
+
     # this will sometimes be faster and sometimes slower than just directly accessing database fields
+    # or using as_dict
+
     def as_table(self):
         rows = []
         for filt, freq in self.filters.items():
@@ -45,6 +50,157 @@ class Spectrum(models.Model):
             stdev = self.getattr(filt + "_stdev")
             rows.append([filt, freq, mean, stdev])
         return pd.DataFrame(rows) 
+
+
+    # for most of the below calculations, i think a dictionary and standard library functions
+    # are faster than a dataframe or numpy array and vect functions, unless we have spectra measured with > ~50-100 points
+    # it's possible that i'm making too many lookups, though, and this should all be refactored to reduce that
+
+
+    def as_dict(self):
+        """dictionary of mean reflectance values only"""
+        return {self.filters[filt]:getattr(self, filt+'_mean') for filt in self.filters}
+
+
+    def intervening(self, freq_1, freq_2):
+        """
+        dict frequency:mean reflectance for all bands strictly between freq_1 & freq_2
+        """
+        return  {
+            freq:ref for freq,ref in self.as_dict() if (freq < max([freq_1,freq_2]) and freq > min([freq_1, freq_2]))
+            }
+
+
+    def band(self, freq_1, freq_2):
+        """
+        dict frequency:mean reflectance for all bands between and includingfreq_1 & freq_2 
+        """
+        return  {
+            freq:ref for freq,ref in self.as_dict() if (freq <= max([freq_1,freq_2]) and freq >= min([freq_1, freq_2]))
+            }
+
+
+    def ref(self, filter_name):
+        """mean reflectance at filter given by filter_name"""
+        return getattr(self, filter_name+'_mean')
+
+
+    def band_avg(self, filt_1, filt_2):
+        """
+        average of reflectance values at filt_1, filt_2, and all intervening bands
+        """
+        return stats.mean(self.band(self.filters[filt_1],self.filters[filt_2]).values())
+
+
+    def band_max(self, filt_1, filt_2):
+        """
+        max reflectance value between filt_1 and filt_2 (inclusive)
+        """
+        return max(self.band(self.filters[filt_1],self.filters[filt_2]).values())
+
+
+    def band_min(self, filt_1, filt_2):
+        """
+        min reflectance value between filt_1 and filt_2 (inclusive)
+        """
+        return min(self.band(self.filters[filt_1],self.filters[filt_2]).values())
+
+
+    def band_max(self, filt_1, filt_2):
+        """
+        average of reflectance values at filt_1, filt_2, and all intervening bands
+        """
+        ref_1 = self.ref(filt_1)
+        ref_2 = self.ref(filt_2)
+        freq_1 = self.filters[filt_1]
+        freq_2 = self.filters[filt_2]
+        return stats.mean([ref_1] + list(self.intervening(freq_1,freq_2).values()) + [ref_2])
+
+
+    def ref_ratio(self, filt_1, filt_2):
+        """
+        (str, str) -> float
+        ratio of reflectance values at filt_1 & filt_2
+        """
+        return self.ref(filt_1)/self.ref(filt_2)
+
+
+    def slope(self, filt_1, filt_2):
+        """
+        (str, str) -> float
+        where input strings are filter names defined in self.filters
+
+        slope of line drawn between reflectance values at these two filters.
+        passing filt_1 == filt_2 returns an error.
+        do we allow 'backwards' lines? for now yes
+        """
+        if filt_1 == filt_2:
+            raise ValueError("slope between a frequency and itself is undefined")
+        ref_1 = getattr(self, filt_1+'_mean')
+        ref_2 = getattr(self, filt_2+'_mean')
+        freq_1 = self.filters[filt_1]
+        freq_2 = self.filters[filt_2]
+        return (ref_2 - ref_1) / (freq_2 - freq_1)
+
+
+    def band_depth_custom(self, filt_left, filt_middle, filt_right):
+        """
+        (str, str, str) -> float
+        where input strings are filter names defined in self.filters
+
+        simple band depth at filt_middle --
+        filt_middle reflectance / reflectance of 'continuum'
+        (straight line between filt_left and filt_right) at filt_middle.
+        passing filt_left == filt_right or filt_middle not strictly between them
+        returns an error
+
+        do we allow 'backwards' lines? for now yes (so 'left' and 'right' are misnomers)
+        """
+        if len(set([filt_left,filt_middle,filt_right])) != 3:
+            raise ValueError("band depth between a frequency and itself is undefined")
+        freq_left = self.filters[filt_left]
+        freq_middle = self.filters[filt_middle]
+        freq_right = self.filters[filt_right]
+
+        if not (freq_middle < max(freq_left, freq_right) and freq_middle > min(freq_left, freq_right)):
+            raise ValueError("band depth can only be calculated at a band within the chosen range.")
+
+        distance = freq_middle - freq_left
+        slope = self.slope(filt_left, filt_right)
+        continuum_ref = self.ref(filt_left) + slope * distance
+        return self.ref(filt_middle) / continuum_ref
+
+        
+    def band_depth_min(self, filt_1, filt_2):
+        """
+        (str, str) -> float
+        where input strings are filter names defined in self.filters
+
+        simple band depth at local minimum --
+        local minimum reflectance / reflectance of 'continuum'
+        (straight line between filt_1 and filt_2) at that frequency.
+        band depth between adjacent points is defined as 1. 
+        passing filt_1 == filt_2 returns an error.
+
+        do we allow 'backwards' lines? for now yes
+        """
+        if filt_1 == filt_2:
+            raise ValueError("band depth between a frequency and itself is undefined")
+        freq_1 = self.filters[filt_1]
+        freq_2 = self.filters[filt_2]
+
+        intervening = self.intervening(freq_1,freq_2)
+        if not intervening:
+            return 1
+
+        min_ref = min(intervening.values())
+        min_freq = [freq for freq in intervening.keys() if intervening[freq] == min_ref][0]
+
+        distance = min_freq - freq_1
+        slope = self.slope(filt_1, filt_2)
+        continuum_ref = self.ref(freq_1) + slope * distance
+        
+        return min_ref / continuum_ref
 
 
 class MObs(Observation):
@@ -135,7 +291,7 @@ class MSpec(Spectrum):
     notes = models.CharField("Notes", blank=True, max_length=100, db_index=True)
 
     ##############################################
-    ########### explicit fields for each filter
+    ########### explicit fields for reflectance values at each filter
     ##############################################
 
     # i'm pretty sure multiple fields is better than a stringified dict
@@ -204,3 +360,7 @@ class MSpec(Spectrum):
         'L6':1012,
         'R6':1013
         }
+
+
+
+
