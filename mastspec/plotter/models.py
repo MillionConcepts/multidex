@@ -3,7 +3,6 @@ import statistics as stats
 from django.db import models
 import pandas as pd
 
-# Create your models here.
 
 class Observation(models.Model):
     """
@@ -104,17 +103,6 @@ class Spectrum(models.Model):
         min reflectance value between filt_1 and filt_2 (inclusive)
         """
         return min(self.band(self.filters[filt_1],self.filters[filt_2]).values())
-
-
-    def band_max(self, filt_1, filt_2):
-        """
-        average of reflectance values at filt_1, filt_2, and all intervening bands
-        """
-        ref_1 = self.ref(filt_1)
-        ref_2 = self.ref(filt_2)
-        freq_1 = self.filters[filt_1]
-        freq_2 = self.filters[filt_2]
-        return stats.mean([ref_1] + list(self.intervening(freq_1,freq_2).values()) + [ref_2])
 
 
     def ref_ratio(self, filt_1, filt_2):
