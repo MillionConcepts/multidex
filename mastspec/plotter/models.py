@@ -79,9 +79,9 @@ class Spectrum(models.Model):
             }
 
 
-    def ref(self, filter_name):
+    def ref(self, filt_1):
         """mean reflectance at filter given by filter_name"""
-        return getattr(self, filter_name+'_mean')
+        return getattr(self, filt_1+'_mean')
 
 
     def band_avg(self, filt_1, filt_2):
