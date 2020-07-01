@@ -3,6 +3,18 @@
 from functools import partial, reduce, wraps
 from operator import and_, contains
 
+from toolz import keyfilter, merge, isiterable, get_in
+
+
+# django utility functions
+
+
+def qlist(queryset, attribute):
+    return list(queryset.values_list(attribute, flat=True))
+
+
+# pandas utility functions
+
 
 def rows(dataframe):
     """splits row-wise into a list of numpy arrays"""
@@ -14,13 +26,38 @@ def columns(dataframe):
     return [dataframe.loc[:, column] for column in dataframe.columns]
 
 
+# dash-y dictionary utilities
+
+
 def pickitems(dictionary, some_list):
     """items of dict where key is in some_list """
-    keyfilter(in_me(some_list),(dictionary)).values()
+    return keyfilter(in_me(some_list), (dictionary))
+
 
 def pickcomps(comp_dictionary, id_list):
     """items of dictionary of dash components where id is in id_list"""
-    return pickitems(comp_dictionary, [comp.component_id for comp in comp_dictionary])
+    return pickitems(
+        comp_dictionary, [comp.component_id for comp in comp_dictionary]
+    )
+
+
+def pickctx(context, component_list):
+    """states and inputs of dash callback context if component is in component_list"""
+    comp_strings = [
+        comp.component_id + "." + comp.component_property
+        for comp in component_list
+    ]
+    cats = []
+    if context.states:
+        cats.append(context.states)
+    if context.inputs:
+        cats.append(context.inputs)
+    print("cats", cats)
+    print("comps", comp_strings)
+    picked = [pickitems(cat, comp_strings) for cat in cats]
+    print(picked)
+    if picked:
+        return merge(picked)
 
 
 def passargs(*args, **kwargs):
@@ -81,7 +118,6 @@ def eta(input_function, *args, kwarg_list=()):
     return do_it
 
 
-
 def eta_methods(target, *input_args, kwarg_list=None, method=None):
     """
     object, optional list, optional string or function
@@ -102,11 +138,12 @@ def eta_methods(target, *input_args, kwarg_list=None, method=None):
         if kwarg_list is None:
             etad = eta(requested_method, *input_args)
         else:
-            etad = eta(requested_method, *input_args, kwarg_list)       
+            etad = eta(requested_method, *input_args, kwarg_list)
         return passargs(*args, **kwargs)(etad)
+
     if method is None:
         return do_method
-    return partial(do_method, requested_method=method)
+    return partial(do_method, method)
 
 
 def keygrab(dict_list, key, value):
@@ -122,3 +159,28 @@ def in_me(container):
         return reduce(and_, map(inclusion, args))
 
     return is_in
+
+
+### search functions
+
+
+def particular_fields_search(model, search_dict, searchable_fields):
+    """
+    'search specific defined fields' function.
+    works only on strings atm!
+    other things for numeric / date / etc. fields preferably
+    
+    'searchable fields' is a little clumsy -- but it specifically
+    makes the function a little more fault-tolerant.
+    """
+    queryset = model.objects.all()
+    # allow either single entries or lists of entries
+    for field in searchable_fields:
+        entry = search_dict.get(field)
+        if entry:
+            entry = list(entry)
+            filters = [
+                flexible_query(queryset, field, value) for value in entry
+            ]
+            queryset = reduce(or_, filters)
+    return queryset
