@@ -203,8 +203,7 @@ class Spectrum(models.Model):
 
         distance = min_freq - freq_1
         slope = self.slope(filt_1, filt_2)
-        continuum_ref = self.ref(freq_1) + slope * distance
-
+        continuum_ref = self.ref(filt_1) + slope * distance
         return min_ref / continuum_ref
 
 

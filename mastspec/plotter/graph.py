@@ -30,7 +30,9 @@ AXIS_VALUE_PROPERTIES = [
     {"label":"band depth at middle filter","value":"band_depth_custom","type":"method","arity":3},
     {"label":"band depth at band minimum", "value":"band_depth_min","type":"method","arity":2},
     {"label":"band value", "value":"ref","type":"method","arity":1},
-    {"label":"sol", "value":"sol","type":"parent_property"}
+    {"label":"sol", "value":"sol","type":"parent_property"},
+    {"label":"target elevation", "value":"target_el","type":"parent_property"},
+    {"label":"local true solar time", "value":"ltst","type":"parent_property"},
     ]
 
 
@@ -53,8 +55,6 @@ def cache_get(cache):
 
 def make_axis(settings, queryset, suffix):
 
-    # grab text for everything in queryset
-
     # what is requested function or property?
     axis_option = settings["axis-option-" + suffix]
     # what are the characteristics of that function or property?
@@ -73,23 +73,27 @@ def make_axis(settings, queryset, suffix):
                 for spectrum in queryset
             ]
         return None
-    # do some other stuff to grab parent properties
+    if props["type"] == "parent_property":
+        return [
+            getattr(spectrum.observation, props["value"])
+            for spectrum in queryset
+        ]
 
 
 def main_graph():
     return dcc.Graph(
-        id="main-graph", figure=go.Figure(), style={"height": "100vh"}
+        id="main-graph", figure=go.Figure(), style={"height": "70vh"}
     )
 
 
-def scatter(x_axis, y_axis):
+def scatter(x_axis, y_axis, text):
     fig = go.Figure()
     fig.add_trace(
         go.Scattergl(
             x=x_axis,
             y=y_axis,
             # change this to be hella popup text
-            text=None,
+            text=text,
             mode="markers",
             marker={"color": "blue"},
         )
@@ -132,11 +136,12 @@ def recalculate_graph(*args, x_inputs, y_inputs, graph_function, cget, cset):
     # we will add it.
     x_axis = make_axis(x_settings, queryset, suffix="x.value")
     y_axis = make_axis(y_settings, queryset, suffix="y.value")
+    text = [spec.observation.mcam + " " + spec.roi_color for spec in queryset]
     # this case is most likely shortly after page load
     # when not everything is filled out
     if not (x_axis and y_axis):
         raise PreventUpdate
-    return graph_function(x_axis, y_axis)
+    return graph_function(x_axis, y_axis, text)
 
 
 def field_values(queryset, field):
@@ -187,7 +192,7 @@ def model_options_drop(queryset, field, element_id):
     could end up getting unmanageable as a UI element
     """
     return dcc.Dropdown(
-        id=element_id, options=field_values(queryset, field), multi=True
+        id=element_id, options={"label": "any", "value": "any"}, multi=True
     )
 
 
@@ -223,11 +228,13 @@ def change_input_visibility(calc_type):
 
 def update_model_field(field, cget):
     """populate set of values when field in search box changes"""
+    if not field:
+        raise PreventUpdate
     queryset = cget("queryset")
     return field_values(queryset, field)
 
 
-def update_queryset(n_clicks, field, value, cget, cset):
+def update_queryset(n_clicks, field, value, cget, cset, spec_model):
     """
     updates the spectra displayed in the graph view.
     

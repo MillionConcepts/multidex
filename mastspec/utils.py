@@ -1,7 +1,7 @@
 """assorted utility functions for project"""
 
 from functools import partial, reduce, wraps
-from operator import and_, contains
+from operator import and_, or_, contains
 
 from toolz import keyfilter, merge, isiterable, get_in
 
@@ -41,21 +41,23 @@ def pickcomps(comp_dictionary, id_list):
     )
 
 
-def pickctx(context, component_list):
-    """states and inputs of dash callback context if component is in component_list"""
-    comp_strings = [
+def comps_to_strings(component_list):
+    """convert list of dash components with properties to list of strings"""
+    return [
         comp.component_id + "." + comp.component_property
         for comp in component_list
     ]
+
+
+def pickctx(context, component_list):
+    """states and inputs of dash callback context if component is in component_list"""
+    comp_strings = comps_to_strings(component_list)
     cats = []
     if context.states:
         cats.append(context.states)
     if context.inputs:
         cats.append(context.inputs)
-    print("cats", cats)
-    print("comps", comp_strings)
     picked = [pickitems(cat, comp_strings) for cat in cats]
-    print(picked)
     if picked:
         return merge(picked)
 
@@ -163,8 +165,27 @@ def in_me(container):
 
 ### search functions
 
+def flexible_query(queryset, field, value):
+    """little search function that checks exact and loose phrases"""
+    # allow exact phrase searches
+    query = field + "__iexact"
+    if queryset.filter(**{query: value}):
+        return queryset.filter(**{query: value})
+    # otherwise treat multiple words as an 'or' search\n",
+    query = field + "__icontains"
+    filters = [
+        queryset.filter(**{query: word}) for word in value.split("")
+    ]
+    return reduce(or_, filters)
 
-def particular_fields_search(model, search_dict, searchable_fields):
+
+def inflexible_query(queryset, field, value):
+    """little search function that checks only exact phrases"""
+    query = field + "__iexact"
+    return queryset.filter(**{query: value})
+
+
+def particular_fields_search(model, search_dict, searchable_fields, inflexible = True):
     """
     'search specific defined fields' function.
     works only on strings atm!
@@ -174,13 +195,20 @@ def particular_fields_search(model, search_dict, searchable_fields):
     makes the function a little more fault-tolerant.
     """
     queryset = model.objects.all()
-    # allow either single entries or lists of entries
+
+    # allow inexact phrase matching?
+    if inflexible:
+        search_function = inflexible_query
+    else:
+        search_function = flexible_query
+
     for field in searchable_fields:
         entry = search_dict.get(field)
+        # allow either single entries or lists of entries
         if entry:
             entry = list(entry)
             filters = [
-                flexible_query(queryset, field, value) for value in entry
+                search_function(queryset, field, value) for value in entry
             ]
             queryset = reduce(or_, filters)
     return queryset
