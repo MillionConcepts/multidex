@@ -36,16 +36,13 @@ def pickitems(dictionary, some_list):
 
 def pickcomps(comp_dictionary, id_list):
     """items of dictionary of dash components where id is in id_list"""
-    return pickitems(
-        comp_dictionary, [comp.component_id for comp in comp_dictionary]
-    )
+    return pickitems(comp_dictionary, [comp.component_id for comp in comp_dictionary])
 
 
 def comps_to_strings(component_list):
     """convert list of dash components with properties to list of strings"""
     return [
-        comp.component_id + "." + comp.component_property
-        for comp in component_list
+        comp.component_id + "." + comp.component_property for comp in component_list
     ]
 
 
@@ -62,95 +59,12 @@ def pickctx(context, component_list):
         return merge(picked)
 
 
-def passargs(*args, **kwargs):
-    """
-    returns a function f with f(g) = g(args).
-    e.g. f = passargs(1, 10)
-    f(range) = range(1, 10)
-    f(operator.ge) = False
-    formally, an eta abstraction for arbitrary g.
-    """
-    return lambda f: f(*args, **kwargs)
-
-
-def eta(input_function, *args, kwarg_list=()):
-    """
-    create an eta abstraction g of input function with arbitrary argument
-    ordering. positional arguments to g _after_ the arguments defined in
-    kwarg_list are mapped to positional arguments of input_function; all
-    keyword arguments to g are mapped to keyword arguments of input_function.
-    positional arguments to g matching keywords in kwarg_list override keyword
-    arguments to g.
-
-    can be used to make short forms of functions. also useful along with partial
-    to create partially applied versions of functions free from argument
-    collision.
-
-    passing eta a function with no further arguments simply produces an alias.
-    """
-    if not (args or kwarg_list):
-        # with no arguments, just alias input_function. the remainder of the
-        # function accomplishes basically this, but just passing the function
-        # is cheaper
-        return input_function
-    kwarg_list = args + tuple(kwarg_list)
-
-    @wraps(input_function)
-    def do_it(*args, **kwargs):
-        output_kwargs = {}
-        positionals = []
-        # are there more args than the eta-defined argument list? pass them to
-        # input_function.
-        if len(args) > len(kwarg_list):
-            positionals = args[len(kwarg_list) :]
-        # do we have an argument list? then zip it with args up to its
-        # length.
-        if kwarg_list:
-            output_kwargs = dict(
-                zip(kwarg_list[: len(kwarg_list)], args[: len(kwarg_list)])
-            )
-        # do we have kwargs? merge them with the keyword dictionary generated
-        # from do_it's args.
-        if kwargs:
-            output_kwargs = merge(kwargs, output_kwargs)
-        if not output_kwargs:
-            return input_function(*positionals)
-        return input_function(*positionals, **output_kwargs)
-
-    return do_it
-
-
-def eta_methods(target, *input_args, kwarg_list=None, method=None):
-    """
-    object, optional list, optional string or function
-    -> function(string or function, *args)
-    create eta abstractions with arbitrary argument reordering on methods
-    of target. returns a function whose first positional argument is a
-    method of target or a string corresponding to a method of target, and
-    whose subsequent positional arguments are mapped to the keyword
-    arguments of that method in the ordering defined in kwarg_list. may
-    optionally also produce a partially evaluated version with a defined
-    method. permissive: will allow you to produce abstractions of individual
-    functions, basically as a wordy alias for eta.
-    """
-
-    def do_method(requested_method, *args, **kwargs):
-        if isinstance(requested_method, str):
-            requested_method = getattr(target, requested_method)
-        if kwarg_list is None:
-            etad = eta(requested_method, *input_args)
-        else:
-            etad = eta(requested_method, *input_args, kwarg_list)
-        return passargs(*args, **kwargs)(etad)
-
-    if method is None:
-        return do_method
-    return partial(do_method, method)
-
-
 def keygrab(dict_list, key, value):
     """returns first element of dict_list such that element[key]==value"""
     return next(filter(lambda x: x[key] == value, dict_list))
+
+
+### lambda replacements
 
 
 def in_me(container):
@@ -165,17 +79,24 @@ def in_me(container):
 
 ### search functions
 
+
+# some of the following functions hit the database multiple times during evaluation.
+# this is necessary to allow flexibly loose and strict phrasal searches.
+# it potentially reduces efficiency a great deal and is terrain for optimization
+# if and when required.
+
 def flexible_query(queryset, field, value):
-    """little search function that checks exact and loose phrases"""
+    """
+    little search function that checks exact and loose phrases.
+    have to hit the database to do this, so less efficient than using
+    """
     # allow exact phrase searches
     query = field + "__iexact"
     if queryset.filter(**{query: value}):
         return queryset.filter(**{query: value})
-    # otherwise treat multiple words as an 'or' search\n",
+    # otherwise treat multiple words as an 'or' search",
     query = field + "__icontains"
-    filters = [
-        queryset.filter(**{query: word}) for word in value.split("")
-    ]
+    filters = [queryset.filter(**{query: word}) for word in value.split("")]
     return reduce(or_, filters)
 
 
@@ -185,30 +106,90 @@ def inflexible_query(queryset, field, value):
     return queryset.filter(**{query: value})
 
 
-def particular_fields_search(model, search_dict, searchable_fields, inflexible = True):
+def term_search(queryset, field, value, inflexible=None):
     """
-    'search specific defined fields' function.
-    works only on strings atm!
-    other things for numeric / date / etc. fields preferably
-    
-    'searchable fields' is a little clumsy -- but it specifically
-    makes the function a little more fault-tolerant.
+    model, string, string or number or whatever -> queryset
+    search for strings or whatever within a field of a model.
     """
-    queryset = model.objects.all()
-
     # allow inexact phrase matching?
+    search_function = flexible_query
     if inflexible:
         search_function = inflexible_query
-    else:
-        search_function = flexible_query
+    return search_function(queryset, field, value)
 
-    for field in searchable_fields:
-        entry = search_dict.get(field)
-        # allow either single entries or lists of entries
-        if entry:
-            entry = list(entry)
-            filters = [
-                search_function(queryset, field, value) for value in entry
-            ]
-            queryset = reduce(or_, filters)
-    return queryset
+
+def interval_search(
+        queryset, field, interval_begin=None, interval_end=None, strictly=None
+    ):
+    """
+    queryset, field of underlying model, begin, end -> queryset
+    
+    interval_begin and interval_end must be of types for which 
+    the elements of the set of the chosen attribute of the elements of queryset
+    possess a complete ordering exposed to django queryset API (probably defined in terms of 
+    standard python comparison operators). in most cases, you 
+    will probably want these to be the same type, and to share a type with
+    the attributes of the objects in question. 
+    
+    if both interval_begin and interval_end are defined, returns 
+    all entries > begin and < end. 
+    if only interval_begin is defined: all entries > begin. 
+    if only interval_end is defined: all entries < end. 
+    if neither: trivially returns the queryset.
+    
+    the idea of this function is to attempt to perform searches with somewhat 
+    convoluted Python but a single SQL query. it could be _further_ generalized to 
+    tuples of attributes that bound a convex space, most simply interval beginnings 
+    and endings of their own (start and stop times, for instance)
+    """
+    if strictly:
+        less_than_operator = "__lt"
+        greater_than_operator = "__gt"
+    else:
+        less_than_operator = "__lte"
+        greater_than_operator = "__gte"
+
+    # these variables are queries defined by the ordering on this attribute.
+    greater_than_begin = Q(**{field + greater_than_operator: interval_begin})
+    less_than_end = Q(**{field + less_than_operator: interval_end})
+
+    # select only entries with attribute greater than interval_begin (if defined)
+    # and less than interval_end (if defined)
+    queries = [Q()]
+    if interval_begin:
+        queries.append(greater_than_begin)
+    if interval_end:
+        queries.append(less_than_end)
+    return queryset.filter(reduce(and_, queries))
+
+
+def multiple_field_search(queryset, parameters):
+    """
+    dispatcher that handles multiple search parameters and returns a queryset.
+    accepts options in dictionaries to search 'numerical' intervals
+    or stringlike terms.
+    """
+    results = []
+    
+    for parameter in parameters:
+        # do a relations-on-orderings search if requested
+        if parameter.get('value_type') == 'quant':
+            search_result = interval_search(
+                queryset,
+                parameter['field'],
+                # begin and end and strictly are optional
+                parameter.get('begin'),
+                parameter.get('end'),
+                parameter.get('strictly')
+            )
+        # otherwise just look for term matches
+        else:
+            search_result = term_search(
+                queryset,
+                parameter['field'],
+                parameter['term'],
+                parameter.get('flexible')
+            )
+        print(search_result)
+        results.append(search_result)
+    return reduce(and_, results)

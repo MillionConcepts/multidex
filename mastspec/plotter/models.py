@@ -3,6 +3,8 @@ import statistics as stats
 from django.db import models
 import pandas as pd
 
+from utils import keygrab
+
 
 class Observation(models.Model):
     """
@@ -427,3 +429,23 @@ class MSpec(Spectrum):
         "L6": 1012,
         "R6": 1013,
     }
+
+    axis_value_properties = [
+        {"label":"band average","value":"band_avg","type":"method","arity":2},
+        {"label":"band maximum","value":"band_max","type":"method","arity":2},
+        {"label":"band minimum","value":"band_min","type":"method","arity":2},
+        {"label":"ratio","value":"ref_ratio","type":"method","arity":2},
+        {"label":"band depth at middle filter","value":"band_depth_custom","type":"method","arity":3},
+        {"label":"band depth at band minimum", "value":"band_depth_min","type":"method","arity":2},
+        {"label":"band value", "value":"ref","type":"method","arity":1},
+        {"label":"sol", "value":"sol","type":"parent_property"},
+        {"label":"target elevation", "value":"target_el","type":"parent_property"},
+        {"label":"local true solar time", "value":"ltst","type":"parent_property"},
+    ]
+
+    searchable_fields = [
+        {'label':'group','type':'self_property', 'value_type':'qual'},
+        {'label':'formation', 'type':'self_property', 'value_type':'qual'},
+        {'label':'member','type':'self_property', 'value_type':'qual'},
+        {'label':'sol', 'type': 'parent_property', 'value_type':'quant'}
+    ]

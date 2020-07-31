@@ -1,3 +1,4 @@
+from copy import deepcopy
 from operator import or_, and_, contains
 
 import dash
@@ -11,32 +12,27 @@ from toolz import keyfilter, merge, isiterable, get_in
 from utils import (
     rows,
     columns,
-    eta_methods,
     qlist,
     keygrab,
     in_me,
-    particular_fields_search,
+    flexible_query,
     pickitems,
     pickctx,
 )
 
-"""constants / settings"""
+"""
+functions used for selecting, manipulating, and drawing spectral data within plotly-dash objects.
+this module is _separate from app structure definition_. 
+these functions are partially defined and/or passed to callback decorators in order to
+generate flow control within a dash app.
+"""
 
-AXIS_VALUE_PROPERTIES = [
-    {"label":"band average","value":"band_avg","type":"method","arity":2},
-    {"label":"band maximum","value":"band_max","type":"method","arity":2},
-    {"label":"band minimum","value":"band_min","type":"method","arity":2},
-    {"label":"ratio","value":"ref_ratio","type":"method","arity":2},
-    {"label":"band depth at middle filter","value":"band_depth_custom","type":"method","arity":3},
-    {"label":"band depth at band minimum", "value":"band_depth_min","type":"method","arity":2},
-    {"label":"band value", "value":"ref","type":"method","arity":1},
-    {"label":"sol", "value":"sol","type":"parent_property"},
-    {"label":"target elevation", "value":"target_el","type":"parent_property"},
-    {"label":"local true solar time", "value":"ltst","type":"parent_property"},
-    ]
+#### cache functions
 
-
-"""functions used for selecting, manipulating, and drawing spectral data within plotly-dash objects"""
+# many of the other functions in this module take outputs of these two functions as arguments.
+# returning a function that calls a specific cache defined in-app 
+# allows us to share data between defined clusters of dash objects. 
+# the specific cache is in some sense a set of pointers that serves as a namespace.
 
 
 def cache_set(cache):
@@ -58,7 +54,9 @@ def make_axis(settings, queryset, suffix):
     # what is requested function or property?
     axis_option = settings["axis-option-" + suffix]
     # what are the characteristics of that function or property?
-    props = keygrab(AXIS_VALUE_PROPERTIES, "value", axis_option)
+    props = keygrab(
+        queryset.model.axis_value_properties, "value", axis_option
+    )
     if props["type"] == "method":
         # we assume here that 'methods' all take a spectrum's filter names
         # as arguments, and have arguments in an order corresponding to the inputs.
@@ -101,13 +99,13 @@ def scatter(x_axis, y_axis, text):
     return fig
 
 
-def axis_value_drop(element_id):
+def axis_value_drop(spec_model, element_id):
     """
     dropdown for selecting calculation options for axes
     """
     options = [
         {"label": option["label"], "value": option["value"]}
-        for option in AXIS_VALUE_PROPERTIES
+        for option in spec_model.axis_value_properties
     ]
     return dcc.Dropdown(
         id=element_id, options=options, value=options[0]["value"]
@@ -155,7 +153,7 @@ def field_values(queryset, field):
     maybe it's a bad idea.
     """
     if not field:
-    	return 
+        return
     options_list = [
         {"label": item, "value": item}
         for item in set(qlist(queryset, field))
@@ -169,51 +167,126 @@ def field_values(queryset, field):
     return special_options + options_list
 
 
-def filter_drop(model, element_id):
-    """dropdown for filter selection"""
-    return dcc.Dropdown(
-        id=element_id,
-        options=[{"label": filt, "value": filt} for filt in model.filters],
-        style={"width": "10rem", "display": "inline-block"},
-    )
 
-
-def field_drop(fields, element_id):
+def field_drop(fields, element_id, index):
     """dropdown for field selection -- no special logic atm"""
     return dcc.Dropdown(
-        id=element_id,
-        options=[{"label": field, "value": field} for field in fields],
+        id={'type':element_id, 'index':index},
+        options=[{"label": field['label'], "value": field['label']} for field in fields],
     )
 
 
-def model_options_drop(queryset, field, element_id):
+def model_range_entry(element_id, index):
+    """
+    pair of entry fields for selecting a range of values for a
+    quantitatively-valued field.
+    """
+    return [
+        dcc.Input(
+            id={'type':element_id+'-begin', 'index':index},
+            type='text'
+        ),
+        dcc.Input(
+            id={'type':element_id+'-end', 'index':index},
+            type='text'
+        )
+    ]
+
+
+def model_options_drop(field, element_id, index):
     """
     dropdown for selecting search values for a specific field
     could end up getting unmanageable as a UI element
     """
     return dcc.Dropdown(
-        id=element_id, options={"label": "any", "value": "any"}, multi=True
+        id={'type':element_id, 'index':index},
+        options={"label": "any", "value": "any"}, 
+        multi=True
     )
 
 
-def handle_search(model, search_dict, searchable_fields):
-    """
-    dispatcher. right now just handles 'no assigned'
-    and 'any' cases
-    """
-    for field, value in search_dict.items():
-        if "any" in value:
-            return model.objects.all()
-    return particular_fields_search(model, search_dict, searchable_fields)
+def model_range_display(element_id, index):
+    """placeholder area for displaying range for number field searches"""
+    return html.P(id={'type':element_id,'index':index})
 
 
-def change_input_visibility(calc_type):
+def search_parameter_div(index, searchable_fields, cget):
+    return html.Div(children = [
+        field_drop(searchable_fields, 'field-search', index),
+        model_options_drop('group', 'term-search', index),
+        *model_range_entry('number-search', index),
+        model_range_display('number-range-display', index)
+        ])
+
+
+def toggle_search_input_visibility(field, spec_model):
+    """
+    toggle between showing and hiding term drop down / number range boxes.
+    right now just returns simple dicts to the dash callback, as appropriate.
+    """
+    if not field:
+        raise PreventUpdate
+        
+    if keygrab(spec_model.searchable_fields, "label", field)['value_type'] == 'quant':
+        return [
+            {"display":"none"},
+            {},
+            {}
+        ]
+    return [
+        {},
+        {"display":"none"},
+        {"display":"none"}
+    ]
+    
+
+def spectrum_values_range(queryset, field, field_type):
+    """
+    returns minimum and maximum values of property within queryset of spectra.
+    for cueing or aiding searches.
+    """
+    if field_type == 'parent_property':
+        values_list = sorted([
+            getattr(getattr(item,'observation'),field)
+            for item in queryset.prefetch_related('observation')
+        ])
+    else:
+        values_list = sorted([
+            item[field] for item in queryset.objects.all()
+        ])
+    return (values_list[0], values_list[-1])
+
+
+def update_search_options(field, cget):
+    """
+    populate term values and parameter range as appropriate when different fields are selected in the search interface
+    currently this cascades in narrowness in a not-totally predictable way as new terms are added.
+    this may or may not end up being desirable.
+    """
+    if not field:
+        raise PreventUpdate
+    queryset = cget("queryset")
+
+    props = keygrab(queryset.model.searchable_fields, "label", field)
+    # if it's a field we do number interval searches on, reset term interface and show number ranges
+    # in the range display
+    if props["value_type"] == "quant":
+        return [
+            {"label": "any", "value": "any"}, 
+            'minimum/maximum: ' + str(spectrum_values_range(queryset, field, props['type']))
+        ]
+
+    # otherwise, populate the term interface and reset the range display
+    return [field_values(queryset, field), '']
+
+
+def change_calc_input_visibility(calc_type, spec_model):
     """
     turn visibility of filter dropdowns (and later other inputs)
     on and off in response to changes in arity / type of 
     requested calc
     """
-    props = keygrab(AXIS_VALUE_PROPERTIES, "value", calc_type)
+    props = keygrab(spec_model.axis_value_properties, "value", calc_type)
     # 'methods' are specifically those methods of spec_model
     # that take its filters as arguments
     if props["type"] == "method":
@@ -226,35 +299,87 @@ def change_input_visibility(calc_type):
     return [{"display": "none"} for x in range(3)]
 
 
-def update_model_field(field, cget):
-    """populate set of values when field in search box changes"""
-    if not field:
-        raise PreventUpdate
-    queryset = cget("queryset")
-    return field_values(queryset, field)
+def handle_graph_search(model, parameters):
+    """
+    dispatcher / manager for user-issued searches within the graph interface.
+    fills fields from model definition and feeds resultant list to a general-
+    purpose search function.
+    """
+    # add value_type and type information to dictionaries (based on 
+    # search properties defined in the model)
+    for parameter in parameters:
+        field = parameter.get('field')
+        if field:
+            props = keygrab(model.searchable_fields, "label" ,field)
+            parameter['value_type'] = props['value_type']
+            # format references to parent observation appropriately for Q objects
+            if props['type'] == 'parent_property':
+                parameter['field'] = 'observation__'+field
+    
+    # toss out 'any' entries -- they do not restrict the search
+    parameters = [
+        parameter for parameter in parameters
+        if not ((parameter.get('value_type') == 'qual')
+                and parameter.get('term') == 'any')
+    ]
+
+    # do we have any actual constraints? if not, return the entire data set
+    if not parameters:
+        return model.objects.all()
+    # otherwise, actually perform a search
+    return multiple_field_search(
+        model.objects.all().prefetch_related('observation'), parameters
+    )
 
 
-def update_queryset(n_clicks, field, value, cget, cset, spec_model):
+def update_queryset(
+    n_clicks, 
+    fields, 
+    terms, 
+    begin_numbers, 
+    end_numbers, 
+    cget, 
+    cset, 
+    spec_model
+    ):
     """
     updates the spectra displayed in the graph view.
-    
-    we'd actually like to extend this to include fields from both spec
-    and obs
-    
-    and multiple fields
     """
     # don't do anything on page load
-    # or if a partially blank request is issued
-    if not (field and value):
+    # or if a blank request is issued
+    if not (fields and (terms or begin_numbers)):
         raise PreventUpdate
-
+   # construct a list of search parameters from the filled inputs
+    search_list = [
+        {'field':field, 'term':term, 'begin':begin, 'end':end}
+        for field, term, begin, end in zip(fields, terms, begin_numbers, end_numbers)
+        if (field is not None and (term is not None or begin is not None))
+    ]
+    # if every search parameter is blank, don't do anything
+    if not search_list:
+        raise PreventUpdate
+    
     # if the search parameters have changed,
     # make a new queryset and trigger graph update
-    if handle_search(spec_model, {field: value}, [field]) != cget("queryset"):
+    # using copy.deepcopy here to avoid passing doubly-ingested input back after the check
+    # although on the other hand it should be memoized -- but still
+    
+    # TODO: this isn't handling cases that return an empty queryset -- check this
+    if handle_graph_search(spec_model, deepcopy(search_list)) != cget("queryset"):
         cset(
             "queryset",
-            handle_search(
-                spec_model, {field: value}, [field]
+            handle_graph_search(
+                spec_model, search_list
             ).prefetch_related("observation"),
         )
         return n_clicks
+
+
+def add_dropdown(n_clicks, children, spec_model, cget):
+    """
+    adds another dropdown for search constraints.
+    i guess we should also have a button to remove or reset constraints!
+    """
+    searchable_fields = spec_model.searchable_fields
+    children.append(search_parameter_div(n_clicks, searchable_fields, cget))
+    return children

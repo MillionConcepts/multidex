@@ -6,28 +6,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('plotter', '0001_initial'),
+        ("plotter", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='mspec',
-            name='L6_mean',
-            field=models.FloatField(db_index=True, verbose_name='L6 mean'),
+            model_name="mspec",
+            name="L6_mean",
+            field=models.FloatField(db_index=True, verbose_name="L6 mean"),
         ),
         migrations.AlterField(
-            model_name='mspec',
-            name='L6_stdev',
-            field=models.FloatField(db_index=True, verbose_name='L6 stdev'),
+            model_name="mspec",
+            name="L6_stdev",
+            field=models.FloatField(db_index=True, verbose_name="L6 stdev"),
         ),
         migrations.AlterField(
-            model_name='mspec',
-            name='R6_mean',
-            field=models.FloatField(db_index=True, verbose_name='R6 mean'),
+            model_name="mspec",
+            name="R6_mean",
+            field=models.FloatField(db_index=True, verbose_name="R6 mean"),
         ),
         migrations.AlterField(
-            model_name='mspec',
-            name='R6_stdev',
-            field=models.FloatField(db_index=True, verbose_name='R6 stdev'),
+            model_name="mspec",
+            name="R6_stdev",
+            field=models.FloatField(db_index=True, verbose_name="R6 stdev"),
         ),
     ]

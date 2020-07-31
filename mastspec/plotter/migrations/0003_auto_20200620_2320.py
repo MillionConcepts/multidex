@@ -6,18 +6,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('plotter', '0002_auto_20200620_1918'),
+        ("plotter", "0002_auto_20200620_1918"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='mobs',
-            name='target_el',
-            field=models.FloatField(db_index=True, null=True, verbose_name='Target Elevation'),
+            model_name="mobs",
+            name="target_el",
+            field=models.FloatField(
+                db_index=True, null=True, verbose_name="Target Elevation"
+            ),
         ),
         migrations.AlterField(
-            model_name='mspec',
-            name='is_floating',
-            field=models.BooleanField(db_index=True, null=True, verbose_name='floating vs. in-place'),
+            model_name="mspec",
+            name="is_floating",
+            field=models.BooleanField(
+                db_index=True, null=True, verbose_name="floating vs. in-place"
+            ),
         ),
     ]

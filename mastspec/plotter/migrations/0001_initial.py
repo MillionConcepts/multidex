@@ -8,102 +8,381 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Observation',
+            name="Observation",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=100, verbose_name='Name')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(
+                        db_index=True, max_length=100, verbose_name="Name"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Spectrum',
+            name="Spectrum",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('observation', models.ForeignKey(blank=True, on_delete=django.db.models.deletion.PROTECT, related_name='spectra_set', to='plotter.Observation')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "observation",
+                    models.ForeignKey(
+                        blank=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="spectra_set",
+                        to="plotter.Observation",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='MObs',
+            name="MObs",
             fields=[
-                ('observation_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to='plotter.Observation')),
-                ('sol', models.IntegerField(db_index=True, verbose_name='Sol')),
-                ('ltst', models.TimeField(db_index=True, verbose_name='Local True Solar Time')),
-                ('mcam', models.CharField(db_index=True, max_length=20, verbose_name='mcam')),
-                ('rover_el', models.FloatField(blank=True, db_index=True, verbose_name='Rover Elevation')),
-                ('target_el', models.FloatField(blank=True, db_index=True, verbose_name='Target Elevation')),
-                ('tau', models.FloatField(blank=True, db_index=True, verbose_name='Interpolated Tau')),
-                ('f_dist', models.FloatField(blank=True, db_index=True, verbose_name='Focal Distance')),
-                ('i_angle', models.FloatField(blank=True, db_index=True, verbose_name='Incidence Angle')),
-                ('e_angle', models.FloatField(blank=True, db_index=True, verbose_name='Emission Angle')),
-                ('so_lon', models.FloatField(blank=True, db_index=True, verbose_name='Solar Longitude')),
-                ('site', models.IntegerField(blank=True, db_index=True, verbose_name='Site')),
-                ('drive', models.IntegerField(blank=True, db_index=True, verbose_name='Drive')),
-                ('lat', models.FloatField(blank=True, db_index=True, verbose_name='Latitude')),
-                ('lon', models.FloatField(blank=True, db_index=True, verbose_name='Longitude')),
-                ('traverse', models.FloatField(blank=True, db_index=True, verbose_name='Traverse')),
-                ('righteye_s_image_1', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='path to first spectrum-reduced right-eye image')),
-                ('lefteye_s_image_1', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='path to first spectrum-reduced left-eye image')),
-                ('righteye_s_image_2', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='path to second spectrum-reduced right-eye image')),
-                ('lefteye_s_image_2', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='path to second spectrum-reduced left-eye image')),
-                ('righteye_rgb_image_1', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='path to first rgb right-eye image')),
-                ('lefteye_rgb_image_1', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='path to rgb left-eye image')),
-                ('righteye_rgb_image_2', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='path to second rgb right-eye image')),
+                (
+                    "observation_ptr",
+                    models.OneToOneField(
+                        auto_created=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        parent_link=True,
+                        primary_key=True,
+                        serialize=False,
+                        to="plotter.Observation",
+                    ),
+                ),
+                ("sol", models.IntegerField(db_index=True, verbose_name="Sol")),
+                (
+                    "ltst",
+                    models.TimeField(
+                        db_index=True, verbose_name="Local True Solar Time"
+                    ),
+                ),
+                (
+                    "mcam",
+                    models.CharField(db_index=True, max_length=20, verbose_name="mcam"),
+                ),
+                (
+                    "rover_el",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Rover Elevation"
+                    ),
+                ),
+                (
+                    "target_el",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Target Elevation"
+                    ),
+                ),
+                (
+                    "tau",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Interpolated Tau"
+                    ),
+                ),
+                (
+                    "f_dist",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Focal Distance"
+                    ),
+                ),
+                (
+                    "i_angle",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Incidence Angle"
+                    ),
+                ),
+                (
+                    "e_angle",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Emission Angle"
+                    ),
+                ),
+                (
+                    "so_lon",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Solar Longitude"
+                    ),
+                ),
+                (
+                    "site",
+                    models.IntegerField(blank=True, db_index=True, verbose_name="Site"),
+                ),
+                (
+                    "drive",
+                    models.IntegerField(
+                        blank=True, db_index=True, verbose_name="Drive"
+                    ),
+                ),
+                (
+                    "lat",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Latitude"
+                    ),
+                ),
+                (
+                    "lon",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Longitude"
+                    ),
+                ),
+                (
+                    "traverse",
+                    models.FloatField(
+                        blank=True, db_index=True, verbose_name="Traverse"
+                    ),
+                ),
+                (
+                    "righteye_s_image_1",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=100,
+                        verbose_name="path to first spectrum-reduced right-eye image",
+                    ),
+                ),
+                (
+                    "lefteye_s_image_1",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=100,
+                        verbose_name="path to first spectrum-reduced left-eye image",
+                    ),
+                ),
+                (
+                    "righteye_s_image_2",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=100,
+                        verbose_name="path to second spectrum-reduced right-eye image",
+                    ),
+                ),
+                (
+                    "lefteye_s_image_2",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=100,
+                        verbose_name="path to second spectrum-reduced left-eye image",
+                    ),
+                ),
+                (
+                    "righteye_rgb_image_1",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=100,
+                        verbose_name="path to first rgb right-eye image",
+                    ),
+                ),
+                (
+                    "lefteye_rgb_image_1",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=100,
+                        verbose_name="path to rgb left-eye image",
+                    ),
+                ),
+                (
+                    "righteye_rgb_image_2",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=100,
+                        verbose_name="path to second rgb right-eye image",
+                    ),
+                ),
             ],
-            bases=('plotter.observation',),
+            bases=("plotter.observation",),
         ),
         migrations.CreateModel(
-            name='MSpec',
+            name="MSpec",
             fields=[
-                ('spectrum_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, serialize=False, to='plotter.Spectrum')),
-                ('feature_type', models.CharField(blank=True, db_index=True, max_length=50, verbose_name='Feature Type')),
-                ('roi_color', models.CharField(blank=True, db_index=True, max_length=20, verbose_name='ROI Color')),
-                ('image_number', models.IntegerField(db_index=True, default=1, verbose_name='image number')),
-                ('is_floating', models.BooleanField(blank=True, db_index=True, verbose_name='floating vs. in-place')),
-                ('group', models.CharField(blank=True, db_index=True, max_length=50, verbose_name='Group')),
-                ('formation', models.CharField(blank=True, db_index=True, max_length=50, verbose_name='Formation')),
-                ('member', models.CharField(blank=True, db_index=True, max_length=50, verbose_name='Member')),
-                ('notes', models.CharField(blank=True, db_index=True, max_length=100, verbose_name='Notes')),
-                ('L0_blue_mean', models.FloatField(db_index=True, verbose_name='L0 (Blue Bayer) mean')),
-                ('L0_blue_stdev', models.FloatField(db_index=True, verbose_name='L0 (Blue Bayer) stdev')),
-                ('L0_green_mean', models.FloatField(db_index=True, verbose_name='L0 (Green Bayer) mean')),
-                ('L0_green_stdev', models.FloatField(db_index=True, verbose_name='L0 (Green Bayer) stdev')),
-                ('L0_red_mean', models.FloatField(db_index=True, verbose_name='L0 (Red Bayer) mean')),
-                ('L0_red_stdev', models.FloatField(db_index=True, verbose_name='L0 (Red Bayer) stdev')),
-                ('R0_blue_mean', models.FloatField(db_index=True, verbose_name='R0 (Blue Bayer) mean')),
-                ('R0_blue_stdev', models.FloatField(db_index=True, verbose_name='R0 (Blue Bayer) stdev')),
-                ('R0_green_mean', models.FloatField(db_index=True, verbose_name='R0 (Green Bayer) mean')),
-                ('R0_green_stdev', models.FloatField(db_index=True, verbose_name='R0 (Green Bayer) stdev')),
-                ('R0_red_mean', models.FloatField(db_index=True, verbose_name='R0 (Red Bayer) mean')),
-                ('R0_red_stdev', models.FloatField(db_index=True, verbose_name='R0 (Red Bayer) stdev')),
-                ('R1_mean', models.FloatField(db_index=True, verbose_name='R1 mean')),
-                ('R1_stdev', models.FloatField(db_index=True, verbose_name='R1 stdev')),
-                ('L1_mean', models.FloatField(db_index=True, verbose_name='L1 mean')),
-                ('L1_stdev', models.FloatField(db_index=True, verbose_name='L1 stdev')),
-                ('R2_mean', models.FloatField(db_index=True, verbose_name='R2 mean')),
-                ('R2_stdev', models.FloatField(db_index=True, verbose_name='R2 stdev')),
-                ('L2_mean', models.FloatField(db_index=True, verbose_name='L2 mean')),
-                ('L2_stdev', models.FloatField(db_index=True, verbose_name='L2 stdev')),
-                ('R3_mean', models.FloatField(db_index=True, verbose_name='R3 mean')),
-                ('R3_stdev', models.FloatField(db_index=True, verbose_name='R3 stdev')),
-                ('L3_mean', models.FloatField(db_index=True, verbose_name='L3 mean')),
-                ('L3_stdev', models.FloatField(db_index=True, verbose_name='L3 stdev')),
-                ('R4_mean', models.FloatField(db_index=True, verbose_name='R4 mean')),
-                ('R4_stdev', models.FloatField(db_index=True, verbose_name='R4 stdev')),
-                ('L4_mean', models.FloatField(db_index=True, verbose_name='L4 mean')),
-                ('L4_stdev', models.FloatField(db_index=True, verbose_name='L4 stdev')),
-                ('R5_mean', models.FloatField(db_index=True, verbose_name='R5 mean')),
-                ('R5_stdev', models.FloatField(db_index=True, verbose_name='R5 stdev')),
-                ('L5_mean', models.FloatField(db_index=True, verbose_name='L5 mean')),
-                ('L5_stdev', models.FloatField(db_index=True, verbose_name='L5 stdev')),
-                ('R6_mean', models.FloatField(db_index=True, verbose_name='R5 mean')),
-                ('R6_stdev', models.FloatField(db_index=True, verbose_name='R5 stdev')),
-                ('L6_mean', models.FloatField(db_index=True, verbose_name='L5 mean')),
-                ('L6_stdev', models.FloatField(db_index=True, verbose_name='L5 stdev')),
+                (
+                    "spectrum_ptr",
+                    models.OneToOneField(
+                        auto_created=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        parent_link=True,
+                        primary_key=True,
+                        serialize=False,
+                        to="plotter.Spectrum",
+                    ),
+                ),
+                (
+                    "feature_type",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=50,
+                        verbose_name="Feature Type",
+                    ),
+                ),
+                (
+                    "roi_color",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=20,
+                        verbose_name="ROI Color",
+                    ),
+                ),
+                (
+                    "image_number",
+                    models.IntegerField(
+                        db_index=True, default=1, verbose_name="image number"
+                    ),
+                ),
+                (
+                    "is_floating",
+                    models.BooleanField(
+                        blank=True, db_index=True, verbose_name="floating vs. in-place"
+                    ),
+                ),
+                (
+                    "group",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=50, verbose_name="Group"
+                    ),
+                ),
+                (
+                    "formation",
+                    models.CharField(
+                        blank=True,
+                        db_index=True,
+                        max_length=50,
+                        verbose_name="Formation",
+                    ),
+                ),
+                (
+                    "member",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=50, verbose_name="Member"
+                    ),
+                ),
+                (
+                    "notes",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=100, verbose_name="Notes"
+                    ),
+                ),
+                (
+                    "L0_blue_mean",
+                    models.FloatField(
+                        db_index=True, verbose_name="L0 (Blue Bayer) mean"
+                    ),
+                ),
+                (
+                    "L0_blue_stdev",
+                    models.FloatField(
+                        db_index=True, verbose_name="L0 (Blue Bayer) stdev"
+                    ),
+                ),
+                (
+                    "L0_green_mean",
+                    models.FloatField(
+                        db_index=True, verbose_name="L0 (Green Bayer) mean"
+                    ),
+                ),
+                (
+                    "L0_green_stdev",
+                    models.FloatField(
+                        db_index=True, verbose_name="L0 (Green Bayer) stdev"
+                    ),
+                ),
+                (
+                    "L0_red_mean",
+                    models.FloatField(
+                        db_index=True, verbose_name="L0 (Red Bayer) mean"
+                    ),
+                ),
+                (
+                    "L0_red_stdev",
+                    models.FloatField(
+                        db_index=True, verbose_name="L0 (Red Bayer) stdev"
+                    ),
+                ),
+                (
+                    "R0_blue_mean",
+                    models.FloatField(
+                        db_index=True, verbose_name="R0 (Blue Bayer) mean"
+                    ),
+                ),
+                (
+                    "R0_blue_stdev",
+                    models.FloatField(
+                        db_index=True, verbose_name="R0 (Blue Bayer) stdev"
+                    ),
+                ),
+                (
+                    "R0_green_mean",
+                    models.FloatField(
+                        db_index=True, verbose_name="R0 (Green Bayer) mean"
+                    ),
+                ),
+                (
+                    "R0_green_stdev",
+                    models.FloatField(
+                        db_index=True, verbose_name="R0 (Green Bayer) stdev"
+                    ),
+                ),
+                (
+                    "R0_red_mean",
+                    models.FloatField(
+                        db_index=True, verbose_name="R0 (Red Bayer) mean"
+                    ),
+                ),
+                (
+                    "R0_red_stdev",
+                    models.FloatField(
+                        db_index=True, verbose_name="R0 (Red Bayer) stdev"
+                    ),
+                ),
+                ("R1_mean", models.FloatField(db_index=True, verbose_name="R1 mean")),
+                ("R1_stdev", models.FloatField(db_index=True, verbose_name="R1 stdev")),
+                ("L1_mean", models.FloatField(db_index=True, verbose_name="L1 mean")),
+                ("L1_stdev", models.FloatField(db_index=True, verbose_name="L1 stdev")),
+                ("R2_mean", models.FloatField(db_index=True, verbose_name="R2 mean")),
+                ("R2_stdev", models.FloatField(db_index=True, verbose_name="R2 stdev")),
+                ("L2_mean", models.FloatField(db_index=True, verbose_name="L2 mean")),
+                ("L2_stdev", models.FloatField(db_index=True, verbose_name="L2 stdev")),
+                ("R3_mean", models.FloatField(db_index=True, verbose_name="R3 mean")),
+                ("R3_stdev", models.FloatField(db_index=True, verbose_name="R3 stdev")),
+                ("L3_mean", models.FloatField(db_index=True, verbose_name="L3 mean")),
+                ("L3_stdev", models.FloatField(db_index=True, verbose_name="L3 stdev")),
+                ("R4_mean", models.FloatField(db_index=True, verbose_name="R4 mean")),
+                ("R4_stdev", models.FloatField(db_index=True, verbose_name="R4 stdev")),
+                ("L4_mean", models.FloatField(db_index=True, verbose_name="L4 mean")),
+                ("L4_stdev", models.FloatField(db_index=True, verbose_name="L4 stdev")),
+                ("R5_mean", models.FloatField(db_index=True, verbose_name="R5 mean")),
+                ("R5_stdev", models.FloatField(db_index=True, verbose_name="R5 stdev")),
+                ("L5_mean", models.FloatField(db_index=True, verbose_name="L5 mean")),
+                ("L5_stdev", models.FloatField(db_index=True, verbose_name="L5 stdev")),
+                ("R6_mean", models.FloatField(db_index=True, verbose_name="R5 mean")),
+                ("R6_stdev", models.FloatField(db_index=True, verbose_name="R5 stdev")),
+                ("L6_mean", models.FloatField(db_index=True, verbose_name="L5 mean")),
+                ("L6_stdev", models.FloatField(db_index=True, verbose_name="L5 stdev")),
             ],
-            bases=('plotter.spectrum',),
+            bases=("plotter.spectrum",),
         ),
     ]
