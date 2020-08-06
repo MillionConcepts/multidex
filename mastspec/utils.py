@@ -1,9 +1,11 @@
 """assorted utility functions for project"""
 
 from functools import partial, reduce, wraps
+import json
 from operator import and_, or_, contains
 
-from toolz import keyfilter, merge, isiterable, get_in
+from dash.dependencies import Input, Output
+from toolz import identity, keyfilter, merge, isiterable, get_in
 
 
 # django utility functions
@@ -11,6 +13,26 @@ from toolz import keyfilter, merge, isiterable, get_in
 
 def qlist(queryset, attribute):
     return list(queryset.values_list(attribute, flat=True))
+
+
+def djget(model, value, field="name", method_name="filter", querytype="iexact"):
+    """flexible interface to queryset methods"""
+    # get the requested queryset-generating method of model.objects
+    method = getattr(model.objects, method_name)
+    # and then evaluate it on the requested parameters
+    return method(**{field + "__" + querytype: value})
+
+
+def modeldict(django_model_object, exclude_fields = None):
+    """tries to construct a dictionary from arbitrary django model instance"""
+    if exclude_fields == None:
+        exclude_fields = []
+    return keyfilter(lambda x: x not in exclude_fields, 
+        {
+        field.name: getattr(django_model_object, field.name)
+        for field in django_model_object._meta.get_fields()
+        }
+    )
 
 
 # pandas utility functions
@@ -64,6 +86,28 @@ def keygrab(dict_list, key, value):
     return next(filter(lambda x: x[key] == value, dict_list))
 
 
+### dash dev tools
+
+
+def dump_it(data):
+    """dump data as json"""
+    return json.dumps(data, indent=2)
+
+
+def print_out(element, prop, app, print_target="print", process_function=dump_it):
+    """
+    impure dash callback function; 
+    when called, creates a callback to print property of element in app to print_target
+    """
+
+    def print_callback():
+        app.callback(Output(print_target, "children"), [Input(element, prop)])(process_function)
+
+    print_callback()
+
+
+
+
 ### lambda replacements
 
 
@@ -85,6 +129,7 @@ def in_me(container):
 # it potentially reduces efficiency a great deal and is terrain for optimization
 # if and when required.
 
+
 def flexible_query(queryset, field, value):
     """
     little search function that checks exact and loose phrases.
@@ -96,7 +141,7 @@ def flexible_query(queryset, field, value):
         return queryset.filter(**{query: value})
     # otherwise treat multiple words as an 'or' search",
     query = field + "__icontains"
-    filters = [queryset.filter(**{query: word}) for word in value.split("")]
+    filters = [queryset.filter(**{query: word}) for word in value.split(" ")]
     return reduce(or_, filters)
 
 
@@ -119,8 +164,8 @@ def term_search(queryset, field, value, inflexible=None):
 
 
 def interval_search(
-        queryset, field, interval_begin=None, interval_end=None, strictly=None
-    ):
+    queryset, field, interval_begin=None, interval_end=None, strictly=None
+):
     """
     queryset, field of underlying model, begin, end -> queryset
     
@@ -170,26 +215,24 @@ def multiple_field_search(queryset, parameters):
     or stringlike terms.
     """
     results = []
-    
+
     for parameter in parameters:
         # do a relations-on-orderings search if requested
-        if parameter.get('value_type') == 'quant':
+        if parameter.get("value_type") == "quant":
             search_result = interval_search(
                 queryset,
-                parameter['field'],
+                parameter["field"],
                 # begin and end and strictly are optional
-                parameter.get('begin'),
-                parameter.get('end'),
-                parameter.get('strictly')
+                parameter.get("begin"),
+                parameter.get("end"),
+                parameter.get("strictly"),
             )
+            results.append(search_result)
         # otherwise just look for term matches
         else:
-            search_result = term_search(
-                queryset,
-                parameter['field'],
-                parameter['term'],
-                parameter.get('flexible')
-            )
-        print(search_result)
-        results.append(search_result)
+            for term in parameter["term"]:
+                search_result = term_search(
+                    queryset, parameter["field"], term, parameter.get("flexible")
+                )
+                results.append(search_result)
     return reduce(and_, results)

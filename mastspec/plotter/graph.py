@@ -16,6 +16,7 @@ from utils import (
     keygrab,
     in_me,
     flexible_query,
+    multiple_field_search,
     pickitems,
     pickctx,
 )
@@ -30,8 +31,8 @@ generate flow control within a dash app.
 #### cache functions
 
 # many of the other functions in this module take outputs of these two functions as arguments.
-# returning a function that calls a specific cache defined in-app 
-# allows us to share data between defined clusters of dash objects. 
+# returning a function that calls a specific cache defined in-app
+# allows us to share data between defined clusters of dash objects.
 # the specific cache is in some sense a set of pointers that serves as a namespace.
 
 
@@ -84,7 +85,14 @@ def main_graph():
     )
 
 
-def scatter(x_axis, y_axis, text):
+def spec_graph():
+    fig=go.Figure()
+    fig.update_layout(margin={'l':10,'r':10,'t':10,'b':10})
+    return dcc.Graph(id="spec-graph", figure=fig)
+
+
+def main_graph_scatter(x_axis, y_axis, text, customdata):
+    """partial placeholder scatter function for main graph"""
     fig = go.Figure()
     fig.add_trace(
         go.Scattergl(
@@ -92,10 +100,19 @@ def scatter(x_axis, y_axis, text):
             y=y_axis,
             # change this to be hella popup text
             text=text,
+            customdata=customdata,
             mode="markers",
             marker={"color": "blue"},
         )
     )
+    return fig
+
+
+def spec_graph_line(x_axis, y_axis):
+    """partial placeholder line graph for individual spectra"""
+    fig = go.Figure()
+    fig.add_trace(go.Scattergl(x=x_axis, y=y_axis, mode="lines+markers"))
+    fig.update_layout(margin={'l':10,'r':10,'t':10,'b':10})
     return fig
 
 
@@ -134,12 +151,14 @@ def recalculate_graph(*args, x_inputs, y_inputs, graph_function, cget, cset):
     # we will add it.
     x_axis = make_axis(x_settings, queryset, suffix="x.value")
     y_axis = make_axis(y_settings, queryset, suffix="y.value")
+    # these text and customdata choices are likely placeholders
     text = [spec.observation.mcam + " " + spec.roi_color for spec in queryset]
+    customdata = [spec.id for spec in queryset]
     # this case is most likely shortly after page load
     # when not everything is filled out
     if not (x_axis and y_axis):
         raise PreventUpdate
-    return graph_function(x_axis, y_axis, text)
+    return graph_function(x_axis, y_axis, text, customdata)
 
 
 def field_values(queryset, field):
@@ -167,12 +186,23 @@ def field_values(queryset, field):
     return special_options + options_list
 
 
+def filter_drop(model, element_id):
+    """dropdown for filter selection"""
+    return dcc.Dropdown(
+        id=element_id,
+        options=[{"label": filt, "value": filt} for filt in model.filters],
+        style={"width": "10rem", "display": "inline-block"},
+    )
+
 
 def field_drop(fields, element_id, index):
     """dropdown for field selection -- no special logic atm"""
     return dcc.Dropdown(
-        id={'type':element_id, 'index':index},
-        options=[{"label": field['label'], "value": field['label']} for field in fields],
+        id={"type": element_id, "index": index},
+        options=[
+            {"label": field["label"], "value": field["label"]}
+            for field in fields
+        ],
     )
 
 
@@ -183,13 +213,11 @@ def model_range_entry(element_id, index):
     """
     return [
         dcc.Input(
-            id={'type':element_id+'-begin', 'index':index},
-            type='text'
+            id={"type": element_id + "-begin", "index": index}, type="text"
         ),
         dcc.Input(
-            id={'type':element_id+'-end', 'index':index},
-            type='text'
-        )
+            id={"type": element_id + "-end", "index": index}, type="text"
+        ),
     ]
 
 
@@ -199,24 +227,26 @@ def model_options_drop(field, element_id, index):
     could end up getting unmanageable as a UI element
     """
     return dcc.Dropdown(
-        id={'type':element_id, 'index':index},
-        options={"label": "any", "value": "any"}, 
-        multi=True
+        id={"type": element_id, "index": index},
+        options={"label": "any", "value": "any"},
+        multi=True,
     )
 
 
 def model_range_display(element_id, index):
     """placeholder area for displaying range for number field searches"""
-    return html.P(id={'type':element_id,'index':index})
+    return html.P(id={"type": element_id, "index": index})
 
 
 def search_parameter_div(index, searchable_fields, cget):
-    return html.Div(children = [
-        field_drop(searchable_fields, 'field-search', index),
-        model_options_drop('group', 'term-search', index),
-        *model_range_entry('number-search', index),
-        model_range_display('number-range-display', index)
-        ])
+    return html.Div(
+        children=[
+            field_drop(searchable_fields, "field-search", index),
+            model_options_drop("group", "term-search", index),
+            *model_range_entry("number-search", index),
+            model_range_display("number-range-display", index),
+        ]
+    )
 
 
 def toggle_search_input_visibility(field, spec_model):
@@ -226,34 +256,29 @@ def toggle_search_input_visibility(field, spec_model):
     """
     if not field:
         raise PreventUpdate
-        
-    if keygrab(spec_model.searchable_fields, "label", field)['value_type'] == 'quant':
-        return [
-            {"display":"none"},
-            {},
-            {}
-        ]
-    return [
-        {},
-        {"display":"none"},
-        {"display":"none"}
-    ]
-    
+
+    if (
+        keygrab(spec_model.searchable_fields, "label", field)["value_type"]
+        == "quant"
+    ):
+        return [{"display": "none"}, {}, {}]
+    return [{}, {"display": "none"}, {"display": "none"}]
+
 
 def spectrum_values_range(queryset, field, field_type):
     """
     returns minimum and maximum values of property within queryset of spectra.
     for cueing or aiding searches.
     """
-    if field_type == 'parent_property':
-        values_list = sorted([
-            getattr(getattr(item,'observation'),field)
-            for item in queryset.prefetch_related('observation')
-        ])
+    if field_type == "parent_property":
+        values_list = sorted(
+            [
+                getattr(getattr(item, "observation"), field)
+                for item in queryset.prefetch_related("observation")
+            ]
+        )
     else:
-        values_list = sorted([
-            item[field] for item in queryset.objects.all()
-        ])
+        values_list = sorted([item[field] for item in queryset.objects.all()])
     return (values_list[0], values_list[-1])
 
 
@@ -272,12 +297,13 @@ def update_search_options(field, cget):
     # in the range display
     if props["value_type"] == "quant":
         return [
-            {"label": "any", "value": "any"}, 
-            'minimum/maximum: ' + str(spectrum_values_range(queryset, field, props['type']))
+            {"label": "any", "value": "any"},
+            "minimum/maximum: "
+            + str(spectrum_values_range(queryset, field, props["type"])),
         ]
 
     # otherwise, populate the term interface and reset the range display
-    return [field_values(queryset, field), '']
+    return [field_values(queryset, field), ""]
 
 
 def change_calc_input_visibility(calc_type, spec_model):
@@ -305,22 +331,25 @@ def handle_graph_search(model, parameters):
     fills fields from model definition and feeds resultant list to a general-
     purpose search function.
     """
-    # add value_type and type information to dictionaries (based on 
+    # add value_type and type information to dictionaries (based on
     # search properties defined in the model)
     for parameter in parameters:
-        field = parameter.get('field')
+        field = parameter.get("field")
         if field:
-            props = keygrab(model.searchable_fields, "label" ,field)
-            parameter['value_type'] = props['value_type']
+            props = keygrab(model.searchable_fields, "label", field)
+            parameter["value_type"] = props["value_type"]
             # format references to parent observation appropriately for Q objects
-            if props['type'] == 'parent_property':
-                parameter['field'] = 'observation__'+field
-    
+            if props["type"] == "parent_property":
+                parameter["field"] = "observation__" + field
+
     # toss out 'any' entries -- they do not restrict the search
     parameters = [
-        parameter for parameter in parameters
-        if not ((parameter.get('value_type') == 'qual')
-                and parameter.get('term') == 'any')
+        parameter
+        for parameter in parameters
+        if not (
+            (parameter.get("value_type") == "qual")
+            and parameter.get("term") == "any"
+        )
     ]
 
     # do we have any actual constraints? if not, return the entire data set
@@ -328,20 +357,20 @@ def handle_graph_search(model, parameters):
         return model.objects.all()
     # otherwise, actually perform a search
     return multiple_field_search(
-        model.objects.all().prefetch_related('observation'), parameters
+        model.objects.all().prefetch_related("observation"), parameters
     )
 
 
 def update_queryset(
-    n_clicks, 
-    fields, 
-    terms, 
-    begin_numbers, 
-    end_numbers, 
-    cget, 
-    cset, 
-    spec_model
-    ):
+    n_clicks,
+    fields,
+    terms,
+    begin_numbers,
+    end_numbers,
+    cget,
+    cset,
+    spec_model,
+):
     """
     updates the spectra displayed in the graph view.
     """
@@ -349,28 +378,32 @@ def update_queryset(
     # or if a blank request is issued
     if not (fields and (terms or begin_numbers)):
         raise PreventUpdate
-   # construct a list of search parameters from the filled inputs
+    # construct a list of search parameters from the filled inputs
     search_list = [
-        {'field':field, 'term':term, 'begin':begin, 'end':end}
-        for field, term, begin, end in zip(fields, terms, begin_numbers, end_numbers)
+        {"field": field, "term": term, "begin": begin, "end": end}
+        for field, term, begin, end in zip(
+            fields, terms, begin_numbers, end_numbers
+        )
         if (field is not None and (term is not None or begin is not None))
     ]
     # if every search parameter is blank, don't do anything
     if not search_list:
         raise PreventUpdate
-    
+
     # if the search parameters have changed,
     # make a new queryset and trigger graph update
     # using copy.deepcopy here to avoid passing doubly-ingested input back after the check
     # although on the other hand it should be memoized -- but still
-    
+
     # TODO: this isn't handling cases that return an empty queryset -- check this
-    if handle_graph_search(spec_model, deepcopy(search_list)) != cget("queryset"):
+    if handle_graph_search(spec_model, deepcopy(search_list)) != cget(
+        "queryset"
+    ):
         cset(
             "queryset",
-            handle_graph_search(
-                spec_model, search_list
-            ).prefetch_related("observation"),
+            handle_graph_search(spec_model, search_list).prefetch_related(
+                "observation"
+            ),
         )
         return n_clicks
 
