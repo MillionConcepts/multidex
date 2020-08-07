@@ -488,6 +488,23 @@ class MSpec(Spectrum):
         {"label": "sol", "type": "parent_property", "value_type": "quant"},
     ]
 
+    def image_files(self):
+        images = {}
+        image_types = [
+            'righteye_s_image_1',
+            'righteye_s_image_2',
+            'righteye_rgb_image_1',
+            'righteye_rgb_image_2',
+            'lefteye_s_image_1',
+            'lefteye_s_image_2',
+            'lefteye_rgb_image_1'
+            ]
+        filedict = {
+            image_type:getattr(self.observation, image_type)
+            for image_type in image_types
+            if str(self.image_number) in image_type 
+        }
+        return filedict
 
 def filter_fields(model):
     """silly heuristic for picking fields that are mean or stdev of filters"""

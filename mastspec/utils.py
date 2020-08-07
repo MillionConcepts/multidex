@@ -94,9 +94,9 @@ def dump_it(data):
     return json.dumps(data, indent=2)
 
 
-def print_out(element, prop, app, print_target="print", process_function=dump_it):
+def make_printer(element, prop, app, print_target="print", process_function=dump_it):
     """
-    impure dash callback function; 
+    utility callback factory. impure! inserts the callback into the tree when called. 
     when called, creates a callback to print property of element in app to print_target
     """
 

@@ -80,15 +80,28 @@ def make_axis(settings, queryset, suffix):
 
 
 def main_graph():
+    """container factory for main graph"""
+    fig = go.Figure()
+    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
     return dcc.Graph(
-        id="main-graph", figure=go.Figure(), style={"height": "70vh"}
+        id="main-graph", figure=fig, style={"height": "45vh"}
     )
 
 
 def spec_graph():
+    """container factory for reflectance graphs"""
     fig=go.Figure()
-    fig.update_layout(margin={'l':10,'r':10,'t':10,'b':10})
-    return dcc.Graph(id="spec-graph", figure=fig)
+    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
+    return dcc.Graph(
+        id="spec-graph", figure=fig, style={"height":"30vh", "width":"45vw"}
+    )
+
+def image_holder(index=0):
+    """container factory for zoomable static images. maybe. placeholder"""
+    fig = go.Figure()
+    return dcc.Graph(
+        id="image-"+str(index), 
+        )
 
 
 def main_graph_scatter(x_axis, y_axis, text, customdata):
@@ -105,6 +118,7 @@ def main_graph_scatter(x_axis, y_axis, text, customdata):
             marker={"color": "blue"},
         )
     )
+    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
     return fig
 
 
@@ -112,7 +126,7 @@ def spec_graph_line(x_axis, y_axis):
     """partial placeholder line graph for individual spectra"""
     fig = go.Figure()
     fig.add_trace(go.Scattergl(x=x_axis, y=y_axis, mode="lines+markers"))
-    fig.update_layout(margin={'l':10,'r':10,'t':10,'b':10})
+    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
     return fig
 
 
