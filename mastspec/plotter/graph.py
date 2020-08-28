@@ -1,29 +1,42 @@
 from copy import deepcopy
+import datetime as dt
 from operator import or_, and_, contains
 
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
+import dash_html_components as html
+import pandas as pd
+import PIL
+from PIL import Image
 import plotly.graph_objects as go
 from toolz import keyfilter, merge, isiterable, get_in
 
+from plotter.components import search_parameter_div, viewer_tab, search_tab
+from plotter.models import filter_fields
 from utils import (
+    djget,
+    dict_to_paragraphs,
     rows,
     columns,
     qlist,
     keygrab,
     in_me,
+    first,
     flexible_query,
     multiple_field_search,
+    modeldict,
     pickitems,
     pickctx,
+    ctxdict,
+    not_triggered,
+    trigger_index,
 )
 
 """
 functions used for selecting, manipulating, and drawing spectral data within plotly-dash objects.
-this module is _separate from app structure definition_. 
+this module is _separate_ from app structure definition_ and, to the extent possible, components.
+considering where exactly...! 
 these functions are partially defined and/or passed to callback decorators in order to
 generate flow control within a dash app.
 """
@@ -79,87 +92,70 @@ def make_axis(settings, queryset, suffix):
         ]
 
 
-def main_graph():
-    """container factory for main graph"""
-    fig = go.Figure()
-    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
-    return dcc.Graph(
-        id="main-graph", figure=fig, style={"height": "45vh"}
-    )
+def redorblue(value, container):
+    """placeholder color function"""
+    if value in container:
+        return "red"
+    return "blue"
 
 
-def spec_graph():
-    """container factory for reflectance graphs"""
-    fig=go.Figure()
-    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
-    return dcc.Graph(
-        id="spec-graph", figure=fig, style={"height":"30vh", "width":"45vw"}
-    )
-
-def image_holder(index=0):
-    """container factory for zoomable static images. maybe. placeholder"""
-    fig = go.Figure()
-    return dcc.Graph(
-        id="image-"+str(index), 
-        )
+def sibling_ids(spec_id, cget):
+    """wrapper for getting sets of spectra siblings precalculated in update_queryset"""
+    return first(lambda x: spec_id in x, cget("sibling_set"))
 
 
-def main_graph_scatter(x_axis, y_axis, text, customdata):
-    """partial placeholder scatter function for main graph"""
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scattergl(
-            x=x_axis,
-            y=y_axis,
-            # change this to be hella popup text
-            text=text,
-            customdata=customdata,
-            mode="markers",
-            marker={"color": "blue"},
-        )
-    )
-    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
-    return fig
-
-
-def spec_graph_line(x_axis, y_axis):
-    """partial placeholder line graph for individual spectra"""
-    fig = go.Figure()
-    fig.add_trace(go.Scattergl(x=x_axis, y=y_axis, mode="lines+markers"))
-    fig.update_layout(margin={'l':10,'r':10,'t':25,'b':0})
-    return fig
-
-
-def axis_value_drop(spec_model, element_id):
+def main_graph_hover_styler(ctx, cget):
     """
-    dropdown for selecting calculation options for axes
+    this is drastically inefficient, i would think. perhaps there's a more performant way to do it
+    in some of the marker controls.
     """
-    options = [
-        {"label": option["label"], "value": option["value"]}
-        for option in spec_model.axis_value_properties
-    ]
-    return dcc.Dropdown(
-        id=element_id, options=options, value=options[0]["value"]
+
+    hovered_point = ctx.triggered[0]["value"]["points"][0]["customdata"]
+    figure = go.Figure(ctx.states["main-graph.figure"])
+    sibs = sibling_ids(hovered_point, cget)
+    figure.update_traces(
+        marker={
+            "color": [
+                redorblue(point, sibs)
+                for point in figure["data"][0]["customdata"]
+            ]
+        }
     )
+    return figure
 
 
 # this is somewhat nasty.
 # is there a cleaner way to do this?
 # flow control becomes really hard if we break the function up.
 # it requires triggers spread across multiple divs or cached globals
-# and is much uglier than even this
-def recalculate_graph(*args, x_inputs, y_inputs, graph_function, cget, cset):
+# and is much uglier than even this. dash's restriction on callbacks to a single output
+# makes it even worse. probably the best thing to do
+# in the long run is to treat this basically as a dispatch function.
+def recalculate_graph(
+    *args,
+    x_inputs,
+    y_inputs,
+    graph_function,
+    cget,
+    cset,
+    record_settings=True,
+):
     ctx = dash.callback_context
     # do nothing on page load
-    if not ctx.triggered:
+    if not_triggered():
         raise PreventUpdate
+
+    ctx = dash.callback_context
+    if ctx.triggered[0]["prop_id"] == "main-graph.hoverData":
+        raise PreventUpdate
+        # fun but maybe slow and so presently disabled
+        # return main_graph_hover_styler(ctx, cget)
     queryset = cget("queryset")
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
-    # this is for future functions that display or recall
+    # this is for functions like describe_current_graph
+    # that display or recall
     # the settings used to generate a graph
-    cset("x_settings", x_settings)
-    cset("y_settings", y_settings)
     # we can probably get away without any fancy flow control
     # b/c memoization...if it turns out that hitting the cache this way sucks,
     # we will add it.
@@ -172,6 +168,21 @@ def recalculate_graph(*args, x_inputs, y_inputs, graph_function, cget, cset):
     # when not everything is filled out
     if not (x_axis and y_axis):
         raise PreventUpdate
+
+    # for functions that (perhaps asynchronously) fetch the state of the graph.
+    # this is another perhaps ugly flow control thing!
+    if record_settings:
+        for parameter in (
+            "x_settings",
+            "y_settings",
+            "x_axis",
+            "y_axis",
+            "text",
+            "customdata",
+            "graph_function",
+        ):
+            cset(parameter, locals()[parameter])
+
     return graph_function(x_axis, y_axis, text, customdata)
 
 
@@ -184,9 +195,11 @@ def field_values(queryset, field):
     parameters. this has upsides and downsides.
     it will also lead to odd behavior if care is not given.
     maybe it's a bad idea.
+
+    wait, is that correct? check up the chain.
     """
     if not field:
-        return
+        return [{"label":"any", "value":"any"}]
     options_list = [
         {"label": item, "value": item}
         for item in set(qlist(queryset, field))
@@ -200,73 +213,11 @@ def field_values(queryset, field):
     return special_options + options_list
 
 
-def filter_drop(model, element_id):
-    """dropdown for filter selection"""
-    return dcc.Dropdown(
-        id=element_id,
-        options=[{"label": filt, "value": filt} for filt in model.filters],
-        style={"width": "10rem", "display": "inline-block"},
-    )
-
-
-def field_drop(fields, element_id, index):
-    """dropdown for field selection -- no special logic atm"""
-    return dcc.Dropdown(
-        id={"type": element_id, "index": index},
-        options=[
-            {"label": field["label"], "value": field["label"]}
-            for field in fields
-        ],
-    )
-
-
-def model_range_entry(element_id, index):
-    """
-    pair of entry fields for selecting a range of values for a
-    quantitatively-valued field.
-    """
-    return [
-        dcc.Input(
-            id={"type": element_id + "-begin", "index": index}, type="text"
-        ),
-        dcc.Input(
-            id={"type": element_id + "-end", "index": index}, type="text"
-        ),
-    ]
-
-
-def model_options_drop(field, element_id, index):
-    """
-    dropdown for selecting search values for a specific field
-    could end up getting unmanageable as a UI element
-    """
-    return dcc.Dropdown(
-        id={"type": element_id, "index": index},
-        options={"label": "any", "value": "any"},
-        multi=True,
-    )
-
-
-def model_range_display(element_id, index):
-    """placeholder area for displaying range for number field searches"""
-    return html.P(id={"type": element_id, "index": index})
-
-
-def search_parameter_div(index, searchable_fields, cget):
-    return html.Div(
-        children=[
-            field_drop(searchable_fields, "field-search", index),
-            model_options_drop("group", "term-search", index),
-            *model_range_entry("number-search", index),
-            model_range_display("number-range-display", index),
-        ]
-    )
-
-
-def toggle_search_input_visibility(field, spec_model):
+def toggle_search_input_visibility(field, *, spec_model):
     """
     toggle between showing and hiding term drop down / number range boxes.
-    right now just returns simple dicts to the dash callback, as appropriate.
+    right now just returns simple dicts to the dash callback based on the field's value type
+    (quant or qual) as appropriate.
     """
     if not field:
         raise PreventUpdate
@@ -296,31 +247,46 @@ def spectrum_values_range(queryset, field, field_type):
     return (values_list[0], values_list[-1])
 
 
-def update_search_options(field, cget):
+def update_search_options(field, load_trigger_index, current_begin_value, current_end_value, *, cget):
     """
     populate term values and parameter range as appropriate when different fields are selected in the search interface
     currently this cascades in narrowness in a not-totally predictable way as new terms are added.
     this may or may not end up being desirable.
     """
+    if not_triggered():
+        raise PreventUpdate
     if not field:
         raise PreventUpdate
     queryset = cget("queryset")
-
+    is_loading = 'load-trigger' in dash.callback_context.triggered[0]['prop_id']
     props = keygrab(queryset.model.searchable_fields, "label", field)
     # if it's a field we do number interval searches on, reset term interface and show number ranges
-    # in the range display
+    # in the range display. but don't reset the number entries if we're in the middle of a load!
     if props["value_type"] == "quant":
+        if is_loading:
+            begin = current_begin_value
+            end = current_end_value
+        else:
+            begin = ""
+            end = ""
         return [
-            {"label": "any", "value": "any"},
+            [{"label": "any", "value": "any"}],
             "minimum/maximum: "
-            + str(spectrum_values_range(queryset, field, props["type"])),
+            + str(
+                spectrum_values_range(
+                    queryset.model.objects.all(), field, props["type"]
+                )
+            ),
+            begin,
+            end
         ]
 
-    # otherwise, populate the term interface and reset the range display
-    return [field_values(queryset, field), ""]
+    # otherwise, populate the term interface and reset the range display and searches
+
+    return [field_values(queryset, field), "", "", ""]
 
 
-def change_calc_input_visibility(calc_type, spec_model):
+def change_calc_input_visibility(calc_type, *, spec_model):
     """
     turn visibility of filter dropdowns (and later other inputs)
     on and off in response to changes in arity / type of 
@@ -362,7 +328,7 @@ def handle_graph_search(model, parameters):
         for parameter in parameters
         if not (
             (parameter.get("value_type") == "qual")
-            and parameter.get("term") == "any"
+            and parameter.get("term") == ["any"]
         )
     ]
 
@@ -375,12 +341,29 @@ def handle_graph_search(model, parameters):
     )
 
 
+def make_sibling_set(observations):
+    """
+    returns a set of tuples, each containing the child spectra of one observation.
+    for pairing spectra with their siblings without hitting the database repeatedly.
+    """
+    return set(
+        [tuple([spec.id for spec in obs.spectra()]) for obs in observations]
+    )
+
+
+def spectrum_queryset_siblings(queryset):
+    return make_sibling_set(set([spec.observation for spec in queryset]))
+
+
 def update_queryset(
-    n_clicks,
+    search_n_clicks,
+    load_trigger_index,
     fields,
     terms,
     begin_numbers,
     end_numbers,
+    search_trigger_dummy_value,
+    *,
     cget,
     cset,
     spec_model,
@@ -389,6 +372,8 @@ def update_queryset(
     updates the spectra displayed in the graph view.
     """
     # don't do anything on page load
+    if not_triggered():
+        raise PreventUpdate
     # or if a blank request is issued
     if not (fields and (terms or begin_numbers)):
         raise PreventUpdate
@@ -401,32 +386,415 @@ def update_queryset(
         if (field is not None and (term is not None or begin is not None))
     ]
     # if every search parameter is blank, don't do anything
+    print("search_list", search_list)
     if not search_list:
         raise PreventUpdate
 
-    # if the search parameters have changed,
+    # if the search parameters have changed or if it's a new load,
     # make a new queryset and trigger graph update
     # using copy.deepcopy here to avoid passing doubly-ingested input back after the check
     # although on the other hand it should be memoized -- but still
-
-    # TODO: this isn't handling cases that return an empty queryset -- check this
-    if handle_graph_search(spec_model, deepcopy(search_list)) != cget(
-        "queryset"
+    # but yes seriously it should be memoized
+    search = handle_graph_search(spec_model, deepcopy(search_list))
+    ctx = dash.callback_context
+    if (
+        set(search) != set(cget("queryset"))
+        or "load-trigger" in ctx.triggered[0]["prop_id"] 
     ):
         cset(
-            "queryset",
-            handle_graph_search(spec_model, search_list).prefetch_related(
-                "observation"
-            ),
+            "queryset", search.prefetch_related("observation"),
         )
-        return n_clicks
+        # save search parameters for graph description
+        cset("search_parameters", search_list)
+        # precalculate sets of 'sibling' spectra
+        cset("sibling_set", spectrum_queryset_siblings(cget("queryset")))
+        # print("search_trigger_dummy_value", search_trigger_dummy_value)
+        print('sproing2')
+        if not search_trigger_dummy_value:
+            return 1
+        return search_trigger_dummy_value + 1
+
+    raise PreventUpdate
 
 
-def add_dropdown(n_clicks, children, spec_model, cget):
+def add_dropdown(children, spec_model, cget, cset):
     """
     adds another dropdown for search constraints.
-    i guess we should also have a button to remove or reset constraints!
     """
+    # check with the cache in order to pick an index
+    # this is because resetting the layout for tabs destroys n_clicks
+    # could parse the page instead but i think this is better
+    index = cget("search_parameter_index")
+    if not index:
+        index = 1
+    else:
+        index = index + 1
+
     searchable_fields = spec_model.searchable_fields
-    children.append(search_parameter_div(n_clicks, searchable_fields, cget))
+    children.append(search_parameter_div(index, searchable_fields, None))
+    cset("search_parameter_index", index)
     return children
+
+
+def remove_dropdown(index, children, cget, cset):
+    """
+    remove a search constraint dropdown, and its attendant constraints on searches.
+    """
+    param_to_remove = None
+    for param in children:
+        if param['props']['id']['index'] == index:
+            param_to_remove = param
+    if not param_to_remove:
+        raise ValueError('Got the wrong param-to-remove index from somewhere.')
+    
+    new_children = deepcopy(children)
+    new_children.remove(param_to_remove)
+    return new_children
+
+
+
+def control_search_dropdowns(
+    add_clicks, 
+    remove_clicks, 
+    children,
+    search_trigger_clicks,
+    *,
+    spec_model, 
+    cget, 
+    cset
+):
+    """
+    dispatch function for building a new list of search dropdown components
+    based on requests to add or remove components.
+    returns the new list and an incremented value to trigger update_queryset
+    """
+    if not_triggered():
+        raise PreventUpdate   
+    if search_trigger_clicks is None:
+        search_trigger_clicks = 0
+    if triggered_by('add-param'):
+        drops = add_dropdown(children, spec_model, cget, cset)
+    if triggered_by('remove-param'):
+        index = trigger_index(ctx)
+        drops = remove_dropdown(index, children, cget, cset)
+    return drops, search_trigger_clicks + 1
+
+### individual-spectrum display functions
+
+
+def spectrum_from_graph_event(event_data, spec_model):
+    """
+    dcc.Graph event data (e.g. hoverData), plotter.Spectrum class -> 
+    plotter.Spectrum instance
+    this function assumes it's getting data from a browser event that highlights
+    a single graphed point, like clicking it or hovering on it, and returns
+    the associated Spectrum object.
+    """
+    # the graph's customdata property should contain numbers corresponding
+    # to database pks of spectra of associated points.
+    return djget(
+        spec_model, event_data["points"][0]["customdata"], "id", "get"
+    )
+
+
+def graph_point_to_metadata(
+    event_data, *, spec_model, style={"margin": 0, "fontSize": 14}
+):
+    # parses hoverdata, clickdata, etc from main graph
+    # into html <p> elements containing metadata of associated Spectrum
+    if not event_data:
+        raise PreventUpdate
+    return dict_to_paragraphs(
+        spectrum_from_graph_event(event_data, spec_model).metadata_dict(),
+        style,
+    )
+
+
+def update_spectrum_graph(event_data, *, spec_model, spec_graph_function):
+    if not event_data:
+        raise PreventUpdate
+    spectrum = spectrum_from_graph_event(event_data, spec_model)
+    spectrum_data = spectrum.as_dict()
+    x_axis = list(spectrum_data.keys())
+    y_axis = list(spectrum_data.values())
+    return spec_graph_function(x_axis, y_axis)
+
+
+def make_mspec_image_components(
+    mspec, image_directory, base_size, static_image_url
+):
+    """
+    MSpec object, size factor (viewport units), image directory -> 
+    pair of dash html.Img components containing the spectrum-reduced
+    images associated with that object, pathed to the static image
+    route defined in the live app instance 
+    """
+    file_info = mspec.overlay_file_info(image_directory)
+    components = []
+    for eye in ["left", "right"]:
+        size = file_info[eye + "_size"]
+        aspect_ratio = size[0] / size[1]
+        width = base_size * aspect_ratio
+        height = base_size * (1 / aspect_ratio)
+        components.append(
+            html.Img(
+                src=static_image_url + file_info[eye + "_file"],
+                style={
+                    "width": str(width) + "vw",
+                    "height": str(height) + "vh",
+                    "display": "block",
+                },
+                id="spec-image-" + eye,
+            )
+        )
+    return components
+
+
+def update_spectrum_images(
+    event_data, *, spec_model, image_directory, base_size, static_image_url
+):
+    """
+    just a callback-responsive wrapper to make_mspec_image_components --
+    probably we should actually put that function on the model 
+    """
+    if not event_data:
+        raise PreventUpdate
+    spectrum = spectrum_from_graph_event(event_data, spec_model)
+    return make_mspec_image_components(
+        spectrum, image_directory, base_size, static_image_url
+    )
+
+
+class SPlot:
+    """
+    class that holds a queryset of spectra with search parameters
+    and axis relationships. probably also eventually visual settings.
+    used for saving and restoring plots.    
+    """
+
+    def __init__(self, arg_dict):
+        # maybe eventually we define this more flexibly but better to be strict for now
+        for parameter in self.canonical_parameters:
+            setattr(self, parameter, arg_dict[parameter])
+
+    def axes(self):
+        return (self.x_axis, self.y_axis)
+
+    def graph(self):
+        return self.graph_function(
+            self.x_axis, self.y_axis, self.text, self.customdata
+        )
+
+    def settings(self):
+        return {
+            parameter: getattr(self, parameter)
+            for parameter in self.setting_parameters
+        }
+
+    canonical_parameters = (
+        "x_axis",
+        "y_axis",
+        "text",
+        # customdata is typically a list of the pks of the spectra in axis order
+        "customdata",
+        "queryset",
+        "search_parameters",
+        "x_settings",
+        "y_settings",
+        "graph_function",
+    )
+
+    setting_parameters = (
+        "search_parameters",
+        "x_settings",
+        "y_settings",
+    )
+
+
+def describe_current_graph(cget):
+    """
+    note this this relies on cached 'globals' from recalculate_graph
+    and update_queryset! if this turns out to be an excessively ugly flow control
+    solution, we could instead turn it into a callback that dynamically monitors state
+    of the same objects they monitor the state of...but that parallel structure seems
+    worse.
+    """
+    return {
+        parameter: cget(parameter) for parameter in SPlot.canonical_parameters
+    }
+
+
+def open_viewer_tab(tabs, cget, cset):
+    graph_params = describe_current_graph(cget)
+    # don't open a tab on page load or if the graph is deformed
+    if not graph_params["x_axis"]:
+        raise PreventUpdate
+    splot = SPlot(describe_current_graph(cget))
+    # what viewers are open? check cache.
+    graph_viewers = cget("open_graph_viewers")
+    if graph_viewers:
+        index = max(graph_viewers) + 1
+        graph_viewers.append(index)
+    else:
+        index = 1
+        graph_viewers = [1]
+    # make a new tab at the first available index with the current graph
+    new_tab = viewer_tab(index, splot)
+
+    new_tabs = deepcopy(tabs)
+    new_tabs.append(new_tab)
+    # let cache know you opened a new viewer.
+    graph_viewers.append(index)
+    cset("open_graph_viewers", graph_viewers)
+    return (new_tabs, "viewer_tab_" + str(index))
+
+
+def close_viewer_tab(index, tabs, cget, cset):
+
+    # parse the frankly unfortunate dash input structure for the index of the tab whose button this is
+    tab_to_close = None
+    for tab in tabs:
+        if not isinstance(tab["props"]["id"], dict):
+            continue
+        if tab["props"]["id"]["type"] != "viewer-tab":
+            continue
+        if tab["props"]["id"]["index"] == index:
+            tab_to_close = tab
+    if not tab_to_close:
+        raise ValueError("Got the wrong tab-to-close index from somewhere.")
+
+    new_tabs = deepcopy(tabs)
+    new_tabs.remove(tab_to_close)
+    # let cache know you closed this in case anyone asks
+    graph_viewers = cget("open_graph_viewers")
+    graph_viewers.remove(index)
+    cset("open_graph_viewers", graph_viewers)
+    return (new_tabs, "main_search_tab")
+
+
+def save_search_tab_state(
+    n_clicks, cget, filename="./saves/saved_searches.csv"
+):
+    """
+    fairly permissive right now. this saves current search-tab state to a file as csv,
+    which can then be reloaded by make_loaded_search_tab. 
+    """
+
+    if not_triggered():
+        raise PreventUpdate
+
+    try:
+        state_variable_names = [
+            *cget("x_settings").keys(),
+            *cget("y_settings").keys(),
+            "search_parameters",
+        ]
+
+        state_variable_values = [
+            *cget("x_settings").values(),
+            *cget("y_settings").values(),
+            # just passing a list here this makes the pd.DataFrame constructor
+            # interpret it as two rows with the same x_setting and y_setting values,
+            # which is a cool feature, but not the one we're looking for,
+            # so we 'serialize' it
+            str(cget("search_parameters")),
+        ]
+    # silently failing on incompletely-filled-out tabs is fine for now
+    # but we would probably prefer an error message in the future
+    except AttributeError:
+        raise PreventUpdate
+    try:
+        saved_searches = pd.read_csv(filename)
+    except FileNotFoundError:
+        saved_searches = pd.DataFrame(
+            columns=state_variable_names + ["timestamp"]
+        )
+    state_line = pd.DataFrame(
+        {
+            parameter: value
+            for parameter, value in zip(
+                state_variable_names, state_variable_values
+            )
+        },
+        index=[0],
+    )
+    state_line["timestamp"] = dt.datetime.now().strftime("%D %H:%M:%S")
+    appended_df = pd.concat([saved_searches, state_line], axis=0)
+    appended_df.to_csv(filename, index=False)
+    return 1
+
+
+def populate_saved_search_drop(n_clicks, *, search_file):
+    try:
+        options = [
+            {"label": row["timestamp"], "value": row_index}
+            for row_index, row in enumerate(rows(pd.read_csv(search_file)))
+        ]
+    except FileNotFoundError:
+        options = []
+    return options
+
+
+def make_loaded_search_tab(row, spec_model, search_file):
+    """makes a search tab with preset values from a saved search."""
+    saved_searches = pd.read_csv(search_file)
+    row_dict = rows(saved_searches)[row].to_dict()
+    return search_tab(spec_model, row_dict)
+
+
+def load_saved_search(tabs, row, spec_model, search_file):
+    """loads a search tab and replaces existing search tab with it"""
+    new_tab = make_loaded_search_tab(row, spec_model, search_file)
+    if len(tabs) > 1:
+        old_tabs = deepcopy(tabs[1:])
+        new_tabs = [new_tab] + old_tabs
+    else:
+        new_tabs = [new_tab]
+    return (new_tabs, "main_search_tab")
+
+
+def control_tabs(
+    n_clicks_open,
+    n_clicks_close,
+    n_clicks_load,
+    tabs,
+    load_row,
+    load_trigger_index,
+    *,
+    spec_model,
+    search_file,
+    cget,
+    cset,
+):
+    if not_triggered():
+        raise PreventUpdate
+    ctx = dash.callback_context
+    trigger = ctx.triggered[0]["prop_id"]
+    if "viewer-open-button" in trigger:
+        return (*open_viewer_tab(tabs, cget, cset), load_trigger_index)
+    if "tab-close-button" in trigger:
+        index = trigger_index(ctx)
+        new_tabs, active_tab_value = close_viewer_tab(index, tabs, cget, cset)
+        return (
+            new_tabs,
+            actiave_tab_value,
+            load_trigger_index,
+        )
+    if "load-search-load-button" in trigger:
+        # don't try anything if nothing in the saved search dropdown is selected
+        if not load_row:
+            raise PreventUpdate
+        # explicitly trigger graph recalculation call in update_queryset
+        if not load_trigger_index:
+            load_trigger_index = 0
+        load_trigger_index = load_trigger_index + 1
+        new_tabs, active_tab_value = load_saved_search(tabs, load_row, spec_model, search_file)
+        # this cache parameter is for semi-asynchronous flow control of the load process
+        # without having to literally
+        # have one dispatch callback function for the entire app 
+        cset("load_state", {"update_search_options":True})
+        return (
+            new_tabs,
+            active_tab_value,
+            load_trigger_index
+        )

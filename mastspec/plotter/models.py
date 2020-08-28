@@ -2,8 +2,23 @@ import statistics as stats
 
 from django.db import models
 import pandas as pd
+import PIL
+from PIL import Image
+from toolz import merge, keyfilter
 
-from utils import keygrab
+from utils import keygrab, modeldict
+
+
+def filter_fields(model):
+    """silly heuristic for picking fields that are mean or stdev of filters"""
+    return [
+        field.name
+        for field in model._meta.get_fields()
+        if (
+            field.name[0:-5] in model.filters.keys()
+            or field.name[0:-6] in model.filters.keys()
+        )
+    ]
 
 
 class Observation(models.Model):
@@ -486,33 +501,76 @@ class MSpec(Spectrum):
         {"label": "formation", "type": "self_property", "value_type": "qual"},
         {"label": "member", "type": "self_property", "value_type": "qual"},
         {"label": "sol", "type": "parent_property", "value_type": "quant"},
+        # need to use dateutil.parser.parse or similar if you're going to have this
+        # {
+        #     "label": "ltst",
+        #     "type": "parent_property",
+        #     "value_type": "quant",
+        # },
+        {"label": "mcam", "type": "parent_property", "value_type": "quant",},
     ]
 
     def image_files(self):
         images = {}
         image_types = [
-            'righteye_s_image_1',
-            'righteye_s_image_2',
-            'righteye_rgb_image_1',
-            'righteye_rgb_image_2',
-            'lefteye_s_image_1',
-            'lefteye_s_image_2',
-            'lefteye_rgb_image_1'
-            ]
+            "righteye_s_image_1",
+            "righteye_s_image_2",
+            "righteye_rgb_image_1",
+            "righteye_rgb_image_2",
+            "lefteye_s_image_1",
+            "lefteye_s_image_2",
+            "lefteye_rgb_image_1",
+        ]
         filedict = {
-            image_type:getattr(self.observation, image_type)
+            image_type: getattr(self.observation, image_type)
             for image_type in image_types
-            if str(self.image_number) in image_type 
+            if str(self.image_number) in image_type
         }
         return filedict
 
-def filter_fields(model):
-    """silly heuristic for picking fields that are mean or stdev of filters"""
-    return [
-        field.name
-        for field in model._meta.get_fields()
-        if (
-            field.name[0:-5] in model.filters.keys()
-            or field.name[0:-6] in model.filters.keys()
-        )
+    def overlay_file_info(self, image_directory):
+        """
+        directory containing image files -> 
+        {'right_file':string, 'left_file': 'left':PIL.Image}
+        left- and right-eye spectrum-reduced images containing the region of interest 
+        from which the spectrum in MSpec was drawn
+        """
+        files = self.image_files()
+        images = {}
+        for image_type, filename in files.items():
+            for eye in ["left", "right"]:
+                if eye + "eye_s" in image_type:
+                    images[eye + "_file"] = filename
+                    with PIL.Image.open(
+                        image_directory + images[eye + "_file"]
+                    ) as image:
+                        images[eye + "_size"] = image.size
+        return images
+
+    # fields we don't want to print when we print a list of metadata;
+    # fields that have no physical meaning, partly
+    do_not_print_fields = [
+        "observation_class",
+        "observation",
+        "spectrum_ptr",
+        "spectra_set",
+        "observation_ptr",
+        "righteye_s_image_1",
+        "lefteye_s_image_1",
+        "righteye_s_image_2",
+        "lefteye_s_image_2",
+        "righteye_rgb_image_1",
+        "lefteye_rgb_image_1",
+        "righteye_rgb_image_2",
     ]
+
+    def metadata_dict(self):
+        """
+        placeholder? metadata-summarizing function. for printing etc.
+        """
+        do_not_print = self.do_not_print_fields + filter_fields(self)
+        spec_dict = modeldict(self)
+        obs_dict = modeldict(self.observation)
+        return keyfilter(
+            lambda x: x not in do_not_print, merge(spec_dict, obs_dict)
+        )

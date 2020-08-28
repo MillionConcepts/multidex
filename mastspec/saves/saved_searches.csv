@@ -1,0 +1,9 @@
+filter-1-x.value,filter-2-x.value,filter-3-x.value,axis-option-x.value,filter-1-y.value,filter-2-y.value,filter-3-y.value,axis-option-y.value,search_parameters,timestamp
+L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'member', 'term': ['Blunts Point'], 'begin': '', 'end': ''}]",08/27/20 06:32:53
+L2,R2,L2,band_avg,L3,R5,L2,band_avg,"[{'field': 'member', 'term': ['Blunts Point'], 'begin': '', 'end': ''}]",08/27/20 06:33:07
+L2,R5,L2,band_avg,L3,R5,L2,band_avg,"[{'field': 'member', 'term': ['Blunts Point'], 'begin': '', 'end': ''}]",08/27/20 06:36:21
+L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'sol', 'term': ['Blunts Point'], 'begin': '2030', 'end': '2090'}]",08/27/20 08:53:42
+L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'formation', 'term': ['Murray'], 'begin': '', 'end': ''}]",08/27/20 08:54:16
+L2,R2,L2,band_avg,L3,R5,L2,band_avg,"[{'field': 'member', 'term': ['Blunts Point'], 'begin': '', 'end': ''}]",08/27/20 23:38:53
+L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'sol', 'term': ['Blunts Point'], 'begin': '2030', 'end': '2090'}]",08/27/20 23:41:12
+L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'sol', 'term': ['Blunts Point'], 'begin': '2040', 'end': '2080'}]",08/27/20 23:41:25

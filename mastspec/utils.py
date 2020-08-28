@@ -1,12 +1,23 @@
 """assorted utility functions for project"""
 
 from functools import partial, reduce, wraps
+from inspect import currentframe, getframeinfo, signature
 import json
 from operator import and_, or_, contains
+import re
 
+import dash
 from dash.dependencies import Input, Output
+import dash_html_components as html
+from django.db.models import Q
 from toolz import identity, keyfilter, merge, isiterable, get_in
 
+# generic
+
+def first(predicate, iterable):
+    for item in iterable:
+        if predicate(item):
+            return item
 
 # django utility functions
 
@@ -23,16 +34,12 @@ def djget(model, value, field="name", method_name="filter", querytype="iexact"):
     return method(**{field + "__" + querytype: value})
 
 
-def modeldict(django_model_object, exclude_fields = None):
+def modeldict(django_model_object):
     """tries to construct a dictionary from arbitrary django model instance"""
-    if exclude_fields == None:
-        exclude_fields = []
-    return keyfilter(lambda x: x not in exclude_fields, 
-        {
+    return {
         field.name: getattr(django_model_object, field.name)
         for field in django_model_object._meta.get_fields()
         }
-    )
 
 
 # pandas utility functions
@@ -50,6 +57,17 @@ def columns(dataframe):
 
 # dash-y dictionary utilities
 
+
+def dict_to_paragraphs(dictionary, style):
+    """
+    parses dictionary to list of dash <p> components
+    """ 
+    return [ 
+            html.P(
+                    str(key) + " " + str(value), style={"margin": 0, "fontSize": 14}
+                )
+            for key, value in dictionary.items()
+            ]
 
 def pickitems(dictionary, some_list):
     """items of dict where key is in some_list """
@@ -86,12 +104,75 @@ def keygrab(dict_list, key, value):
     return next(filter(lambda x: x[key] == value, dict_list))
 
 
+def ctxdict(ctx):
+    return {
+        'triggered':ctx.triggered,
+        'inputs':ctx.inputs,
+        'states':ctx.states,
+        'response':ctx.response
+    }
+
+def not_triggered():
+    """
+    detect likely spurious triggers.
+    will only function if called inside a callback.
+    """
+    if not dash.callback_context.triggered[0]['value']:
+        return True
+    return False
+
+def triggered_by(component_id):
+    """
+    did a component matching this id string trigger the callback this function 
+    is called in the context of? will only function if called inside a callback.
+    """
+    if component_id in dash.callback_context.triggered[0]['prop_id']:
+        return True
+    return False
+
+
+def trigger_index(ctx):
+    """
+    dash.callbackcontext -> int, where int is the index of the triggering component
+    assumes there is exactly one triggering component and it has an index!
+    """
+    trigger_id = ctx.triggered[0]['prop_id']
+    index_index = re.search("index", trigger_id).span()[1] + 2
+    return int(trigger_id[index_index])
+
+
+## generic dev tools
+
+# doesn't go one floor up...evaluates default arguments on import, not at runtime. inconvenient to enter all this, defeats purpose. hm.
+
+def dprint(*args, local_variables=locals(), frame=getframeinfo(currentframe())):
+    # print name of current function, line number, string, and value of variable with name 
+    # corresponding to string for all strings in args
+    print(local_variables)
+    info = getattr(frame,'function'), getattr(frame,'lineno'), *((arg, local_variables[arg]) for arg in args)
+    print(info)
+    return(info)
+
+def dprinter():
+    # print name of current function, line number, string, and value of variable with name 
+    # corresponding to string for all strings in args
+    def dprint(*args, local_variables=locals(), frame=getframeinfo(currentframe())):
+        print(local_variables)
+        info = getattr(frame,'function'), getattr(frame,'lineno'), *((arg, local_variables[arg]) for arg in args)
+        print(info)
+        return(info)
+
+    return dprint
+
 ### dash dev tools
 
 
-def dump_it(data):
+def dump_it(data, loud=True):
     """dump data as json"""
-    return json.dumps(data, indent=2)
+    dump = json.dumps(data, indent=2)
+    if loud:
+        print(dump)
+    return dump
 
 
 def make_printer(element, prop, app, print_target="print", process_function=dump_it):
@@ -106,8 +187,6 @@ def make_printer(element, prop, app, print_target="print", process_function=dump
     print_callback()
 
 
-
-
 ### lambda replacements
 
 
@@ -120,6 +199,51 @@ def in_me(container):
 
     return is_in
 
+
+### generic
+
+
+def get_if(boolean, dictionary, key):
+    """return dictionary[key] iff boolean; otherwise return None"""
+    if boolean:
+        return dictionary.get(key)
+    return None
+    
+
+def get_parameters(function):
+    return [
+        param.name for param in signature(function).parameters.values()
+    ]
+
+def partially_evaluate_from_parameters(function, parameters):
+    """
+    function, dict -> function
+    return a copy of the input function partially evaluated from any value of the dict
+    with a key matching a named argument of the function. useful for things like inserting
+    'settings' variables into large numbers of functions.
+    for instance:
+    def add(a, b):
+        return a + b
+    parameters = {'b':1, 'c':3}
+    add_1 = partially_evaluate_from_parameters(add, parameters)
+    add_1(2) == 3
+    True
+    """
+    return partial(
+        function, **pickitems(parameters, get_parameters(function))
+    )
+
+
+def listify(thing):
+    """Always a list, for things that want lists"""
+    if isiterable(thing):
+        return list(thing)
+    return [thing]
+
+def none_to_empty(thing):
+    if thing is None:
+        return("")
+    return thing
 
 ### search functions
 
