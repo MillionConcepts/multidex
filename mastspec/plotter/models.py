@@ -501,6 +501,7 @@ class MSpec(Spectrum):
         {"label": "formation", "type": "self_property", "value_type": "qual"},
         {"label": "member", "type": "self_property", "value_type": "qual"},
         {"label": "sol", "type": "parent_property", "value_type": "quant"},
+        {"label": "roi_color", "type":"self_property", "value_type":"qual"},
         # need to use dateutil.parser.parse or similar if you're going to have this
         # {
         #     "label": "ltst",
@@ -508,6 +509,7 @@ class MSpec(Spectrum):
         #     "value_type": "quant",
         # },
         {"label": "mcam", "type": "parent_property", "value_type": "quant",},
+        {"label": "tau", "type": "parent_property", "value_type": "quant",},
     ]
 
     def image_files(self):
@@ -563,6 +565,33 @@ class MSpec(Spectrum):
         "lefteye_rgb_image_1",
         "righteye_rgb_image_2",
     ]
+
+
+    # colors corresponding to ROIs drawn on false-color images by MASTCAM team.
+    # these are all somewhat uncertain, as they're based on color picker results
+    # from compressed images (compressed _after_ the polygons were drawn). 
+    # it would be better to have official documentation and uncompressed images!
+    roi_color_mappings = {
+        "light green":"#80ff00",
+        "red":"#dc133d",
+        "dark red":"#7e0003",
+        "dark blue":"#010080",
+        "light blue":"#0000fe",
+        "light purple":"#ff00fe",
+        "dark purple":"#81007f",
+        "yellow":"#ffff00",
+        "teal":"#008083",
+        "dark green":"#138013",
+        "dark red":"#800001",
+        "sienna":"#a1502e",
+        "light cyan":"#00ffff",
+        # speculative
+        "pink":"#ddc39f",
+        "goldenrod":"#fec069",    
+    }
+
+    def roi_hex_code(self):
+        return self.roi_color_mappings[self.roi_color]
 
     def metadata_dict(self):
         """

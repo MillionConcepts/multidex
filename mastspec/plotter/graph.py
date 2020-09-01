@@ -31,6 +31,7 @@ from utils import (
     ctxdict,
     not_triggered,
     trigger_index,
+    triggered_by
 )
 
 """
@@ -514,10 +515,7 @@ def update_spectrum_graph(event_data, *, spec_model, spec_graph_function):
     if not event_data:
         raise PreventUpdate
     spectrum = spectrum_from_graph_event(event_data, spec_model)
-    spectrum_data = spectrum.as_dict()
-    x_axis = list(spectrum_data.keys())
-    y_axis = list(spectrum_data.values())
-    return spec_graph_function(x_axis, y_axis)
+    return spec_graph_function(spectrum)
 
 
 def make_mspec_image_components(
@@ -777,7 +775,7 @@ def control_tabs(
         new_tabs, active_tab_value = close_viewer_tab(index, tabs, cget, cset)
         return (
             new_tabs,
-            actiave_tab_value,
+            active_tab_value,
             load_trigger_index,
         )
     if "load-search-load-button" in trigger:

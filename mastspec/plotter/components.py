@@ -86,16 +86,24 @@ def main_graph_scatter(x_axis, y_axis, text, customdata):
     return fig
 
 
-def spec_graph_line(x_axis, y_axis):
+def mspec_graph_line(spectrum):
     """
-    partial placeholder line graph for individual spectra.
-    this function just creates the Plotly figure and does not 
-    itself hit the database or calculate stuff or whatever.
+    placeholder line graph for individual mastcam spectra.
+    creates a plotly figure from the mspec's filter values and
+    roi_color.
     """
+    spectrum_data = spectrum.as_dict()
+    x_axis = list(spectrum_data.keys())
+    y_axis = list(spectrum_data.values())
     fig = go.Figure()
-    fig.add_trace(go.Scattergl(x=x_axis, y=y_axis, mode="lines+markers"))
+    fig.add_trace(
+        go.Scattergl(
+            x=x_axis, y=y_axis, mode="lines+markers", line = {'color':spectrum.roi_hex_code()}
+            )
+        )
     fig.update_layout(margin={"l": 10, "r": 10, "t": 25, "b": 0})
     return fig
+
 
 
 def axis_value_drop(spec_model, element_id, value=None):
