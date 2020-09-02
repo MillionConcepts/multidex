@@ -177,6 +177,71 @@ def model_range_entry(element_id, index, begin=None, end=None):
     ]
 
 
+def parse_model_quant_entry(string):
+    value_dict = {}
+    is_range = "-" in string
+    is_list = "," in string
+    if is_range and is_list:       
+        raise ValueError(
+                "Entering both an explicit value list and a value range is currently not supported."
+                )
+    if is_range:
+        range_list = string.split("-")
+        if len(range_list) > 2:
+            raise ValueError(
+                "Entering a value range with more than two numbers is currently not supported."
+                )
+        # allow either a blank beginning or end, but not both
+        try: 
+            value_dict["begin"] = float(range_list[0])
+        except:
+            value_dict["begin"] = ""
+        try: 
+            value_dict["end"] = float(range_list[1])
+        except:
+            value_dict["end"] = ""
+        if not (value_dict["begin"] or value_dict["end"]):
+            raise ValueError("Either a beginning or end numerical value must be entered.")
+    elif string == "":
+        pass
+    else:
+        list_list = string.split(",")
+        # do not allow ducks and rutabagas and such to be entered into the list
+        try: 
+            value_dict["value_list"] = [float(item) for item in list_list]
+        except:
+            raise ValueError("Non-numerical lists are currently not supported.")
+    return value_dict
+
+
+def unparse_model_quant_entry(value_dict):
+    if value_dict is None:
+        text = ""
+    elif ("value_list" in value_dict.keys()) and (
+            ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
+        ):
+        raise ValueError(
+            "Entering both an explicit value list and a value range is currently not supported."
+            )
+    elif "value_list" in value_dict.keys():
+        text = ",".join(value_dict["value_list"])
+    elif ("begin" in value_dict.keys()) or ("end" in value_dict.keys()):
+        text = value_dict["begin"]+"-"+value_dict["end"]
+    return text
+
+
+def model_range_entry_2(element_id, index, value_dict=None):
+    """
+    entry field for selecting a range of values for a
+    quantitatively-valued field.
+    """
+    return dcc.Input(
+            id={"type": element_id, "index": index},
+            type="text",
+            value=unparse_model_quant_entry(value_dict)
+        )
+
+
 def model_range_display(element_id, index):
     """placeholder area for displaying range for number field searches"""
     return html.P(id={"type": element_id, "index": index})
@@ -187,8 +252,8 @@ def search_parameter_div(index, searchable_fields, preset_parameter=None):
     children = [
         field_drop(searchable_fields, "field-search", index, get_r("field")),
         model_options_drop("group", "term-search", index, get_r("term")),
-        *model_range_entry(
-            "number-search", index, get_r("begin"), get_r("end")
+        model_range_entry_2(
+            "number-search", index, get_r("value_dict")
         ),
         model_range_display("number-range-display", index),
     ]

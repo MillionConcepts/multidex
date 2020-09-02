@@ -19,6 +19,17 @@ def first(predicate, iterable):
         if predicate(item):
             return item
 
+def not_blank(object):
+    """a 'truthiness' test that avoids 0/1 boolean evaluations"""
+    if reduce(and_, [
+        object != "", 
+        object is not None, 
+        object != [],
+        object !={}
+        ]):
+        return True
+    return False
+
 # django utility functions
 
 
@@ -286,6 +297,20 @@ def term_search(queryset, field, value, inflexible=None):
         search_function = inflexible_query
     return search_function(queryset, field, value)
 
+def value_fetch_search(
+    queryset, field, value_list
+    ):
+    """
+    queryset, field of underlying model, list of values -> queryset
+    simply return queryset of objects with any of those values
+    in that field. strict, for the moment.
+    """
+    # note that the case-insensitive 'iexact' match method of django queryset objects
+    # is in fact _more_ sensitive wrt type; it will not match a float representation of an
+    # int 
+    queries = [Q(**{field+"__exact":item}) for item in value_list]
+    return queryset.filter(reduce(or_, queries))
+
 
 def interval_search(
     queryset, field, interval_begin=None, interval_end=None, strictly=None
@@ -339,17 +364,24 @@ def multiple_field_search(queryset, parameters):
     or stringlike terms.
     """
     results = []
-
+    print('mfs', parameters)
     for parameter in parameters:
         # do a relations-on-orderings search if requested
         if parameter.get("value_type") == "quant":
-            search_result = interval_search(
-                queryset,
-                parameter["field"],
-                # begin and end and strictly are optional
-                parameter.get("begin"),
-                parameter.get("end"),
-                parameter.get("strictly"),
+            if "value_list" in parameter.keys():
+                search_result = value_fetch_search(
+                    queryset,
+                    parameter["field"],
+                    parameter["value_list"]
+                    )
+            else:
+                search_result = interval_search(
+                    queryset,
+                    parameter["field"],
+                    # begin and end and strictly are optional
+                    parameter.get("begin"),
+                    parameter.get("end"),
+                    parameter.get("strictly"),
             )
             results.append(search_result)
         # otherwise just look for term matches

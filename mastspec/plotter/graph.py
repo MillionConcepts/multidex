@@ -1,6 +1,7 @@
 from copy import deepcopy
 import datetime as dt
-from operator import or_, and_, contains
+from functools import reduce
+from operator import and_, contains, or_, not_
 
 import dash
 from dash.dependencies import Input, Output, State
@@ -12,7 +13,7 @@ from PIL import Image
 import plotly.graph_objects as go
 from toolz import keyfilter, merge, isiterable, get_in
 
-from plotter.components import search_parameter_div, viewer_tab, search_tab
+from plotter.components import parse_model_quant_entry, search_parameter_div, viewer_tab, search_tab
 from plotter.models import filter_fields
 from utils import (
     djget,
@@ -29,9 +30,10 @@ from utils import (
     pickitems,
     pickctx,
     ctxdict,
+    not_blank,
     not_triggered,
     trigger_index,
-    triggered_by
+    triggered_by,
 )
 
 """
@@ -200,7 +202,7 @@ def field_values(queryset, field):
     wait, is that correct? check up the chain.
     """
     if not field:
-        return [{"label":"any", "value":"any"}]
+        return [{"label": "any", "value": "any"}]
     options_list = [
         {"label": item, "value": item}
         for item in set(qlist(queryset, field))
@@ -227,8 +229,8 @@ def toggle_search_input_visibility(field, *, spec_model):
         keygrab(spec_model.searchable_fields, "label", field)["value_type"]
         == "quant"
     ):
-        return [{"display": "none"}, {}, {}]
-    return [{}, {"display": "none"}, {"display": "none"}]
+        return [{"display": "none"}, {}]
+    return [{}, {"display": "none"}]
 
 
 def spectrum_values_range(queryset, field, field_type):
@@ -248,7 +250,9 @@ def spectrum_values_range(queryset, field, field_type):
     return (values_list[0], values_list[-1])
 
 
-def update_search_options(field, load_trigger_index, current_begin_value, current_end_value, *, cget):
+def update_search_options(
+    field, load_trigger_index, current_quant_search, *, cget
+):
     """
     populate term values and parameter range as appropriate when different fields are selected in the search interface
     currently this cascades in narrowness in a not-totally predictable way as new terms are added.
@@ -259,17 +263,17 @@ def update_search_options(field, load_trigger_index, current_begin_value, curren
     if not field:
         raise PreventUpdate
     queryset = cget("queryset")
-    is_loading = 'load-trigger' in dash.callback_context.triggered[0]['prop_id']
+    is_loading = (
+        "load-trigger" in dash.callback_context.triggered[0]["prop_id"]
+    )
     props = keygrab(queryset.model.searchable_fields, "label", field)
     # if it's a field we do number interval searches on, reset term interface and show number ranges
     # in the range display. but don't reset the number entries if we're in the middle of a load!
     if props["value_type"] == "quant":
         if is_loading:
-            begin = current_begin_value
-            end = current_end_value
+            search_text = current_quant_search
         else:
-            begin = ""
-            end = ""
+            search_text = ""
         return [
             [{"label": "any", "value": "any"}],
             "minimum/maximum: "
@@ -277,20 +281,21 @@ def update_search_options(field, load_trigger_index, current_begin_value, curren
                 spectrum_values_range(
                     queryset.model.objects.all(), field, props["type"]
                 )
-            ),
-            begin,
-            end
+            )
+            + """. Enter a range like '100-200' or a list of specific """
+            + """numbers separated by commas, like '100, 105, 110'.""",
+            search_text,
         ]
 
     # otherwise, populate the term interface and reset the range display and searches
 
-    return [field_values(queryset, field), "", "", ""]
+    return [field_values(queryset, field), "", ""]
 
 
 def change_calc_input_visibility(calc_type, *, spec_model):
     """
     turn visibility of filter dropdowns (and later other inputs)
-    on and off in response to changes in arity / type of 
+    on and off in response to changes in arity / type of
     requested calc
     """
     props = keygrab(spec_model.axis_value_properties, "value", calc_type)
@@ -304,6 +309,15 @@ def change_calc_input_visibility(calc_type, *, spec_model):
             for x in range(3)
         ]
     return [{"display": "none"} for x in range(3)]
+
+
+def non_blank_search_parameters(parameters):
+    entry_keys = ["term", "begin", "end", "value_list"]
+    return [
+        parameter
+        for parameter in parameters
+        if reduce(or_, [not_blank(parameter.get(key)) for key in entry_keys])
+    ]
 
 
 def handle_graph_search(model, parameters):
@@ -322,17 +336,9 @@ def handle_graph_search(model, parameters):
             # format references to parent observation appropriately for Q objects
             if props["type"] == "parent_property":
                 parameter["field"] = "observation__" + field
-
-    # toss out 'any' entries -- they do not restrict the search
-    parameters = [
-        parameter
-        for parameter in parameters
-        if not (
-            (parameter.get("value_type") == "qual")
-            and parameter.get("term") == ["any"]
-        )
-    ]
-
+    # toss out 'any' entries, blank strings, etc.
+    # -- they do not restrict the search
+    parameters = non_blank_search_parameters(parameters)
     # do we have any actual constraints? if not, return the entire data set
     if not parameters:
         return model.objects.all()
@@ -361,8 +367,7 @@ def update_queryset(
     load_trigger_index,
     fields,
     terms,
-    begin_numbers,
-    end_numbers,
+    quant_search_entries,
     search_trigger_dummy_value,
     *,
     cget,
@@ -376,18 +381,27 @@ def update_queryset(
     if not_triggered():
         raise PreventUpdate
     # or if a blank request is issued
-    if not (fields and (terms or begin_numbers)):
+    if not (fields and (terms or quant_search_entries)):
         raise PreventUpdate
     # construct a list of search parameters from the filled inputs
+    # (ideally totally non-filled inputs would also be rejected by handle_graph_search)
+    # search_list = [
+    #     {"field": field, "term": term, "begin": begin, "end": end}
+    #     for field, term, begin, end in zip(
+    #         fields, terms, begin_numbers, end_numbers
+    #     )
+    #     if (not_blank(field) and (not_blank(term) or not_blank(begin)))
+    # ]
+
+    entries = [
+        parse_model_quant_entry(entry) for entry in quant_search_entries
+    ]
     search_list = [
-        {"field": field, "term": term, "begin": begin, "end": end}
-        for field, term, begin, end in zip(
-            fields, terms, begin_numbers, end_numbers
-        )
-        if (field is not None and (term is not None or begin is not None))
+        {"field": field, "term": term, **(entry)}
+        for field, term, entry in zip(fields, terms, entries)
+        if not_blank(field) and (not_blank(term) or not_blank(entry))
     ]
     # if every search parameter is blank, don't do anything
-    print("search_list", search_list)
     if not search_list:
         raise PreventUpdate
 
@@ -400,17 +414,16 @@ def update_queryset(
     ctx = dash.callback_context
     if (
         set(search) != set(cget("queryset"))
-        or "load-trigger" in ctx.triggered[0]["prop_id"] 
+        or "load-trigger" in ctx.triggered[0]["prop_id"]
     ):
         cset(
-            "queryset", search.prefetch_related("observation"),
+            "queryset",
+            search.prefetch_related("observation"),
         )
         # save search parameters for graph description
         cset("search_parameters", search_list)
         # precalculate sets of 'sibling' spectra
         cset("sibling_set", spectrum_queryset_siblings(cget("queryset")))
-        # print("search_trigger_dummy_value", search_trigger_dummy_value)
-        print('sproing2')
         if not search_trigger_dummy_value:
             return 1
         return search_trigger_dummy_value + 1
@@ -443,26 +456,27 @@ def remove_dropdown(index, children, cget, cset):
     """
     param_to_remove = None
     for param in children:
-        if param['props']['id']['index'] == index:
+        if param["props"]["id"]["index"] == index:
             param_to_remove = param
     if not param_to_remove:
-        raise ValueError('Got the wrong param-to-remove index from somewhere.')
-    
+        raise ValueError(
+            "Got the wrong param-to-remove index from somewhere."
+        )
+
     new_children = deepcopy(children)
     new_children.remove(param_to_remove)
     return new_children
 
 
-
 def control_search_dropdowns(
-    add_clicks, 
-    remove_clicks, 
+    add_clicks,
+    remove_clicks,
     children,
     search_trigger_clicks,
     *,
-    spec_model, 
-    cget, 
-    cset
+    spec_model,
+    cget,
+    cset,
 ):
     """
     dispatch function for building a new list of search dropdown components
@@ -470,22 +484,23 @@ def control_search_dropdowns(
     returns the new list and an incremented value to trigger update_queryset
     """
     if not_triggered():
-        raise PreventUpdate   
+        raise PreventUpdate
     if search_trigger_clicks is None:
         search_trigger_clicks = 0
-    if triggered_by('add-param'):
+    if triggered_by("add-param"):
         drops = add_dropdown(children, spec_model, cget, cset)
-    if triggered_by('remove-param'):
+    if triggered_by("remove-param"):
         index = trigger_index(ctx)
         drops = remove_dropdown(index, children, cget, cset)
     return drops, search_trigger_clicks + 1
+
 
 ### individual-spectrum display functions
 
 
 def spectrum_from_graph_event(event_data, spec_model):
     """
-    dcc.Graph event data (e.g. hoverData), plotter.Spectrum class -> 
+    dcc.Graph event data (e.g. hoverData), plotter.Spectrum class ->
     plotter.Spectrum instance
     this function assumes it's getting data from a browser event that highlights
     a single graphed point, like clicking it or hovering on it, and returns
@@ -522,10 +537,10 @@ def make_mspec_image_components(
     mspec, image_directory, base_size, static_image_url
 ):
     """
-    MSpec object, size factor (viewport units), image directory -> 
+    MSpec object, size factor (viewport units), image directory ->
     pair of dash html.Img components containing the spectrum-reduced
     images associated with that object, pathed to the static image
-    route defined in the live app instance 
+    route defined in the live app instance
     """
     file_info = mspec.overlay_file_info(image_directory)
     components = []
@@ -553,7 +568,7 @@ def update_spectrum_images(
 ):
     """
     just a callback-responsive wrapper to make_mspec_image_components --
-    probably we should actually put that function on the model 
+    probably we should actually put that function on the model
     """
     if not event_data:
         raise PreventUpdate
@@ -567,7 +582,7 @@ class SPlot:
     """
     class that holds a queryset of spectra with search parameters
     and axis relationships. probably also eventually visual settings.
-    used for saving and restoring plots.    
+    used for saving and restoring plots.
     """
 
     def __init__(self, arg_dict):
@@ -675,7 +690,7 @@ def save_search_tab_state(
 ):
     """
     fairly permissive right now. this saves current search-tab state to a file as csv,
-    which can then be reloaded by make_loaded_search_tab. 
+    which can then be reloaded by make_loaded_search_tab.
     """
 
     if not_triggered():
@@ -786,13 +801,11 @@ def control_tabs(
         if not load_trigger_index:
             load_trigger_index = 0
         load_trigger_index = load_trigger_index + 1
-        new_tabs, active_tab_value = load_saved_search(tabs, load_row, spec_model, search_file)
+        new_tabs, active_tab_value = load_saved_search(
+            tabs, load_row, spec_model, search_file
+        )
         # this cache parameter is for semi-asynchronous flow control of the load process
         # without having to literally
-        # have one dispatch callback function for the entire app 
-        cset("load_state", {"update_search_options":True})
-        return (
-            new_tabs,
-            active_tab_value,
-            load_trigger_index
-        )
+        # have one dispatch callback function for the entire app
+        cset("load_state", {"update_search_options": True})
+        return (new_tabs, active_tab_value, load_trigger_index)
