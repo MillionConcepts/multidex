@@ -1,5 +1,8 @@
 Working area for MASTCAM spectral plotter tool rewrite. Pre-alpha, not for distribution.
 
+### dependencies
+fixed dependency list not yet generated. complete list of packages installed in production environment is in 'env_list'
+
 ### usage
 runtime commands enabling user-facing functionality are currently all included in app.ipynb. Run cells 1-11, and a server should run at 127.0.0.1:8050 
 
