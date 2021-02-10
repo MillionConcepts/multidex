@@ -5,10 +5,9 @@ from functools import partial
 
 import dash_core_components as dcc
 import dash_html_components as html
-import pandas as pd
 import plotly.graph_objects as go
 
-from utils import get_if, none_to_empty, rows
+from utils import get_if, none_to_empty
 
 
 # note that style properties are camelCased rather than hyphenated
@@ -61,7 +60,7 @@ def spec_graph(name, index):
 
 def image_holder(index=0):
     """dash component factory for zoomable static images. maybe. placeholder"""
-    return dcc.Graph(id="image-" + str(index),)
+    return dcc.Graph(id="image-" + str(index), )
 
 
 def main_graph_scatter(x_axis, y_axis, text, customdata):
@@ -98,12 +97,12 @@ def mspec_graph_line(spectrum):
     fig = go.Figure()
     fig.add_trace(
         go.Scattergl(
-            x=x_axis, y=y_axis, mode="lines+markers", line = {'color':spectrum.roi_hex_code()}
-            )
+            x=x_axis, y=y_axis, mode="lines+markers",
+            line={'color': spectrum.roi_hex_code()}
         )
+    )
     fig.update_layout(margin={"l": 10, "r": 10, "t": 25, "b": 0})
     return fig
-
 
 
 def axis_value_drop(spec_model, element_id, value=None):
@@ -181,36 +180,40 @@ def parse_model_quant_entry(string):
     value_dict = {}
     is_range = "-" in string
     is_list = "," in string
-    if is_range and is_list:       
+    if is_range and is_list:
         raise ValueError(
-                "Entering both an explicit value list and a value range is currently not supported."
-                )
+            "Entering both an explicit value list and a value range is "
+            "currently not supported."
+        )
     if is_range:
         range_list = string.split("-")
         if len(range_list) > 2:
             raise ValueError(
-                "Entering a value range with more than two numbers is currently not supported."
-                )
+                "Entering a value range with more than two numbers is "
+                "currently not supported."
+            )
         # allow either a blank beginning or end, but not both
-        try: 
+        try:
             value_dict["begin"] = float(range_list[0])
-        except:
+        except ValueError:
             value_dict["begin"] = ""
-        try: 
+        try:
             value_dict["end"] = float(range_list[1])
-        except:
+        except ValueError:
             value_dict["end"] = ""
         if not (value_dict["begin"] or value_dict["end"]):
-            raise ValueError("Either a beginning or end numerical value must be entered.")
+            raise ValueError(
+                "Either a beginning or end numerical value must be entered.")
     elif string == "":
         pass
     else:
         list_list = string.split(",")
         # do not allow ducks and rutabagas and such to be entered into the list
-        try: 
+        try:
             value_dict["value_list"] = [float(item) for item in list_list]
-        except:
-            raise ValueError("Non-numerical lists are currently not supported.")
+        except ValueError:
+            raise ValueError(
+                "Non-numerical lists are currently not supported.")
     return value_dict
 
 
@@ -219,14 +222,17 @@ def unparse_model_quant_entry(value_dict):
         text = ""
     elif ("value_list" in value_dict.keys()) and (
             ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
-        ):
+    ):
         raise ValueError(
-            "Entering both an explicit value list and a value range is currently not supported."
-            )
+            "Entering both an explicit value list and a value range is "
+            "currently not supported."
+        )
     elif "value_list" in value_dict.keys():
         text = ",".join(value_dict["value_list"])
     elif ("begin" in value_dict.keys()) or ("end" in value_dict.keys()):
-        text = value_dict["begin"]+"-"+value_dict["end"]
+        text = value_dict["begin"] + "-" + value_dict["end"]
+    else:
+        text = ""
     return text
 
 
@@ -236,10 +242,10 @@ def model_range_entry_2(element_id, index, value_dict=None):
     quantitatively-valued field.
     """
     return dcc.Input(
-            id={"type": element_id, "index": index},
-            type="text",
-            value=unparse_model_quant_entry(value_dict)
-        )
+        id={"type": element_id, "index": index},
+        type="text",
+        value=unparse_model_quant_entry(value_dict)
+    )
 
 
 def model_range_display(element_id, index):
@@ -319,7 +325,8 @@ def trigger_div(prefix, number_of_triggers):
     """hidden div for semi-asynchronous callback triggers"""
     return html.Div(
         children=[
-            dcc.Input(id={"type": prefix + "-trigger", "index": index}, value = "")
+            dcc.Input(id={"type": prefix + "-trigger", "index": index},
+                      value="")
             for index in range(number_of_triggers)
         ],
         style={"display": "none"},
@@ -329,15 +336,14 @@ def trigger_div(prefix, number_of_triggers):
 
 def load_search_drop(element_id):
     return html.Div(children=[
-        dcc.Dropdown(id = element_id+'-drop'),
-        html.Button(id = element_id+'-load-button', children = 'load'),
-        html.Button(id = element_id+'-save-button', children = 'save')
-        ])
+        dcc.Dropdown(id=element_id + '-drop'),
+        html.Button(id=element_id + '-load-button', children='load'),
+        html.Button(id=element_id + '-save-button', children='save')
+    ])
 
 
 # primary search panel
 def search_tab(spec_model, restore_dictionary=None):
-
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
     get_r = partial(
@@ -354,13 +360,16 @@ def search_tab(spec_model, restore_dictionary=None):
                         value=get_r("axis-option-x"),
                     ),
                     filter_drop(
-                        spec_model, "filter-1-x", value=get_r("filter-1-x.value")
+                        spec_model, "filter-1-x",
+                        value=get_r("filter-1-x.value")
                     ),
                     filter_drop(
-                        spec_model, "filter-3-x", value=get_r("filter-3-x.value")
+                        spec_model, "filter-3-x",
+                        value=get_r("filter-3-x.value")
                     ),
                     filter_drop(
-                        spec_model, "filter-2-x", value=get_r("filter-2-x.value")
+                        spec_model, "filter-2-x",
+                        value=get_r("filter-2-x.value")
                     ),
                 ]
             ),
@@ -372,13 +381,16 @@ def search_tab(spec_model, restore_dictionary=None):
                         value=get_r("axis-option-y.value"),
                     ),
                     filter_drop(
-                        spec_model, "filter-1-y", value=get_r("filter-1-y.value")
+                        spec_model, "filter-1-y",
+                        value=get_r("filter-1-y.value")
                     ),
                     filter_drop(
-                        spec_model, "filter-3-y", value=get_r("filter-3-y.value")
+                        spec_model, "filter-3-y",
+                        value=get_r("filter-3-y.value")
                     ),
                     filter_drop(
-                        spec_model, "filter-2-y", value=get_r("filter-2-y.value")
+                        spec_model, "filter-2-y",
+                        value=get_r("filter-2-y.value")
                     ),
                 ]
             ),

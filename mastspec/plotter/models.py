@@ -1,34 +1,66 @@
 import statistics as stats
 
-from django.db import models
-import pandas as pd
 import PIL
+import pandas as pd
 from PIL import Image
+from django.db import models
 from toolz import merge, keyfilter
 
-from utils import keygrab, modeldict
+from utils import modeldict
 
 
 def filter_fields(model):
-    """silly heuristic for picking fields that are mean or stdev of filters"""
+    """silly heuristic for picking fields that are mean or err of filters"""
     return [
         field.name
         for field in model._meta.get_fields()
         if (
-            field.name[0:-5] in model.filters.keys()
-            or field.name[0:-6] in model.filters.keys()
+                field.name[0:-5] in model.filters.keys()
+                or field.name[0:-6] in model.filters.keys()
         )
     ]
 
 
+MSPEC_IMAGE_TYPES = [
+    "righteye_roi_image_1",
+    "righteye_roi_image_2",
+    "righteye_roi_image_3",
+    "righteye_roi_image_4",
+    "righteye_roi_image_5",
+    "righteye_roi_image_6",
+    "righteye_roi_image_7",
+    "righteye_roi_image_8",
+    "lefteye_roi_image_1",
+    "lefteye_roi_image_2",
+    "lefteye_roi_image_3",
+    "lefteye_roi_image_4",
+    "lefteye_roi_image_5",
+    "lefteye_roi_image_6",
+    "lefteye_roi_image_7",
+    "lefteye_roi_image_8",
+    "righteye_rgb_image_1",
+    "righteye_rgb_image_2",
+    "righteye_rgb_image_3",
+    "righteye_rgb_image_4",
+    "lefteye_rgb_image_1",
+    "lefteye_rgb_image_2",
+    "lefteye_rgb_image_3",
+    "lefteye_rgb_image_4"
+]
+
+
 class Observation(models.Model):
     """
-    class representing a single observation consisting of one or more images of the same scene,
+    class representing a single observation consisting of one or more images
+    of the same scene,
     possibly created from a multispectral series of images, 
-    possibly along with named ROIs that correspond to reduced spectral data contained in Spectrum
-    objects. ROIs as drawn on each image notionally correspond to the same physical locations. 
+    possibly along with named ROIs that correspond to reduced spectral data
+    contained in Spectrum
+    objects. ROIs as drawn on each image notionally correspond to the same
+    physical locations.
 
-    this is a parent class intended to be subclassed for individual instruments.
+    this is a parent class intended to be subclassed for individual
+    instruments.
     """
 
     name = models.CharField("Name", max_length=100, db_index=True)
@@ -39,38 +71,44 @@ class Observation(models.Model):
 
 class Spectrum(models.Model):
     """
-    class representing reduced spectral data derived from a named ROI on one or more images.
+    class representing reduced spectral data derived from a named ROI on one
+    or more images.
 
-    this is a parent class intended to be subclassed for individual instruments.
+    this is a parent class intended to be subclassed for individual
+    instruments.
     """
 
-    # this is not intended to hold all responsivity information about the filters,
-    # unlike FilterSet from wwu_spec (or some version that may be instantiated here later)
-    # it is primarily a container.
-    # so just: filter names and canonical center values.
+    # this is not intended to hold all responsivity information about the
+    # filters, unlike FilterSet from wwu_spec (or some version that may be
+    # instantiated here later) it is primarily a container. so just: filter
+    # names and canonical center values.
 
     filters = {}
 
-    # this will sometimes be faster and sometimes slower than just directly accessing database fields
+    # this will sometimes be faster and sometimes slower than just directly
+    # accessing database fields
     # or using as_dict
 
     def as_table(self):
         rows = []
         for filt, freq in self.filters.items():
-            # _maybe_ try-except -- but perhaps we don't want to be tolerant of missing info
-            mean = self.getattr(filt + "_mean")
-            stdev = self.getattr(filt + "_stdev")
-            rows.append([filt, freq, mean, stdev])
+            # _maybe_ try-except -- but perhaps we don't want to be tolerant
+            # of missing info
+            mean = getattr(self, filt)
+            err = getattr(self, filt + "_err")
+            rows.append([filt, freq, mean, err])
         return pd.DataFrame(rows)
 
-    # for most of the below calculations, i think a dictionary and standard library functions
-    # are faster than a dataframe or numpy array and vect functions, unless we have spectra measured with > ~50-100 points
-    # it's possible that i'm making too many lookups, though, and this should all be refactored to reduce that
+    # for most of the below calculations, i think a dictionary and standard
+    # library functions are faster than a dataframe or numpy array and vect
+    # functions, unless we have spectra measured with > ~50-100 points. it's
+    # possible that i'm making too many lookups, though, and this should all
+    # be refactored to reduce that
 
     def as_dict(self):
         """dictionary of mean reflectance values only"""
         return {
-            self.filters[filt]: getattr(self, filt + "_mean")
+            self.filters[filt]: getattr(self, filt)
             for filt in self.filters
         }
 
@@ -79,37 +117,50 @@ class Spectrum(models.Model):
         dict frequency:mean reflectance for all bands strictly between
         freq_1 & freq_2
         """
-        return {
-            freq: ref
+        return [
+            (freq, ref)
             for freq, ref in self.as_dict().items()
-            if (freq < max([freq_1, freq_2]) and freq > min([freq_1, freq_2]))
-        }
+            if (
+                max([freq_1, freq_2]) > freq > min([freq_1, freq_2])
+                and ref is not None
+            )
+        ]
 
     def band(self, freq_1, freq_2):
         """
         dict frequency:mean reflectance for all bands between and including 
         freq_1 & freq_2 
         """
-        return {
-            freq: ref
+        return [
+            (freq, ref)
             for freq, ref in self.as_dict().items()
             if (
-                freq <= max([freq_1, freq_2])
-                and freq >= min([freq_1, freq_2])
+                max([freq_1, freq_2]) >= freq >= min([freq_1, freq_2])
+                and ref is not None
             )
-        }
+        ]
 
     def ref(self, filt_1):
         """mean reflectance at filter given by filter_name"""
-        return getattr(self, filt_1 + "_mean")
+        return getattr(self, filt_1)
 
     def band_avg(self, filt_1, filt_2):
         """
-        average of reflectance values at filt_1, filt_2, and all intervening bands
+        average of reflectance values at filt_1, filt_2, and all intervening
+        bands. this currently double-counts measurements at matching
+        frequencies.
         """
-        return stats.mean(
-            self.band(self.filters[filt_1], self.filters[filt_2]).values()
-        )
+        try:
+            return stats.mean(
+                freq_reflectance_tuple[1]
+                for freq_reflectance_tuple in self.band(
+                    self.filters[filt_1], self.filters[filt_2]
+                )
+            )
+        except Exception as e:
+            print('e')
+            print(self)
+            print('hey')
 
     def band_max(self, filt_1, filt_2):
         """
@@ -147,8 +198,8 @@ class Spectrum(models.Model):
             raise ValueError(
                 "slope between a frequency and itself is undefined"
             )
-        ref_1 = getattr(self, filt_1 + "_mean")
-        ref_2 = getattr(self, filt_2 + "_mean")
+        ref_1 = getattr(self, filt_1)
+        ref_2 = getattr(self, filt_2)
         freq_1 = self.filters[filt_1]
         freq_2 = self.filters[filt_2]
         return (ref_2 - ref_1) / (freq_2 - freq_1)
@@ -161,12 +212,14 @@ class Spectrum(models.Model):
         simple band depth at filt_middle --
         filt_middle reflectance / reflectance of 'continuum'
         (straight line between filt_left and filt_right) at filt_middle.
-        passing filt_left == filt_right or filt_middle not strictly between them
+        passing filt_left == filt_right or filt_middle not strictly between
+        them
         returns an error
 
-        do we allow 'backwards' lines? for now yes (so 'left' and 'right' are misnomers)
+        do we allow 'backwards' lines? for now yes (so 'left' and 'right'
+        are misnomers)
         """
-        if len(set([filt_left, filt_middle, filt_right])) != 3:
+        if len({filt_left, filt_middle, filt_right}) != 3:
             raise ValueError(
                 "band depth between a frequency and itself is undefined"
             )
@@ -175,11 +228,13 @@ class Spectrum(models.Model):
         freq_right = self.filters[filt_right]
 
         if not (
-            freq_middle < max(freq_left, freq_right)
-            and freq_middle > min(freq_left, freq_right)
+                max(freq_left, freq_right) > freq_middle > min(freq_left,
+                                                               freq_right)
+
         ):
             raise ValueError(
-                "band depth can only be calculated at a band within the chosen range."
+                "band depth can only be calculated at a band within the "
+                "chosen range."
             )
 
         distance = freq_middle - freq_left
@@ -229,101 +284,247 @@ class MObs(Observation):
 
     sol = models.IntegerField("Sol", db_index=True)
     # note this is ltst for first frame of sequence (usually left eye 'clear')
-    ltst = models.TimeField("Local True Solar Time", db_index=True)
+    ltst = models.TimeField("Local True Solar Time", blank=True, null=True,
+                            db_index=True)
     # not sure what this actually is. format is of sequence
-    # number in PDS header, but _value_ corresponds to request id in the PDS header
-    mcam = models.CharField("mcam", max_length=20, db_index=True)
-
-    rover_el = models.FloatField("Rover Elevation", blank=True, db_index=True)
-    target_el = models.FloatField(
+    # number in PDS header, but _value_ corresponds to request id in the PDS
+    # header
+    seq_id = models.CharField("mcam", max_length=20, db_index=True)
+    rover_elevation = models.FloatField("Rover Elevation", blank=True,
+                                        null=True, db_index=True)
+    target_elevation = models.FloatField(
         "Target Elevation", null=True, db_index=True
     )
-    tau = models.FloatField("Interpolated Tau", blank=True, db_index=True)
+    tau_interpolated = models.FloatField("Interpolated Tau", blank=True,
+                                         null=True, db_index=True)
     # this field is duplicated in Tina's sample data. assuming for now
     # that this is a mistake.
-    f_dist = models.FloatField("Focal Distance", blank=True, db_index=True)
-    i_angle = models.FloatField("Incidence Angle", blank=True, db_index=True)
-    e_angle = models.FloatField("Emission Angle", blank=True, db_index=True)
-    so_lon = models.FloatField("Solar Longitude", blank=True, db_index=True)
+    focal_distance = models.FloatField("Focal Distance", blank=True, null=True,
+                                       db_index=True)
+    incidence_angle = models.FloatField("Incidence Angle", blank=True,
+                                        null=True, db_index=True)
+    emission_angle = models.FloatField("Emission Angle", blank=True, null=True,
+                                       db_index=True)
+    l_s = models.FloatField("Solar Longitude", blank=True, null=True,
+                            db_index=True)
     # i think an arbitrary number for the site. part of the ROVER_NAV_FRAME
     # coordinate system
-    site = models.IntegerField("Site", blank=True, db_index=True)
+    site = models.IntegerField("Site", blank=True, null=True, db_index=True)
     # similar
-    drive = models.IntegerField("Drive", blank=True, db_index=True)
+    drive = models.IntegerField("Drive", blank=True, null=True, db_index=True)
 
     # presumably planetodetic lat/lon
     # not in the image labels in PDS
 
-    lat = models.FloatField("Latitude", blank=True, db_index=True)
-    lon = models.FloatField("Longitude", blank=True, db_index=True)
+    lat = models.FloatField("Latitude", blank=True, null=True, db_index=True)
+    lon = models.FloatField("Longitude", blank=True, null=True, db_index=True)
 
     # don't know what this is
-    traverse = models.FloatField("Traverse", blank=True, db_index=True)
+    traverse = models.FloatField("Traverse", blank=True, null=True,
+                                 db_index=True)
 
-    # the right-eye images have a narrower FOV than the left-eye images, and two RGB
-    # right-eye images are produced for each observation.
-    # for some but not all observations, two corresponding spectrum-reduced right-eye images are also
-    # produced. In this case, a duplicate spectrum-reduced left-eye image is also produced for ROI matching
-    # (presumably due to limitations in MERTOOLS). We duplicate that structure here.
+    filename = models.CharField("Archive CSV File", max_length=30,
+                                db_index=True)
 
-    righteye_s_image_1 = models.CharField(
-        "path to first spectrum-reduced right-eye image",
+    # sometimes multiple images are produced for a single observation.
+    # note that in some cases, duplicate left-eye images are produced
+    # for multiple non-duplicate right-eye images, due to the narrower
+    # field of view of the right eye (this is presumably due to
+    # limitations in MERTOOLS).
+
+    righteye_roi_image_1 = models.CharField(
+        "path to first false-color roi right-eye image",
         blank=True,
+        null=True,
         max_length=100,
         db_index=True,
     )
-    lefteye_s_image_1 = models.CharField(
-        "path to first spectrum-reduced left-eye image",
+    lefteye_roi_image_1 = models.CharField(
+        "path to first false-color roi left-eye image",
         blank=True,
+        null=True,
         max_length=100,
         db_index=True,
     )
-    righteye_s_image_2 = models.CharField(
-        "path to second spectrum-reduced right-eye image",
+    righteye_roi_image_2 = models.CharField(
+        "path to second false-color roi right-eye image",
         blank=True,
+        null=True,
         max_length=100,
         db_index=True,
     )
-    lefteye_s_image_2 = models.CharField(
-        "path to second spectrum-reduced left-eye image",
+    lefteye_roi_image_2 = models.CharField(
+        "path to second false-color roi left-eye image",
         blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_roi_image_3 = models.CharField(
+        "path to third false-color roi right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_roi_image_3 = models.CharField(
+        "path to third false-color roi left-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_roi_image_4 = models.CharField(
+        "path to fourth false-color roi right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_roi_image_4 = models.CharField(
+        "path to fourth false-color roi left-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_roi_image_5 = models.CharField(
+        "path to fifth false-color roi right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_roi_image_5 = models.CharField(
+        "path to fifth false-color roi left-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_roi_image_6 = models.CharField(
+        "path to sixth false-color roi right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_roi_image_6 = models.CharField(
+        "path to sixth false-color roi left-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_roi_image_7 = models.CharField(
+        "path to seventh false-color roi right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_roi_image_7 = models.CharField(
+        "path to seventh false-color roi left-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_roi_image_8 = models.CharField(
+        "path to eighth false-color roi right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_roi_image_8 = models.CharField(
+        "path to eighth false-color roi left-eye image",
+        blank=True,
+        null=True,
         max_length=100,
         db_index=True,
     )
     righteye_rgb_image_1 = models.CharField(
         "path to first rgb right-eye image",
         blank=True,
+        null=True,
         max_length=100,
         db_index=True,
     )
     lefteye_rgb_image_1 = models.CharField(
-        "path to rgb left-eye image",
+        "path to first rgb left-eye image",
         blank=True,
+        null=True,
         max_length=100,
         db_index=True,
     )
     righteye_rgb_image_2 = models.CharField(
         "path to second rgb right-eye image",
         blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_rgb_image_2 = models.CharField(
+        "path to second rgb left-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_rgb_image_3 = models.CharField(
+        "path to third rgb right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_rgb_image_3 = models.CharField(
+        "path to third rgb left-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    righteye_rgb_image_4 = models.CharField(
+        "path to fourth rgb right-eye image",
+        blank=True,
+        null=True,
+        max_length=100,
+        db_index=True,
+    )
+    lefteye_rgb_image_4 = models.CharField(
+        "path to fourth rgb left-eye image",
+        blank=True,
+        null=True,
         max_length=100,
         db_index=True,
     )
 
+    def image_files(self):
+        filedict = {
+            image_type: getattr(self, image_type)
+            for image_type in MSPEC_IMAGE_TYPES
+            if getattr(self, image_type)
+        }
+        return filedict
+
     def __str__(self):
-        return "sol" + str(self.sol) + "_" + self.mcam
+        return "sol" + str(self.sol) + "_" + self.seq_id
 
 
 class MSpec(Spectrum):
     """Spectrum subclass for MASTCAM"""
 
-    # feature type (rock, dust, etc) (not apparently exported with Tina's sample data)
+    # feature type (rock, dust, etc) (not apparently exported with Tina's
+    # sample data)
     feature_type = models.CharField(
         "Feature Type", blank=True, max_length=50, db_index=True
     )
 
-    ###########################################################
-    ### relationships with parent observation and images
-    ###########################################################
+    # ##########################################################
+    # ## relationships with parent observation and images
+    # ##########################################################
 
     observation_class = MObs
     observation = models.ForeignKey(
@@ -334,45 +535,53 @@ class MSpec(Spectrum):
     )
 
     # color of associated ROI
-    roi_color = models.CharField(
+    color = models.CharField(
         "ROI Color", blank=True, max_length=20, db_index=True
     )
 
-    # for some but not all observations, two spectrum-reduced right-eye images are produced.
-    # In this case, a duplicate spectrum-reduced left-eye image is also produced for ROI matching.
+    # for some but not all observations, multiple images are produced.
     # this field indicates which image the ROI is drawn on
     image_number = models.IntegerField(
         "image number", default=1, db_index=True
     )
 
-    #############################################
-    ### lithological information -- relevant only to rocks ###
-    ##########################################################
+    feature = models.CharField(
+        "feature category", default=None, blank=True,
+        null=True, db_index=True, max_length=45
+    )
 
-    is_floating = models.BooleanField(
-        "floating vs. in-place", null=True, db_index=True
+    # ############################################
+    # ## lithological information -- relevant only to rocks ###
+    # #########################################################
+
+    float = models.BooleanField(
+        "floating vs. in-place", blank=True, null=True, db_index=True
     )
 
     # large-to-small taxonomic categories for rock clusters
     group = models.CharField(
-        "Group", blank=True, max_length=50, db_index=True
+        "Group", blank=True, null=True, max_length=50, db_index=True
     )
     formation = models.CharField(
-        "Formation", blank=True, max_length=50, db_index=True
+        "Formation", blank=True, null=True, max_length=50, db_index=True
     )
     member = models.CharField(
-        "Member", blank=True, max_length=50, db_index=True
+        "Member", blank=True, null=True, max_length=50, db_index=True
     )
 
-    ### end lithological ###
+    filename = models.CharField(
+        "Name of archive CSV file", max_length=50, db_index=True
+    )
+
+    # ## end lithological ###
 
     notes = models.CharField(
         "Notes", blank=True, max_length=100, db_index=True
     )
 
-    ##############################################
-    ########### explicit fields for reflectance values at each filter
-    ##############################################
+    # #############################################
+    # ########## explicit fields for reflectance values at each filter
+    # #############################################
 
     # i'm pretty sure multiple fields is better than a stringified dict
     # it permits SQL queries on spectra
@@ -383,66 +592,107 @@ class MSpec(Spectrum):
     # but I am nervous about it because every change can create SQL migrations,
     # and the question of when properties are set is dicey.
 
-    L0_blue_mean = models.FloatField("L0 (Blue Bayer) mean", db_index=True)
-    L0_blue_stdev = models.FloatField("L0 (Blue Bayer) stdev", db_index=True)
-    L0_green_mean = models.FloatField("L0 (Green Bayer) mean", db_index=True)
-    L0_green_stdev = models.FloatField(
-        "L0 (Green Bayer) stdev", db_index=True
+    l0b = models.FloatField("l0 (Blue Bayer) mean", blank=True, null=True,
+                            db_index=True)
+    l0b_err = models.FloatField("l0 (Blue Bayer) err", blank=True, null=True,
+                                db_index=True)
+    l0g = models.FloatField("l0 (Green Bayer) mean", blank=True, null=True,
+                            db_index=True)
+    l0g_err = models.FloatField(
+        "l0 (Green Bayer) err", blank=True, null=True, db_index=True
     )
-    L0_red_mean = models.FloatField("L0 (Red Bayer) mean", db_index=True)
-    L0_red_stdev = models.FloatField("L0 (Red Bayer) stdev", db_index=True)
-    R0_blue_mean = models.FloatField("R0 (Blue Bayer) mean", db_index=True)
-    R0_blue_stdev = models.FloatField("R0 (Blue Bayer) stdev", db_index=True)
-    R0_green_mean = models.FloatField("R0 (Green Bayer) mean", db_index=True)
-    R0_green_stdev = models.FloatField(
-        "R0 (Green Bayer) stdev", db_index=True
+    l0r = models.FloatField(
+        "l0 (Red Bayer) mean",
+        blank=True,
+        null=True,
+        db_index=True
     )
-    R0_red_mean = models.FloatField("R0 (Red Bayer) mean", db_index=True)
-    R0_red_stdev = models.FloatField("R0 (Red Bayer) stdev", db_index=True)
-    R1_mean = models.FloatField("R1 mean", db_index=True)
-    R1_stdev = models.FloatField("R1 stdev", db_index=True)
-    L1_mean = models.FloatField("L1 mean", db_index=True)
-    L1_stdev = models.FloatField("L1 stdev", db_index=True)
-    R2_mean = models.FloatField("R2 mean", db_index=True)
-    R2_stdev = models.FloatField("R2 stdev", db_index=True)
-    L2_mean = models.FloatField("L2 mean", db_index=True)
-    L2_stdev = models.FloatField("L2 stdev", db_index=True)
-    R3_mean = models.FloatField("R3 mean", db_index=True)
-    R3_stdev = models.FloatField("R3 stdev", db_index=True)
-    L3_mean = models.FloatField("L3 mean", db_index=True)
-    L3_stdev = models.FloatField("L3 stdev", db_index=True)
-    R4_mean = models.FloatField("R4 mean", db_index=True)
-    R4_stdev = models.FloatField("R4 stdev", db_index=True)
-    L4_mean = models.FloatField("L4 mean", db_index=True)
-    L4_stdev = models.FloatField("L4 stdev", db_index=True)
-    R5_mean = models.FloatField("R5 mean", db_index=True)
-    R5_stdev = models.FloatField("R5 stdev", db_index=True)
-    L5_mean = models.FloatField("L5 mean", db_index=True)
-    L5_stdev = models.FloatField("L5 stdev", db_index=True)
-    R6_mean = models.FloatField("R6 mean", db_index=True)
-    R6_stdev = models.FloatField("R6 stdev", db_index=True)
-    L6_mean = models.FloatField("L6 mean", db_index=True)
-    L6_stdev = models.FloatField("L6 stdev", db_index=True)
+    l0r_err = models.FloatField(
+        "l0 (Red Bayer) err",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    r0b = models.FloatField(
+        "r0 (Blue Bayer) mean",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    r0b_err = models.FloatField(
+        "r0 (Blue Bayer) err",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    r0g = models.FloatField(
+        "r0 (Green Bayer) mean",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    r0g_err = models.FloatField(
+        "r0 (Green Bayer) err",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    r0r = models.FloatField(
+        "r0 (Red Bayer) mean",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    r0r_err = models.FloatField(
+        "r0 (Red Bayer) err",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    r1 = models.FloatField("r1 mean", blank=True, null=True, db_index=True)
+    r1_err = models.FloatField("r1 err", blank=True, null=True, db_index=True)
+    l1 = models.FloatField("l1 mean", blank=True, null=True, db_index=True)
+    l1_err = models.FloatField("l1 err", blank=True, null=True, db_index=True)
+    r2 = models.FloatField("r2 mean", blank=True, null=True, db_index=True)
+    r2_err = models.FloatField("r2 err", blank=True, null=True, db_index=True)
+    l2 = models.FloatField("l2 mean", blank=True, null=True, db_index=True)
+    l2_err = models.FloatField("l2 err", blank=True, null=True, db_index=True)
+    r3 = models.FloatField("r3 mean", blank=True, null=True, db_index=True)
+    r3_err = models.FloatField("r3 err", blank=True, null=True, db_index=True)
+    l3 = models.FloatField("l3 mean", blank=True, null=True, db_index=True)
+    l3_err = models.FloatField("l3 err", blank=True, null=True, db_index=True)
+    r4 = models.FloatField("r4 mean", blank=True, null=True, db_index=True)
+    r4_err = models.FloatField("r4 err", blank=True, null=True, db_index=True)
+    l4 = models.FloatField("l4 mean", blank=True, null=True, db_index=True)
+    l4_err = models.FloatField("l4 err", blank=True, null=True, db_index=True)
+    r5 = models.FloatField("r5 mean", blank=True, null=True, db_index=True)
+    r5_err = models.FloatField("r5 err", blank=True, null=True, db_index=True)
+    l5 = models.FloatField("l5 mean", blank=True, null=True, db_index=True)
+    l5_err = models.FloatField("l5 err", blank=True, null=True, db_index=True)
+    r6 = models.FloatField("r6 mean", blank=True, null=True, db_index=True)
+    r6_err = models.FloatField("r6 err", blank=True, null=True, db_index=True)
+    l6 = models.FloatField("l6 mean", blank=True, null=True, db_index=True)
+    l6_err = models.FloatField("l6 err", blank=True, null=True, db_index=True)
 
     filters = {
-        "L2": 445,
-        "R2": 447,
-        "L0_blue": 495,
-        "R0_blue": 495,
-        "L1": 527,
-        "R1": 527,
-        "L0_green": 554,
-        "R0_green": 554,
-        "L0_red": 640,
-        "R0_red": 640,
-        "L4": 676,
-        "L3": 751,
-        "R3": 805,
-        "L5": 867,
-        "R4": 908,
-        "R5": 937,
-        "L6": 1012,
-        "R6": 1013,
+        "l2": 445,
+        "r2": 447,
+        "l0b": 482,
+        "r0b": 482,
+        "l1": 527,
+        "r1": 527,
+        "l0g": 554,
+        "r0g": 554,
+        "l0r": 640,
+        "r0r": 640,
+        "l4": 676,
+        "l3": 751,
+        "r3": 805,
+        "l5": 867,
+        "r4": 908,
+        "r5": 937,
+        "l6": 1012,
+        "r6": 1013,
     }
 
     axis_value_properties = [
@@ -501,32 +751,26 @@ class MSpec(Spectrum):
         {"label": "formation", "type": "self_property", "value_type": "qual"},
         {"label": "member", "type": "self_property", "value_type": "qual"},
         {"label": "sol", "type": "parent_property", "value_type": "quant"},
-        {"label": "roi_color", "type":"self_property", "value_type":"qual"},
-        # need to use dateutil.parser.parse or similar if you're going to have this
+        {"label": "color", "type": "self_property", "value_type": "qual"},
+        # need to use dateutil.parser.parse or similar if you're going to
+        # have this
         # {
         #     "label": "ltst",
         #     "type": "parent_property",
         #     "value_type": "quant",
         # },
-        {"label": "mcam", "type": "parent_property", "value_type": "quant",},
-        {"label": "tau", "type": "parent_property", "value_type": "quant",},
+        {"label": "mcam", "type": "parent_property", "value_type": "quant", },
+        {"label": "tau", "type": "parent_property", "value_type": "quant", },
     ]
 
     def image_files(self):
-        images = {}
-        image_types = [
-            "righteye_s_image_1",
-            "righteye_s_image_2",
-            "righteye_rgb_image_1",
-            "righteye_rgb_image_2",
-            "lefteye_s_image_1",
-            "lefteye_s_image_2",
-            "lefteye_rgb_image_1",
-        ]
         filedict = {
             image_type: getattr(self.observation, image_type)
-            for image_type in image_types
-            if str(self.image_number) in image_type
+            for image_type in MSPEC_IMAGE_TYPES
+            if (
+                str(self.image_number) in image_type
+                and getattr(self.observation, image_type) is not None
+            )
         }
         return filedict
 
@@ -534,14 +778,15 @@ class MSpec(Spectrum):
         """
         directory containing image files -> 
         {'right_file':string, 'left_file': 'left':PIL.Image}
-        left- and right-eye spectrum-reduced images containing the region of interest 
+        left- and right-eye false-color roi images containing the region of
+        interest
         from which the spectrum in MSpec was drawn
         """
         files = self.image_files()
         images = {}
         for image_type, filename in files.items():
             for eye in ["left", "right"]:
-                if eye + "eye_s" in image_type:
+                if eye + "eye_roi" in image_type:
                     images[eye + "_file"] = filename
                     with PIL.Image.open(
                         image_directory + images[eye + "_file"]
@@ -551,47 +796,48 @@ class MSpec(Spectrum):
 
     # fields we don't want to print when we print a list of metadata;
     # fields that have no physical meaning, partly
+    # TODO: ADD ALL IMAGE FIELDS IN SOME PROGRAMMATIC WAY
     do_not_print_fields = [
         "observation_class",
         "observation",
         "spectrum_ptr",
         "spectra_set",
         "observation_ptr",
-        "righteye_s_image_1",
-        "lefteye_s_image_1",
-        "righteye_s_image_2",
-        "lefteye_s_image_2",
+        "righteye_roi_image_1",
+        "lefteye_roi_image_1",
+        "righteye_roi_image_2",
+        "lefteye_roi_image_2",
         "righteye_rgb_image_1",
         "lefteye_rgb_image_1",
         "righteye_rgb_image_2",
     ]
 
-
     # colors corresponding to ROIs drawn on false-color images by MASTCAM team.
-    # these are all somewhat uncertain, as they're based on color picker results
+    # these are all somewhat uncertain, as they're based on color picker
+    # results
     # from compressed images (compressed _after_ the polygons were drawn). 
-    # it would be better to have official documentation and uncompressed images!
-    roi_color_mappings = {
-        "light green":"#80ff00",
-        "red":"#dc133d",
-        "dark red":"#7e0003",
-        "dark blue":"#010080",
-        "light blue":"#0000fe",
-        "light purple":"#ff00fe",
-        "dark purple":"#81007f",
-        "yellow":"#ffff00",
-        "teal":"#008083",
-        "dark green":"#138013",
-        "dark red":"#800001",
-        "sienna":"#a1502e",
-        "light cyan":"#00ffff",
+    # it would be better to have official documentation and uncompressed
+    # images!
+    color_mappings = {
+        "light green": "#80ff00",
+        "red": "#dc133d",
+        "dark red": "#7e0003",
+        "dark blue": "#010080",
+        "light blue": "#0000fe",
+        "light purple": "#ff00fe",
+        "dark purple": "#81007f",
+        "yellow": "#ffff00",
+        "teal": "#008083",
+        "dark green": "#138013",
+        "sienna": "#a1502e",
+        "light cyan": "#00ffff",
         # speculative
-        "pink":"#ddc39f",
-        "goldenrod":"#fec069",    
+        "pink": "#ddc39f",
+        "goldenrod": "#fec069",
     }
 
     def roi_hex_code(self):
-        return self.roi_color_mappings[self.roi_color]
+        return self.color_mappings[self.color]
 
     def metadata_dict(self):
         """
