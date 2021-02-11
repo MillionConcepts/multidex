@@ -6,21 +6,20 @@ import PIL
 import pandas as pd
 from PIL import Image
 from django.db import models
-from toolz import merge, keyfilter
+from toolz import keyfilter
 
 from utils import modeldict
 
-
-def filter_fields(model):
-    """silly heuristic for picking fields that are mean or err of filters"""
-    return [
-        field.name
-        for field in model._meta.get_fields()
-        if (
-                field.name[0:-5] in model.filters.keys()
-                or field.name[0:-6] in model.filters.keys()
-        )
-    ]
+# TODO: REWRITE THIS
+# def filter_fields(model):
+# return [
+#     field.name
+#     for field in model._meta.get_fields()
+#     if (
+#             field.name[0:-5] in model.filters.keys()
+#             or field.name[0:-6] in model.filters.keys()
+#     )
+# ]
 
 
 MSPEC_IMAGE_TYPES = [
@@ -115,7 +114,8 @@ class Spectrum(models.Model):
             if getattr(self, filt)
         }
 
-    def intervening(self, freq_1: float, freq_2: float) -> List[Tuple[int, float]]:
+    def intervening(self, freq_1: float, freq_2: float) -> List[
+        Tuple[int, float]]:
         """
         frequency, mean reflectance for all bands strictly between
         freq_1 & freq_2
@@ -124,8 +124,8 @@ class Spectrum(models.Model):
             (freq, ref)
             for freq, ref in self.as_dict().items()
             if (
-                max([freq_1, freq_2]) > freq > min([freq_1, freq_2])
-                and ref is not None
+                    max([freq_1, freq_2]) > freq > min([freq_1, freq_2])
+                    and ref is not None
             )
         ]
 
@@ -138,8 +138,8 @@ class Spectrum(models.Model):
             (freq, ref)
             for freq, ref in self.as_dict().items()
             if (
-                max([freq_1, freq_2]) >= freq >= min([freq_1, freq_2])
-                and ref is not None
+                    max([freq_1, freq_2]) >= freq >= min([freq_1, freq_2])
+                    and ref is not None
             )
         ]
 
@@ -153,33 +153,31 @@ class Spectrum(models.Model):
         bands. this currently double-counts measurements at matching
         frequencies.
         """
-        try:
-            return stats.mean(
-                freq_reflectance_tuple[1]
-                for freq_reflectance_tuple in self.band(
-                    self.filters[filt_1], self.filters[filt_2]
-                )
-            )
-        except Exception as e:
-            print('e')
-            print(self)
-            print('hey')
+        return stats.mean([
+            freq_reflectance_tuple[1]
+            for freq_reflectance_tuple in self.band(
+                self.filters[filt_1], self.filters[filt_2]
+            )])
 
     def band_max(self, filt_1: str, filt_2: str) -> float:
         """
         max reflectance value between filt_1 and filt_2 (inclusive)
         """
-        return max(
-            self.band(self.filters[filt_1], self.filters[filt_2]).values()
-        )
+        return max([
+            freq_reflectance_tuple[1]
+            for freq_reflectance_tuple in self.band(
+                self.filters[filt_1], self.filters[filt_2]
+            )])
 
     def band_min(self, filt_1: str, filt_2: str) -> float:
         """
         min reflectance value between filt_1 and filt_2 (inclusive)
         """
-        return min(
-            self.band(self.filters[filt_1], self.filters[filt_2]).values()
-        )
+        return min([
+            freq_reflectance_tuple[1]
+            for freq_reflectance_tuple in self.band(
+                self.filters[filt_1], self.filters[filt_2]
+            )])
 
     def ref_ratio(self, filt_1: str, filt_2: str) -> float:
         """
@@ -233,7 +231,7 @@ class Spectrum(models.Model):
                 max(freq_left, freq_right)
                 > freq_middle
                 > min(freq_left, freq_right)
-                ):
+        ):
             raise ValueError(
                 "band depth can only be calculated at a band within the "
                 "chosen range."
@@ -287,7 +285,8 @@ class MObs(Observation):
     # not sure what this actually is. format is of sequence
     # number in PDS header, but _value_ corresponds to request id in the PDS
     # header
-    seq_id = models.CharField("sequence id, e.g. 'mcam00001'", max_length=20, db_index=True)
+    seq_id = models.CharField("sequence id, e.g. 'mcam00001'", max_length=20,
+                              db_index=True)
     rover_elevation = models.FloatField(
         "Rover Elevation", blank=True, null=True, db_index=True
     )
@@ -322,9 +321,11 @@ class MObs(Observation):
     lon = models.FloatField("Longitude", blank=True, null=True, db_index=True)
 
     # don't know what this is
-    traverse = models.FloatField("Traverse", blank=True, null=True, db_index=True)
+    traverse = models.FloatField("Traverse", blank=True, null=True,
+                                 db_index=True)
 
-    filename = models.CharField("Archive CSV File", max_length=30, db_index=True)
+    filename = models.CharField("Archive CSV File", max_length=30,
+                                db_index=True)
 
     # sometimes multiple images are produced for a single observation.
     # note that in some cases, duplicate left-eye images are produced
@@ -770,8 +771,8 @@ class MSpec(Spectrum):
             image_type: getattr(self.observation, image_type)
             for image_type in MSPEC_IMAGE_TYPES
             if (
-                str(self.image_number) in image_type
-                and getattr(self.observation, image_type) is not None
+                    str(self.image_number) in image_type
+                    and getattr(self.observation, image_type) is not None
             )
         }
         return filedict
@@ -789,31 +790,14 @@ class MSpec(Spectrum):
         for image_type, filename in files.items():
             for eye in ["left", "right"]:
                 if eye + "eye_roi" in image_type:
-                    browse_filename = fs.path.splitext(filename)[0] + '_browse.jpg'
+                    browse_filename = fs.path.splitext(filename)[
+                                          0] + '_browse.jpg'
                     images[eye + "_file"] = browse_filename
                     with PIL.Image.open(
-                        fs.path.join(image_directory, browse_filename)
+                            fs.path.join(image_directory, browse_filename)
                     ) as image:
                         images[eye + "_size"] = image.size
         return images
-
-    # fields we don't want to print when we print a list of metadata;
-    # fields that have no physical meaning, partly
-    # TODO: ADD ALL IMAGE FIELDS IN SOME PROGRAMMATIC WAY, maybe
-    do_not_print_fields = [
-        "observation_class",
-        "observation",
-        "spectrum_ptr",
-        "spectra_set",
-        "observation_ptr",
-        "righteye_roi_image_1",
-        "lefteye_roi_image_1",
-        "righteye_roi_image_2",
-        "lefteye_roi_image_2",
-        "righteye_rgb_image_1",
-        "lefteye_rgb_image_1",
-        "righteye_rgb_image_2",
-    ]
 
     # colors corresponding to ROIs drawn on false-color images by MASTCAM team.
     # these are all somewhat uncertain, as they're based on color picker
@@ -847,9 +831,21 @@ class MSpec(Spectrum):
         """
         placeholder? metadata-summarizing function. for printing etc.
         """
-        do_not_print = self.do_not_print_fields + filter_fields(self)
         spec_dict = modeldict(self)
         obs_dict = modeldict(self.observation)
+        fields_to_print = [
+            'color',
+            'feature',
+            'group',
+            'formation',
+            'member',
+            'float',
+            'seq_id',
+            'ltst',
+            'site',
+            'lat',
+            'lon'
+        ]
         return keyfilter(
-            lambda x: x not in do_not_print, merge(spec_dict, obs_dict)
+            lambda x: x in fields_to_print, spec_dict | obs_dict
         )

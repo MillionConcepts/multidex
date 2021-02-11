@@ -9,6 +9,11 @@ import plotly.graph_objects as go
 
 from utils import get_if, none_to_empty
 
+GRAPH_COLOR_SETTINGS = {
+    'plot_bgcolor': 'rgba(0, 0, 0, 0)',
+    'paper_bgcolor': 'rgba(0, 0, 0, 0)'
+}
+
 
 # note that style properties are camelCased rather than hyphenated
 # b/c React
@@ -37,21 +42,30 @@ def dynamic_spec_div(print_name, graph_name, image_name, index):
             ),
         ],
         id={"type": "spec-container", "index": index},
-        style={'display':'flex'}
+        style={'display': 'flex'}
     )
 
+
+# TODO: determine if the following two component factories are necessary at all
 
 def main_graph():
     """dash component factory for main graph"""
     fig = go.Figure()
-    fig.update_layout(margin={"l": 10, "r": 10, "t": 25, "b": 0})
+    # noinspection PyTypeChecker
+    fig.update_layout({
+                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
+                      } | GRAPH_COLOR_SETTINGS)
     return dcc.Graph(id="main-graph", figure=fig, style={"height": "45vh"})
 
 
 def spec_graph(name, index):
     """dash component factory for reflectance graphs"""
     fig = go.Figure()
-    fig.update_layout(margin={"l": 10, "r": 10, "t": 25, "b": 0})
+    # noinspection PyTypeChecker
+    fig.update_layout({
+                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
+                      } | GRAPH_COLOR_SETTINGS
+                      )
     return dcc.Graph(
         id={"type": name, "index": index},
         figure=fig,
@@ -82,7 +96,10 @@ def main_graph_scatter(x_axis, y_axis, text, customdata):
             marker={"color": "blue"},
         )
     )
-    fig.update_layout(margin={"l": 10, "r": 10, "t": 25, "b": 0})
+    # noinspection PyTypeChecker
+    fig.update_layout({
+                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
+                      } | GRAPH_COLOR_SETTINGS)
     return fig
 
 
@@ -102,7 +119,11 @@ def mspec_graph_line(spectrum):
             line={'color': spectrum.roi_hex_code()}
         )
     )
-    fig.update_layout(margin={"l": 10, "r": 10, "t": 25, "b": 0})
+    # noinspection PyTypeChecker
+    fig.update_layout({
+                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0}
+                      } | GRAPH_COLOR_SETTINGS
+                      )
     return fig
 
 
@@ -277,7 +298,7 @@ def search_parameter_div(index, searchable_fields, preset_parameter=None):
 
 
 def search_container_div(searchable_fields, preset_parameters):
-    search_container = html.Div(id="search-container")
+    search_container = html.Div(id="search-container", style={'display':'flex'})
     if preset_parameters:
         # list was 'serialized' to string to put it in a single df cell
         preset_parameters = literal_eval(preset_parameters)
@@ -350,10 +371,10 @@ def search_tab(spec_model, restore_dictionary=None):
     get_r = partial(
         get_if, restore_dictionary is not None, restore_dictionary
     )
-
     return dcc.Tab(
-        children=[
-            html.Div(
+        children=[html.Div(
+            style={'display': 'flex'},
+            children=[html.Div(
                 children=[
                     axis_value_drop(
                         spec_model,
@@ -372,44 +393,47 @@ def search_tab(spec_model, restore_dictionary=None):
                         spec_model, "filter-2-x",
                         value=get_r("filter-2-x.value")
                     ),
-                ]
-            ),
-            html.Div(
-                children=[
-                    axis_value_drop(
-                        spec_model,
-                        "axis-option-y",
-                        value=get_r("axis-option-y.value"),
+                ]),
+                html.Div(
+                    children=[
+                        axis_value_drop(
+                            spec_model,
+                            "axis-option-y",
+                            value=get_r("axis-option-y.value"),
+                        ),
+                        filter_drop(
+                            spec_model, "filter-1-y",
+                            value=get_r("filter-1-y.value")
+                        ),
+                        filter_drop(
+                            spec_model, "filter-3-y",
+                            value=get_r("filter-3-y.value")
+                        ),
+                        filter_drop(
+                            spec_model, "filter-2-y",
+                            value=get_r("filter-2-y.value")
+                        ),
+                    ]
+                ),
+                html.Div(children=[
+                    # hidden trigger for queryset update on dropdown removal
+                    html.Button(
+                        id={"type": "submit-search", "index": 1},
+                        style={"display": "none"},
                     ),
-                    filter_drop(
-                        spec_model, "filter-1-y",
-                        value=get_r("filter-1-y.value")
+                    html.Button("add search parameter", id="add-param"),
+                    html.Button(
+                        id={"type": "submit-search", "index": 0},
+                        children="Submit",
                     ),
-                    filter_drop(
-                        spec_model, "filter-3-y",
-                        value=get_r("filter-3-y.value")
-                    ),
-                    filter_drop(
-                        spec_model, "filter-2-y",
-                        value=get_r("filter-2-y.value")
-                    ),
-                ]
-            ),
-            trigger_div("search", 2),
-            trigger_div("load", 1),
-            search_container_div(
-                spec_model.searchable_fields, get_r("search_parameters")
-            ),
-            html.Button("add search parameter", id="add-param"),
-            html.Button(
-                id={"type": "submit-search", "index": 0}, children="Submit",
-            ),
-            # hidden trigger for queryset update on dropdown removal
-            html.Button(
-                id={"type": "submit-search", "index": 1},
-                style={"display": "none"},
-            ),
-            load_search_drop('load-search'),
+                    load_search_drop('load-search')
+                ]),
+                trigger_div("search", 2),
+                trigger_div("load", 1),
+                search_container_div(
+                    spec_model.searchable_fields, get_r("search_parameters")
+                ),
+                ]),
             html.Div(children=[main_graph()], id="main-graph-container"),
             html.Button(
                 id="viewer-open-button", children="open in graph viewer tab",
