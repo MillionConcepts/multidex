@@ -37,6 +37,7 @@ def dynamic_spec_div(print_name, graph_name, image_name, index):
             ),
         ],
         id={"type": "spec-container", "index": index},
+        style={'display':'flex'}
     )
 
 

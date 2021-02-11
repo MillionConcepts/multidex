@@ -1,5 +1,7 @@
 import statistics as stats
+from typing import Tuple, List
 
+import fs.path
 import PIL
 import pandas as pd
 from PIL import Image
@@ -85,15 +87,15 @@ class Spectrum(models.Model):
 
     filters = {}
 
-    # this will sometimes be faster and sometimes slower than just directly
-    # accessing database fields
-    # or using as_dict
-
-    def as_table(self):
+    def as_table(self) -> pd.DataFrame:
+        """
+        this will sometimes be faster and sometimes slower than just directly
+        accessing database fields or using as_dict. unlike as_dict, this
+        specifically leaves 'None' values in. i guess it's maybe intended as
+        a slightly lower-level API element.
+        """
         rows = []
         for filt, freq in self.filters.items():
-            # _maybe_ try-except -- but perhaps we don't want to be tolerant
-            # of missing info
             mean = getattr(self, filt)
             err = getattr(self, filt + "_err")
             rows.append([filt, freq, mean, err])
@@ -105,16 +107,17 @@ class Spectrum(models.Model):
     # possible that i'm making too many lookups, though, and this should all
     # be refactored to reduce that
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         """dictionary of mean reflectance values only"""
         return {
             self.filters[filt]: getattr(self, filt)
             for filt in self.filters
+            if getattr(self, filt)
         }
 
-    def intervening(self, freq_1, freq_2):
+    def intervening(self, freq_1: float, freq_2: float) -> List[Tuple[int, float]]:
         """
-        dict frequency:mean reflectance for all bands strictly between
+        frequency, mean reflectance for all bands strictly between
         freq_1 & freq_2
         """
         return [
@@ -126,9 +129,9 @@ class Spectrum(models.Model):
             )
         ]
 
-    def band(self, freq_1, freq_2):
+    def band(self, freq_1: float, freq_2: float) -> List[Tuple[int, float]]:
         """
-        dict frequency:mean reflectance for all bands between and including 
+        frequency, mean reflectance for all bands between and including
         freq_1 & freq_2 
         """
         return [
@@ -140,11 +143,11 @@ class Spectrum(models.Model):
             )
         ]
 
-    def ref(self, filt_1):
+    def ref(self, filt_1: str) -> float:
         """mean reflectance at filter given by filter_name"""
         return getattr(self, filt_1)
 
-    def band_avg(self, filt_1, filt_2):
+    def band_avg(self, filt_1: str, filt_2: str) -> float:
         """
         average of reflectance values at filt_1, filt_2, and all intervening
         bands. this currently double-counts measurements at matching
@@ -162,7 +165,7 @@ class Spectrum(models.Model):
             print(self)
             print('hey')
 
-    def band_max(self, filt_1, filt_2):
+    def band_max(self, filt_1: str, filt_2: str) -> float:
         """
         max reflectance value between filt_1 and filt_2 (inclusive)
         """
@@ -170,7 +173,7 @@ class Spectrum(models.Model):
             self.band(self.filters[filt_1], self.filters[filt_2]).values()
         )
 
-    def band_min(self, filt_1, filt_2):
+    def band_min(self, filt_1: str, filt_2: str) -> float:
         """
         min reflectance value between filt_1 and filt_2 (inclusive)
         """
@@ -178,16 +181,14 @@ class Spectrum(models.Model):
             self.band(self.filters[filt_1], self.filters[filt_2]).values()
         )
 
-    def ref_ratio(self, filt_1, filt_2):
+    def ref_ratio(self, filt_1: str, filt_2: str) -> float:
         """
-        (str, str) -> float
         ratio of reflectance values at filt_1 & filt_2
         """
         return self.ref(filt_1) / self.ref(filt_2)
 
-    def slope(self, filt_1, filt_2):
+    def slope(self, filt_1: str, filt_2: str) -> float:
         """
-        (str, str) -> float
         where input strings are filter names defined in self.filters
 
         slope of line drawn between reflectance values at these two filters.
@@ -204,17 +205,18 @@ class Spectrum(models.Model):
         freq_2 = self.filters[filt_2]
         return (ref_2 - ref_1) / (freq_2 - freq_1)
 
-    def band_depth_custom(self, filt_left, filt_right, filt_middle):
+    def band_depth_custom(
+            self,
+            filt_left: str,
+            filt_right: str,
+            filt_middle: str
+    ) -> float:
         """
-        (str, str, str) -> float
-        where input strings are filter names defined in self.filters
-
         simple band depth at filt_middle --
         filt_middle reflectance / reflectance of 'continuum'
         (straight line between filt_left and filt_right) at filt_middle.
         passing filt_left == filt_right or filt_middle not strictly between
-        them
-        returns an error
+        them returns an error
 
         do we allow 'backwards' lines? for now yes (so 'left' and 'right'
         are misnomers)
@@ -228,25 +230,21 @@ class Spectrum(models.Model):
         freq_right = self.filters[filt_right]
 
         if not (
-                max(freq_left, freq_right) > freq_middle > min(freq_left,
-                                                               freq_right)
-
-        ):
+                max(freq_left, freq_right)
+                > freq_middle
+                > min(freq_left, freq_right)
+                ):
             raise ValueError(
                 "band depth can only be calculated at a band within the "
                 "chosen range."
             )
-
         distance = freq_middle - freq_left
         slope = self.slope(filt_left, filt_right)
         continuum_ref = self.ref(filt_left) + slope * distance
         return self.ref(filt_middle) / continuum_ref
 
-    def band_depth_min(self, filt_1, filt_2):
+    def band_depth_min(self, filt_1: str, filt_2: str) -> float:
         """
-        (str, str) -> float
-        where input strings are filter names defined in self.filters
-
         simple band depth at local minimum --
         local minimum reflectance / reflectance of 'continuum'
         (straight line between filt_1 and filt_2) at that frequency.
@@ -289,48 +287,52 @@ class MObs(Observation):
     # not sure what this actually is. format is of sequence
     # number in PDS header, but _value_ corresponds to request id in the PDS
     # header
-    seq_id = models.CharField("mcam", max_length=20, db_index=True)
-    rover_elevation = models.FloatField("Rover Elevation", blank=True,
-                                        null=True, db_index=True)
+    seq_id = models.CharField("sequence id, e.g. 'mcam00001'", max_length=20, db_index=True)
+    rover_elevation = models.FloatField(
+        "Rover Elevation", blank=True, null=True, db_index=True
+    )
     target_elevation = models.FloatField(
         "Target Elevation", null=True, db_index=True
     )
     tau_interpolated = models.FloatField("Interpolated Tau", blank=True,
                                          null=True, db_index=True)
-    # this field is duplicated in Tina's sample data. assuming for now
+    # this field is duplicated in the original data set. assuming for now
     # that this is a mistake.
-    focal_distance = models.FloatField("Focal Distance", blank=True, null=True,
-                                       db_index=True)
-    incidence_angle = models.FloatField("Incidence Angle", blank=True,
-                                        null=True, db_index=True)
-    emission_angle = models.FloatField("Emission Angle", blank=True, null=True,
-                                       db_index=True)
-    l_s = models.FloatField("Solar Longitude", blank=True, null=True,
-                            db_index=True)
+    focal_distance = models.FloatField(
+        "Focal Distance", blank=True, null=True, db_index=True
+    )
+    incidence_angle = models.FloatField(
+        "Incidence Angle", blank=True, null=True, db_index=True
+    )
+    emission_angle = models.FloatField(
+        "Emission Angle", blank=True, null=True, db_index=True
+    )
+    l_s = models.FloatField(
+        "Solar Longitude", blank=True, null=True, db_index=True
+    )
     # i think an arbitrary number for the site. part of the ROVER_NAV_FRAME
     # coordinate system
     site = models.IntegerField("Site", blank=True, null=True, db_index=True)
     # similar
     drive = models.IntegerField("Drive", blank=True, null=True, db_index=True)
 
-    # presumably planetodetic lat/lon
+    # presumably planetographic lat/lon
     # not in the image labels in PDS
-
     lat = models.FloatField("Latitude", blank=True, null=True, db_index=True)
     lon = models.FloatField("Longitude", blank=True, null=True, db_index=True)
 
     # don't know what this is
-    traverse = models.FloatField("Traverse", blank=True, null=True,
-                                 db_index=True)
+    traverse = models.FloatField("Traverse", blank=True, null=True, db_index=True)
 
-    filename = models.CharField("Archive CSV File", max_length=30,
-                                db_index=True)
+    filename = models.CharField("Archive CSV File", max_length=30, db_index=True)
 
     # sometimes multiple images are produced for a single observation.
     # note that in some cases, duplicate left-eye images are produced
-    # for multiple non-duplicate right-eye images, due to the narrower
-    # field of view of the right eye (this is presumably due to
-    # limitations in MERTOOLS).
+    # for multiple non-duplicate right-eye images in order to draw ROIs
+    # corresponding to all the right-eye images and the narrower
+    # field of view of the right eye (not being able to just draw all of
+    # the ROIs from all the right-eye images on a single left-eye image
+    # is presumably due to limitations in MERTOOLS).
 
     righteye_roi_image_1 = models.CharField(
         "path to first false-color roi right-eye image",
@@ -763,7 +765,7 @@ class MSpec(Spectrum):
         {"label": "tau", "type": "parent_property", "value_type": "quant", },
     ]
 
-    def image_files(self):
+    def image_files(self) -> dict:
         filedict = {
             image_type: getattr(self.observation, image_type)
             for image_type in MSPEC_IMAGE_TYPES
@@ -774,29 +776,30 @@ class MSpec(Spectrum):
         }
         return filedict
 
-    def overlay_file_info(self, image_directory):
+    def overlay_browse_file_info(self, image_directory: str) -> dict:
         """
-        directory containing image files -> 
+        directory containing browse image files ->
         {'right_file':string, 'left_file': 'left':PIL.Image}
-        left- and right-eye false-color roi images containing the region of
-        interest
-        from which the spectrum in MSpec was drawn
+        browse versions of left- and right-eye false-color images
+        containing the region of interest from which the spectrum
+        in MSpec was drawn
         """
         files = self.image_files()
         images = {}
         for image_type, filename in files.items():
             for eye in ["left", "right"]:
                 if eye + "eye_roi" in image_type:
-                    images[eye + "_file"] = filename
+                    browse_filename = fs.path.splitext(filename)[0] + '_browse.jpg'
+                    images[eye + "_file"] = browse_filename
                     with PIL.Image.open(
-                        image_directory + images[eye + "_file"]
+                        fs.path.join(image_directory, browse_filename)
                     ) as image:
                         images[eye + "_size"] = image.size
         return images
 
     # fields we don't want to print when we print a list of metadata;
     # fields that have no physical meaning, partly
-    # TODO: ADD ALL IMAGE FIELDS IN SOME PROGRAMMATIC WAY
+    # TODO: ADD ALL IMAGE FIELDS IN SOME PROGRAMMATIC WAY, maybe
     do_not_print_fields = [
         "observation_class",
         "observation",
@@ -831,15 +834,16 @@ class MSpec(Spectrum):
         "dark green": "#138013",
         "sienna": "#a1502e",
         "light cyan": "#00ffff",
-        # speculative
+        # following are somewhat speculative
         "pink": "#ddc39f",
         "goldenrod": "#fec069",
+        "bright red": "#d60702"
     }
 
-    def roi_hex_code(self):
+    def roi_hex_code(self) -> str:
         return self.color_mappings[self.color]
 
-    def metadata_dict(self):
+    def metadata_dict(self) -> dict:
         """
         placeholder? metadata-summarizing function. for printing etc.
         """

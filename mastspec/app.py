@@ -12,9 +12,8 @@ from flask_caching import Cache
 
 from utils import partially_evaluate_from_parameters
 
-# ignore any linter / IDE complaints about these: they must come before we
-# import
-# all the django crap
+# note: ignore any linter / IDE complaints about these: they _must_ come before we
+# import all the django dependencies
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mastspec.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
@@ -61,15 +60,18 @@ app = dash.Dash()
 
 # initialize a client for caching
 # make sure memcached is running with correct parameters
-# systemctl edit memcached.service --full on linux, etc.
+# systemctl edit memcached.service --full
+# systemctl start memcached
+# on non systemd systems, just run from command line
 
 # current options:
 # [Service]
-# Environment=OPTIONS="-I 10, -m 1024"
+# Environment=OPTIONS="-I 24m, -m 1200"
 # 1 meg is the default for -I / slab size, which
 # was fine for the test set but too small for this set.
 # the whole prefetched database is probably around 6M in
-# memory.
+# memory, and then individual parameters may it up further.
+# I'm getting some crashes I don't fully understand.
 # see also memcached-tool 127.0.0.1:11211 settings
 
 # (this can easily be set to start at runtime in a container)
@@ -142,11 +144,12 @@ y_inputs = [
 ]
 
 # client-side url for serving images to the user.
-static_image_url = '/images/'
+static_image_url = '/images/browse/'
 
 # host-side directory containing those images.
-# note this is just ROIs for now
-image_directory = './static_in_pro/our_static/img/roi/'
+# note this is just ROI browse images for now
+# TODO: add a link
+image_directory = './static_in_pro/our_static/img/roi_browse/'
 
 # insert 'settings' / 'global' values for this app into callback functions.
 # in Dash, callback functions encapsulate I/O behavior for components and
@@ -278,7 +281,8 @@ app.callback(
         *x_inputs,
         *y_inputs,
         Input({'type': 'search-trigger', 'index': ALL}, 'value'),
-        Input('main-graph', 'hoverData')
+        Input('main-graph', 'hoverData'),
+        # Input({'type': 'load-trigger', 'index': 0}, 'value')
     ],
     [
         State('main-graph', 'figure')

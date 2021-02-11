@@ -138,8 +138,8 @@ def recalculate_graph(
 ):
     ctx = dash.callback_context
     # do nothing on page load
-    if not_triggered():
-        raise PreventUpdate
+    # if not_triggered():
+    #     raise PreventUpdate
 
     ctx = dash.callback_context
     if ctx.triggered[0]["prop_id"] == "main-graph.hoverData":
@@ -532,7 +532,7 @@ def update_spectrum_graph(event_data, *, spec_model, spec_graph_function):
     return spec_graph_function(spectrum)
 
 
-def make_mspec_image_components(
+def make_mspec_browse_image_components(
     mspec, image_directory, base_size, static_image_url
 ):
     """
@@ -541,43 +541,52 @@ def make_mspec_image_components(
     images associated with that object, pathed to the static image
     route defined in the live app instance
     """
-    file_info = mspec.overlay_file_info(image_directory)
-    components = []
+    file_info = mspec.overlay_browse_file_info(image_directory)
+    image_div_children = []
     for eye in ["left", "right"]:
         try:
             size = file_info[eye + "_size"]
-            filename = static_image_url + file_info[eye + "_file"],
+            filename = static_image_url + file_info[eye + "_file"]
         except KeyError:
-            size = (600, 400)
+            size = (480, 480)
             filename = static_image_url + "missing.jpg"
         aspect_ratio = size[0] / size[1]
         width = base_size * aspect_ratio
-        height = base_size * (1 / aspect_ratio)
-        components.append(
+        height = base_size / aspect_ratio
+        image_div_children.append(
             html.Img(
                 src=filename,
                 style={
                     "width": str(width) + "vw",
-                    "height": str(height) + "vh",
+                    "height": str(height) + "vw",
                     "display": "block",
                 },
                 id="spec-image-" + eye,
             )
         )
-    return components
+        component = html.Div(
+            children=image_div_children,
+            style={
+                "width": "20vw",
+                "height": "20vh",
+            }
+        )
+
+    return component
+    height = base_size * (1 / aspect_ratio)
 
 
 def update_spectrum_images(
     event_data, *, spec_model, image_directory, base_size, static_image_url
 ):
     """
-    just a callback-responsive wrapper to make_mspec_image_components --
+    just a callback-responsive wrapper to make_mspec_browse_image_components --
     probably we should actually put that function on the model
     """
     if not event_data:
         raise PreventUpdate
     spectrum = spectrum_from_graph_event(event_data, spec_model)
-    return make_mspec_image_components(
+    return make_mspec_browse_image_components(
         spectrum, image_directory, base_size, static_image_url
     )
 
