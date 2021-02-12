@@ -1,0 +1,82 @@
+:root {
+    --dark-tint-0: rgba(0,0,50,0.06);
+    --dark-tint-1: rgba(0,0,25,0.18);
+    --dark-tint-2: rgba(0,0,0,0.24);
+    --teal: #92d6ce;
+    --midnight-ochre: #241C01;
+    --invisible-pearl: #fdfdfa;
+    --clean-parchment: #fefcf5;
+}
+
+html {
+    background: var(--clean-parchment);
+}
+
+html, button, .Select {
+    font-family: "Fira Mono", sans-serif;
+    color: var(--midnight-ochre);
+}
+
+button {
+    background: var(--dark-tint-1);
+    border: 1px solid var(--dark-tint-2);
+    max-height: 2rem;
+    font-size: 1rem;
+}
+
+.Select-control, .tab-container {
+    background: var(--invisible-pearl);
+}
+
+.graph-controls-container, .search-controls-container {
+    display: flex;
+    flex-wrap: wrap
+}
+
+.load-button-container, .search-parameter-container {
+    width: 15rem;
+}
+
+.search-button-container {
+    max-width: 15rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.axis-controls-container {
+    width: 20rem;
+}
+
+@font-face {
+    font-family: "Fira Mono";
+    src: url("FiraMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: "Fira Mono";
+    src: url("FiraMono-Medium.ttf") format("truetype");
+    font-weight: 500;
+}
+
+@font-face {
+    font-family: "Fira Mono";
+    src: url("FiraMono-Bold.ttf") format("truetype");
+    font-weight: 700;
+}
+
+/*todo: figure out how hard it is to override core components with CSS --
+    otherwise staying inside dash layer inside react virtual DOM
+    (using update_layout() methods of components) may be preferable */
+/* for instance this immediately gets overwritten by element styling on
+the 'bg' element but is accessible with paper_bgcolor and plot_bgcolor
+using update_layout() methods of dash components
+ */
+/*.main-svg {*/
+/*    background: rgba(0,0,0,0);*/
+/*}*/
+
+/*.bg {*/
+/*    background: rgba(0,0,0,0);*/
+/*    fill: rgba(0,0,0,0);*/
+/*}*/

@@ -63,7 +63,6 @@ app = dash.Dash()
 # systemctl edit memcached.service --full
 # systemctl start memcached
 # on non systemd systems, just run from command line
-
 # current options:
 # [Service]
 # Environment=OPTIONS="-I 24m, -m 1200"
@@ -71,23 +70,28 @@ app = dash.Dash()
 # was fine for the test set but too small for this set.
 # the whole prefetched database is probably around 6M in
 # memory, and then individual parameters may it up further.
-# I'm getting some crashes I don't fully understand.
 # see also memcached-tool 127.0.0.1:11211 settings
-
 # (this can easily be set to start at runtime in a container)
-client = pylibmc.Client(["127.0.0.1"], binary=True)
+# client = pylibmc.Client(["127.0.0.1"], binary=True)
 
 # initialize the cache itself and register it with the app
 
-# change this to 'filesystem' if you don't want to install memcached
-cache_type = 'memcached'
+# change this to 'filesystem' if you don't want to install memcached.
+
+
+# I'm getting some bad spookiness I don't currently understand,
+# so presently switching back to filesystem with a tmpfs.
+# (with root:)
+# mount -o size=1024M -t tmpfs mastspeccache .cache
+
+cache_type = 'filesystem'
 
 CACHE_CONFIG = {
     'CACHE_TYPE': cache_type,
-    'CACHE_DIR': './.cache',
+    'CACHE_DIR': '.cache',
     'CACHE_DEFAULT_TIMEOUT': 0,
     # keep cached variables for a session of any length
-    'SERVERS': client  # filesystem backend will just ignore this
+    # 'SERVERS': client  # filesystem backend will just ignore this
 }
 cache = Cache()
 cache.init_app(app.server, config=CACHE_CONFIG)
@@ -160,7 +164,7 @@ image_directory = './static_in_pro/our_static/img/roi_browse/'
 # arguments.
 
 # this is for performance, mostly, and may or may not actually be useful
-# at this time
+# at this time -- but i'm pretty sure it is
 update_spectrum_images = cache.memoize()(update_spectrum_images)
 update_spectrum_graph = cache.memoize()(update_spectrum_graph)
 
@@ -333,7 +337,7 @@ app.callback(
 # handle creation and removal of search filters
 app.callback(
     [
-        Output('search-container', 'children'),
+        Output('search-controls-container-div', 'children'),
         Output({'type': 'submit-search', 'index': 1}, 'n_clicks')
     ],
     [
@@ -341,7 +345,7 @@ app.callback(
         Input({'type': 'remove-param', "index": ALL}, 'n_clicks')
     ],
     [
-        State('search-container', 'children'),
+        State('search-controls-container-div', 'children'),
         State({'type': 'submit-search', 'index': 1}, 'n_clicks')
     ]
 )(control_search_dropdowns)
@@ -375,6 +379,16 @@ app.callback(
 # point-hover functions.
 # right now main and view graph hover functions are basically duplicates,
 # but i'm reserving the possibility that they'll have different behaviors later
+# app.callback(
+#     Output({'type': 'main-spec-image-left', 'index': 0}, "children"),
+#     [Input('main-graph', "hoverData")]
+# )(update_spectrum_images)
+#
+# app.callback(
+#     Output({'type': 'main-spec-image-right', 'index': 0}, "children"),
+#     [Input('main-graph', "hoverData")]
+# )(update_spectrum_images)
+
 app.callback(
     Output({'type': 'main-spec-image', 'index': 0}, "children"),
     [Input('main-graph', "hoverData")]

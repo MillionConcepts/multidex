@@ -276,8 +276,8 @@ def update_search_options(
                     queryset.model.objects.all(), field, props["type"]
                 )
             )
-            + """. Enter a range like '100-200' or a list of specific """
-            + """numbers separated by commas, like '100, 105, 110'.""",
+            + """range like '100-200'; or list of  """
+            + """numbers like '100, 105, 110'.""",
             search_text,
         ]
 
@@ -396,8 +396,8 @@ def update_queryset(
         if not_blank(field) and (not_blank(term) or not_blank(entry))
     ]
     # if every search parameter is blank, don't do anything
-    if not search_list:
-        raise PreventUpdate
+    # if not search_list:
+    #     raise PreventUpdate
 
     # if the search parameters have changed or if it's a new load, make a
     # new queryset and trigger graph update using copy.deepcopy here to
@@ -545,35 +545,29 @@ def make_mspec_browse_image_components(
     image_div_children = []
     for eye in ["left", "right"]:
         try:
-            size = file_info[eye + "_size"]
+            # size = file_info[eye + "_size"]
             filename = static_image_url + file_info[eye + "_file"]
         except KeyError:
-            size = (480, 480)
+            # size = (480, 480)
             filename = static_image_url + "missing.jpg"
-        aspect_ratio = size[0] / size[1]
-        width = base_size * aspect_ratio
-        height = base_size / aspect_ratio
+        # aspect_ratio = size[0] / size[1]
+        # width = base_size * aspect_ratio
+        # height = base_size / aspect_ratio
         image_div_children.append(
             html.Img(
                 src=filename,
                 style={
-                    "width": str(width) + "vw",
-                    "height": str(height) + "vw",
-                    "display": "block",
+                    "width": "50%",
+                    "height": "50%"
                 },
                 id="spec-image-" + eye,
             )
         )
         component = html.Div(
             children=image_div_children,
-            style={
-                "width": "20vw",
-                "height": "20vh",
-            }
         )
 
     return component
-    height = base_size * (1 / aspect_ratio)
 
 
 def update_spectrum_images(

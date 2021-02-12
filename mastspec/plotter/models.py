@@ -562,9 +562,6 @@ class MSpec(Spectrum):
     )
 
     # large-to-small taxonomic categories for rock clusters
-    group = models.CharField(
-        "Group", blank=True, null=True, max_length=50, db_index=True
-    )
     formation = models.CharField(
         "Formation", blank=True, null=True, max_length=50, db_index=True
     )
@@ -750,7 +747,6 @@ class MSpec(Spectrum):
     ]
 
     searchable_fields = [
-        {"label": "group", "type": "self_property", "value_type": "qual"},
         {"label": "formation", "type": "self_property", "value_type": "qual"},
         {"label": "member", "type": "self_property", "value_type": "qual"},
         {"label": "sol", "type": "parent_property", "value_type": "quant"},
@@ -762,8 +758,8 @@ class MSpec(Spectrum):
         #     "type": "parent_property",
         #     "value_type": "quant",
         # },
-        {"label": "mcam", "type": "parent_property", "value_type": "quant", },
-        {"label": "tau", "type": "parent_property", "value_type": "quant", },
+        {"label": "seq_id", "type": "parent_property", "value_type": "quant", },
+        {"label": "tau_interpolated", "type": "parent_property", "value_type": "quant", },
     ]
 
     def image_files(self) -> dict:
@@ -835,16 +831,16 @@ class MSpec(Spectrum):
         obs_dict = modeldict(self.observation)
         fields_to_print = [
             'color',
+            'seq_id',
+            'sol',
+            'ltst',
             'feature',
-            'group',
             'formation',
             'member',
             'float',
-            'seq_id',
-            'ltst',
-            'site',
             'lat',
-            'lon'
+            'lon',
+            'site',
         ]
         return keyfilter(
             lambda x: x in fields_to_print, spec_dict | obs_dict

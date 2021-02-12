@@ -2,6 +2,7 @@
 
 from ast import literal_eval
 from functools import partial
+import re
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -9,9 +10,38 @@ import plotly.graph_objects as go
 
 from utils import get_if, none_to_empty
 
+
+# TODO: is this a terrible placeholder?
+def fetch_css_variables(css_file='assets/main.css'):
+    css_variable_dictionary = {}
+    with open(css_file) as stylesheet:
+        css_lines = stylesheet.readlines()
+    for line in css_lines:
+        if not re.match(r'\s+--', line):
+            continue
+        key, value = re.split(r':\s+', line)
+        key = re.sub(r'(--)|[ :]', '', key)
+        value = re.sub(r'[ \n;]', '', value)
+        css_variable_dictionary[key] = value
+    return css_variable_dictionary
+
+
+css_variables = fetch_css_variables()
 GRAPH_COLOR_SETTINGS = {
-    'plot_bgcolor': 'rgba(0, 0, 0, 0)',
-    'paper_bgcolor': 'rgba(0, 0, 0, 0)'
+    'plot_bgcolor': css_variables['dark-tint-0'],
+    'paper_bgcolor': css_variables['clean-parchment']
+}
+GRAPH_AXIS_SETTINGS = {
+    'showline': True,
+    'showgrid': True,
+    'mirror': True,
+    'linewidth': 2,
+    'gridcolor': css_variables['dark-tint-0'],
+    'linecolor': css_variables['dark-tint-1'],
+    'zerolinecolor': css_variables['dark-tint-1'],
+    'spikecolor': css_variables['dark-tint-1'],
+    'tickcolor': css_variables['midnight-ochre'],
+    'tickfont': {'family': 'Fira Mono'}
 }
 
 
@@ -34,11 +64,13 @@ def dynamic_spec_div(print_name, graph_name, image_name, index):
             html.Div(
                 children=[spec_graph(graph_name, index)],
                 id={"type": graph_name + "-container", "index": index},
-                style={"display": "inline-block"},
+                style={
+                    "display": "inline-block",
+                },
             ),
             html.Div(
                 id={"type": image_name, "index": index},
-                style={"display": "inline-block"},
+                style={"display": "inline-block", "max-height":"20vw", "padding-top":"1.5rem"},
             ),
         ],
         id={"type": "spec-container", "index": index},
@@ -55,7 +87,8 @@ def main_graph():
     fig.update_layout({
                           'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
                       } | GRAPH_COLOR_SETTINGS)
-    return dcc.Graph(id="main-graph", figure=fig, style={"height": "45vh"})
+    return dcc.Graph(id="main-graph", figure=fig, style={"height": "60vh"},
+                     className='graph')
 
 
 def spec_graph(name, index):
@@ -64,12 +97,11 @@ def spec_graph(name, index):
     # noinspection PyTypeChecker
     fig.update_layout({
                           'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
-                      } | GRAPH_COLOR_SETTINGS
-                      )
+                      } | GRAPH_COLOR_SETTINGS)
     return dcc.Graph(
         id={"type": name, "index": index},
         figure=fig,
-        style={"height": "30vh", "width": "45vw"},
+        style={"height": "20vw", "width": "45vw"},
     )
 
 
@@ -93,13 +125,15 @@ def main_graph_scatter(x_axis, y_axis, text, customdata):
             text=text,
             customdata=customdata,
             mode="markers",
-            marker={"color": "blue"},
+            marker={"color": "black"},
         )
     )
     # noinspection PyTypeChecker
     fig.update_layout({
-                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
-                      } | GRAPH_COLOR_SETTINGS)
+        'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
+    } | GRAPH_COLOR_SETTINGS)
+    fig.update_xaxes(GRAPH_AXIS_SETTINGS)
+    fig.update_yaxes(GRAPH_AXIS_SETTINGS)
     return fig
 
 
@@ -114,16 +148,17 @@ def mspec_graph_line(spectrum):
     y_axis = list(spectrum_data.values())
     fig = go.Figure()
     fig.add_trace(
-        go.Scattergl(
+        go.Scatter(
             x=x_axis, y=y_axis, mode="lines+markers",
             line={'color': spectrum.roi_hex_code()}
         )
     )
     # noinspection PyTypeChecker
     fig.update_layout({
-                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0}
-                      } | GRAPH_COLOR_SETTINGS
-                      )
+            'margin': {"l": 10, "r": 10, "t": 25, "b": 0}
+    } | GRAPH_COLOR_SETTINGS)
+    fig.update_xaxes(GRAPH_AXIS_SETTINGS)
+    fig.update_yaxes(GRAPH_AXIS_SETTINGS)
     return fig
 
 
@@ -138,7 +173,12 @@ def axis_value_drop(spec_model, element_id, value=None):
     ]
     if not value:
         value = options[0]["value"]
-    return dcc.Dropdown(id=element_id, options=options, value=value)
+    return dcc.Dropdown(
+        id=element_id,
+        className='axis-value-drop',
+        options=options,
+        value=value
+    )
 
 
 def filter_drop(model, element_id, value):
@@ -293,12 +333,17 @@ def search_parameter_div(index, searchable_fields, preset_parameter=None):
             )
         ),
     return html.Div(
-        children=children, id={"type": "search-parameter-div", "index": index}
+        className="search-parameter-container",
+        children=children,
+        id={"type": "search-parameter-div", "index": index}
     )
 
 
 def search_container_div(searchable_fields, preset_parameters):
-    search_container = html.Div(id="search-container", style={'display':'flex'})
+    search_container = html.Div(
+        id="search-controls-container-div",
+        className="search-controls-container"
+    )
     if preset_parameters:
         # list was 'serialized' to string to put it in a single df cell
         preset_parameters = literal_eval(preset_parameters)
@@ -357,11 +402,13 @@ def trigger_div(prefix, number_of_triggers):
 
 
 def load_search_drop(element_id):
-    return html.Div(children=[
-        dcc.Dropdown(id=element_id + '-drop'),
-        html.Button(id=element_id + '-load-button', children='load'),
-        html.Button(id=element_id + '-save-button', children='save')
-    ])
+    return html.Div(
+        className="load-button-container",
+        children=[
+            dcc.Dropdown(id=element_id + '-drop'),
+            html.Button(id=element_id + '-load-button', children='load'),
+            html.Button(id=element_id + '-save-button', children='save')
+        ])
 
 
 # primary search panel
@@ -373,8 +420,9 @@ def search_tab(spec_model, restore_dictionary=None):
     )
     return dcc.Tab(
         children=[html.Div(
-            style={'display': 'flex'},
+            className='graph-controls-container',
             children=[html.Div(
+                className='axis-controls-container',
                 children=[
                     axis_value_drop(
                         spec_model,
@@ -395,6 +443,7 @@ def search_tab(spec_model, restore_dictionary=None):
                     ),
                 ]),
                 html.Div(
+                    className='axis-controls-container',
                     children=[
                         axis_value_drop(
                             spec_model,
@@ -415,35 +464,39 @@ def search_tab(spec_model, restore_dictionary=None):
                         ),
                     ]
                 ),
-                html.Div(children=[
-                    # hidden trigger for queryset update on dropdown removal
-                    html.Button(
-                        id={"type": "submit-search", "index": 1},
-                        style={"display": "none"},
-                    ),
-                    html.Button("add search parameter", id="add-param"),
-                    html.Button(
-                        id={"type": "submit-search", "index": 0},
-                        children="Submit",
-                    ),
-                    load_search_drop('load-search')
-                ]),
                 trigger_div("search", 2),
                 trigger_div("load", 1),
                 search_container_div(
                     spec_model.searchable_fields, get_r("search_parameters")
                 ),
+                html.Div(
+                    className="search-button-container",
+                    children=[
+                        # hidden trigger for queryset update on dropdown removal
+                        html.Button(
+                            id={"type": "submit-search", "index": 1},
+                            style={"display": "none"},
+                        ),
+                        html.Button("add search parameter", id="add-param"),
+                        html.Button(
+                            id={"type": "submit-search", "index": 0},
+                            children="Update graph",
+                        ),
+                        html.Button(
+                            id="viewer-open-button",
+                            children="open in viewer tab",
+                        ),
+                    ])
                 ]),
             html.Div(children=[main_graph()], id="main-graph-container"),
-            html.Button(
-                id="viewer-open-button", children="open in graph viewer tab",
-            ),
+
             dynamic_spec_div(
                 "main-spec-print", "main-spec-graph", "main-spec-image", 0
             ),
             html.Div(id='fake-output-for-callback-with-only-side-effects-0'),
             html.Div(id='fake-output-for-callback-with-only-side-effects-1'),
-            html.Div(id='search-load-progress-flag')
+            html.Div(id='search-load-progress-flag'),
+            load_search_drop('load-search')
         ],
         # display title
         label="SEARCH",
