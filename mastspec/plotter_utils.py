@@ -3,25 +3,33 @@
 import json
 import re
 from functools import partial, reduce
-from inspect import currentframe, getframeinfo, signature
+from inspect import signature
 from operator import and_, or_, contains
+from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping
 
 import dash
 import dash_html_components as html
 from dash.dependencies import Input, Output
 from django.db.models import Q
+import numpy as np
+import pandas as pd
 from toolz import keyfilter, merge, isiterable
+
+if TYPE_CHECKING:
+    from dash.development.base_component import Component
+    from django.db.models.query import QuerySet
+    from django.db.models import Model
 
 
 # generic
 
-def first(predicate, iterable):
+def first(predicate: Callable, iterable: Iterable) -> Any:
     for item in iterable:
         if predicate(item):
             return item
 
 
-def not_blank(obj):
+def not_blank(obj: Any) -> bool:
     """a 'truthiness' test that avoids 0/1 boolean evaluations"""
     if reduce(and_, [
         obj != "",
@@ -36,18 +44,24 @@ def not_blank(obj):
 # django utility functions
 
 
-def qlist(queryset, attribute):
+def qlist(queryset: 'QuerySet', attribute: str) -> list:
     return list(queryset.values_list(attribute, flat=True))
 
 
-def filter_null_attributes(queryset, attribute_list):
+def filter_null_attributes(queryset: 'QuerySet',
+                           attribute_list: Iterable[str]) -> str:
     for attribute in attribute_list:
         queryset = queryset.exclude(**{attribute + '__iexact': None})
     return queryset
 
 
-def djget(model, value, field="name", method_name="filter",
-          querytype="iexact"):
+def djget(
+        model: 'Model',
+        value: Any,
+        field: str = "name",
+        method_name: str = "filter",
+        querytype: str = "iexact"
+) -> 'QuerySet':
     """flexible interface to queryset methods"""
     # get the requested queryset-generating method of model.objects
     method = getattr(model.objects, method_name)
@@ -55,7 +69,7 @@ def djget(model, value, field="name", method_name="filter",
     return method(**{field + "__" + querytype: value})
 
 
-def modeldict(django_model_object):
+def modeldict(django_model_object: 'Model') -> dict:
     """tries to construct a dictionary from arbitrary django model instance"""
     return {
         field.name: getattr(django_model_object, field.name)
@@ -65,20 +79,20 @@ def modeldict(django_model_object):
 
 # pandas utility functions
 
-
-def rows(dataframe):
+# TODO: now that it's available, DataFrame.iterrows() should be used instead
+def rows(dataframe: pd.DataFrame) -> list[np.ndarray]:
     """splits row-wise into a list of numpy arrays"""
     return [dataframe.loc[row] for row in dataframe.index]
 
 
-def columns(dataframe):
+def columns(dataframe: pd.DataFrame) -> list[np.ndarray]:
     """splits column-wise into a list of numpy arrays"""
     return [dataframe.loc[:, column] for column in dataframe.columns]
 
 
 # dash-y dictionary utilities
 
-
+# TODO: what is this for?
 def dict_to_paragraphs(dictionary, style):
     """
     parses dictionary to list of dash <p> components
@@ -91,7 +105,7 @@ def dict_to_paragraphs(dictionary, style):
     ]
 
 
-def pickitems(dictionary, some_list):
+def pickitems(dictionary: Mapping, some_list: Iterable) -> dict:
     """items of dict where key is in some_list """
     return keyfilter(in_me(some_list), dictionary)
 
@@ -103,7 +117,7 @@ def pickcomps(comp_dictionary, id_list):
                      [comp.component_id for comp in comp_dictionary])
 
 
-def comps_to_strings(component_list):
+def comps_to_strings(component_list: Iterable['Component']) -> list[str]:
     """convert list of dash components with properties to list of strings"""
     return [
         comp.component_id + "." + comp.component_property for comp in
@@ -111,26 +125,29 @@ def comps_to_strings(component_list):
     ]
 
 
-def pickctx(context, component_list):
+def pickctx(
+        ctx: dash._callback_context.CallbackContext,
+        component_list: Iterable['Component']
+) -> dict:
     """states and inputs of dash callback context if component is in
     component_list"""
     comp_strings = comps_to_strings(component_list)
     cats = []
-    if context.states:
-        cats.append(context.states)
-    if context.inputs:
-        cats.append(context.inputs)
+    if ctx.states:
+        cats.append(ctx.states)
+    if ctx.inputs:
+        cats.append(ctx.inputs)
     picked = [pickitems(cat, comp_strings) for cat in cats]
     if picked:
         return merge(picked)
 
 
-def keygrab(dict_list, key, value):
+def keygrab(dict_list: Iterable[Mapping], key: Any, value: Any) -> Mapping:
     """returns first element of dict_list such that element[key]==value"""
     return next(filter(lambda x: x[key] == value, dict_list))
 
 
-def ctxdict(ctx):
+def ctxdict(ctx: dash._callback_context.CallbackContext) -> dict:
     return {
         'triggered': ctx.triggered,
         'inputs': ctx.inputs,
@@ -139,7 +156,7 @@ def ctxdict(ctx):
     }
 
 
-def not_triggered():
+def not_triggered() -> bool:
     """
     detect likely spurious triggers.
     will only function if called inside a callback.
@@ -149,7 +166,7 @@ def not_triggered():
     return False
 
 
-def triggered_by(component_id):
+def triggered_by(component_id: str) -> bool:
     """
     did a component matching this id string trigger the callback this function 
     is called in the context of? will only function if called inside a
@@ -160,7 +177,7 @@ def triggered_by(component_id):
     return False
 
 
-def trigger_index(ctx):
+def trigger_index(ctx : dash._callback_context.CallbackContext) -> int:
     """
     dash.callbackcontext -> int, where int is the index of the triggering
     component
@@ -171,44 +188,7 @@ def trigger_index(ctx):
     return int(trigger_id[index_index])
 
 
-## generic dev tools
-
-# doesn't go one floor up...evaluates default arguments on import, not at
-# runtime. inconvenient to enter all this, defeats purpose. hm.
-
-def dprint(*args, local_variables=locals(),
-           frame=getframeinfo(currentframe())):
-    # print name of current function, line number, string, and value of
-    # variable with name
-    # corresponding to string for all strings in args
-    print(local_variables)
-    info = (
-            getattr(frame, 'function'),
-            getattr(frame, 'lineno'),
-            *((arg, local_variables[arg]) for arg in args)
-    )
-    print(info)
-    return info
-
-
-def dprinter():
-    # print name of current function, line number, string, and value of
-    # variable with name
-    # corresponding to string for all strings in args
-    def dprint(*args, local_variables=locals(),
-               frame=getframeinfo(currentframe())):
-        print(local_variables)
-        info = getattr(frame, 'function'), getattr(frame, 'lineno'), *(
-            (arg, local_variables[arg]) for arg in args
-        )
-        print(info)
-        return info
-
-    return dprint
-
-
 # ## dash dev tools
-
 
 def dump_it(data, loud=True):
     """dump data as json"""
@@ -250,48 +230,50 @@ def in_me(container):
 # ## generic
 
 
-def get_if(boolean, dictionary, key):
+def get_if(boolean: bool, dictionary: Mapping, key: Any) -> Any:
     """return dictionary[key] iff boolean; otherwise return None"""
     if boolean:
         return dictionary.get(key)
     return None
 
 
-def get_parameters(function):
+def get_parameters(func: Callable) -> list[str]:
     return [
-        param.name for param in signature(function).parameters.values()
+        param.name for param in signature(func).parameters.values()
     ]
 
 
-def partially_evaluate_from_parameters(function, parameters):
+def partially_evaluate_from_parameters(
+        func: Callable,
+        parameters: Mapping
+) -> callable:
     """
-    function, dict -> function
     return a copy of the input function partially evaluated from any value
-    of the dict
-    with a key matching a named argument of the function. useful for things
-    like inserting
-    'settings' variables into large numbers of functions.
+    of the dict with a key matching a named argument of the function.
+    useful for things like inserting 'settings' variables into large numbers
+    of functions.
+
     for instance:
+
     def add(a, b):
         return a + b
     parameters = {'b':1, 'c':3}
     add_1 = partially_evaluate_from_parameters(add, parameters)
-    add_1(2) == 3
-    True
+    assert add_1(2) == 3
     """
     return partial(
-        function, **pickitems(parameters, get_parameters(function))
+        func, **pickitems(parameters, get_parameters(func))
     )
 
 
-def listify(thing):
+def listify(thing: Any) -> list:
     """Always a list, for things that want lists"""
     if isiterable(thing):
         return list(thing)
     return [thing]
 
 
-def none_to_empty(thing):
+def none_to_empty(thing: Any) -> Any:
     if thing is None:
         return ""
     return thing
@@ -308,10 +290,11 @@ def none_to_empty(thing):
 # if and when required.
 
 
-def flexible_query(queryset, field, value):
+def flexible_query(queryset: 'QuerySet', field: 'str', value: Any) -> 'QuerySet':
     """
     little search function that checks exact and loose phrases.
     have to hit the database to do this, so less efficient than using
+    others that don't
     """
     # allow exact phrase searches
     query = field + "__iexact"
@@ -323,13 +306,18 @@ def flexible_query(queryset, field, value):
     return reduce(or_, filters)
 
 
-def inflexible_query(queryset, field, value):
+def inflexible_query(queryset: 'QuerySet', field: 'str', value: Any) -> 'QuerySet':
     """little search function that checks only exact phrases"""
     query = field + "__iexact"
     return queryset.filter(**{query: value})
 
 
-def term_search(queryset, field, value, inflexible=None):
+def term_search(
+        queryset: 'QuerySet',
+        field: 'str',
+        value: Any,
+        inflexible=False
+) -> 'QuerySet':
     """
     model, string, string or number or whatever -> queryset
     search for strings or whatever within a field of a model.
@@ -342,8 +330,8 @@ def term_search(queryset, field, value, inflexible=None):
 
 
 def value_fetch_search(
-        queryset, field, value_list
-):
+        queryset: 'QuerySet', field: 'str', value_list: Iterable
+) -> 'QuerySet':
     """
     queryset, field of underlying model, list of values -> queryset
     simply return queryset of objects with any of those values
@@ -359,11 +347,13 @@ def value_fetch_search(
 
 
 def interval_search(
-        queryset, field, interval_begin=None, interval_end=None, strictly=None
-):
+        queryset: 'QuerySet',
+        field: str,
+        interval_begin: Any = None,
+        interval_end: Any = None,
+        strictly: bool = False
+) -> 'QuerySet':
     """
-    queryset, field of underlying model, begin, end -> queryset
-    
     interval_begin and interval_end must be of types for which 
     the elements of the set of the chosen attribute of the elements of queryset
     possess a complete ordering exposed to django queryset API (probably
@@ -407,14 +397,13 @@ def interval_search(
     return queryset.filter(reduce(and_, queries))
 
 
-def multiple_field_search(queryset, parameters):
+def multiple_field_search(queryset: 'QuerySet', parameters: Mapping) -> 'QuerySet':
     """
     dispatcher that handles multiple search parameters and returns a queryset.
     accepts options in dictionaries to search 'numerical' intervals
     or stringlike terms.
     """
     results = []
-    print('mfs', parameters)
     for parameter in parameters:
         # do a relations-on-orderings search if requested
         if parameter.get("value_type") == "quant":

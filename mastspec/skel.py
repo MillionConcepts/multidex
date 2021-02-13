@@ -10,7 +10,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 from flask_caching import Cache
 
-from utils import partially_evaluate_from_parameters
+from plotter_utils import partially_evaluate_from_parameters
 
 # note: ignore any linter / IDE complaints about these: they _must_ come before we
 # import all the django dependencies

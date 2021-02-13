@@ -1,17 +1,26 @@
+"""
+functions used for selecting, manipulating, and drawing spectral data
+within plotly-dash objects. this module is _separate_ from app structure
+definition_ and, to the extent possible, components. considering where
+exactly...! these functions are partially defined and/or passed to callback
+decorators in order to generate flow control within a dash app.
+"""
+
 import datetime as dt
 from copy import deepcopy
 from functools import reduce
 from operator import or_
+from typing import TYPE_CHECKING, Any, Callable, Iterable
 
 import dash
+from dash.exceptions import PreventUpdate
 import dash_html_components as html
 import pandas as pd
 import plotly.graph_objects as go
-from dash.exceptions import PreventUpdate
 
 from plotter.components import parse_model_quant_entry, search_parameter_div, \
     viewer_tab, search_tab
-from utils import (
+from plotter_utils import (
     djget,
     dict_to_paragraphs,
     rows,
@@ -27,40 +36,41 @@ from utils import (
     filter_null_attributes,
 )
 
-"""
-functions used for selecting, manipulating, and drawing spectral data within plotly-dash objects.
-this module is _separate_ from app structure definition_ and, to the extent possible, components.
-considering where exactly...! 
-these functions are partially defined and/or passed to callback decorators in order to
-generate flow control within a dash app.
-"""
+if TYPE_CHECKING:
+    from django.db.models.query import QuerySet
+    import flask_caching
 
 # ### cache functions ###
 
-# many of the other functions in this module take outputs of these two functions as arguments.
-# returning a function that calls a specific cache defined in-app
-# allows us to share data between defined clusters of dash objects.
-# the specific cache is in some sense a set of pointers that serves as a namespace.
+# many of the other functions in this module take outputs of these two
+# functions as arguments. returning a function that calls a specific cache
+# defined in-app allows us to share data between defined clusters of dash
+# objects. the specific cache is in some sense a set of pointers that serves
+# as a namespace. this, rather than a global variable or variables, is used
+# because Flask does not guarantee thread safety of globals.
 
 
-def cache_set(cache):
-    def cset(key, value):
+def cache_set(cache: 'flask_caching.Cache') -> Callable[[str, Any], bool]:
+    def cset(key: str, value: Any) -> bool:
         return cache.set(key, value)
 
     return cset
 
 
-def cache_get(cache):
-    def cget(key):
+def cache_get(cache: 'flask_caching.Cache') -> Callable[[str], Any]:
+    def cget(key: str) -> Any:
         return cache.get(key)
 
     return cget
 
 
-def make_axis(settings, queryset, suffix):
-
+def make_axis(settings: dict, queryset: 'QuerySet', suffix: str) -> list[float]:
+    """
+    make an axis for one of our graphs by looking at a bunch of objects,
+    usually Spectrum instances.
+    """
     # what is requested function or property?
-    axis_option = settings["axis-option-" + suffix]
+    axis_option = settings["graph-option-" + suffix]
     # what are the characteristics of that function or property?
     props = keygrab(
         queryset.model.axis_value_properties, "value", axis_option
@@ -93,6 +103,61 @@ def redorblue(value, container):
     if value in container:
         return "red"
     return "blue"
+
+
+def none_to_quote_unquote_none(
+        list_containing_none: Iterable[Any]
+) -> list[Any]:
+    de_noned_list = []
+    for element in list_containing_none:
+        if element is not None:
+            de_noned_list.append(element)
+        else:
+            de_noned_list.append("None")
+    return de_noned_list
+
+
+def arbitrarily_hash_strings(strings: Iterable[str]) -> list[int]:
+    unique_string_values = list(set(strings))
+    arbitrary_hash = {
+        string: ix for ix, string in enumerate(unique_string_values)
+    }
+    return [arbitrary_hash[string] for string in strings]
+
+
+def make_marker_properties(settings, queryset):
+    print(settings)
+    marker_option = settings["graph-option-marker.value"]
+    props = keygrab(
+        queryset.model.marker_value_properties,
+        "value",
+        marker_option
+    )
+    if props["type"] not in ["parent_property", "self_property"]:
+        return {
+            'marker': {
+                'color': 'red',
+            }
+        }
+    if props["type"] == "parent_property":
+        attribute_list = arbitrarily_hash_strings(
+            none_to_quote_unquote_none([
+                getattr(spectrum.observation, props["value"])
+                for spectrum in queryset
+            ])
+        )
+    elif props["type"] == "self_property":
+        attribute_list = arbitrarily_hash_strings(
+            none_to_quote_unquote_none([
+                getattr(spectrum, props["value"])
+                for spectrum in queryset
+            ])
+        )
+    return {
+        'marker': {
+            'color': attribute_list
+        }
+    }
 
 
 def sibling_ids(spec_id, cget):
@@ -131,6 +196,7 @@ def recalculate_graph(
     *args,
     x_inputs,
     y_inputs,
+    marker_inputs,
     graph_function,
     cget,
     cset,
@@ -149,6 +215,7 @@ def recalculate_graph(
     queryset = cget("queryset")
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
+    marker_settings = pickctx(ctx, marker_inputs)
     # this is for functions like describe_current_graph
     # that display or recall
     # the settings used to generate a graph
@@ -157,6 +224,7 @@ def recalculate_graph(
     # we will add it.
     x_axis = make_axis(x_settings, queryset, suffix="x.value")
     y_axis = make_axis(y_settings, queryset, suffix="y.value")
+    marker_properties = make_marker_properties(marker_settings, queryset)
     # these text and customdata choices are likely placeholders
     text = [spec.observation.seq_id + " " + spec.color for spec in queryset]
     customdata = [spec.id for spec in queryset]
@@ -171,15 +239,17 @@ def recalculate_graph(
         for parameter in (
             "x_settings",
             "y_settings",
+            "marker_settings",
             "x_axis",
             "y_axis",
+            "marker_properties",
             "text",
             "customdata",
             "graph_function",
         ):
             cset(parameter, locals()[parameter])
 
-    return graph_function(x_axis, y_axis, text, customdata)
+    return graph_function(x_axis, y_axis, marker_properties, text, customdata)
 
 
 def field_values(queryset, field):
@@ -276,6 +346,7 @@ def update_search_options(
                     queryset.model.objects.all(), field, props["type"]
                 )
             )
+            # TODO: this should be a hover-over tooltip
             + """range like '100-200'; or list of  """
             + """numbers like '100, 105, 110'.""",
             search_text,
@@ -391,7 +462,7 @@ def update_queryset(
         parse_model_quant_entry(entry) for entry in quant_search_entries
     ]
     search_list = [
-        {"field": field, "term": term, **(entry)}
+        {"field": field, "term": term, **entry}
         for field, term, entry in zip(fields, terms, entries)
         if not_blank(field) and (not_blank(term) or not_blank(entry))
     ]
@@ -406,6 +477,7 @@ def update_queryset(
     # should be memoized
     search = handle_graph_search(spec_model, deepcopy(search_list))
     ctx = dash.callback_context
+    print(ctx)
     if (
         set(search) != set(cget("queryset"))
         or "load-trigger" in ctx.triggered[0]["prop_id"]

@@ -8,7 +8,7 @@ from PIL import Image
 from django.db import models
 from toolz import keyfilter
 
-from utils import modeldict
+from plotter_utils import modeldict
 
 # TODO: REWRITE THIS
 # def filter_fields(model):
@@ -85,6 +85,8 @@ class Spectrum(models.Model):
     # names and canonical center values.
 
     filters = {}
+    axis_value_properties = {}
+    marker_value_properties = {}
 
     def as_table(self) -> pd.DataFrame:
         """
@@ -513,6 +515,7 @@ class MObs(Observation):
         return filedict
 
     def __str__(self):
+        # noinspection PyTypeChecker
         return "sol" + str(self.sol) + "_" + self.seq_id
 
 
@@ -736,7 +739,7 @@ class MSpec(Spectrum):
         {"label": "sol", "value": "sol", "type": "parent_property"},
         {
             "label": "target elevation",
-            "value": "target_el",
+            "value": "target_elevation",
             "type": "parent_property",
         },
         {
@@ -747,10 +750,10 @@ class MSpec(Spectrum):
     ]
 
     searchable_fields = [
-        {"label": "formation", "type": "self_property", "value_type": "qual"},
-        {"label": "member", "type": "self_property", "value_type": "qual"},
-        {"label": "sol", "type": "parent_property", "value_type": "quant"},
-        {"label": "color", "type": "self_property", "value_type": "qual"},
+        {"label": "formation", "value": "formation", "type": "self_property", "value_type": "qual"},
+        {"label": "member", "value": "member",  "type": "self_property", "value_type": "qual"},
+        {"label": "sol", "value": "sol", "type": "parent_property", "value_type": "quant"},
+        {"label": "color", "value": "color", "type": "self_property", "value_type": "qual"},
         # need to use dateutil.parser.parse or similar if you're going to
         # have this
         # {
@@ -758,9 +761,11 @@ class MSpec(Spectrum):
         #     "type": "parent_property",
         #     "value_type": "quant",
         # },
-        {"label": "seq_id", "type": "parent_property", "value_type": "quant", },
-        {"label": "tau_interpolated", "type": "parent_property", "value_type": "quant", },
+        {"label": "seq_id", "value": "seq_id", "type": "parent_property", "value_type": "quant", },
+        {"label": "tau_interpolated", "value": "tau_interpolated", "type": "parent_property", "value_type": "quant"},
     ]
+
+    marker_value_properties = axis_value_properties + searchable_fields
 
     def image_files(self) -> dict:
         filedict = {
@@ -828,6 +833,7 @@ class MSpec(Spectrum):
         placeholder? metadata-summarizing function. for printing etc.
         """
         spec_dict = modeldict(self)
+        # noinspection PyTypeChecker
         obs_dict = modeldict(self.observation)
         fields_to_print = [
             'color',

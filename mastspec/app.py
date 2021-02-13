@@ -1,19 +1,18 @@
 import os
-import random as rand
 
 import django
 import flask
-import pylibmc
+# import pylibmc
 from dash import dash
 from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_core_components as dcc
 import dash_html_components as html
 from flask_caching import Cache
 
-from utils import partially_evaluate_from_parameters
+from plotter_utils import partially_evaluate_from_parameters
 
-# note: ignore any linter / IDE complaints about these: they _must_ come before we
-# import all the django dependencies
+# note: ignore any PEP 8-based linter / IDE complaints about import order: the
+# following statements _must_ come before we import all the django dependencies
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mastspec.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
@@ -78,7 +77,6 @@ app = dash.Dash()
 
 # change this to 'filesystem' if you don't want to install memcached.
 
-
 # I'm getting some bad spookiness I don't currently understand,
 # so presently switching back to filesystem with a tmpfs.
 # (with root:)
@@ -138,13 +136,19 @@ x_inputs = [
     Input('filter-1-x', 'value'),
     Input('filter-2-x', 'value'),
     Input('filter-3-x', 'value'),
-    Input('axis-option-x', 'value'),
+    Input('graph-option-x', 'value'),
 ]
 y_inputs = [
     Input('filter-1-y', 'value'),
     Input('filter-2-y', 'value'),
     Input('filter-3-y', 'value'),
-    Input('axis-option-y', 'value')
+    Input('graph-option-y', 'value')
+]
+marker_inputs = [
+    Input('filter-1-marker', 'value'),
+    Input('filter-2-marker', 'value'),
+    Input('filter-3-marker', 'value'),
+    Input('graph-option-marker', 'value')
 ]
 
 # client-side url for serving images to the user.
@@ -171,6 +175,7 @@ update_spectrum_graph = cache.memoize()(update_spectrum_graph)
 settings = {
     'x_inputs': x_inputs,
     'y_inputs': y_inputs,
+    'marker_inputs': marker_inputs,
     'cget': cget,
     'cset': cset,
     # factory functions for plotly figures (which Dash
@@ -266,14 +271,14 @@ app.layout = html.Div(children=[
 
 # change visibility of x / y axis calculation inputs
 # based on arity of calculation function
-for axis in ['x', 'y']:
+for value_class in ['x', 'y', 'marker']:
     app.callback(
         [
-            Output('filter-1-' + axis, 'style'),
-            Output('filter-2-' + axis, 'style'),
-            Output('filter-3-' + axis, 'style'),
+            Output('filter-1-' + value_class, 'style'),
+            Output('filter-2-' + value_class, 'style'),
+            Output('filter-3-' + value_class, 'style'),
         ],
-        [Input('axis-option-' + axis, 'value')]
+        [Input('graph-option-' + value_class, 'value')]
     )(change_calc_input_visibility)
 
 # trigger redraw of main graph
@@ -284,6 +289,7 @@ app.callback(
     [
         *x_inputs,
         *y_inputs,
+        *marker_inputs,
         Input({'type': 'search-trigger', 'index': ALL}, 'value'),
         Input('main-graph', 'hoverData'),
         # Input({'type': 'load-trigger', 'index': 0}, 'value')

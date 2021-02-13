@@ -7,3 +7,5 @@ L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'formation', 'term': ['Murray'],
 L2,R2,L2,band_avg,L3,R5,L2,band_avg,"[{'field': 'member', 'term': ['Blunts Point'], 'begin': '', 'end': ''}]",08/27/20 23:38:53
 L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'sol', 'term': ['Blunts Point'], 'begin': '2030', 'end': '2090'}]",08/27/20 23:41:12
 L2,L1,L2,band_avg,L3,L6,L2,band_avg,"[{'field': 'sol', 'term': ['Blunts Point'], 'begin': '2040', 'end': '2080'}]",08/27/20 23:41:25
+l2,r2,l2,band_avg,l2,r1,l2,band_avg,"[{'field': 'formation', 'term': ['Yellowknife Bay']}]",02/12/21 18:21:01
+l2,r2,l2,band_avg,l2,r1,l2,band_avg,"[{'field': 'formation', 'term': ['Yellowknife Bay']}]",02/12/21 18:21:08
