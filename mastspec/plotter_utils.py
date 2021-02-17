@@ -5,7 +5,7 @@ import re
 from functools import partial, reduce
 from inspect import signature
 from operator import and_, or_, contains
-from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping
+from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping, Union
 
 import dash
 import dash_html_components as html
@@ -61,11 +61,13 @@ def djget(
         field: str = "name",
         method_name: str = "filter",
         querytype: str = "iexact"
-) -> 'QuerySet':
+) -> Union['QuerySet', 'Model']:
     """flexible interface to queryset methods"""
-    # get the requested queryset-generating method of model.objects
+    # get the requested method of model.objects
     method = getattr(model.objects, method_name)
     # and then evaluate it on the requested parameters
+    # most of these, like 'filter', return other querysets;
+    # some, like 'get', return individual model instances
     return method(**{field + "__" + querytype: value})
 
 

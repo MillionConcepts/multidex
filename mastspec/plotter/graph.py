@@ -38,12 +38,14 @@ from plotter_utils import (
     trigger_index,
     triggered_by,
     filter_null_attributes,
-    ctxdict,
 )
 
 if TYPE_CHECKING:
+    from django.db.models import Model
+    from plotter.models import MSpec
     from django.db.models.query import QuerySet
     import flask_caching
+
 
 # ### cache functions ###
 
@@ -99,7 +101,8 @@ def make_axis(
     props = keygrab(queryset.model.axis_value_properties, "value", axis_option)
     if props["type"] == "method":
         # we assume here that 'methods' all take a spectrum's filter names
-        # as arguments, and have arguments in an order corresponding to the inputs.
+        # as arguments, and have arguments in an order corresponding to the
+        # inputs.
         filt_args = [
             settings[prefix + "-filter-" + str(ix) + "-" + suffix]
             for ix in range(1, props["arity"] + 1)
@@ -160,7 +163,7 @@ def make_marker_properties(settings, queryset, prefix, suffix):
         # as arguments, and have arguments in an order corresponding to
         # the inputs.
         filt_args = [
-            settings[prefix + "-filter-" + str(ix) + '-' + suffix]
+            settings[prefix + "-filter-" + str(ix) + "-" + suffix]
             for ix in range(1, props["arity"] + 1)
         ]
         property_list = [
@@ -187,13 +190,15 @@ def make_marker_properties(settings, queryset, prefix, suffix):
 
 
 def sibling_ids(spec_id, cget):
-    """wrapper for getting sets of spectra siblings precalculated in update_queryset"""
+    """wrapper for getting sets of spectra siblings precalculated in
+    update_queryset"""
     return first(lambda x: spec_id in x, cget("sibling_set"))
 
 
 def main_graph_hover_styler(ctx, cget):
     """
-    this is drastically inefficient, i would think. perhaps there's a more performant way to do it
+    this is drastically inefficient, i would think. perhaps there's a more
+    performant way to do it
     in some of the marker controls.
     """
 
@@ -215,7 +220,8 @@ def main_graph_hover_styler(ctx, cget):
 # is there a cleaner way to do this?
 # flow control becomes really hard if we break the function up.
 # it requires triggers spread across multiple divs or cached globals
-# and is much uglier than even this. dash's restriction on callbacks to a single output
+# and is much uglier than even this. dash's restriction on callbacks to a
+# single output
 # makes it even worse. probably the best thing to do
 # in the long run is to treat this basically as a dispatch function.
 def recalculate_main_graph(
@@ -246,15 +252,22 @@ def recalculate_main_graph(
     truncated_queryset = queryset
     for settings, suffix in zip(
         [x_settings, y_settings, marker_settings],
-        ["x.value", "y.value", "marker.value"]
+        ["x.value", "y.value", "marker.value"],
     ):
         truncated_queryset = truncate_queryset_for_missing_filters(
             settings, truncated_queryset, prefix="main", suffix=suffix
         )
-    x_axis = make_axis(x_settings, truncated_queryset, prefix = "main", suffix="x.value")
-    y_axis = make_axis(y_settings, truncated_queryset, prefix = "main", suffix="y.value")
+    x_axis = make_axis(
+        x_settings, truncated_queryset, prefix="main", suffix="x.value"
+    )
+    y_axis = make_axis(
+        y_settings, truncated_queryset, prefix="main", suffix="y.value"
+    )
     marker_properties = make_marker_properties(
-        marker_settings, truncated_queryset, prefix="main", suffix = 'marker.value'
+        marker_settings,
+        truncated_queryset,
+        prefix="main",
+        suffix="marker.value",
     )
     # these text and customdata choices are likely placeholders
     text = [spec.observation.seq_id + " " + spec.color for spec in queryset]
@@ -281,7 +294,8 @@ def recalculate_main_graph(
             cset(parameter, locals()[parameter])
     graph_layout = ctx.states["main-graph.figure"]["layout"]
 
-    # automatically reset graph zoom only if we're loading the page or changing options and therefore scales
+    # automatically reset graph zoom only if we're loading the page or
+    # changing options and therefore scales
     if not_triggered() or (
         ctx.triggered[0]["prop_id"]
         in ["main-graph-option-y.value", "main-graph-option-x.value"]
@@ -294,37 +308,61 @@ def recalculate_main_graph(
     )
 
 
-def field_values(queryset, field):
+def field_values(queryset, field=None, check_related=None):
     """
     generates dict if all unique values in model's field
     + any and blank, for passing to HTML select constructors
+
+    if check_related is passed, will check a related model
+    defined via foreign key or whatever relationship (like parent observation)
+    if passed field is not on model
+
     as this is based on current queryset,
     it will by default display options as constrained by other search
     parameters. this has upsides and downsides.
     it will also lead to odd behavior if care is not given.
     maybe it's a bad idea.
 
-    wait, is that correct? check up the chain.
+    TODO: wait, is that correct? check up the chain.
     """
-    if not field:
-        return [{"label": "any", "value": "any"}]
-    options_list = [
-        {"label": item, "value": item}
-        for item in set(qlist(queryset, field))
-        if item not in ["", "nan"]
-    ]
     special_options = [
         {"label": "any", "value": "any"},
         # too annoying to detect all 'blank' things atm
         # {'label':'no assigned value','value':''}
     ]
-    return special_options + options_list
+    if not field:
+        return special_options
+    if field in [field.name for field in queryset.model._meta.fields]:
+        unique_elements = set(qlist(queryset, field))
+    elif check_related is None:
+        return special_options
+    elif field not in [
+        field.name
+        for field in getattr(queryset[0], check_related)._meta.fields
+    ]:
+        return special_options
+    else:
+        unique_elements = set(
+            [
+                getattr(getattr(element, check_related), field)
+                for element in queryset
+            ]
+        )
+    options = none_to_quote_unquote_none(list(unique_elements))
+    options.sort()
+    formatted_options = [
+        {"label": option, "value": option}
+        for option in options
+        if option not in ["", "nan"]
+    ]
+    return special_options + formatted_options
 
 
 def toggle_search_input_visibility(field, *, spec_model):
     """
     toggle between showing and hiding term drop down / number range boxes.
-    right now just returns simple dicts to the dash callback based on the field's value type
+    right now just returns simple dicts to the dash callback based on the
+    field's value type
     (quant or qual) as appropriate.
     """
     if not field:
@@ -359,8 +397,10 @@ def update_search_options(
     field, _load_trigger_index, current_quant_search, *, cget
 ):
     """
-    populate term values and parameter range as appropriate when different fields are selected in the search interface
-    currently this does _not_ cascade according to selected terms. this may or may not be desirable
+    populate term values and parameter range as appropriate when different
+    fields are selected in the search interface
+    currently this does _not_ cascade according to selected terms. this may
+    or may not be desirable
     """
     if not_triggered():
         raise PreventUpdate
@@ -393,9 +433,16 @@ def update_search_options(
             search_text,
         ]
 
-    # otherwise, populate the term interface and reset the range display and searches
+    # otherwise, populate the term interface and reset the range display and
+    # searches
 
-    return [field_values(queryset.model.objects.all(), field), "", ""]
+    # TODO: probably this should be modified to nicely check "parent_property" etc
+
+    return [
+        field_values(queryset.model.objects.all(), field, "observation"),
+        "",
+        "",
+    ]
 
 
 def change_calc_input_visibility(calc_type, *, spec_model):
@@ -439,7 +486,8 @@ def handle_graph_search(model, parameters):
         if field:
             props = keygrab(model.searchable_fields, "label", field)
             parameter["value_type"] = props["value_type"]
-            # format references to parent observation appropriately for Q objects
+            # format references to parent observation appropriately for Q
+            # objects
             if props["type"] == "parent_property":
                 parameter["field"] = "observation__" + field
     # toss out 'any' entries, blank strings, etc.
@@ -456,8 +504,10 @@ def handle_graph_search(model, parameters):
 
 def make_sibling_set(observations):
     """
-    returns a set of tuples, each containing the child spectra of one observation.
-    for pairing spectra with their siblings without hitting the database repeatedly.
+    returns a set of tuples, each containing the child spectra of one
+    observation.
+    for pairing spectra with their siblings without hitting the database
+    repeatedly.
     """
     return set(
         [tuple([spec.id for spec in obs.spectra()]) for obs in observations]
@@ -490,7 +540,8 @@ def update_queryset(
     if not (fields and (terms or quant_search_entries)):
         raise PreventUpdate
     # construct a list of search parameters from the filled inputs
-    # (ideally totally non-filled inputs would also be rejected by handle_graph_search)
+    # (ideally totally non-filled inputs would also be rejected by
+    # handle_graph_search)
     # search_list = [
     #     {"field": field, "term": term, "begin": begin, "end": end}
     #     for field, term, begin, end in zip(
@@ -558,7 +609,8 @@ def add_dropdown(children, spec_model, cget, cset):
 
 def remove_dropdown(index, children, cget, cset):
     """
-    remove a search constraint dropdown, and its attendant constraints on searches.
+    remove a search constraint dropdown, and its attendant constraints on
+    searches.
     """
     param_to_remove = None
     for param in children:
@@ -605,11 +657,14 @@ def control_search_dropdowns(
 # ## individual-spectrum display functions
 
 
-def spectrum_from_graph_event(event_data, spec_model):
+def spectrum_from_graph_event(
+    event_data: dict, spec_model: "Model"
+) -> "Model":
     """
     dcc.Graph event data (e.g. hoverData), plotter.Spectrum class ->
     plotter.Spectrum instance
-    this function assumes it's getting data from a browser event that highlights
+    this function assumes it's getting data from a browser event that
+    highlights
     a single graphed point, like clicking it or hovering on it, and returns
     the associated Spectrum object.
     """
@@ -684,7 +739,9 @@ def update_spectrum_images(
     """
     if not event_data:
         raise PreventUpdate
-    spectrum = spectrum_from_graph_event(event_data, spec_model)
+    # type checking just can't handle django class inheritance
+    # noinspection PyTypeChecker
+    spectrum: "MSpec" = spectrum_from_graph_event(event_data, spec_model)
     return make_mspec_browse_image_components(
         spectrum, image_directory, base_size, static_image_url
     )
@@ -698,7 +755,8 @@ class SPlot:
     """
 
     def __init__(self, arg_dict):
-        # maybe eventually we define this more flexibly but better to be strict for now
+        # maybe eventually we define this more flexibly but better to be
+        # strict for now
         for parameter in self.canonical_parameters:
             setattr(self, parameter, arg_dict[parameter])
 
@@ -720,7 +778,8 @@ class SPlot:
         "x_axis",
         "y_axis",
         "text",
-        # customdata is typically a list of the pks of the spectra in axis order
+        # customdata is typically a list of the pks of the spectra in axis
+        # order
         "customdata",
         "queryset",
         "search_parameters",
@@ -739,9 +798,12 @@ class SPlot:
 def describe_current_graph(cget):
     """
     note this this relies on cached 'globals' from recalculate_graph
-    and update_queryset! if this turns out to be an excessively ugly flow control
-    solution, we could instead turn it into a callback that dynamically monitors state
-    of the same objects they monitor the state of...but that parallel structure seems
+    and update_queryset! if this turns out to be an excessively ugly flow
+    control
+    solution, we could instead turn it into a callback that dynamically
+    monitors state
+    of the same objects they monitor the state of...but that parallel
+    structure seems
     worse.
     """
     return {
@@ -775,7 +837,6 @@ def open_viewer_tab(tabs, cget, cset):
 
 
 def close_viewer_tab(index, tabs, cget, cset):
-
     # parse the frankly unfortunate dash input structure for the index of
     # the tab whose button this is
     tab_to_close = None
@@ -802,7 +863,8 @@ def save_search_tab_state(
     _n_clicks, cget, filename="./saves/saved_searches.csv"
 ):
     """
-    fairly permissive right now. this saves current search-tab state to a file as csv,
+    fairly permissive right now. this saves current search-tab state to a
+    file as csv,
     which can then be reloaded by make_loaded_search_tab.
     """
 
@@ -820,7 +882,8 @@ def save_search_tab_state(
             *cget("x_settings").values(),
             *cget("y_settings").values(),
             # just passing a list here this makes the pd.DataFrame constructor
-            # interpret it as two rows with the same x_setting and y_setting values,
+            # interpret it as two rows with the same x_setting and y_setting
+            # values,
             # which is a cool feature, but not the one we're looking for,
             # so we 'serialize' it
             str(cget("search_parameters")),
@@ -907,7 +970,8 @@ def control_tabs(
             load_trigger_index,
         )
     if "load-search-load-button" in trigger:
-        # don't try anything if nothing in the saved search dropdown is selected
+        # don't try anything if nothing in the saved search dropdown is
+        # selected
         if not load_row:
             raise PreventUpdate
         # explicitly trigger graph recalculation call in update_queryset
@@ -917,7 +981,8 @@ def control_tabs(
         new_tabs, active_tab_value = load_saved_search(
             tabs, load_row, spec_model, search_file
         )
-        # this cache parameter is for semi-asynchronous flow control of the load process
+        # this cache parameter is for semi-asynchronous flow control of the
+        # load process
         # without having to literally
         # have one dispatch callback function for the entire app
         cset("load_state", {"update_search_options": True})
