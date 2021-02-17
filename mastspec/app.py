@@ -23,7 +23,7 @@ from plotter.models import MSpec
 from plotter.graph import (
     cache_set, cache_get, update_spectrum_images, update_spectrum_graph,
     control_tabs,
-    control_search_dropdowns, recalculate_graph, update_search_options,
+    control_search_dropdowns, recalculate_main_graph, update_search_options,
     update_queryset,
     change_calc_input_visibility, toggle_search_input_visibility,
     graph_point_to_metadata,
@@ -133,22 +133,23 @@ cset('open_graph_viewers', [])
 # repetition in app structure definition and function calls.
 # it's possible these should actually be in plotter.components.
 x_inputs = [
-    Input('filter-1-x', 'value'),
-    Input('filter-2-x', 'value'),
-    Input('filter-3-x', 'value'),
-    Input('graph-option-x', 'value'),
+    Input('main-filter-1-x', 'value'),
+    Input('main-filter-2-x', 'value'),
+    Input('main-filter-3-x', 'value'),
+    Input('main-graph-option-x', 'value'),
 ]
 y_inputs = [
-    Input('filter-1-y', 'value'),
-    Input('filter-2-y', 'value'),
-    Input('filter-3-y', 'value'),
-    Input('graph-option-y', 'value')
+    Input('main-filter-1-y', 'value'),
+    Input('main-filter-2-y', 'value'),
+    Input('main-filter-3-y', 'value'),
+    Input('main-graph-option-y', 'value')
 ]
 marker_inputs = [
-    Input('filter-1-marker', 'value'),
-    Input('filter-2-marker', 'value'),
-    Input('filter-3-marker', 'value'),
-    Input('graph-option-marker', 'value')
+    Input('main-filter-1-marker', 'value'),
+    Input('main-filter-2-marker', 'value'),
+    Input('main-filter-3-marker', 'value'),
+    Input('main-graph-option-marker', 'value'),
+    Input('main-color', 'value')
 ]
 
 # client-side url for serving images to the user.
@@ -201,7 +202,7 @@ settings = {
 functions_requiring_settings = [
     control_tabs,
     control_search_dropdowns,
-    recalculate_graph,
+    recalculate_main_graph,
     update_search_options,
     update_queryset,
     change_calc_input_visibility,
@@ -274,11 +275,11 @@ app.layout = html.Div(children=[
 for value_class in ['x', 'y', 'marker']:
     app.callback(
         [
-            Output('filter-1-' + value_class, 'style'),
-            Output('filter-2-' + value_class, 'style'),
-            Output('filter-3-' + value_class, 'style'),
+            Output('main-filter-1-' + value_class, 'style'),
+            Output('main-filter-2-' + value_class, 'style'),
+            Output('main-filter-3-' + value_class, 'style'),
         ],
-        [Input('graph-option-' + value_class, 'value')]
+        [Input('main-graph-option-' + value_class, 'value')]
     )(change_calc_input_visibility)
 
 # trigger redraw of main graph
@@ -297,7 +298,7 @@ app.callback(
     [
         State('main-graph', 'figure')
     ]
-)(recalculate_graph)
+)(recalculate_main_graph)
 
 # change visibility of search filter inputs
 # based on whether a 'quantitative' or 'qualitative'

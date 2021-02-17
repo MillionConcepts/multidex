@@ -10,7 +10,7 @@ import datetime as dt
 from copy import deepcopy
 from functools import reduce
 from operator import or_
-from typing import TYPE_CHECKING, Any, Callable, Iterable
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional
 
 import dash
 from dash.exceptions import PreventUpdate
@@ -18,8 +18,12 @@ import dash_html_components as html
 import pandas as pd
 import plotly.graph_objects as go
 
-from plotter.components import parse_model_quant_entry, search_parameter_div, \
-    viewer_tab, search_tab
+from plotter.components import (
+    parse_model_quant_entry,
+    search_parameter_div,
+    viewer_tab,
+    search_tab,
+)
 from plotter_utils import (
     djget,
     dict_to_paragraphs,
@@ -34,6 +38,7 @@ from plotter_utils import (
     trigger_index,
     triggered_by,
     filter_null_attributes,
+    ctxdict,
 )
 
 if TYPE_CHECKING:
@@ -50,47 +55,59 @@ if TYPE_CHECKING:
 # because Flask does not guarantee thread safety of globals.
 
 
-def cache_set(cache: 'flask_caching.Cache') -> Callable[[str, Any], bool]:
+def cache_set(cache: "flask_caching.Cache") -> Callable[[str, Any], bool]:
     def cset(key: str, value: Any) -> bool:
         return cache.set(key, value)
 
     return cset
 
 
-def cache_get(cache: 'flask_caching.Cache') -> Callable[[str], Any]:
+def cache_get(cache: "flask_caching.Cache") -> Callable[[str], Any]:
     def cget(key: str) -> Any:
         return cache.get(key)
 
     return cget
 
 
-def make_axis(settings: dict, queryset: 'QuerySet', suffix: str) -> list[float]:
+def truncate_queryset_for_missing_filters(
+    settings: dict, queryset: "QuerySet", prefix: str, suffix: str
+):
+    axis_option = settings[prefix + "-graph-option-" + suffix]
+    props = keygrab(queryset.model.axis_value_properties, "value", axis_option)
+    if props["type"] != "method":
+        return queryset
+    # we assume here that 'methods' all take a spectrum's filter names
+    # as arguments, and have arguments in an order corresponding to the inputs.
+    filt_args = [
+        settings[prefix + "-filter-" + str(ix) + "-" + suffix]
+        for ix in range(1, props["arity"] + 1)
+    ]
+    return filter_null_attributes(queryset, filt_args)
+
+
+def make_axis(
+    settings: dict, queryset: "QuerySet", prefix: str, suffix: str
+) -> Optional[list[float]]:
     """
     make an axis for one of our graphs by looking at a bunch of objects,
-    usually Spectrum instances.
+    usually Spectrum instances. this expects a queryset that has already
+    been processed by truncate_queryset_for_missing_filters().
     """
     # what is requested function or property?
-    axis_option = settings["graph-option-" + suffix]
+    axis_option = settings[prefix + "-graph-option-" + suffix]
     # what are the characteristics of that function or property?
-    props = keygrab(
-        queryset.model.axis_value_properties, "value", axis_option
-    )
+    props = keygrab(queryset.model.axis_value_properties, "value", axis_option)
     if props["type"] == "method":
         # we assume here that 'methods' all take a spectrum's filter names
         # as arguments, and have arguments in an order corresponding to the inputs.
         filt_args = [
-            settings["filter-" + str(ix) + "-" + suffix]
+            settings[prefix + "-filter-" + str(ix) + "-" + suffix]
             for ix in range(1, props["arity"] + 1)
         ]
-        # if some values are blank, don't try to call the function
-        if all(filt_args):
-            # call the function only
-            truncated_queryset = filter_null_attributes(queryset, filt_args)
-            return [
-                getattr(spectrum, props["value"])(*filt_args)
-                for spectrum in truncated_queryset
-            ]
-        return None
+        return [
+            getattr(spectrum, props["value"])(*filt_args)
+            for spectrum in queryset
+        ]
     if props["type"] == "parent_property":
         return [
             getattr(spectrum.observation, props["value"])
@@ -106,7 +123,7 @@ def redorblue(value, container):
 
 
 def none_to_quote_unquote_none(
-        list_containing_none: Iterable[Any]
+    list_containing_none: Iterable[Any],
 ) -> list[Any]:
     de_noned_list = []
     for element in list_containing_none:
@@ -125,39 +142,48 @@ def arbitrarily_hash_strings(strings: Iterable[str]) -> list[int]:
     return [arbitrary_hash[string] for string in strings]
 
 
-def make_marker_properties(settings, queryset):
-    print(settings)
-    marker_option = settings["graph-option-marker.value"]
+def make_marker_properties(settings, queryset, prefix, suffix):
+    """
+    this expects a queryset that has already
+    been processed by truncate_queryset_for_missing_filters().
+    """
+    marker_option = settings[prefix + "-graph-option-" + suffix]
     props = keygrab(
-        queryset.model.marker_value_properties,
-        "value",
-        marker_option
+        queryset.model.marker_value_properties, "value", marker_option
     )
-    if props["type"] not in ["parent_property", "self_property"]:
-        return {
-            'marker': {
-                'color': 'red',
-            }
-        }
-    if props["type"] == "parent_property":
-        attribute_list = arbitrarily_hash_strings(
-            none_to_quote_unquote_none([
-                getattr(spectrum.observation, props["value"])
-                for spectrum in queryset
-            ])
+    """
+    TODO: this stuff should be split off into a function that 
+    make_marker_properties and make_axis both call
+    """
+    if props["type"] == "method":
+        # we assume here that 'methods' all take a spectrum's filter names
+        # as arguments, and have arguments in an order corresponding to
+        # the inputs.
+        filt_args = [
+            settings[prefix + "-filter-" + str(ix) + '-' + suffix]
+            for ix in range(1, props["arity"] + 1)
+        ]
+        property_list = [
+            getattr(spectrum, props["value"])(*filt_args)
+            for spectrum in queryset
+        ]
+    elif props["type"] == "parent_property":
+        property_list = [
+            getattr(spectrum.observation, props["value"])
+            for spectrum in queryset
+        ]
+    else:
+        property_list = [
+            getattr(spectrum, props["value"]) for spectrum in queryset
+        ]
+    if props["value_type"] == "qual":
+        color_indices = arbitrarily_hash_strings(
+            none_to_quote_unquote_none(property_list)
         )
-    elif props["type"] == "self_property":
-        attribute_list = arbitrarily_hash_strings(
-            none_to_quote_unquote_none([
-                getattr(spectrum, props["value"])
-                for spectrum in queryset
-            ])
-        )
-    return {
-        'marker': {
-            'color': attribute_list
-        }
-    }
+    else:
+        color_indices = property_list
+    colormap = settings[prefix + "-color.value"]
+    return {"marker": {"color": color_indices, "colorscale": colormap}}
 
 
 def sibling_ids(spec_id, cget):
@@ -192,7 +218,7 @@ def main_graph_hover_styler(ctx, cget):
 # and is much uglier than even this. dash's restriction on callbacks to a single output
 # makes it even worse. probably the best thing to do
 # in the long run is to treat this basically as a dispatch function.
-def recalculate_graph(
+def recalculate_main_graph(
     *args,
     x_inputs,
     y_inputs,
@@ -202,11 +228,6 @@ def recalculate_graph(
     cset,
     record_settings=True,
 ):
-    ctx = dash.callback_context
-    # do nothing on page load
-    # if not_triggered():
-    #     raise PreventUpdate
-
     ctx = dash.callback_context
     if ctx.triggered[0]["prop_id"] == "main-graph.hoverData":
         raise PreventUpdate
@@ -222,16 +243,26 @@ def recalculate_graph(
     # we can probably get away without any fancy flow control
     # b/c memoization...if it turns out that hitting the cache this way sucks,
     # we will add it.
-    x_axis = make_axis(x_settings, queryset, suffix="x.value")
-    y_axis = make_axis(y_settings, queryset, suffix="y.value")
-    marker_properties = make_marker_properties(marker_settings, queryset)
+    truncated_queryset = queryset
+    for settings, suffix in zip(
+        [x_settings, y_settings, marker_settings],
+        ["x.value", "y.value", "marker.value"]
+    ):
+        truncated_queryset = truncate_queryset_for_missing_filters(
+            settings, truncated_queryset, prefix="main", suffix=suffix
+        )
+    x_axis = make_axis(x_settings, truncated_queryset, prefix = "main", suffix="x.value")
+    y_axis = make_axis(y_settings, truncated_queryset, prefix = "main", suffix="y.value")
+    marker_properties = make_marker_properties(
+        marker_settings, truncated_queryset, prefix="main", suffix = 'marker.value'
+    )
     # these text and customdata choices are likely placeholders
     text = [spec.observation.seq_id + " " + spec.color for spec in queryset]
     customdata = [spec.id for spec in queryset]
     # this case is most likely shortly after page load
     # when not everything is filled out
-    if not (x_axis and y_axis):
-        raise PreventUpdate
+    # if not (x_axis and y_axis):
+    #     raise PreventUpdate
 
     # for functions that (perhaps asynchronously) fetch the state of the graph.
     # this is another perhaps ugly flow control thing!
@@ -248,8 +279,19 @@ def recalculate_graph(
             "graph_function",
         ):
             cset(parameter, locals()[parameter])
+    graph_layout = ctx.states["main-graph.figure"]["layout"]
 
-    return graph_function(x_axis, y_axis, marker_properties, text, customdata)
+    # automatically reset graph zoom only if we're loading the page or changing options and therefore scales
+    if not_triggered() or (
+        ctx.triggered[0]["prop_id"]
+        in ["main-graph-option-y.value", "main-graph-option-x.value"]
+    ):
+        zoom = None
+    else:
+        zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
+    return graph_function(
+        x_axis, y_axis, marker_properties, text, customdata, zoom
+    )
 
 
 def field_values(queryset, field):
@@ -318,8 +360,7 @@ def update_search_options(
 ):
     """
     populate term values and parameter range as appropriate when different fields are selected in the search interface
-    currently this cascades in narrowness in a not-totally predictable way as new terms are added.
-    this may or may not end up being desirable.
+    currently this does _not_ cascade according to selected terms. this may or may not be desirable
     """
     if not_triggered():
         raise PreventUpdate
@@ -354,7 +395,7 @@ def update_search_options(
 
     # otherwise, populate the term interface and reset the range display and searches
 
-    return [field_values(queryset, field), "", ""]
+    return [field_values(queryset.model.objects.all(), field), "", ""]
 
 
 def change_calc_input_visibility(calc_type, *, spec_model):
@@ -477,7 +518,6 @@ def update_queryset(
     # should be memoized
     search = handle_graph_search(spec_model, deepcopy(search_list))
     ctx = dash.callback_context
-    print(ctx)
     if (
         set(search) != set(cget("queryset"))
         or "load-trigger" in ctx.triggered[0]["prop_id"]
@@ -525,9 +565,7 @@ def remove_dropdown(index, children, cget, cset):
         if param["props"]["id"]["index"] == index:
             param_to_remove = param
     if not param_to_remove:
-        raise ValueError(
-            "Got the wrong param-to-remove index from somewhere."
-        )
+        raise ValueError("Got the wrong param-to-remove index from somewhere.")
 
     new_children = deepcopy(children)
     new_children.remove(param_to_remove)
@@ -582,9 +620,7 @@ def spectrum_from_graph_event(event_data, spec_model):
     )
 
 
-def graph_point_to_metadata(
-    event_data, *, spec_model, style=None
-):
+def graph_point_to_metadata(event_data, *, spec_model, style=None):
     if style is None:
         style = {"margin": 0, "fontSize": 14}
     # parses hoverdata, clickdata, etc from main graph
@@ -628,10 +664,7 @@ def make_mspec_browse_image_components(
         image_div_children.append(
             html.Img(
                 src=filename,
-                style={
-                    "width": "50%",
-                    "height": "50%"
-                },
+                style={"width": "50%", "height": "50%"},
                 id="spec-image-" + eye,
             )
         )
@@ -663,6 +696,7 @@ class SPlot:
     and axis relationships. probably also eventually visual settings.
     used for saving and restoring plots.
     """
+
     def __init__(self, arg_dict):
         # maybe eventually we define this more flexibly but better to be strict for now
         for parameter in self.canonical_parameters:

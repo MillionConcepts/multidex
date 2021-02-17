@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Mapping, Optional, Iterable
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objects as go
+import plotly.express as px
 
 from plotter_utils import get_if, none_to_empty
 
@@ -16,56 +17,54 @@ if TYPE_CHECKING:
 
 
 # TODO: is this a terrible placeholder?
-def fetch_css_variables(css_file: str = 'assets/main.css') -> dict[str, str]:
+def fetch_css_variables(css_file: str = "assets/main.css") -> dict[str, str]:
     css_variable_dictionary = {}
     with open(css_file) as stylesheet:
         css_lines = stylesheet.readlines()
     for line in css_lines:
-        if not re.match(r'\s+--', line):
+        if not re.match(r"\s+--", line):
             continue
-        key, value = re.split(r':\s+', line)
-        key = re.sub(r'(--)|[ :]', '', key)
-        value = re.sub(r'[ \n;]', '', value)
+        key, value = re.split(r":\s+", line)
+        key = re.sub(r"(--)|[ :]", "", key)
+        value = re.sub(r"[ \n;]", "", value)
         css_variable_dictionary[key] = value
     return css_variable_dictionary
 
 
 css_variables = fetch_css_variables()
 GRAPH_COLOR_SETTINGS = {
-    'plot_bgcolor': css_variables['dark-tint-0'],
-    'paper_bgcolor': css_variables['clean-parchment']
+    "plot_bgcolor": css_variables["dark-tint-0"],
+    "paper_bgcolor": css_variables["clean-parchment"],
 }
 GRAPH_AXIS_SETTINGS = {
-    'showline': True,
-    'showgrid': True,
-    'mirror': True,
-    'linewidth': 2,
-    'gridcolor': css_variables['dark-tint-0'],
-    'linecolor': css_variables['dark-tint-1'],
-    'zerolinecolor': css_variables['dark-tint-1'],
-    'spikecolor': css_variables['dark-tint-1'],
-    'tickcolor': css_variables['midnight-ochre'],
-    'tickfont': {'family': 'Fira Mono'}
+    "showline": True,
+    "showgrid": True,
+    "mirror": True,
+    "linewidth": 2,
+    "gridcolor": css_variables["dark-tint-0"],
+    "linecolor": css_variables["dark-tint-1"],
+    "zerolinecolor": css_variables["dark-tint-1"],
+    "spikecolor": css_variables["dark-tint-1"],
+    "tickcolor": css_variables["midnight-ochre"],
+    "tickfont": {"family": "Fira Mono"},
 }
 
 
 # note that style properties are camelCased rather than hyphenated
 # b/c React
 
+
 def dynamic_spec_div(
-        print_name: str,
-        graph_name: str,
-        image_name: str,
-        index: int
-) -> html.Div[html.Pre, html.Div, html.Div]:
+    print_name: str, graph_name: str, image_name: str, index: int
+) -> html.Div:
     return html.Div(
         children=[
             html.Pre(
                 children=[],
                 id={"type": print_name, "index": index},
                 style={
-                    "width": "20vw",
                     "marginLeft": "5vw",
+                    "width": "15vw",
                     "display": "inline-block",
                     "verticalAlign": "top",
                 },
@@ -79,12 +78,16 @@ def dynamic_spec_div(
             ),
             html.Div(
                 id={"type": image_name, "index": index},
-                style={"display": "inline-block", "max-height": "20vw",
-                       "padding-top": "1.5rem"},
+                style={
+                    "display": "inline-block",
+                    "max-height": "20vw",
+                    "padding-top": "1.5rem",
+                    "width": "30vw",
+                },
             ),
         ],
         id={"type": "spec-container", "index": index},
-        style={'display': 'flex'}
+        style={"display": "flex"},
     )
 
 
@@ -93,20 +96,30 @@ def main_graph() -> dcc.Graph:
     """dash component factory for main graph"""
     fig = go.Figure()
     # noinspection PyTypeChecker
-    fig.update_layout({
-                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
-                      } | GRAPH_COLOR_SETTINGS)
-    return dcc.Graph(id="main-graph", figure=fig, style={"height": "60vh"},
-                     className='graph')
+    fig.update_layout(
+        {
+            "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
+        }
+        | GRAPH_COLOR_SETTINGS
+    )
+    return dcc.Graph(
+        id="main-graph",
+        figure=fig,
+        style={"height": "60vh"},
+        className="graph",
+    )
 
 
 def spec_graph(name: str, index: int) -> dcc.Graph:
     """dash component factory for reflectance graphs"""
     fig = go.Figure()
     # noinspection PyTypeChecker
-    fig.update_layout({
-                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
-                      } | GRAPH_COLOR_SETTINGS)
+    fig.update_layout(
+        {
+            "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
+        }
+        | GRAPH_COLOR_SETTINGS
+    )
     return dcc.Graph(
         id={"type": name, "index": index},
         figure=fig,
@@ -116,15 +129,18 @@ def spec_graph(name: str, index: int) -> dcc.Graph:
 
 def image_holder(index: int = 0) -> dcc.Graph:
     """dash component factory for zoomable static images. maybe. placeholder"""
-    return dcc.Graph(id="image-" + str(index), )
+    return dcc.Graph(
+        id="image-" + str(index),
+    )
 
 
 def main_graph_scatter(
-        x_axis: list[float],
-        y_axis: list[float],
-        marker_property_dict: Mapping,
-        text: list,
-        customdata: list
+    x_axis: list[float],
+    y_axis: list[float],
+    marker_property_dict: Mapping,
+    text: list,
+    customdata: list,
+    zoom: Optional[tuple[list[float, float]]] = None,
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -144,22 +160,26 @@ def main_graph_scatter(
         )
     )
     # noinspection PyTypeChecker
-    fig.update_layout({
-                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0},
-                      } | GRAPH_COLOR_SETTINGS)
+    fig.update_layout(
+        {
+            "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
+        }
+        | GRAPH_COLOR_SETTINGS
+    )
     fig.update_xaxes(GRAPH_AXIS_SETTINGS)
     fig.update_yaxes(GRAPH_AXIS_SETTINGS)
-    # trace_dict = {
-    #     'marker': {'color': 'blue'},
-    #     'size': 3
-    # }
-    # https://plotly.com/python-api-reference/generated/plotly.graph_objects
-    # .Scattergl.html#plotly.graph_objects.Scattergl
     fig.update_traces(**marker_property_dict)
+    if zoom is not None:
+        fig.update_layout(
+            {
+                "xaxis": {"range": [zoom[0][0], zoom[0][1]]},
+                "yaxis": {"range": [zoom[1][0], zoom[1][1]]},
+            }
+        )
     return fig
 
 
-def mspec_graph_line(spectrum: 'Spectrum') -> go.Figure:
+def mspec_graph_line(spectrum: "Spectrum") -> go.Figure:
     """
     placeholder line graph for individual mastcam spectra.
     creates a plotly figure from the mspec's filter values and
@@ -171,21 +191,23 @@ def mspec_graph_line(spectrum: 'Spectrum') -> go.Figure:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=x_axis, y=y_axis, mode="lines+markers",
-            line={'color': spectrum.roi_hex_code()}
+            x=x_axis,
+            y=y_axis,
+            mode="lines+markers",
+            line={"color": spectrum.roi_hex_code()},
         )
     )
     # noinspection PyTypeChecker
-    fig.update_layout({
-                          'margin': {"l": 10, "r": 10, "t": 25, "b": 0}
-                      } | GRAPH_COLOR_SETTINGS)
+    fig.update_layout(
+        {"margin": {"l": 10, "r": 10, "t": 25, "b": 0}} | GRAPH_COLOR_SETTINGS
+    )
     fig.update_xaxes(GRAPH_AXIS_SETTINGS)
     fig.update_yaxes(GRAPH_AXIS_SETTINGS)
     return fig
 
 
 def marker_options_drop(
-        spec_model: 'Spectrum', element_id: str, value: str = None
+    spec_model: "Spectrum", element_id: str, value: str = None
 ) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
@@ -198,9 +220,29 @@ def marker_options_drop(
         value = options[0]["value"]
     return dcc.Dropdown(
         id=element_id,
-        className='marker-value-drop',
+        className="marker-value-drop",
         options=options,
-        value=value
+        value=value,
+    )
+
+
+def color_drop(
+    element_id: str, value: str = None
+) -> dcc.Dropdown:
+    """
+    dropdown for selecting calculation options for marker settings
+    """
+    options = [
+        {"label": colormap, "value": colormap}
+        for colormap in px.colors.named_colorscales()
+    ]
+    if not value:
+        value = options[0]["value"]
+    return dcc.Dropdown(
+        id=element_id,
+        className="color-drop",
+        options=options,
+        value=value,
     )
 
 
@@ -216,9 +258,9 @@ def axis_value_drop(spec_model, element_id, value=None):
         value = options[0]["value"]
     return dcc.Dropdown(
         id=element_id,
-        className='axis-value-drop',
+        className="axis-value-drop",
         options=options,
-        value=value
+        value=value,
     )
 
 
@@ -248,9 +290,7 @@ def field_drop(fields, element_id, index, value=None):
 
 
 def model_options_drop(
-        element_id: str,
-        index: int,
-        value: Optional[str] = None
+    element_id: str, index: int, value: Optional[str] = None
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
@@ -265,10 +305,10 @@ def model_options_drop(
 
 
 def model_range_entry(
-        element_id: str,
-        index: int,
-        begin: Optional[float] = None,
-        end: Optional[float] = None
+    element_id: str,
+    index: int,
+    begin: Optional[float] = None,
+    end: Optional[float] = None,
 ) -> list[dcc.Input]:
     """
     pair of entry fields for selecting a range of values for a
@@ -315,7 +355,8 @@ def parse_model_quant_entry(string: str) -> dict:
             value_dict["end"] = ""
         if not (value_dict["begin"] or value_dict["end"]):
             raise ValueError(
-                "Either a beginning or end numerical value must be entered.")
+                "Either a beginning or end numerical value must be entered."
+            )
     elif string == "":
         pass
     else:
@@ -325,7 +366,8 @@ def parse_model_quant_entry(string: str) -> dict:
             value_dict["value_list"] = [float(item) for item in list_list]
         except ValueError:
             raise ValueError(
-                "Non-numerical lists are currently not supported.")
+                "Non-numerical lists are currently not supported."
+            )
     return value_dict
 
 
@@ -333,7 +375,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
     if value_dict is None:
         text = ""
     elif ("value_list" in value_dict.keys()) and (
-            ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
+        ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
     ):
         raise ValueError(
             "Entering both an explicit value list and a value range is "
@@ -349,9 +391,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
 
 
 def model_range_entry_2(
-        element_id: str,
-        index: int,
-        value_dict: Optional[Mapping] = None
+    element_id: str, index: int, value_dict: Optional[Mapping] = None
 ) -> dcc.Input:
     """
     entry field for selecting a range of values for a
@@ -360,7 +400,7 @@ def model_range_entry_2(
     return dcc.Input(
         id={"type": element_id, "index": index},
         type="text",
-        value=unparse_model_quant_entry(value_dict)
+        value=unparse_model_quant_entry(value_dict),
     )
 
 
@@ -370,17 +410,13 @@ def model_range_display(element_id: str, index: int) -> html.P:
 
 
 def search_parameter_div(
-        index: int,
-        searchable_fields: Iterable[str],
-        preset_parameter=None
+    index: int, searchable_fields: Iterable[str], preset_parameter=None
 ) -> html.Div:
     get_r = partial(get_if, preset_parameter is not None, preset_parameter)
     children = [
         field_drop(searchable_fields, "field-search", index, get_r("field")),
         model_options_drop("term-search", index, get_r("term")),
-        model_range_entry_2(
-            "number-search", index, get_r("value_dict")
-        ),
+        model_range_entry_2("number-search", index, get_r("value_dict")),
         model_range_display("number-range-display", index),
     ]
     if index != 0:
@@ -393,14 +429,14 @@ def search_parameter_div(
     return html.Div(
         className="search-parameter-container",
         children=children,
-        id={"type": "search-parameter-div", "index": index}
+        id={"type": "search-parameter-div", "index": index},
     )
 
 
 def search_container_div(searchable_fields, preset_parameters):
     search_container = html.Div(
         id="search-controls-container-div",
-        className="search-controls-container"
+        className="search-controls-container",
     )
     if preset_parameters:
         # list was 'serialized' to string to put it in a single df cell
@@ -450,8 +486,9 @@ def trigger_div(prefix, number_of_triggers):
     """hidden div for semi-asynchronous callback triggers"""
     return html.Div(
         children=[
-            dcc.Input(id={"type": prefix + "-trigger", "index": index},
-                      value="")
+            dcc.Input(
+                id={"type": prefix + "-trigger", "index": index}, value=""
+            )
             for index in range(number_of_triggers)
         ],
         style={"display": "none"},
@@ -463,124 +500,142 @@ def load_search_drop(element_id):
     return html.Div(
         className="load-button-container",
         children=[
-            dcc.Dropdown(id=element_id + '-drop'),
-            html.Button(id=element_id + '-load-button', children='load'),
-            html.Button(id=element_id + '-save-button', children='save')
-        ])
+            dcc.Dropdown(id=element_id + "-drop"),
+            html.Button(id=element_id + "-load-button", children="load"),
+            html.Button(id=element_id + "-save-button", children="save"),
+        ],
+    )
 
 
 # primary search panel
 def search_tab(
-    spec_model: 'Spectrum',
-    restore_dictionary: Optional[Mapping] = None
+    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
 ):
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
-    get_r = partial(
-        get_if, restore_dictionary is not None, restore_dictionary
-    )
+    get_r = partial(get_if, restore_dictionary is not None, restore_dictionary)
     return dcc.Tab(
-        children=[html.Div(
-            className='graph-controls-container',
-            children=[html.Div(
-                className='axis-controls-container',
+        children=[
+            html.Div(
+                className="graph-controls-container",
                 children=[
-                    axis_value_drop(
-                        spec_model,
-                        "graph-option-x",
-                        value=get_r("graph-option-x"),
+                    html.Div(
+                        className="axis-controls-container",
+                        children=[
+                            axis_value_drop(
+                                spec_model,
+                                "main-graph-option-x",
+                                value=get_r("graph-option-x"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-1-x",
+                                value=get_r("main-filter-1-x.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-3-x",
+                                value=get_r("main-filter-3-x.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-2-x",
+                                value=get_r("main-filter-2-x.value"),
+                            ),
+                        ],
                     ),
-                    filter_drop(
-                        spec_model, "filter-1-x",
-                        value=get_r("filter-1-x.value")
+                    html.Div(
+                        className="axis-controls-container",
+                        children=[
+                            axis_value_drop(
+                                spec_model,
+                                "main-graph-option-y",
+                                value=get_r("main-graph-option-y.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-1-y",
+                                value=get_r("main-filter-1-y.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-3-y",
+                                value=get_r("main-filter-3-y.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-2-y",
+                                value=get_r("main-filter-2-y.value"),
+                            ),
+                        ],
                     ),
-                    filter_drop(
-                        spec_model, "filter-3-x",
-                        value=get_r("filter-3-x.value")
+                    html.Div(
+                        className="axis-controls-container",
+                        children=[
+                            marker_options_drop(
+                                spec_model,
+                                "main-graph-option-marker",
+                                value=get_r("graph-option-marker.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-1-marker",
+                                value=get_r("main-filter-1-marker.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-3-marker",
+                                value=get_r("main-filter-3-marker.value"),
+                            ),
+                            filter_drop(
+                                spec_model,
+                                "main-filter-2-marker",
+                                value=get_r("main-filter-2-marker.value"),
+                            ),
+                            color_drop(
+                                'main-color',
+                                value=get_r("graph-option-marker.value"),
+                            )
+                        ],
                     ),
-                    filter_drop(
-                        spec_model, "filter-2-x",
-                        value=get_r("filter-2-x.value")
+                    trigger_div("search", 2),
+                    trigger_div("load", 1),
+                    search_container_div(
+                        spec_model.searchable_fields,
+                        get_r("search_parameters"),
                     ),
-                ]),
-                html.Div(
-                    className='axis-controls-container',
-                    children=[
-                        axis_value_drop(
-                            spec_model,
-                            "graph-option-y",
-                            value=get_r("graph-option-y.value"),
-                        ),
-                        filter_drop(
-                            spec_model, "filter-1-y",
-                            value=get_r("filter-1-y.value")
-                        ),
-                        filter_drop(
-                            spec_model, "filter-3-y",
-                            value=get_r("filter-3-y.value")
-                        ),
-                        filter_drop(
-                            spec_model, "filter-2-y",
-                            value=get_r("filter-2-y.value")
-                        ),
-                    ]
-                ),
-                html.Div(
-                    className='axis-controls-container',
-                    children=[
-                        marker_options_drop(
-                            spec_model,
-                            "graph-option-marker",
-                            value=get_r("graph-option-marker.value"),
-                        ),
-                        filter_drop(
-                            spec_model, "filter-1-marker",
-                            value=get_r("filter-1-marker.value")
-                        ),
-                        filter_drop(
-                            spec_model, "filter-3-marker",
-                            value=get_r("filter-3-marker.value")
-                        ),
-                        filter_drop(
-                            spec_model, "filter-2-marker",
-                            value=get_r("filter-2-marker.value")
-                        ),
-                    ]
-                ),
-                trigger_div("search", 2),
-                trigger_div("load", 1),
-                search_container_div(
-                    spec_model.searchable_fields, get_r("search_parameters")
-                ),
-                html.Div(
-                    className="search-button-container",
-                    children=[
-                        # hidden trigger for queryset update on dropdown
-                        # removal
-                        html.Button(
-                            id={"type": "submit-search", "index": 1},
-                            style={"display": "none"},
-                        ),
-                        html.Button("add search parameter", id="add-param"),
-                        html.Button(
-                            id={"type": "submit-search", "index": 0},
-                            children="Update graph",
-                        ),
-                        html.Button(
-                            id="viewer-open-button",
-                            children="open in viewer tab",
-                        ),
-                    ])
-            ]),
-            html.Div(children=[main_graph()], id="main-graph-container"),
-
+                    html.Div(
+                        className="search-button-container",
+                        children=[
+                            # hidden trigger for queryset update on dropdown
+                            # removal
+                            html.Button(
+                                id={"type": "submit-search", "index": 1},
+                                style={"display": "none"},
+                            ),
+                            html.Button(
+                                "add search parameter", id="add-param"
+                            ),
+                            html.Button(
+                                id={"type": "submit-search", "index": 0},
+                                children="Update graph",
+                            ),
+                            html.Button(
+                                id="viewer-open-button",
+                                children="open in viewer tab",
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            html.Div(children=[main_graph()], id="main-container"),
             dynamic_spec_div(
                 "main-spec-print", "main-spec-graph", "main-spec-image", 0
             ),
-            html.Div(id='fake-output-for-callback-with-only-side-effects-0'),
-            html.Div(id='fake-output-for-callback-with-only-side-effects-1'),
-            html.Div(id='search-load-progress-flag'),
-            load_search_drop('load-search')
+            html.Div(id="fake-output-for-callback-with-only-side-effects-0"),
+            html.Div(id="fake-output-for-callback-with-only-side-effects-1"),
+            html.Div(id="search-load-progress-flag"),
+            load_search_drop("load-search"),
         ],
         # display title
         label="SEARCH",

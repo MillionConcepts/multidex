@@ -704,48 +704,49 @@ class MSpec(Spectrum):
             "value": "band_avg",
             "type": "method",
             "arity": 2,
+            "value_type": "quant"
         },
         {
             "label": "band maximum",
             "value": "band_max",
             "type": "method",
-            "arity": 2,
+            "arity": 2, "value_type": "quant"
         },
         {
             "label": "band minimum",
             "value": "band_min",
             "type": "method",
-            "arity": 2,
+            "arity": 2, "value_type": "quant"
         },
         {
             "label": "ratio",
             "value": "ref_ratio",
             "type": "method",
-            "arity": 2,
+            "arity": 2, "value_type": "quant"
         },
         {
             "label": "band depth at middle filter",
             "value": "band_depth_custom",
             "type": "method",
-            "arity": 3,
+            "arity": 3, "value_type": "quant"
         },
         {
             "label": "band depth at band minimum",
             "value": "band_depth_min",
             "type": "method",
-            "arity": 2,
+            "arity": 2, "value_type": "quant"
         },
-        {"label": "band value", "value": "ref", "type": "method", "arity": 1},
-        {"label": "sol", "value": "sol", "type": "parent_property"},
+        {"label": "band value", "value": "ref", "type": "method", "arity": 1, "value_type": "quant"},
+        {"label": "sol", "value": "sol", "type": "parent_property", "value_type": "quant"},
         {
             "label": "target elevation",
             "value": "target_elevation",
-            "type": "parent_property",
+            "type": "parent_property", "value_type": "quant"
         },
         {
             "label": "local true solar time",
             "value": "ltst",
-            "type": "parent_property",
+            "type": "parent_property", "value_type": "quant"
         },
     ]
 
@@ -761,7 +762,7 @@ class MSpec(Spectrum):
         #     "type": "parent_property",
         #     "value_type": "quant",
         # },
-        {"label": "seq_id", "value": "seq_id", "type": "parent_property", "value_type": "quant", },
+        {"label": "seq_id", "value": "seq_id", "type": "parent_property", "value_type": "qual"},
         {"label": "tau_interpolated", "value": "tau_interpolated", "type": "parent_property", "value_type": "quant"},
     ]
 

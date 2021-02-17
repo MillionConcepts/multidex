@@ -49,7 +49,7 @@ def qlist(queryset: 'QuerySet', attribute: str) -> list:
 
 
 def filter_null_attributes(queryset: 'QuerySet',
-                           attribute_list: Iterable[str]) -> str:
+                           attribute_list: Iterable[str]) -> 'QuerySet':
     for attribute in attribute_list:
         queryset = queryset.exclude(**{attribute + '__iexact': None})
     return queryset
@@ -177,7 +177,7 @@ def triggered_by(component_id: str) -> bool:
     return False
 
 
-def trigger_index(ctx : dash._callback_context.CallbackContext) -> int:
+def trigger_index(ctx: dash._callback_context.CallbackContext) -> int:
     """
     dash.callbackcontext -> int, where int is the index of the triggering
     component
@@ -214,7 +214,7 @@ def make_printer(element, prop, app, print_target="print",
     print_callback()
 
 
-### lambda replacements
+# ## lambda replacements
 
 
 def in_me(container):
@@ -279,7 +279,7 @@ def none_to_empty(thing: Any) -> Any:
     return thing
 
 
-### search functions
+# ## search functions
 
 
 # some of the following functions hit the database multiple times during
@@ -290,7 +290,8 @@ def none_to_empty(thing: Any) -> Any:
 # if and when required.
 
 
-def flexible_query(queryset: 'QuerySet', field: 'str', value: Any) -> 'QuerySet':
+def flexible_query(queryset: 'QuerySet', field: 'str',
+                   value: Any) -> 'QuerySet':
     """
     little search function that checks exact and loose phrases.
     have to hit the database to do this, so less efficient than using
@@ -306,7 +307,8 @@ def flexible_query(queryset: 'QuerySet', field: 'str', value: Any) -> 'QuerySet'
     return reduce(or_, filters)
 
 
-def inflexible_query(queryset: 'QuerySet', field: 'str', value: Any) -> 'QuerySet':
+def inflexible_query(queryset: 'QuerySet', field: 'str',
+                     value: Any) -> 'QuerySet':
     """little search function that checks only exact phrases"""
     query = field + "__iexact"
     return queryset.filter(**{query: value})
@@ -397,7 +399,8 @@ def interval_search(
     return queryset.filter(reduce(and_, queries))
 
 
-def multiple_field_search(queryset: 'QuerySet', parameters: Mapping) -> 'QuerySet':
+def multiple_field_search(queryset: 'QuerySet',
+                          parameters: Iterable) -> 'QuerySet':
     """
     dispatcher that handles multiple search parameters and returns a queryset.
     accepts options in dictionaries to search 'numerical' intervals

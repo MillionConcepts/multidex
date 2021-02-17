@@ -1,11 +1,10 @@
 :root {
-    --dark-tint-0: rgba(0,0,50,0.06);
+    --dark-tint-0: rgba(0,0,50,0.05);
     --dark-tint-1: rgba(0,0,25,0.18);
     --dark-tint-2: rgba(0,0,0,0.24);
-    --teal: #92d6ce;
-    --midnight-ochre: #241c01;
-    --invisible-pearl: #fdfdfa;
-    --clean-parchment: #fefcf5;
+    --midnight-ochre: rgba(36, 28, 1, 1);
+    --invisible-pearl: rgba(253, 253, 250, 1);
+    --clean-parchment: rgba(254, 252, 245, 1);
 }
 
 html {
@@ -24,8 +23,9 @@ button {
     font-size: 1rem;
 }
 
-.Select-control, .tab-container {
+.Select-control, .tab-container, .tab {
     background: var(--invisible-pearl);
+    background-color: var(--invisible-pearl) !important;
 }
 
 .graph-controls-container, .search-controls-container {
