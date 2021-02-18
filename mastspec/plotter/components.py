@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Mapping, Optional, Iterable
 
 import dash_core_components as dcc
 import dash_html_components as html
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
@@ -105,7 +106,7 @@ def main_graph() -> dcc.Graph:
     return dcc.Graph(
         id="main-graph",
         figure=fig,
-        style={"height": "60vh"},
+        style={"height": "65vh"},
         className="graph",
     )
 
@@ -148,17 +149,21 @@ def main_graph_scatter(
     and formatted in make_axis.
     """
     fig = go.Figure()
+    # TODO: go.Scattergl (WebGL) is noticeably worse-looking than
+    # go.Scatter (SVG), but go.Scatter may be inadequately performant with all the points
+    # in the data set. can we optimize a bit? hard with plotly...
     fig.add_trace(
-        go.Scattergl(
+        go.Scatter(
             x=x_axis,
             y=y_axis,
             # change this to be hella popup text
             text=text,
             customdata=customdata,
             mode="markers",
-            marker={"color": "black"},
+            marker={"color": "black", "size": 8},
         )
     )
+
     # noinspection PyTypeChecker
     fig.update_layout(
         {
@@ -252,7 +257,7 @@ def axis_value_drop(spec_model, element_id, value=None):
     """
     options = [
         {"label": option["label"], "value": option["value"]}
-        for option in spec_model.axis_value_properties
+        for option in spec_model.marker_value_properties
     ]
     if not value:
         value = options[0]["value"]
@@ -438,12 +443,13 @@ def search_container_div(searchable_fields, preset_parameters):
         id="search-controls-container-div",
         className="search-controls-container",
     )
-    if preset_parameters:
-        # list was 'serialized' to string to put it in a single df cell
-        preset_parameters = literal_eval(preset_parameters)
+    # list was 'serialized' to string to put it in a single df cell
+    if preset_parameters is None:
+        preset_parameters = "None" # doing a slightly goofy thing here
+    if literal_eval(preset_parameters) is not None:
         search_container.children = [
             search_parameter_div(ix, searchable_fields, parameter)
-            for ix, parameter in enumerate(preset_parameters)
+            for ix, parameter in enumerate(literal_eval(preset_parameters))
         ]
     else:
         search_container.children = [
@@ -459,10 +465,14 @@ def viewer_tab(index, splot):
                 children=[
                     dcc.Graph(
                         id={"type": "view-graph", "index": index},
+                        style={"height": "80vh"},
                         figure=splot.graph(),
                     )
                 ],
                 id={"type": "view-graph-container", "index": index},
+            ),
+            dynamic_spec_div(
+                "view-spec-print", "view-spec-graph", "view-spec-image", index
             ),
             html.Div(
                 children=[str(splot.settings())],
@@ -471,9 +481,6 @@ def viewer_tab(index, splot):
             html.Button(
                 id={"type": "tab-close-button", "index": index},
                 children="close this tab",
-            ),
-            dynamic_spec_div(
-                "view-spec-print", "view-spec-graph", "view-spec-image", index
             ),
         ],
         label="GRAPH VIEWER " + str(index),
@@ -575,7 +582,7 @@ def search_tab(
                             marker_options_drop(
                                 spec_model,
                                 "main-graph-option-marker",
-                                value=get_r("graph-option-marker.value"),
+                                value=get_r("main-graph-option-marker.value"),
                             ),
                             filter_drop(
                                 spec_model,
@@ -594,7 +601,7 @@ def search_tab(
                             ),
                             color_drop(
                                 'main-color',
-                                value=get_r("graph-option-marker.value"),
+                                value=get_r("main-color.value"),
                             )
                         ],
                     ),

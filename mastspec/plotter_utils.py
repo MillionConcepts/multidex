@@ -1,11 +1,13 @@
 """assorted utility functions for project"""
 
+import datetime as dt
 import json
 import re
 from functools import partial, reduce
 from inspect import signature
 from operator import and_, or_, contains
-from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping, Union
+from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping, Union, \
+    Tuple
 
 import dash
 import dash_html_components as html
@@ -23,6 +25,14 @@ if TYPE_CHECKING:
 
 # generic
 
+
+def seconds_since_beginning_of_day(time: dt.time) -> float:
+    return (
+        dt.datetime.combine(dt.date(1, 1, 1), time)
+        - dt.datetime(1, 1, 1, 0, 0, 0)
+    ).total_seconds()
+
+
 def first(predicate: Callable, iterable: Iterable) -> Any:
     for item in iterable:
         if predicate(item):
@@ -31,37 +41,102 @@ def first(predicate: Callable, iterable: Iterable) -> Any:
 
 def not_blank(obj: Any) -> bool:
     """a 'truthiness' test that avoids 0/1 boolean evaluations"""
-    if reduce(and_, [
-        obj != "",
-        obj is not None,
-        obj != [],
-        obj != {}
-    ]):
+    if reduce(and_, [obj != "", obj is not None, obj != [], obj != {}]):
         return True
     return False
+
+
+def none_to_quote_unquote_none(
+    list_containing_none: Iterable[Any],
+) -> list[Any]:
+    de_noned_list = []
+    for element in list_containing_none:
+        if element is not None:
+            de_noned_list.append(element)
+        else:
+            de_noned_list.append("None")
+    return de_noned_list
+
+
+def arbitrarily_hash_strings(strings: Iterable[str]) -> tuple[dict, list[int]]:
+    unique_string_values = list(set(strings))
+    arbitrary_hash = {
+        string: ix for ix, string in enumerate(unique_string_values)
+    }
+    return arbitrary_hash, [arbitrary_hash[string] for string in strings]
 
 
 # django utility functions
 
 
-def qlist(queryset: 'QuerySet', attribute: str) -> list:
+def qlist(queryset: "QuerySet", attribute: str) -> list:
     return list(queryset.values_list(attribute, flat=True))
 
 
-def filter_null_attributes(queryset: 'QuerySet',
-                           attribute_list: Iterable[str]) -> 'QuerySet':
+def filter_null_attributes(
+    queryset: "QuerySet", attribute_list: Iterable[str], check_related=None
+) -> "QuerySet":
+    if check_related is not None:
+        attribute_list = [
+            check_related + "__" + attribute for attribute in attribute_list
+        ]
     for attribute in attribute_list:
-        queryset = queryset.exclude(**{attribute + '__iexact': None})
+        queryset = queryset.exclude(**{attribute + "__iexact": None})
     return queryset
 
 
+def field_values(queryset, field=None, check_related=None):
+    """
+    generates dict if all unique values in model's field
+    + any and blank, for passing to HTML select constructors
+
+    if check_related is passed, will check a related model
+    defined via foreign key or whatever relationship (like parent observation)
+    if passed field is not on model
+
+    as this is based on current queryset,
+    it will by default display options as constrained by other search
+    parameters. this has upsides and downsides.
+    it will also lead to odd behavior if care is not given.
+    maybe it's a bad idea.
+
+    TODO: wait, is that correct? check up the chain.
+    """
+    special_options = [
+        {"label": "any", "value": "any"},
+        # too annoying to detect all 'blank' things atm
+        # {'label':'no assigned value','value':''}
+    ]
+    if not field:
+        return special_options
+    if field in [field.name for field in queryset.model._meta.fields]:
+        unique_elements = set(qlist(queryset, field))
+    elif check_related is None:
+        return special_options
+    elif field not in [
+        field.name
+        for field in getattr(queryset[0], check_related)._meta.fields
+    ]:
+        return special_options
+    else:
+        unique_elements = set(qlist(queryset, check_related + "__" + field))
+    options = none_to_quote_unquote_none(list(unique_elements))
+    options.sort()
+    formatted_options = [
+        {"label": option, "value": option}
+        for option in options
+        if option not in ["", "nan"]
+    ]
+    return special_options + formatted_options
+
+
 def djget(
-        model: 'Model',
-        value: Any,
-        field: str = "name",
-        method_name: str = "filter",
-        querytype: str = "iexact"
-) -> Union['QuerySet', 'Model']:
+    model: "Model",
+    value: Any,
+    field: str = "name",
+    method_name: str = "filter",
+    querytype: str = "iexact",
+) -> Union["QuerySet", "Model"]:
     """flexible interface to queryset methods"""
     # get the requested method of model.objects
     method = getattr(model.objects, method_name)
@@ -71,7 +146,7 @@ def djget(
     return method(**{field + "__" + querytype: value})
 
 
-def modeldict(django_model_object: 'Model') -> dict:
+def modeldict(django_model_object: "Model") -> dict:
     """tries to construct a dictionary from arbitrary django model instance"""
     return {
         field.name: getattr(django_model_object, field.name)
@@ -115,21 +190,22 @@ def pickitems(dictionary: Mapping, some_list: Iterable) -> dict:
 # TODO: What am I actually doing here? not what I say I am, for sure.
 def pickcomps(comp_dictionary, id_list):
     """items of dictionary of dash components where id is in id_list"""
-    return pickitems(comp_dictionary,
-                     [comp.component_id for comp in comp_dictionary])
+    return pickitems(
+        comp_dictionary, [comp.component_id for comp in comp_dictionary]
+    )
 
 
-def comps_to_strings(component_list: Iterable['Component']) -> list[str]:
+def comps_to_strings(component_list: Iterable["Component"]) -> list[str]:
     """convert list of dash components with properties to list of strings"""
     return [
-        comp.component_id + "." + comp.component_property for comp in
-        component_list
+        comp.component_id + "." + comp.component_property
+        for comp in component_list
     ]
 
 
 def pickctx(
-        ctx: dash._callback_context.CallbackContext,
-        component_list: Iterable['Component']
+    ctx: dash._callback_context.CallbackContext,
+    component_list: Iterable["Component"],
 ) -> dict:
     """states and inputs of dash callback context if component is in
     component_list"""
@@ -151,10 +227,10 @@ def keygrab(dict_list: Iterable[Mapping], key: Any, value: Any) -> Mapping:
 
 def ctxdict(ctx: dash._callback_context.CallbackContext) -> dict:
     return {
-        'triggered': ctx.triggered,
-        'inputs': ctx.inputs,
-        'states': ctx.states,
-        'response': ctx.response
+        "triggered": ctx.triggered,
+        "inputs": ctx.inputs,
+        "states": ctx.states,
+        "response": ctx.response,
     }
 
 
@@ -163,18 +239,18 @@ def not_triggered() -> bool:
     detect likely spurious triggers.
     will only function if called inside a callback.
     """
-    if not dash.callback_context.triggered[0]['value']:
+    if not dash.callback_context.triggered[0]["value"]:
         return True
     return False
 
 
 def triggered_by(component_id: str) -> bool:
     """
-    did a component matching this id string trigger the callback this function 
+    did a component matching this id string trigger the callback this function
     is called in the context of? will only function if called inside a
     callback.
     """
-    if component_id in dash.callback_context.triggered[0]['prop_id']:
+    if component_id in dash.callback_context.triggered[0]["prop_id"]:
         return True
     return False
 
@@ -185,12 +261,13 @@ def trigger_index(ctx: dash._callback_context.CallbackContext) -> int:
     component
     assumes there is exactly one triggering component and it has an index!
     """
-    trigger_id = ctx.triggered[0]['prop_id']
+    trigger_id = ctx.triggered[0]["prop_id"]
     index_index = re.search("index", trigger_id).span()[1] + 2
     return int(trigger_id[index_index])
 
 
 # ## dash dev tools
+
 
 def dump_it(data, loud=True):
     """dump data as json"""
@@ -200,8 +277,9 @@ def dump_it(data, loud=True):
     return dump
 
 
-def make_printer(element, prop, app, print_target="print",
-                 process_function=dump_it):
+def make_printer(
+    element, prop, app, print_target="print", process_function=dump_it
+):
     """
     utility callback factory. impure! inserts the callback into the tree
     when called.
@@ -211,7 +289,8 @@ def make_printer(element, prop, app, print_target="print",
 
     def print_callback():
         app.callback(Output(print_target, "children"), [Input(element, prop)])(
-            process_function)
+            process_function
+        )
 
     print_callback()
 
@@ -240,14 +319,11 @@ def get_if(boolean: bool, dictionary: Mapping, key: Any) -> Any:
 
 
 def get_parameters(func: Callable) -> list[str]:
-    return [
-        param.name for param in signature(func).parameters.values()
-    ]
+    return [param.name for param in signature(func).parameters.values()]
 
 
 def partially_evaluate_from_parameters(
-        func: Callable,
-        parameters: Mapping
+    func: Callable, parameters: Mapping
 ) -> callable:
     """
     return a copy of the input function partially evaluated from any value
@@ -263,9 +339,7 @@ def partially_evaluate_from_parameters(
     add_1 = partially_evaluate_from_parameters(add, parameters)
     assert add_1(2) == 3
     """
-    return partial(
-        func, **pickitems(parameters, get_parameters(func))
-    )
+    return partial(func, **pickitems(parameters, get_parameters(func)))
 
 
 def listify(thing: Any) -> list:
@@ -292,8 +366,9 @@ def none_to_empty(thing: Any) -> Any:
 # if and when required.
 
 
-def flexible_query(queryset: 'QuerySet', field: 'str',
-                   value: Any) -> 'QuerySet':
+def flexible_query(
+    queryset: "QuerySet", field: "str", value: Any
+) -> "QuerySet":
     """
     little search function that checks exact and loose phrases.
     have to hit the database to do this, so less efficient than using
@@ -309,19 +384,17 @@ def flexible_query(queryset: 'QuerySet', field: 'str',
     return reduce(or_, filters)
 
 
-def inflexible_query(queryset: 'QuerySet', field: 'str',
-                     value: Any) -> 'QuerySet':
+def inflexible_query(
+    queryset: "QuerySet", field: "str", value: Any
+) -> "QuerySet":
     """little search function that checks only exact phrases"""
     query = field + "__iexact"
     return queryset.filter(**{query: value})
 
 
 def term_search(
-        queryset: 'QuerySet',
-        field: 'str',
-        value: Any,
-        inflexible=False
-) -> 'QuerySet':
+    queryset: "QuerySet", field: "str", value: Any, inflexible=False
+) -> "QuerySet":
     """
     model, string, string or number or whatever -> queryset
     search for strings or whatever within a field of a model.
@@ -334,8 +407,8 @@ def term_search(
 
 
 def value_fetch_search(
-        queryset: 'QuerySet', field: 'str', value_list: Iterable
-) -> 'QuerySet':
+    queryset: "QuerySet", field: "str", value_list: Iterable
+) -> "QuerySet":
     """
     queryset, field of underlying model, list of values -> queryset
     simply return queryset of objects with any of those values
@@ -345,34 +418,34 @@ def value_fetch_search(
     # queryset objects
     # is in fact _more_ sensitive wrt type; it will not match a float
     # representation of an
-    # int 
+    # int
     queries = [Q(**{field + "__exact": item}) for item in value_list]
     return queryset.filter(reduce(or_, queries))
 
 
 def interval_search(
-        queryset: 'QuerySet',
-        field: str,
-        interval_begin: Any = None,
-        interval_end: Any = None,
-        strictly: bool = False
-) -> 'QuerySet':
+    queryset: "QuerySet",
+    field: str,
+    interval_begin: Any = None,
+    interval_end: Any = None,
+    strictly: bool = False,
+) -> "QuerySet":
     """
-    interval_begin and interval_end must be of types for which 
+    interval_begin and interval_end must be of types for which
     the elements of the set of the chosen attribute of the elements of queryset
     possess a complete ordering exposed to django queryset API (probably
     defined in terms of
-    standard python comparison operators). in most cases, you 
+    standard python comparison operators). in most cases, you
     will probably want these to be the same type, and to share a type with
-    the attributes of the objects in question. 
-    
-    if both interval_begin and interval_end are defined, returns 
-    all entries > begin and < end. 
-    if only interval_begin is defined: all entries > begin. 
-    if only interval_end is defined: all entries < end. 
+    the attributes of the objects in question.
+
+    if both interval_begin and interval_end are defined, returns
+    all entries > begin and < end.
+    if only interval_begin is defined: all entries > begin.
+    if only interval_end is defined: all entries < end.
     if neither: trivially returns the queryset.
-    
-    the idea of this function is to attempt to perform searches with somewhat 
+
+    the idea of this function is to attempt to perform searches with somewhat
     convoluted Python but a single SQL query. it could be _further_
     generalized to
     tuples of attributes that bound a convex space, most simply interval
@@ -401,8 +474,9 @@ def interval_search(
     return queryset.filter(reduce(and_, queries))
 
 
-def multiple_field_search(queryset: 'QuerySet',
-                          parameters: Iterable) -> 'QuerySet':
+def multiple_field_search(
+    queryset: "QuerySet", parameters: Iterable
+) -> "QuerySet":
     """
     dispatcher that handles multiple search parameters and returns a queryset.
     accepts options in dictionaries to search 'numerical' intervals
@@ -414,9 +488,7 @@ def multiple_field_search(queryset: 'QuerySet',
         if parameter.get("value_type") == "quant":
             if "value_list" in parameter.keys():
                 search_result = value_fetch_search(
-                    queryset,
-                    parameter["field"],
-                    parameter["value_list"]
+                    queryset, parameter["field"], parameter["value_list"]
                 )
             else:
                 search_result = interval_search(
@@ -428,12 +500,17 @@ def multiple_field_search(queryset: 'QuerySet',
                     parameter.get("strictly"),
                 )
             results.append(search_result)
-        # otherwise just look for term matches
+        # otherwise just look for term matches;
+        # "or" them within a category
         else:
+            param_results = []
             for term in parameter["term"]:
-                search_result = term_search(
-                    queryset, parameter["field"], term,
-                    parameter.get("flexible")
+                param_result = term_search(
+                    queryset,
+                    parameter["field"],
+                    term,
+                    parameter.get("flexible"),
                 )
-                results.append(search_result)
+                param_results.append(param_result)
+            results.append(reduce(or_, param_results))
     return reduce(and_, results)

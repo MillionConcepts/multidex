@@ -264,14 +264,14 @@ class Spectrum(models.Model):
         if not intervening:
             return 1
 
-        min_ref = min(intervening.values())
+        min_ref = min(filt[1] for filt in intervening)
         min_freq = [
-            freq
-            for freq in intervening.keys()
-            if intervening[freq] == min_ref
+            (ix, freq)
+            for ix, freq in enumerate([filt[0] for filt in intervening])
+            if intervening[ix][1] == min_ref
         ][0]
 
-        distance = min_freq - freq_1
+        distance = min_freq[0] - freq_1
         slope = self.slope(filt_1, filt_2)
         continuum_ref = self.ref(filt_1) + slope * distance
         return min_ref / continuum_ref
@@ -699,6 +699,8 @@ class MSpec(Spectrum):
     }
 
     axis_value_properties = [
+        {"label": "band value", "value": "ref", "type": "method", "arity": 1,
+         "value_type": "quant"},
         {
             "label": "band average",
             "value": "band_avg",
@@ -736,8 +738,9 @@ class MSpec(Spectrum):
             "type": "method",
             "arity": 2, "value_type": "quant"
         },
-        {"label": "band value", "value": "ref", "type": "method", "arity": 1, "value_type": "quant"},
-        {"label": "sol", "value": "sol", "type": "parent_property", "value_type": "quant"},
+
+        {"label": "sol", "value": "sol", "type": "parent_property",
+         "value_type": "quant"},
         {
             "label": "target elevation",
             "value": "target_elevation",
@@ -751,10 +754,14 @@ class MSpec(Spectrum):
     ]
 
     searchable_fields = [
-        {"label": "formation", "value": "formation", "type": "self_property", "value_type": "qual"},
-        {"label": "member", "value": "member",  "type": "self_property", "value_type": "qual"},
-        {"label": "sol", "value": "sol", "type": "parent_property", "value_type": "quant"},
-        {"label": "color", "value": "color", "type": "self_property", "value_type": "qual"},
+        {"label": "formation", "value": "formation", "type": "self_property",
+         "value_type": "qual"},
+        {"label": "member", "value": "member", "type": "self_property",
+         "value_type": "qual"},
+        {"label": "sol", "value": "sol", "type": "parent_property",
+         "value_type": "quant"},
+        {"label": "color", "value": "color", "type": "self_property",
+         "value_type": "qual"},
         # need to use dateutil.parser.parse or similar if you're going to
         # have this
         # {
@@ -762,8 +769,10 @@ class MSpec(Spectrum):
         #     "type": "parent_property",
         #     "value_type": "quant",
         # },
-        {"label": "seq_id", "value": "seq_id", "type": "parent_property", "value_type": "qual"},
-        {"label": "tau_interpolated", "value": "tau_interpolated", "type": "parent_property", "value_type": "quant"},
+        {"label": "seq_id", "value": "seq_id", "type": "parent_property",
+         "value_type": "qual"},
+        {"label": "tau_interpolated", "value": "tau_interpolated",
+         "type": "parent_property", "value_type": "quant"},
     ]
 
     marker_value_properties = axis_value_properties + searchable_fields
