@@ -40,7 +40,7 @@ from plotter_utils import (
     seconds_since_beginning_of_day,
     arbitrarily_hash_strings,
     none_to_quote_unquote_none,
-    field_values,
+    field_values, fetch_css_variables,
 )
 
 if TYPE_CHECKING:
@@ -48,6 +48,12 @@ if TYPE_CHECKING:
     from plotter.models import MSpec
     from django.db.models.query import QuerySet
     import flask_caching
+
+
+css_variables = fetch_css_variables()
+COLORBAR_SETTINGS = {
+    'tickfont': {'family': 'Fira Mono', 'color': css_variables['midnight-ochre']}
+}
 
 
 # ### cache functions ###
@@ -154,7 +160,11 @@ def make_marker_properties(settings, queryset, prefix, suffix):
     TODO: this stuff should be split off into a function that 
     make_marker_properties and make_axis both call
     """
-    colorbar_dict = {}
+    # it would really be better to do this in components
+    # but is difficult because you have to instantiate the colorbar somewhere
+    # it would also be better to style with CSS but it seems like plotly
+    # really wants to put element-level style declarations on graph ticks!
+    colorbar_dict = COLORBAR_SETTINGS
     if props["type"] == "method":
         # we assume here that 'methods' all take a spectrum's filter names
         # as arguments, and have arguments in an order corresponding to
@@ -180,7 +190,7 @@ def make_marker_properties(settings, queryset, prefix, suffix):
         string_hash, color_indices = arbitrarily_hash_strings(
             none_to_quote_unquote_none(property_list)
         )
-        colorbar_dict = {
+        colorbar_dict |= {
             "tickvals": list(string_hash.values()),
             "ticktext": list(string_hash.keys()),
         }
@@ -392,9 +402,8 @@ def update_search_options(
                     queryset.model.objects.all(), field, props["type"]
                 )
             )
-            # TODO: this should be a hover-over tooltip
-            + """range like '100-200'; or list of  """
-            + """numbers like '100, 105, 110'.""",
+            # TODO: this should be a hover-over tooltip eventually
+            + """ e.g., '100-200' or '100, 105, 110'""",
             search_text,
         ]
 
@@ -422,9 +431,9 @@ def change_calc_input_visibility(calc_type, *, spec_model):
     # that take its filters as arguments
     if props["type"] == "method":
         return [
-            {"width": "10rem", "display": "inline-block"}
+            {"display": "flex", 'flex-direction': 'column'}
             if x < props["arity"]
-            else {"width": "10rem", "display": "none"}
+            else {"display": "none"}
             for x in range(3)
         ]
     return [{"display": "none"} for _ in range(3)]

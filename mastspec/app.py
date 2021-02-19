@@ -275,9 +275,9 @@ app.layout = html.Div(children=[
 for value_class in ['x', 'y', 'marker']:
     app.callback(
         [
-            Output('main-filter-1-' + value_class, 'style'),
-            Output('main-filter-2-' + value_class, 'style'),
-            Output('main-filter-3-' + value_class, 'style'),
+            Output('main-filter-1-' + value_class + '-container', 'style'),
+            Output('main-filter-2-' + value_class + '-container', 'style'),
+            Output('main-filter-3-' + value_class + '-container', 'style'),
         ],
         [Input('main-graph-option-' + value_class, 'value')]
     )(change_calc_input_visibility)

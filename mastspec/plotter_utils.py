@@ -514,3 +514,17 @@ def multiple_field_search(
                 param_results.append(param_result)
             results.append(reduce(or_, param_results))
     return reduce(and_, results)
+
+
+def fetch_css_variables(css_file: str = "assets/main.css") -> dict[str, str]:
+    css_variable_dictionary = {}
+    with open(css_file) as stylesheet:
+        css_lines = stylesheet.readlines()
+    for line in css_lines:
+        if not re.match(r"\s+--", line):
+            continue
+        key, value = re.split(r":\s+", line)
+        key = re.sub(r"(--)|[ :]", "", key)
+        value = re.sub(r"[ \n;]", "", value)
+        css_variable_dictionary[key] = value
+    return css_variable_dictionary
