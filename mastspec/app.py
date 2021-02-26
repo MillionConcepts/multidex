@@ -2,6 +2,7 @@ import os
 
 import django
 import flask
+
 # import pylibmc
 from dash import dash
 from dash.dependencies import Input, Output, State, MATCH, ALL
@@ -17,17 +18,28 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mastspec.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
-from plotter.components import main_graph, main_graph_scatter, \
-    mspec_graph_line, search_tab
+from plotter.components import (
+    main_graph,
+    main_graph_scatter,
+    mspec_graph_line,
+    search_tab,
+)
 from plotter.models import MSpec
 from plotter.graph import (
-    cache_set, cache_get, update_spectrum_images, update_spectrum_graph,
+    cache_set,
+    cache_get,
+    update_spectrum_images,
+    update_spectrum_graph,
     control_tabs,
-    control_search_dropdowns, recalculate_main_graph, update_search_options,
+    control_search_dropdowns,
+    recalculate_main_graph,
+    update_search_options,
     update_queryset,
-    change_calc_input_visibility, toggle_search_input_visibility,
+    change_calc_input_visibility,
+    toggle_search_input_visibility,
     graph_point_to_metadata,
-    populate_saved_search_drop, save_search_tab_state
+    populate_saved_search_drop,
+    save_search_tab_state,
 )
 
 # initialize the app itself. HTML / react objects must be described in this
@@ -82,12 +94,12 @@ app = dash.Dash()
 # (with root:)
 # mount -o size=1024M -t tmpfs mastspeccache .cache
 
-cache_type = 'filesystem'
+cache_type = "filesystem"
 
 CACHE_CONFIG = {
-    'CACHE_TYPE': cache_type,
-    'CACHE_DIR': '.cache',
-    'CACHE_DEFAULT_TIMEOUT': 0,
+    "CACHE_TYPE": cache_type,
+    "CACHE_DIR": ".cache",
+    "CACHE_DEFAULT_TIMEOUT": 0,
     # keep cached variables for a session of any length
     # 'SERVERS': client  # filesystem backend will just ignore this
 }
@@ -121,11 +133,16 @@ fig = main_graph()
 
 # active queryset is explicitly stored in global cache, as are
 # many other app runtime values
-cset('queryset', spec_model.objects.all().prefetch_related("observation"))
+cset("queryset", spec_model.objects.all().prefetch_related("observation"))
+
+cset(
+    "main-highlight_queryset",
+    spec_model.objects.none().prefetch_related("observation"),
+)
 
 # this variable is a list of open graph-view tabs;
 # these are separate from the 'main' / 'search' tab.
-cset('open_graph_viewers', [])
+cset("open_graph_viewers", [])
 
 # these are simply lists of inputs that refer to
 # components produced by plotter.components.filter_drop.
@@ -133,32 +150,34 @@ cset('open_graph_viewers', [])
 # repetition in app structure definition and function calls.
 # it's possible these should actually be in plotter.components.
 x_inputs = [
-    Input('main-filter-1-x', 'value'),
-    Input('main-filter-2-x', 'value'),
-    Input('main-filter-3-x', 'value'),
-    Input('main-graph-option-x', 'value'),
+    Input("main-filter-1-x", "value"),
+    Input("main-filter-2-x", "value"),
+    Input("main-filter-3-x", "value"),
+    Input("main-graph-option-x", "value"),
 ]
 y_inputs = [
-    Input('main-filter-1-y', 'value'),
-    Input('main-filter-2-y', 'value'),
-    Input('main-filter-3-y', 'value'),
-    Input('main-graph-option-y', 'value')
+    Input("main-filter-1-y", "value"),
+    Input("main-filter-2-y", "value"),
+    Input("main-filter-3-y", "value"),
+    Input("main-graph-option-y", "value"),
 ]
 marker_inputs = [
-    Input('main-filter-1-marker', 'value'),
-    Input('main-filter-2-marker', 'value'),
-    Input('main-filter-3-marker', 'value'),
-    Input('main-graph-option-marker', 'value'),
-    Input('main-color', 'value')
+    Input("main-filter-1-marker", "value"),
+    Input("main-filter-2-marker", "value"),
+    Input("main-filter-3-marker", "value"),
+    Input("main-graph-option-marker", "value"),
+    Input("main-color", "value"),
+    Input("main-highlight-save", "n_clicks"),
+    Input("main-highlight-toggle", "value"),
 ]
 
 # client-side url for serving images to the user.
-static_image_url = '/images/browse/'
+static_image_url = "/images/browse/"
 
 # host-side directory containing those images.
 # note this is just ROI browse images for now
 # TODO: add a link
-image_directory = './static_in_pro/our_static/img/roi_browse/'
+image_directory = "./static_in_pro/our_static/img/roi_browse/"
 
 # insert 'settings' / 'global' values for this app into callback functions.
 # in Dash, callback functions encapsulate I/O behavior for components and
@@ -174,30 +193,30 @@ update_spectrum_images = cache.memoize()(update_spectrum_images)
 update_spectrum_graph = cache.memoize()(update_spectrum_graph)
 
 settings = {
-    'x_inputs': x_inputs,
-    'y_inputs': y_inputs,
-    'marker_inputs': marker_inputs,
-    'cget': cget,
-    'cset': cset,
+    "x_inputs": x_inputs,
+    "y_inputs": y_inputs,
+    "marker_inputs": marker_inputs,
+    "cget": cget,
+    "cset": cset,
     # factory functions for plotly figures (which Dash
     # fairly-transparently treats as components).
     # they do not actually fetch or format data;
     # they just do the visual representation.
-    'graph_function': main_graph_scatter,
-    'spec_graph_function': mspec_graph_line,
+    "graph_function": main_graph_scatter,
+    "spec_graph_function": mspec_graph_line,
     # django model (SQL table + methods) (see plotter.models)
     # containing our spectra.
     # note that insertion of this into functions may end up being
     # a way to generate separate function 'namespaces'
     # in the possible case of, say, wanting to mix mastcam / z data
     # within a single app instance.
-    'spec_model': MSpec,
-    'image_directory': image_directory,
+    "spec_model": MSpec,
+    "image_directory": image_directory,
     # scale factor, in viewport units, for spectrum images
-    'base_size': 20,
-    'static_image_url': static_image_url,
+    "base_size": 20,
+    "static_image_url": static_image_url,
     # file containing saved searches
-    'search_file': './saves/saved_searches.csv'
+    "search_file": "./saves/saved_searches.csv",
 }
 functions_requiring_settings = [
     control_tabs,
@@ -211,7 +230,7 @@ functions_requiring_settings = [
     graph_point_to_metadata,
     update_spectrum_images,
     populate_saved_search_drop,
-    save_search_tab_state
+    save_search_tab_state,
 ]
 for function in functions_requiring_settings:
     globals()[function.__name__] = partially_evaluate_from_parameters(
@@ -222,7 +241,7 @@ for function in functions_requiring_settings:
 # serve static images using a flask 'route.'
 # does defining this function here violate my conventions a little bit? not
 # sure.
-@app.server.route(static_image_url + '<path:path>')
+@app.server.route(static_image_url + "<path:path>")
 def static_image_link(path):
     static_folder = os.path.join(os.getcwd(), image_directory)
     return flask.send_from_directory(static_folder, path)
@@ -240,13 +259,15 @@ def static_image_link(path):
 # all of its children are created within that function
 # by calling other component factory functions.
 
-app.layout = html.Div(children=[
-    dcc.Tabs(
-        children=[search_tab(spec_model)],
-        value='main_search_tab',
-        id='tabs'
-    ),
-])
+app.layout = html.Div(
+    children=[
+        dcc.Tabs(
+            children=[search_tab(spec_model)],
+            value="main_search_tab",
+            id="tabs",
+        ),
+    ]
+)
 
 # callback creation section: register functions from plotter.graph with app i/o
 
@@ -272,108 +293,109 @@ app.layout = html.Div(children=[
 
 # change visibility of x / y axis calculation inputs
 # based on arity of calculation function
-for value_class in ['x', 'y', 'marker']:
+for value_class in ["x", "y", "marker"]:
     app.callback(
         [
-            Output('main-filter-1-' + value_class + '-container', 'style'),
-            Output('main-filter-2-' + value_class + '-container', 'style'),
-            Output('main-filter-3-' + value_class + '-container', 'style'),
+            Output("main-filter-1-" + value_class + "-container", "style"),
+            Output("main-filter-2-" + value_class + "-container", "style"),
+            Output("main-filter-3-" + value_class + "-container", "style"),
         ],
-        [Input('main-graph-option-' + value_class, 'value')]
+        [Input("main-graph-option-" + value_class, "value")],
     )(change_calc_input_visibility)
 
 # trigger redraw of main graph
 # on new search, axis calculation change, etc
 app.callback(
-    Output('main-graph', 'figure'),
+    Output("main-graph", "figure"),
     # maybe later add an explicit recalculate button?
     [
         *x_inputs,
         *y_inputs,
         *marker_inputs,
-        Input({'type': 'search-trigger', 'index': ALL}, 'value'),
-        Input('main-graph', 'hoverData'),
+        Input({"type": "search-trigger", "index": ALL}, "value"),
+        Input("main-graph", "hoverData"),
         # Input({'type': 'load-trigger', 'index': 0}, 'value')
     ],
-    [
-        State('main-graph', 'figure')
-    ]
+    [State("main-graph", "figure")],
 )(recalculate_main_graph)
+
 
 # change visibility of search filter inputs
 # based on whether a 'quantitative' or 'qualitative'
 # search field is selected
 app.callback(
     [
-        Output({'type': 'term-search', 'index': MATCH}, 'style'),
-        Output({'type': 'number-search', 'index': MATCH}, 'style'),
+        Output({"type": "term-search", "index": MATCH}, "style"),
+        Output({"type": "number-search", "index": MATCH}, "style"),
     ],
-    [Input({'type': 'field-search', 'index': MATCH}, 'value')],
+    [Input({"type": "field-search", "index": MATCH}, "value")],
 )(toggle_search_input_visibility)
 
 # update displayed search options based on selected search field
 app.callback(
     [
-        Output({'type': 'term-search', 'index': MATCH}, 'options'),
-        Output({'type': 'number-range-display', 'index': MATCH}, 'children'),
-        Output({'type': 'number-search', 'index': MATCH}, 'value'),
+        Output({"type": "term-search", "index": MATCH}, "options"),
+        Output({"type": "number-range-display", "index": MATCH}, "children"),
+        Output({"type": "number-search", "index": MATCH}, "value"),
     ],
     [
-        Input({'type': 'field-search', 'index': MATCH}, 'value'),
-        Input({'type': 'load-trigger', 'index': 0}, 'value')
+        Input({"type": "field-search", "index": MATCH}, "value"),
+        Input({"type": "load-trigger", "index": 0}, "value"),
     ],
     [
-        State({'type': 'number-search', 'index': MATCH}, 'value'),
-    ]
+        State({"type": "number-search", "index": MATCH}, "value"),
+    ],
 )(update_search_options)
+
 
 # trigger active queryset update on new searches
 app.callback(
-    Output({'type': 'search-trigger', 'index': 0}, 'value'),
+    Output({"type": "search-trigger", "index": 0}, "value"),
     [
-        Input({'type': 'submit-search', 'index': ALL}, 'n_clicks'),
-        Input({'type': 'load-trigger', 'index': 0}, 'value')
+        Input({"type": "submit-search", "index": ALL}, "n_clicks"),
+        Input({"type": "load-trigger", "index": 0}, "value"),
     ],
     [
-        State({'type': 'field-search', 'index': ALL}, 'value'),
-        State({'type': 'term-search', 'index': ALL}, 'value'),
-        State({'type': 'number-search', 'index': ALL}, 'value'),
-        State({'type': 'search-trigger', 'index': 0}, 'value')
-    ])(update_queryset)
+        State({"type": "field-search", "index": ALL}, "value"),
+        State({"type": "term-search", "index": ALL}, "value"),
+        State({"type": "number-search", "index": ALL}, "value"),
+        State({"type": "search-trigger", "index": 0}, "value"),
+    ],
+)(update_queryset)
 
 # handle creation and removal of search filters
 app.callback(
     [
-        Output('search-controls-container-div', 'children'),
-        Output({'type': 'submit-search', 'index': 1}, 'n_clicks')
+        Output("search-controls-container-div", "children"),
+        Output({"type": "submit-search", "index": 1}, "n_clicks"),
     ],
     [
-        Input('add-param', 'n_clicks'),
-        Input({'type': 'remove-param', "index": ALL}, 'n_clicks')
+        Input("add-param", "n_clicks"),
+        Input({"type": "remove-param", "index": ALL}, "n_clicks"),
     ],
     [
-        State('search-controls-container-div', 'children'),
-        State({'type': 'submit-search', 'index': 1}, 'n_clicks')
-    ]
+        State("search-controls-container-div", "children"),
+        State({"type": "submit-search", "index": 1}, "n_clicks"),
+    ],
 )(control_search_dropdowns)
 
 # make graph viewer tabs
 app.callback(
     [
-        Output('tabs', 'children'),
-        Output('tabs', 'value'),
-        Output({'type': 'load-trigger', 'index': 0}, 'value')
+        Output("tabs", "children"),
+        Output("tabs", "value"),
+        Output({"type": "load-trigger", "index": 0}, "value"),
     ],
     [
-        Input('viewer-open-button', 'n_clicks'),
-        Input({'type': 'tab-close-button', "index": ALL}, 'n_clicks'),
-        Input('load-search-load-button', 'n_clicks')
+        Input("viewer-open-button", "n_clicks"),
+        Input({"type": "tab-close-button", "index": ALL}, "n_clicks"),
+        Input("load-search-load-button", "n_clicks"),
     ],
     [
-        State('tabs', 'children'),
-        State('load-search-drop', 'value'),
-        State({'type': 'load-trigger', 'index': 0}, 'value')
-    ]
+        State("tabs", "children"),
+        State("load-search-drop", "value"),
+        State({"type": "load-trigger", "index": 0}, "value"),
+    ],
 )(control_tabs)
 
 # debug printer
@@ -397,43 +419,43 @@ app.callback(
 # )(update_spectrum_images)
 
 app.callback(
-    Output({'type': 'main-spec-image', 'index': 0}, "children"),
-    [Input('main-graph', "hoverData")]
+    Output({"type": "main-spec-image", "index": 0}, "children"),
+    [Input("main-graph", "hoverData")],
 )(update_spectrum_images)
 
 app.callback(
-    Output({'type': 'main-spec-print', 'index': 0}, "children"),
-    [Input('main-graph', "hoverData")]
+    Output({"type": "main-spec-print", "index": 0}, "children"),
+    [Input("main-graph", "hoverData")],
 )(graph_point_to_metadata)
 
 app.callback(
-    Output({'type': 'main-spec-graph', 'index': 0}, 'figure'),
-    [Input('main-graph', 'hoverData')]
+    Output({"type": "main-spec-graph", "index": 0}, "figure"),
+    [Input("main-graph", "hoverData")],
 )(update_spectrum_graph)
 
 app.callback(
-    Output({'type': 'view-spec-image', 'index': MATCH}, "children"),
-    [Input({'type': 'view-graph', "index": MATCH}, 'hoverData')]
+    Output({"type": "view-spec-image", "index": MATCH}, "children"),
+    [Input({"type": "view-graph", "index": MATCH}, "hoverData")],
 )(update_spectrum_images)
 
 app.callback(
-    Output({'type': 'view-spec-print', 'index': MATCH}, "children"),
-    [Input({'type': 'view-graph', "index": MATCH}, 'hoverData')]
+    Output({"type": "view-spec-print", "index": MATCH}, "children"),
+    [Input({"type": "view-graph", "index": MATCH}, "hoverData")],
 )(graph_point_to_metadata)
 
 app.callback(
-    Output({'type': 'view-spec-graph', 'index': MATCH}, 'figure'),
-    [Input({'type': 'view-graph', "index": MATCH}, 'hoverData')]
+    Output({"type": "view-spec-graph", "index": MATCH}, "figure"),
+    [Input({"type": "view-graph", "index": MATCH}, "hoverData")],
 )(update_spectrum_graph)
 
 app.callback(
-    Output('fake-output-for-callback-with-only-side-effects-0', 'children'),
-    [Input('load-search-save-button', 'n_clicks')]
+    Output("fake-output-for-callback-with-only-side-effects-0", "children"),
+    [Input("load-search-save-button", "n_clicks")],
 )(save_search_tab_state)
 
 app.callback(
-    Output('load-search-drop', 'options'),
-    [Input('load-search-save-button', 'n_clicks')]
+    Output("load-search-drop", "options"),
+    [Input("load-search-save-button", "n_clicks")],
 )(populate_saved_search_drop)
 
 # def dummyfunc(data,figure):

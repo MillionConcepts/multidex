@@ -40,7 +40,8 @@ from plotter_utils import (
     seconds_since_beginning_of_day,
     arbitrarily_hash_strings,
     none_to_quote_unquote_none,
-    field_values, fetch_css_variables,
+    field_values,
+    fetch_css_variables,
 )
 
 if TYPE_CHECKING:
@@ -52,7 +53,10 @@ if TYPE_CHECKING:
 
 css_variables = fetch_css_variables()
 COLORBAR_SETTINGS = {
-    'tickfont': {'family': 'Fira Mono', 'color': css_variables['midnight-ochre']}
+    "tickfont": {
+        "family": "Fira Mono",
+        "color": css_variables["midnight-ochre"],
+    }
 }
 
 
@@ -147,7 +151,9 @@ def redorblue(value, container):
     return "blue"
 
 
-def make_marker_properties(settings, queryset, prefix, suffix):
+def make_marker_properties(
+    settings, queryset, prefix, suffix, highlight_queryset
+):
     """
     this expects a queryset that has already
     been processed by truncate_queryset_for_missing_properties().
@@ -158,7 +164,7 @@ def make_marker_properties(settings, queryset, prefix, suffix):
     )
     """
     TODO: this stuff should be split off into a function that 
-    make_marker_properties and make_axis both call
+    make_marker_properties and make_axis both call -- maybe?
     """
     # it would really be better to do this in components
     # but is difficult because you have to instantiate the colorbar somewhere
@@ -195,17 +201,27 @@ def make_marker_properties(settings, queryset, prefix, suffix):
             "ticktext": list(string_hash.keys()),
         }
     else:
-        if isinstance(property_list[0], dt.time):
-            property_list = list(
-                map(seconds_since_beginning_of_day, property_list)
-            )
+        if property_list:
+            if isinstance(property_list[0], dt.time):
+                property_list = list(
+                    map(seconds_since_beginning_of_day, property_list)
+                )
         color_indices = property_list
     colormap = settings[prefix + "-color.value"]
+
+    marker_size = 8
+    if settings[prefix + "-highlight-toggle.value"] == "on":
+        marker_size = [
+            32 if spectrum in highlight_queryset else 8
+            for spectrum in queryset
+        ]
+
     return {
         "marker": {
             "color": color_indices,
             "colorscale": colormap,
             "colorbar": go.scatter.marker.ColorBar(**colorbar_dict),
+            "size": marker_size,
         }
     }
 
@@ -261,9 +277,17 @@ def recalculate_main_graph(
         # fun but maybe slow and so presently disabled
         # return main_graph_hover_styler(ctx, cget)
     queryset = cget("queryset")
+    highlight_queryset = cget("main-highlight-queryset")
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
+    if ctx.triggered[0]["prop_id"] == "main-highlight-save.n_clicks":
+        if highlight_queryset == queryset:
+            raise PreventUpdate
+        cset("main-highlight-queryset", queryset)
+        if marker_settings["main-highlight-toggle.value"] == "off":
+            raise PreventUpdate
+        highlight_queryset = queryset
     # this is for functions like describe_current_graph
     # that display or recall
     # the settings used to generate a graph
@@ -289,6 +313,7 @@ def recalculate_main_graph(
         truncated_queryset,
         prefix="main",
         suffix="marker.value",
+        highlight_queryset=highlight_queryset,
     )
     # these text and customdata choices are likely placeholders
     text = [
@@ -431,7 +456,7 @@ def change_calc_input_visibility(calc_type, *, spec_model):
     # that take its filters as arguments
     if props["type"] == "method":
         return [
-            {"display": "flex", 'flex-direction': 'column'}
+            {"display": "flex", "flex-direction": "column"}
             if x < props["arity"]
             else {"display": "none"}
             for x in range(3)

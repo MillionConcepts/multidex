@@ -2,14 +2,12 @@
 
 from ast import literal_eval
 from functools import partial
-import re
 from typing import TYPE_CHECKING, Mapping, Optional, Iterable
 
 import dash_core_components as dcc
 import dash_html_components as html
-import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
 
 from plotter_utils import get_if, none_to_empty, fetch_css_variables
 
@@ -41,7 +39,7 @@ GRAPH_AXIS_SETTINGS = {
 
 
 def dynamic_spec_div(
-        print_name: str, graph_name: str, image_name: str, index: int
+    print_name: str, graph_name: str, image_name: str, index: int
 ) -> html.Div:
     return html.Div(
         children=[
@@ -121,12 +119,12 @@ def image_holder(index: int = 0) -> dcc.Graph:
 
 
 def main_graph_scatter(
-        x_axis: list[float],
-        y_axis: list[float],
-        marker_property_dict: Mapping,
-        text: list,
-        customdata: list,
-        zoom: Optional[tuple[list[float, float]]] = None,
+    x_axis: list[float],
+    y_axis: list[float],
+    marker_property_dict: Mapping,
+    text: list,
+    customdata: list,
+    zoom: Optional[tuple[list[float, float]]] = None,
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -198,8 +196,10 @@ def mspec_graph_line(spectrum: "Spectrum") -> go.Figure:
 
 
 def marker_options_drop(
-        spec_model: "Spectrum", element_id: str, value: str = None,
-        label_content=None
+    spec_model: "Spectrum",
+    element_id: str,
+    value: str = None,
+    label_content=None,
 ) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
@@ -211,23 +211,25 @@ def marker_options_drop(
     if not value:
         value = options[0]["value"]
         return html.Div(
-            className='info-text',
-        style={'display': 'flex', 'flex-direction': 'column',
-               'font-size': '1rem'},
+            className="info-text",
+            style={
+                "display": "flex",
+                "flex-direction": "column",
+                "font-size": "1rem",
+            },
             children=[
                 html.Label(children=[label_content], htmlFor=element_id),
                 dcc.Dropdown(
                     id=element_id,
                     className="marker-value-drop",
                     options=options,
-                    value=value
-                )
-            ])
+                    value=value,
+                ),
+            ],
+        )
 
 
-def color_drop(
-        element_id: str, value: str = None
-) -> dcc.Dropdown:
+def color_drop(element_id: str, value: str = None) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
     """
@@ -245,9 +247,7 @@ def color_drop(
     )
 
 
-def axis_value_drop(
-        spec_model, element_id, value=None, label_content=None
-):
+def axis_value_drop(spec_model, element_id, value=None, label_content=None):
     """
     dropdown for selecting calculation options for axes
     """
@@ -258,10 +258,13 @@ def axis_value_drop(
     if not value:
         value = options[0]["value"]
     return html.Div(
-        className='info-text',
-        id=element_id + '-container',
-        style={'display': 'flex', 'flex-direction': 'column',
-               'font-size': '1rem'},
+        className="info-text",
+        id=element_id + "-container",
+        style={
+            "display": "flex",
+            "flex-direction": "column",
+            "font-size": "1rem",
+        },
         children=[
             html.Label(children=[label_content], htmlFor=element_id),
             dcc.Dropdown(
@@ -269,30 +272,29 @@ def axis_value_drop(
                 className="axis-value-drop",
                 options=options,
                 value=value,
-            )]
+            ),
+        ],
     )
 
 
 def filter_drop(model, element_id, value, label_content=None):
     """dropdown for filter selection"""
-    options = [
-        {"label": filt, "value": filt} for filt in model.filters
-    ]
+    options = [{"label": filt, "value": filt} for filt in model.filters]
     if not value:
         value = options[0]["value"]
     return html.Div(
-        className='info-text',
-        id=element_id + '-container',
-        style={'display': 'flex', 'flex-direction': 'column'},
+        className="info-text",
+        id=element_id + "-container",
+        style={"display": "flex", "flex-direction": "column"},
         children=[
             html.Label(children=[label_content], htmlFor=element_id),
             dcc.Dropdown(
                 id=element_id,
                 options=options,
                 value=value,
-                style={"width": "6rem", "display": "inline-block"}
-            )
-        ]
+                style={"width": "6rem", "display": "inline-block"},
+            ),
+        ],
     )
 
 
@@ -309,7 +311,7 @@ def field_drop(fields, element_id, index, value=None):
 
 
 def model_options_drop(
-        element_id: str, index: int, value: Optional[str] = None
+    element_id: str, index: int, value: Optional[str] = None
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
@@ -324,10 +326,10 @@ def model_options_drop(
 
 
 def model_range_entry(
-        element_id: str,
-        index: int,
-        begin: Optional[float] = None,
-        end: Optional[float] = None,
+    element_id: str,
+    index: int,
+    begin: Optional[float] = None,
+    end: Optional[float] = None,
 ) -> list[dcc.Input]:
     """
     pair of entry fields for selecting a range of values for a
@@ -394,7 +396,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
     if value_dict is None:
         text = ""
     elif ("value_list" in value_dict.keys()) and (
-            ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
+        ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
     ):
         raise ValueError(
             "Entering both an explicit value list and a value range is "
@@ -410,7 +412,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
 
 
 def model_range_entry_2(
-        element_id: str, index: int, value_dict: Optional[Mapping] = None
+    element_id: str, index: int, value_dict: Optional[Mapping] = None
 ) -> dcc.Input:
     """
     entry field for selecting a range of values for a
@@ -420,20 +422,20 @@ def model_range_entry_2(
         id={"type": element_id, "index": index},
         type="text",
         value=unparse_model_quant_entry(value_dict),
-        style={"display": "none"}
-
+        style={"display": "none"},
     )
 
 
 def model_range_display(element_id: str, index: int) -> html.P:
     """placeholder area for displaying range for number field searches"""
     return html.P(
-        className="info-text", id={"type": element_id, "index": index},
+        className="info-text",
+        id={"type": element_id, "index": index},
     )
 
 
 def search_parameter_div(
-        index: int, searchable_fields: Iterable[str], preset_parameter=None
+    index: int, searchable_fields: Iterable[str], preset_parameter=None
 ) -> html.Div:
     get_r = partial(get_if, preset_parameter is not None, preset_parameter)
     children = [
@@ -535,7 +537,7 @@ def load_search_drop(element_id):
 
 # primary search panel
 def search_tab(
-        spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
+    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
 ):
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
@@ -552,7 +554,7 @@ def search_tab(
                                 spec_model,
                                 "main-graph-option-x",
                                 value=get_r("graph-option-x"),
-                                label_content="x axis"
+                                label_content="x axis",
                             ),
                             html.Div(
                                 className="filter-container",
@@ -561,22 +563,24 @@ def search_tab(
                                         spec_model,
                                         "main-filter-1-x",
                                         value=get_r("main-filter-1-x.value"),
-                                        label_content="left shoulder"
+                                        label_content="left shoulder",
                                     ),
                                     filter_drop(
                                         spec_model,
                                         "main-filter-3-x",
                                         value=get_r("main-filter-3-x.value"),
-                                        label_content="band center"
+                                        label_content="band center",
                                     ),
                                     filter_drop(
                                         spec_model,
                                         "main-filter-2-x",
                                         value=get_r("main-filter-2-x.value"),
-                                        label_content="right shoulder"
+                                        label_content="right shoulder",
                                     ),
-                                ])
-                        ]),
+                                ],
+                            ),
+                        ],
+                    ),
                     html.Div(
                         className="axis-controls-container",
                         children=[
@@ -584,7 +588,7 @@ def search_tab(
                                 spec_model,
                                 "main-graph-option-y",
                                 value=get_r("main-graph-option-y.value"),
-                                label_content="y axis"
+                                label_content="y axis",
                             ),
                             html.Div(
                                 className="filter-container",
@@ -593,22 +597,24 @@ def search_tab(
                                         spec_model,
                                         "main-filter-1-y",
                                         value=get_r("main-filter-1-y.value"),
-                                        label_content="left shoulder"
+                                        label_content="left shoulder",
                                     ),
                                     filter_drop(
                                         spec_model,
                                         "main-filter-3-y",
                                         value=get_r("main-filter-3-y.value"),
-                                        label_content="band center"
+                                        label_content="band center",
                                     ),
                                     filter_drop(
                                         spec_model,
                                         "main-filter-2-y",
                                         value=get_r("main-filter-2-y.value"),
-                                        label_content="right shoulder"
+                                        label_content="right shoulder",
                                     ),
-                                ])
-                        ]),
+                                ],
+                            ),
+                        ],
+                    ),
                     html.Div(
                         className="axis-controls-container",
                         children=[
@@ -616,7 +622,7 @@ def search_tab(
                                 spec_model,
                                 "main-graph-option-marker",
                                 value=get_r("main-graph-option-marker.value"),
-                                label_content='marker color'
+                                label_content="marker color",
                             ),
                             html.Div(
                                 className="filter-container",
@@ -625,29 +631,43 @@ def search_tab(
                                         spec_model,
                                         "main-filter-1-marker",
                                         value=get_r(
-                                            "main-filter-1-marker.value"),
-                                        label_content="left shoulder"
+                                            "main-filter-1-marker.value"
+                                        ),
+                                        label_content="left shoulder",
                                     ),
                                     filter_drop(
                                         spec_model,
                                         "main-filter-3-marker",
                                         value=get_r(
-                                            "main-filter-3-marker.value"),
-                                        label_content="band center"
+                                            "main-filter-3-marker.value"
+                                        ),
+                                        label_content="band center",
                                     ),
                                     filter_drop(
                                         spec_model,
                                         "main-filter-2-marker",
                                         value=get_r(
-                                            "main-filter-2-marker.value"),
-                                        label_content="right shoulder"
+                                            "main-filter-2-marker.value"
+                                        ),
+                                        label_content="right shoulder",
                                     ),
-                                ])
-                            ,
+                                ],
+                            ),
                             color_drop(
-                                'main-color',
+                                "main-color",
                                 value=get_r("main-color.value"),
-                            )
+                            ),
+                            html.Button(
+                                "highlight search", id="main-highlight-save"
+                            ),
+                            dcc.RadioItems(
+                                id="main-highlight-toggle",
+                                options=[
+                                    {"label": "highlight on", "value": "on"},
+                                    {"label": "highlight off", "value": "off"},
+                                ],
+                                value="off",
+                            ),
                         ],
                     ),
                     trigger_div("search", 2),
