@@ -79,14 +79,20 @@ class Spectrum(models.Model):
     instruments.
     """
 
-    # this is not intended to hold all responsivity information about the
+    # this is not intended to hold all transmission information about the
     # filters, unlike FilterSet from wwu_spec (or some version that may be
     # instantiated here later) it is primarily a container. so just: filter
     # names and canonical center values.
 
     filters = {}
+    virtual_filters = {}
+    virtual_filter_mapping = {}
     axis_value_properties = {}
     marker_value_properties = {}
+    searchable_fields = []
+
+    def all_filter_waves(self):
+        return self.filters | self.virtual_filters
 
     def as_table(self) -> pd.DataFrame:
         """
@@ -96,98 +102,117 @@ class Spectrum(models.Model):
         a slightly lower-level API element.
         """
         rows = []
-        for filt, freq in self.filters.items():
+        for filt, wave in self.filters.items():
             mean = getattr(self, filt)
             err = getattr(self, filt + "_err")
-            rows.append([filt, freq, mean, err])
+            rows.append([filt, wave, mean, err])
         return pd.DataFrame(rows)
 
+    # TODO: optimization notes
     # for most of the below calculations, i think a dictionary and standard
     # library functions are faster than a dataframe or numpy array and vect
     # functions, unless we have spectra measured with > ~50-100 points. it's
     # possible that i'm making too many lookups, though, and this should all
-    # be refactored to reduce that
+    # be refactored to reduce that.
+    # adding scaling and nearby filter averaging makes this worse, because you
+    # have to redo the scale/average lookups for each axis as it's currently
+    # written. This should probably be refactored to reduce that.
+    # the best way to do this would be to populate a dataframe with the
+    # filter values of everything in the queryset, and perform operations
+    # on that.
 
-    def as_dict(self) -> dict:
-        """dictionary of mean reflectance values only"""
+    def filter_values(self, **scale_kwargs) -> dict:
+        """
+        dictionary of filter name: {wavelength, mean reflectance}. used to
+        initialize most functions. to be replaced in some subclasses with
+        whatever weird averaging and scaling rules might be desired
+        """
         return {
-            self.filters[filt]: getattr(self, filt)
+            filt: {'wave': self.filters[filt], 'mean': getattr(self, filt)}
             for filt in self.filters
             if getattr(self, filt)
         }
 
-    def intervening(self, freq_1: float, freq_2: float) -> List[
-        Tuple[int, float]]:
+    def intervening(
+            self, wave_1: float, wave_2: float,
+            **scale_kwargs) -> List[
+        Tuple[int, float]
+    ]:
         """
-        frequency, mean reflectance for all bands strictly between
-        freq_1 & freq_2
+        wavelength, mean reflectance for all bands strictly between
+        wave_1 & wave_2
         """
         return [
-            (freq, ref)
-            for freq, ref in self.as_dict().items()
+            (filt['wave'], filt['mean'])
+            for filt in self.filter_values(**scale_kwargs).values()
             if (
-                    max([freq_1, freq_2]) > freq > min([freq_1, freq_2])
-                    and ref is not None
+                    max([wave_1, wave_2]) > filt['wave'] > min([wave_1, wave_2])
+                    and filt['mean'] is not None # TODO: Cruft?
             )
         ]
 
-    def band(self, freq_1: float, freq_2: float) -> List[Tuple[int, float]]:
+    def band(self, wave_1: float, wave_2: float, **scale_kwargs) -> List[
+        Tuple[int, float]
+    ]:
         """
-        frequency, mean reflectance for all bands between and including
-        freq_1 & freq_2 
+        wavelength, mean reflectance for all bands between and including
+        wave_1 & wave_2 
         """
         return [
-            (freq, ref)
-            for freq, ref in self.as_dict().items()
+            (filt['wave'], filt['mean'])
+            for filt in self.filter_values(**scale_kwargs).values()
             if (
-                    max([freq_1, freq_2]) >= freq >= min([freq_1, freq_2])
-                    and ref is not None
+                max([wave_1, wave_2]) >= filt['wave'] >= min([wave_1, wave_2])
+                and filt['mean'] is not None  # TODO: Cruft?
             )
         ]
 
-    def ref(self, filt_1: str) -> float:
+    def ref(self, filt_1: str, **scale_kwargs) -> float:
         """mean reflectance at filter given by filter_name"""
-        return getattr(self, filt_1)
+        return self.filter_values(**scale_kwargs)[filt_1]['mean']
 
-    def band_avg(self, filt_1: str, filt_2: str) -> float:
+    def band_avg(self, filt_1: str, filt_2: str, **scale_kwargs) -> float:
         """
         average of reflectance values at filt_1, filt_2, and all intervening
         bands. this currently double-counts measurements at matching
-        frequencies.
+        wavelengths in cases where bands are not being virtually averaged.
+        will cause issues if you ask for filters that aren't there when
+        virtually averaging and also ask for things to be virtually averaged.
         """
         return stats.mean([
-            freq_reflectance_tuple[1]
-            for freq_reflectance_tuple in self.band(
-                self.filters[filt_1], self.filters[filt_2]
+            wave_reflectance_tuple[1]
+            for wave_reflectance_tuple in self.band(
+                self.all_filter_waves()[filt_1], self.all_filter_waves()[filt_2], **scale_kwargs
             )])
 
-    def band_max(self, filt_1: str, filt_2: str) -> float:
+    def band_max(self, filt_1: str, filt_2: str, **scale_kwargs) -> float:
         """
         max reflectance value between filt_1 and filt_2 (inclusive)
         """
         return max([
-            freq_reflectance_tuple[1]
-            for freq_reflectance_tuple in self.band(
-                self.filters[filt_1], self.filters[filt_2]
+            wave_reflectance_tuple[1]
+            for wave_reflectance_tuple in self.band(
+                self.all_filter_waves()[filt_1], self.all_filter_waves()[filt_2], **scale_kwargs
             )])
 
-    def band_min(self, filt_1: str, filt_2: str) -> float:
+    def band_min(self, filt_1: str, filt_2: str, **scale_kwargs) -> float:
         """
         min reflectance value between filt_1 and filt_2 (inclusive)
         """
         return min([
-            freq_reflectance_tuple[1]
-            for freq_reflectance_tuple in self.band(
-                self.filters[filt_1], self.filters[filt_2]
+            wave_reflectance_tuple[1]
+            for wave_reflectance_tuple in self.band(
+                self.all_filter_waves()[filt_1], self.all_filter_waves()[filt_2], **scale_kwargs
             )])
 
-    def ref_ratio(self, filt_1: str, filt_2: str) -> float:
+    def ref_ratio(self, filt_1: str, filt_2: str, **scale_kwargs) -> float:
         """
         ratio of reflectance values at filt_1 & filt_2
         """
-        return self.ref(filt_1) / self.ref(filt_2)
+        filts = self.filter_values(**scale_kwargs)
+        return filts[filt_1]['mean'] / filts[filt_2]['mean']
 
-    def slope(self, filt_1: str, filt_2: str) -> float:
+    def slope(self, filt_1: str, filt_2: str, **scale_kwargs) -> float:
         """
         where input strings are filter names defined in self.filters
 
@@ -197,19 +222,21 @@ class Spectrum(models.Model):
         """
         if filt_1 == filt_2:
             raise ValueError(
-                "slope between a frequency and itself is undefined"
+                "slope between a wavelength and itself is undefined"
             )
-        ref_1 = getattr(self, filt_1)
-        ref_2 = getattr(self, filt_2)
-        freq_1 = self.filters[filt_1]
-        freq_2 = self.filters[filt_2]
-        return (ref_2 - ref_1) / (freq_2 - freq_1)
+        filts = self.filter_values(**scale_kwargs)
+        ref_1 = filts[filt_1]['mean']
+        ref_2 = filts[filt_2]['mean']
+        wave_1 = filts[filt_1]['wave']
+        wave_2 = filts[filt_2]['wave']
+        return (ref_2 - ref_1) / (wave_2 - wave_1)
 
     def band_depth_custom(
-            self,
-            filt_left: str,
-            filt_right: str,
-            filt_middle: str
+        self,
+        filt_left: str,
+        filt_right: str,
+        filt_middle: str,
+        **scale_kwargs
     ) -> float:
         """
         simple band depth at filt_middle --
@@ -223,31 +250,32 @@ class Spectrum(models.Model):
         """
         if len({filt_left, filt_middle, filt_right}) != 3:
             raise ValueError(
-                "band depth between a frequency and itself is undefined"
+                "band depth between a wavelength and itself is undefined"
             )
-        freq_left = self.filters[filt_left]
-        freq_middle = self.filters[filt_middle]
-        freq_right = self.filters[filt_right]
+        filts = self.filter_values(**scale_kwargs)
+        wave_left = filts[filt_left]['wave']
+        wave_middle = filts[filt_middle]['wave']
+        wave_right = filts[filt_right]['wave']
 
         if not (
-                max(freq_left, freq_right)
-                > freq_middle
-                > min(freq_left, freq_right)
+                max(wave_left, wave_right)
+                > wave_middle
+                > min(wave_left, wave_right)
         ):
             raise ValueError(
                 "band depth can only be calculated at a band within the "
                 "chosen range."
             )
-        distance = freq_middle - freq_left
-        slope = self.slope(filt_left, filt_right)
-        continuum_ref = self.ref(filt_left) + slope * distance
-        return self.ref(filt_middle) / continuum_ref
+        distance = wave_middle - wave_left
+        slope = self.slope(filt_left, filt_right, **scale_kwargs)
+        continuum_ref = filts[filt_left]['mean'] + slope * distance
+        return filts[filt_middle]['mean'] / continuum_ref
 
-    def band_depth_min(self, filt_1: str, filt_2: str) -> float:
+    def band_depth_min(self, filt_1: str, filt_2: str, **scale_kwargs) -> float:
         """
         simple band depth at local minimum --
         local minimum reflectance / reflectance of 'continuum'
-        (straight line between filt_1 and filt_2) at that frequency.
+        (straight line between filt_1 and filt_2) at that wavelength.
         band depth between adjacent points is defined as 1. 
         passing filt_1 == filt_2 returns an error.
 
@@ -255,26 +283,44 @@ class Spectrum(models.Model):
         """
         if filt_1 == filt_2:
             raise ValueError(
-                "band depth between a frequency and itself is undefined"
+                "band depth between a wavelength and itself is undefined"
             )
-        freq_1 = self.filters[filt_1]
-        freq_2 = self.filters[filt_2]
+        filts = self.filter_values(**scale_kwargs)
+        wave_1 = filts[filt_1]['wave']
+        wave_2 = filts[filt_2]['wave']
 
-        intervening = self.intervening(freq_1, freq_2)
+        intervening = self.intervening(wave_1, wave_2, **scale_kwargs)
         if not intervening:
             return 1
 
-        min_ref = min(filt[1] for filt in intervening)
-        min_freq = [
-            (ix, freq)
-            for ix, freq in enumerate([filt[0] for filt in intervening])
+        min_ref = min([filt[1] for filt in intervening])
+        min_wave = [
+            (ix, wave)
+            for ix, wave in enumerate([filt[0] for filt in intervening])
             if intervening[ix][1] == min_ref
         ][0]
 
-        distance = min_freq[0] - freq_1
-        slope = self.slope(filt_1, filt_2)
-        continuum_ref = self.ref(filt_1) + slope * distance
+        distance = min_wave[0] - wave_1
+        slope = self.slope(filt_1, filt_2, **scale_kwargs)
+        continuum_ref = filts[filt_1]['mean'] + slope * distance
         return min_ref / continuum_ref
+
+
+    def clean(self):
+        # TODO: likely remove this
+        # for virtual_filter, corresponding_filters in \
+        #         self.virtual_filter_mapping.items():
+        #     filter_values = [
+        #         getattr(self, filt) for filt in corresponding_filters
+        #     ]
+        #     if any([value is None for value in filter_values]):
+        #         continue
+        #     setattr(
+        #         self,
+        #         virtual_filter,
+        #         np.mean(np.array(filter_values))
+        #     )
+        super(Spectrum, self).clean()
 
 
 class MObs(Observation):
@@ -652,6 +698,9 @@ class MSpec(Spectrum):
         null=True,
         db_index=True
     )
+
+    # real filters
+
     r1 = models.FloatField("r1 mean", blank=True, null=True, db_index=True)
     r1_err = models.FloatField("r1 err", blank=True, null=True, db_index=True)
     l1 = models.FloatField("l1 mean", blank=True, null=True, db_index=True)
@@ -677,6 +726,37 @@ class MSpec(Spectrum):
     l6 = models.FloatField("l6 mean", blank=True, null=True, db_index=True)
     l6_err = models.FloatField("l6 err", blank=True, null=True, db_index=True)
 
+    # virtual filters
+    #
+    # TODO: I think it's better to calculate virtual filters when samples
+    #  enter the
+    #     database so we don't do a bunch of additional lookups and
+    #     computations
+    #     for what are essentially static properties every time we look at a
+    #     sample in an 'averaged' view, but this requires ongoing assessment
+    #     -- Task IDs R0001, C0001, C0002
+
+    # at least for MASTCAM, the set of virtual filters === the set of pairs of
+    # real filters with nominal band center differences <= 5 nm. We would,
+    # however,
+    # prefer to define them explicitly rather than generate them
+    # programmatically
+    # applying this rule, for a variety of reasons.
+    # the virtual mean reflectance in an ROI for a virtual filter is the
+    # arithmetic
+    # mean of the mean reflectance values in that ROI for the two real filters
+    # in its associated pair.
+    # the nominal band center of a virtual filter is the arithmetic mean of the
+    # nominal band centers of the two real filters in its associated pair.
+    # TODO: 1. is that rule about nominal band center correct?
+    #       2. what is the stdev / variance? are we pretending this is shot
+    #       noise,
+    #          independent between the eyes, so just a sum of Poisson
+    #          distributions?
+    #     --Task IDs C0001, C0002
+
+    # mappings from filter name to nominal band centers, in nm
+
     filters = {
         "l2": 445,
         "r2": 447,
@@ -698,9 +778,33 @@ class MSpec(Spectrum):
         "r6": 1013,
     }
 
+    virtual_filters = {
+        "l2_r2": 446,
+        "l0b_r0b": 482,
+        "l1_r1": 527,
+        "l0g_r0g": 554,
+        "l0r_r0r": 640,
+        "l6_r6": 1013
+    }
+
+    # which real filters do virtual filters correspond to?
+    virtual_filter_mapping = {
+        "l2_r2": ("l2", "r2"),
+        "l0b_r0b": ("l0b", "r0b"),
+        "l1_r1": ("l1", "r1"),
+        "l0g_r0g": ("l0g", "r0g"),
+        "l0r_r0r": ("l0r", "r0r"),
+        "l6_r6": ("l6", "r6")
+    }
+
     axis_value_properties = [
-        {"label": "band value", "value": "ref", "type": "method", "arity": 1,
-         "value_type": "quant"},
+        {
+            "label": "band value",
+            "value": "ref",
+            "type": "method",
+            "arity": 1,
+            "value_type": "quant"
+        },
         {
             "label": "band average",
             "value": "band_avg",
@@ -777,6 +881,49 @@ class MSpec(Spectrum):
 
     marker_value_properties = axis_value_properties + searchable_fields
 
+    def filter_values(self, scale_to = None, average_filters = False):
+        """
+        scale_to: None or tuple of (lefteye filter name, righteye filter name)
+        """
+        values = {}
+        lefteye_scale = 1
+        righteye_scale = 1
+        if scale_to is not None:
+            scales = (getattr(self, scale_to[0]), getattr(self, scale_to[1]))
+            # don't scale eyes to a value that doesn't exist
+            if all(scales):
+                filter_mean = stats.mean(scales)
+                lefteye_scale = filter_mean / scales[0]
+                righteye_scale = filter_mean / scales[1]
+        real_filters_to_use = list(self.filters.keys())
+        if average_filters is True:
+            for virtual_filter, comps in self.virtual_filter_mapping.items():
+                # do not attempt to average filters if both filters of
+                # a pair are not present
+                if not all([getattr(self, comp) for comp in comps]):
+                    continue
+                [real_filters_to_use.remove(comp) for comp in comps]
+                values[virtual_filter] = {
+                    'wave': self.virtual_filters[virtual_filter],
+                    'mean': stats.mean((
+                        getattr(self, comps[0]) * lefteye_scale,
+                        getattr(self, comps[1]) * righteye_scale
+                    ))
+                }
+        for real_filter in real_filters_to_use:
+            mean_value = getattr(self, real_filter)
+            if mean_value is None:
+                continue
+            if real_filter.startswith('r'):
+                eye_scale = righteye_scale
+            else:
+                eye_scale = lefteye_scale
+            values[real_filter] = {
+                'wave': self.filters[real_filter],
+                'mean': getattr(self, real_filter) * eye_scale
+            }
+        return dict(sorted(values.items(), key=lambda item: item[1]['wave']))
+
     def image_files(self) -> dict:
         filedict = {
             image_type: getattr(self.observation, image_type)
@@ -816,6 +963,8 @@ class MSpec(Spectrum):
     # from compressed images (compressed _after_ the polygons were drawn). 
     # it would be better to have official documentation and uncompressed
     # images!
+    # TODO: replace this with 'from marslab.compatibility import
+    #  MERSPECT_COLOR_MAPPINGS'
     color_mappings = {
         "light green": "#80ff00",
         "red": "#dc133d",

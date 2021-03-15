@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 from plotter_utils import get_if, none_to_empty, fetch_css_variables
 
 if TYPE_CHECKING:
-    from plotter.models import Spectrum
+    from plotter.models import MSpec, Spectrum
 
 # TODO: is this a terrible placeholder?
 css_variables = fetch_css_variables()
@@ -36,6 +36,37 @@ GRAPH_AXIS_SETTINGS = {
 
 # note that style properties are camelCased rather than hyphenated
 # b/c React
+
+
+def scale_to_drop(model, element_id, value=None):
+    """dropdown for selecting a virtual filter to scale to"""
+    return dcc.Dropdown(
+        id=element_id,
+        options=[
+            {"label": filt, "value": filt}
+            for filt in model.virtual_filter_mapping
+        ],
+        value=value,
+    )
+
+
+def scale_controls_container(spec_model, id_prefix):
+    scale_container = html.Div(
+        id=id_prefix + "-scale-controls-container-div",
+        className="scale-controls-container",
+    )
+    scale_container.children = [
+        html.Label(children=["scale to average at:"], htmlFor=id_prefix + "-scale"),
+        scale_to_drop(spec_model, id_prefix + "-scale", "l1_r1"),
+        dcc.Checklist(
+            id=id_prefix + "-average",
+            options=[
+                {"label": "average nearby filters", "value": "average"},
+            ],
+            value=["average"],
+        ),
+    ]
+    return scale_container
 
 
 def dynamic_spec_div(
@@ -168,15 +199,19 @@ def main_graph_scatter(
     return fig
 
 
-def mspec_graph_line(spectrum: "Spectrum") -> go.Figure:
+def mspec_graph_line(
+    spectrum: "MSpec", scale_to=("l1", "r1"), average_filters=True
+) -> go.Figure:
     """
     placeholder line graph for individual mastcam spectra.
     creates a plotly figure from the mspec's filter values and
     roi_color.
     """
-    spectrum_data = spectrum.as_dict()
-    x_axis = list(spectrum_data.keys())
-    y_axis = list(spectrum_data.values())
+    spectrum_data = spectrum.filter_values(
+        scale_to=scale_to, average_filters=average_filters
+    ).values()
+    x_axis = [filt["wave"] for filt in spectrum_data]
+    y_axis = [filt["mean"] for filt in spectrum_data]
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -192,6 +227,7 @@ def mspec_graph_line(spectrum: "Spectrum") -> go.Figure:
     )
     fig.update_xaxes(GRAPH_AXIS_SETTINGS)
     fig.update_yaxes(GRAPH_AXIS_SETTINGS)
+    fig.update_layout({"yaxis": {"range": [0, min(y_axis) + max(y_axis)]}})
     return fig
 
 
@@ -707,7 +743,13 @@ def search_tab(
             html.Div(id="fake-output-for-callback-with-only-side-effects-0"),
             html.Div(id="fake-output-for-callback-with-only-side-effects-1"),
             html.Div(id="search-load-progress-flag"),
-            load_search_drop("load-search"),
+            html.Div(
+                style={"display": "flex", "margin-bottom": "25vh"},
+                children=[
+                    scale_controls_container(spec_model, "main-spec"),
+                    load_search_drop("load-search"),
+                ],
+            ),
         ],
         # display title
         label="SEARCH",

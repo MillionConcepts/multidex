@@ -42,6 +42,7 @@ from plotter_utils import (
     none_to_quote_unquote_none,
     field_values,
     fetch_css_variables,
+    ctxdict,
 )
 
 if TYPE_CHECKING:
@@ -688,11 +689,24 @@ def graph_point_to_metadata(event_data, *, spec_model, style=None):
     )
 
 
-def update_spectrum_graph(event_data, *, spec_model, spec_graph_function):
+def update_spectrum_graph(
+    event_data,
+    scale_input_value,
+    average_input_value,
+    *,
+    spec_model,
+    spec_graph_function,
+):
+    scale_to = spec_model.virtual_filter_mapping[scale_input_value]
+    average_filters = (
+        True if average_input_value == ["average"] else False
+    )
     if not event_data:
         raise PreventUpdate
     spectrum = spectrum_from_graph_event(event_data, spec_model)
-    return spec_graph_function(spectrum)
+    return spec_graph_function(
+        spectrum, scale_to=scale_to, average_filters=average_filters
+    )
 
 
 def make_mspec_browse_image_components(
@@ -757,6 +771,8 @@ class SPlot:
     def __init__(self, arg_dict):
         # maybe eventually we define this more flexibly but better to be
         # strict for now
+        self.y_axis = None
+        self.x_axis = None
         for parameter in self.canonical_parameters:
             setattr(self, parameter, arg_dict[parameter])
 

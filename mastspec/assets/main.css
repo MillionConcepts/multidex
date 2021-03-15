@@ -33,6 +33,10 @@ button {
     flex-wrap: wrap
 }
 
+.scale-controls-container {
+    width: 15rem;
+}
+
 .load-button-container, .search-parameter-container {
     width: 15rem;
     margin-left:0.3rem;

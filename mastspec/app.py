@@ -259,6 +259,7 @@ def static_image_link(path):
 # all of its children are created within that function
 # by calling other component factory functions.
 
+# noinspection PyTypeChecker
 app.layout = html.Div(
     children=[
         dcc.Tabs(
@@ -430,7 +431,11 @@ app.callback(
 
 app.callback(
     Output({"type": "main-spec-graph", "index": 0}, "figure"),
-    [Input("main-graph", "hoverData")],
+    [
+        Input("main-graph", "hoverData"),
+        Input("main-spec-scale", "value"),
+        Input("main-spec-average", "value")
+    ],
 )(update_spectrum_graph)
 
 app.callback(
@@ -445,7 +450,9 @@ app.callback(
 
 app.callback(
     Output({"type": "view-spec-graph", "index": MATCH}, "figure"),
-    [Input({"type": "view-graph", "index": MATCH}, "hoverData")],
+    [
+        Input({"type": "view-graph", "index": MATCH}, "hoverData")
+    ],
 )(update_spectrum_graph)
 
 app.callback(
