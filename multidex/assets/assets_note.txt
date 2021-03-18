@@ -1,0 +1,3 @@
+It is possible that this should eventually go in the django static folder with a name like dash_assets.
+Or maybe not. Dash certainly doesn't _need_ to go through django to access local assets, although it's a little
+awkward...it really depends on whether or not the WSGI layer (gunicorn or whatever) gets confused by dash doing so.
