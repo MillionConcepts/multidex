@@ -401,7 +401,8 @@ app.callback(
     ],
 )(update_search_options)
 
-# trigger active queryset / df update on new searches or scaling / averaging requests
+# trigger active queryset / df update on new searches
+# or scaling / averaging requests
 app.callback(
     Output({"type": "search-trigger", "index": 0}, "value"),
     [
@@ -554,5 +555,6 @@ app.callback(
     [State("main-graph", "selectedData")]
 )(export_graph_csv)
 
-# app.run_server(debug=True, use_reloader=False, dev_tools_silence_routes_logging=True)
+# app.run_server(debug=True, use_reloader=False,
+# dev_tools_silence_routes_logging=True)
 app.run_server(dev_tools_silence_routes_logging=True)

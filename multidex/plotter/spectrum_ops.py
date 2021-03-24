@@ -5,7 +5,6 @@ def filter_df_from_queryset(queryset, **scale_kwargs):
     filter_value_list = []
     id_list = []
     for spectrum in queryset:
-        vals = spectrum.filter_values(**scale_kwargs)
         mean_dict = {
             filt: value["mean"]
             for filt, value in spectrum.filter_values(**scale_kwargs).items()
@@ -63,7 +62,7 @@ def band(filter_df, spec_model, wave_1, wave_2):
     ]
 
 
-def ref(filter_df, spec_model, filt):
+def ref(filter_df, _spec_model, filt):
     return filter_df[filt]
 
 
@@ -101,7 +100,7 @@ def band_min(filter_df, spec_model, filt_1, filt_2):
     ).min(axis=1)
 
 
-def ratio(filter_df, spec_model, filt_1, filt_2):
+def ratio(filter_df, _spec_model, filt_1, filt_2):
     """
     ratio of reflectance values at filt_1 & filt_2
     """

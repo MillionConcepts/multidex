@@ -33,13 +33,13 @@ GRAPH_AXIS_SETTINGS = {
     "tickfont": {"family": "Fira Mono"},
 }
 GRAPH_CONFIG_SETTINGS = {
-    'modeBarButtonsToRemove': [
-        'hoverCompareCartesian',
-        'resetScale2d',
-        'hoverClosestCartesian',
-        'hoverCompareCartesian'
+    "modeBarButtonsToRemove": [
+        "hoverCompareCartesian",
+        "resetScale2d",
+        "hoverClosestCartesian",
+        "hoverCompareCartesian",
     ],
-    'displaylogo': False,
+    "displaylogo": False,
 }
 
 
@@ -57,7 +57,7 @@ def scale_to_drop(model, element_id, value=None):
             for filt in model.virtual_filter_mapping
         ],
         value=value,
-        style={"max-width":"10rem"}
+        style={"max-width": "10rem"},
     )
 
 
@@ -77,9 +77,7 @@ def scale_controls_container(
         className="scale-controls-container",
     )
     scale_container.children = [
-        html.Label(
-            children=["scale to:"], htmlFor=id_prefix + "-scale"
-        ),
+        html.Label(children=["scale to:"], htmlFor=id_prefix + "-scale"),
         scale_to_drop(spec_model, id_prefix + "-scale", scale_value),
         dcc.Checklist(
             id=id_prefix + "-average",
@@ -145,7 +143,7 @@ def main_graph() -> dcc.Graph:
         figure=fig,
         style={"height": "65vh"},
         className="graph",
-        config=GRAPH_CONFIG_SETTINGS
+        config=GRAPH_CONFIG_SETTINGS,
     )
 
 
@@ -163,7 +161,7 @@ def spec_graph(name: str, index: int) -> dcc.Graph:
         id={"type": name, "index": index},
         figure=fig,
         style={"height": "20vw", "width": "45vw"},
-        config = GRAPH_CONFIG_SETTINGS
+        config=GRAPH_CONFIG_SETTINGS,
     )
 
 
@@ -587,7 +585,7 @@ def viewer_tab(index, splot):
                         id={"type": "view-graph", "index": index},
                         style={"height": "80vh"},
                         figure=splot.graph(),
-                        config=GRAPH_CONFIG_SETTINGS
+                        config=GRAPH_CONFIG_SETTINGS,
                     )
                 ],
                 id={"type": "view-graph-container", "index": index},
@@ -802,7 +800,6 @@ def search_tab(
                                 ],
                                 value="off",
                             ),
-
                         ],
                     ),
                     trigger_div("main-graph-scale", 1),
@@ -823,9 +820,7 @@ def search_tab(
                                 id={"type": "submit-search", "index": 1},
                                 style={"display": "none"},
                             ),
-                            html.Button(
-                                "add param", id="add-param"
-                            ),
+                            html.Button("add param", id="add-param"),
                             html.Button("clear search", id="clear-search"),
                             html.Button(
                                 id={"type": "submit-search", "index": 0},
@@ -837,36 +832,47 @@ def search_tab(
                             ),
                         ],
                     ),
-                    html.Div(children=[
-                        html.Div(
-                            [
-                                html.Label(
-                                    children=["set bounds"],
-                                    htmlFor='main-graph-bounds'
-                                ),
-                                dcc.Input(
-                                    type='text',
-                                    id='main-graph-bounds',
-                                    style={'height': '1.8rem', 'width': "10rem"},
-                                    placeholder="xmin xmax ymin ymax"
-                                )
-                            ],
-                            style={'display': 'flex',
-                                   'flexDirection': 'column',
-                                   'marginRight': '0.3rem',
-                                   'marginLeft': '0.3rem'
-                                   }
-                        ),
-                        scale_controls_container(
-                            spec_model,
-                            "main-graph",
-                            scale_value=get_r("scale_to"),
-                            average_value=get_r("average_filters"),
-                        ),
-                        html.P(id="main-highlight-description",
-                               style={'marginLeft': '1.5rem',
-                                      'maxWidth': '18rem'}),
-                    ], style={'display': 'flex'}),
+                    html.Div(
+                        children=[
+                            html.Div(
+                                [
+                                    html.Label(
+                                        children=["set bounds"],
+                                        htmlFor="main-graph-bounds",
+                                    ),
+                                    dcc.Input(
+                                        type="text",
+                                        id="main-graph-bounds",
+                                        style={
+                                            "height": "1.8rem",
+                                            "width": "10rem",
+                                        },
+                                        placeholder="xmin xmax ymin ymax",
+                                    ),
+                                ],
+                                style={
+                                    "display": "flex",
+                                    "flexDirection": "column",
+                                    "marginRight": "0.3rem",
+                                    "marginLeft": "0.3rem",
+                                },
+                            ),
+                            scale_controls_container(
+                                spec_model,
+                                "main-graph",
+                                scale_value=get_r("scale_to"),
+                                average_value=get_r("average_filters"),
+                            ),
+                            html.P(
+                                id="main-highlight-description",
+                                style={
+                                    "marginLeft": "1.5rem",
+                                    "maxWidth": "18rem",
+                                },
+                            ),
+                        ],
+                        style={"display": "flex"},
+                    ),
                 ],
             ),
             html.Div(children=[main_graph()], id="main-container"),
@@ -890,7 +896,7 @@ def search_tab(
             html.Div(
                 children=[
                     scale_controls_container(
-                        spec_model, "main-spec", "l2_r2", "average"
+                        spec_model, "main-spec", "L2_R2", "average"
                     ),
                 ]
             ),

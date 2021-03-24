@@ -1,5 +1,5 @@
-import statistics as stats
-from typing import Tuple, List
+from collections.abc import Sequence
+from typing import Optional
 
 import fs.path
 import PIL
@@ -8,18 +8,8 @@ from PIL import Image
 from django.db import models
 from toolz import keyfilter
 
+from marslab.compatibility import MERSPECT_COLOR_MAPPINGS, DERIVED_CAM_DICT, polish_xcam_spectrum
 from plotter_utils import modeldict
-
-# TODO: REWRITE THIS
-# def filter_fields(model):
-# return [
-#     field.name
-#     for field in model._meta.get_fields()
-#     if (
-#             field.name[0:-5] in model.filters.keys()
-#             or field.name[0:-6] in model.filters.keys()
-#     )
-# ]
 
 
 MSPEC_IMAGE_TYPES = [
@@ -472,9 +462,6 @@ class MSpec(Spectrum):
     r0r_err = models.FloatField(
         "r0 (Red Bayer) err", blank=True, null=True, db_index=True
     )
-
-    # real filters
-
     r1 = models.FloatField("r1 mean", blank=True, null=True, db_index=True)
     r1_err = models.FloatField("r1 err", blank=True, null=True, db_index=True)
     l1 = models.FloatField("l1 mean", blank=True, null=True, db_index=True)
@@ -500,93 +487,14 @@ class MSpec(Spectrum):
     l6 = models.FloatField("l6 mean", blank=True, null=True, db_index=True)
     l6_err = models.FloatField("l6 err", blank=True, null=True, db_index=True)
 
-    # virtual filters
-    #
-    # TODO: I think it's better to calculate virtual filters when samples
-    #  enter the
-    #     database so we don't do a bunch of additional lookups and
-    #     computations
-    #     for what are essentially static properties every time we look at a
-    #     sample in an 'averaged' view, but this requires ongoing assessment
-    #     -- Task IDs R0001, C0001, C0002
-
-    # at least for MASTCAM, the set of virtual filters === the set of pairs of
-    # real filters with nominal band center differences <= 5 nm. We would,
-    # however,
-    # prefer to define them explicitly rather than generate them
-    # programmatically
-    # applying this rule, for a variety of reasons.
-    # the virtual mean reflectance in an ROI for a virtual filter is the
-    # arithmetic
-    # mean of the mean reflectance values in that ROI for the two real filters
-    # in its associated pair.
-    # the nominal band center of a virtual filter is the arithmetic mean of the
-    # nominal band centers of the two real filters in its associated pair.
-    # TODO: 1. is that rule about nominal band center correct?
-    #       2. what is the stdev / variance? are we pretending this is shot
-    #       noise,
-    #          independent between the eyes, so just a sum of Poisson
-    #          distributions?
-    #     --Task IDs C0001, C0002
-
     # mappings from filter name to nominal band centers, in nm
-
-    filters = {
-        "l2": 445,
-        "r2": 447,
-        "l0b": 482,
-        "r0b": 482,
-        "l1": 527,
-        "r1": 527,
-        "l0g": 554,
-        "r0g": 554,
-        "l0r": 640,
-        "r0r": 640,
-        "l4": 676,
-        "l3": 751,
-        "r3": 805,
-        "l5": 867,
-        "r4": 908,
-        "r5": 937,
-        "l6": 1012,
-        "r6": 1013,
-    }
-
-    virtual_filters = {
-        "l2_r2": 446,
-        "l0b_r0b": 482,
-        "l1_r1": 527,
-        "l0g_r0g": 554,
-        "l0r_r0r": 640,
-        "l6_r6": 1013,
-    }
-
+    filters = DERIVED_CAM_DICT['MCAM']['filters']
+    virtual_filters = DERIVED_CAM_DICT['MCAM']['virtual_filters']
     # which real filters do virtual filters correspond to?
-    virtual_filter_mapping = {
-        "l2_r2": ("l2", "r2"),
-        "l0b_r0b": ("l0b", "r0b"),
-        "l1_r1": ("l1", "r1"),
-        "l0g_r0g": ("l0g", "r0g"),
-        "l0r_r0r": ("l0r", "r0r"),
-        "l6_r6": ("l6", "r6"),
-    }
-
+    virtual_filter_mapping = DERIVED_CAM_DICT['MCAM']['virtual_filter_mapping']
     # if we're only giving options for averaged filters,
     # what is the canonical list?
-    canonical_averaged_filters = {
-        "l2_r2": 446,
-        "l0b_r0b": 482,
-        "l1_r1": 527,
-        "l0g_r0g": 554,
-        "l0r_r0r": 640,
-        "l4": 676,
-        "l3": 751,
-        "r3": 805,
-        "l5": 867,
-        "r4": 908,
-        "r5": 937,
-        "l6_r6": 1013,
-    }
+    canonical_averaged_filters = DERIVED_CAM_DICT['MCAM']['canonical_averaged_filters']
 
     axis_value_properties = [
         {
@@ -729,55 +637,78 @@ class MSpec(Spectrum):
         if property["type"] != "method"
     ]
 
-    def filter_values(self, scale_to=None, average_filters=False):
+    def filter_values(
+            self,
+            scale_to: Optional[Sequence] = None,
+            average_filters: bool = False
+    ):
         """
+        return dictionary of filter values, optionally scaled and merged according
+        to MERSPECT-style rules
         scale_to: None or tuple of (lefteye filter name, righteye filter name)
         """
-        values = {}
-        lefteye_scale = 1
-        righteye_scale = 1
-        if scale_to not in [None, "None"]:
-            scales = (getattr(self, scale_to[0]), getattr(self, scale_to[1]))
-            # don't scale eyes to a value that doesn't exist
-            if all(scales):
-                filter_mean = stats.mean(scales)
-                lefteye_scale = filter_mean / scales[0]
-                righteye_scale = filter_mean / scales[1]
-        real_filters_to_use = list(self.filters.keys())
-        if average_filters is True:
-            for virtual_filter, comps in self.virtual_filter_mapping.items():
-                # do not attempt to average filters if both filters of
-                # a pair are not present
-                if not all([getattr(self, comp) for comp in comps]):
-                    continue
-                [real_filters_to_use.remove(comp) for comp in comps]
-                values[virtual_filter] = {
-                    "wave": self.virtual_filters[virtual_filter],
-                    "mean": stats.mean(
-                        (
-                            getattr(self, comps[0]) * lefteye_scale,
-                            getattr(self, comps[1]) * righteye_scale,
-                        ),
-                    ),
-                    "err": (
-                        getattr(self, comps[0] + "_err")**2 +
-                        getattr(self, comps[1] + "_err")**2
-                    ) ** 0.5
-                }
-        for real_filter in real_filters_to_use:
-            mean_value = getattr(self, real_filter)
-            if mean_value is None:
-                continue
-            if real_filter.startswith("r"):
-                eye_scale = righteye_scale
-            else:
-                eye_scale = lefteye_scale
-            values[real_filter] = {
-                "wave": self.filters[real_filter],
-                "mean": getattr(self, real_filter) * eye_scale,
-                "err": getattr(self, real_filter + "_err") * eye_scale
-            }
-        return dict(sorted(values.items(), key=lambda item: item[1]["wave"]))
+        spectrum = {
+            filt: getattr(self, filt.lower()) for filt in self.filters.keys()
+        }
+        spectrum |= {
+            filt + "_ERR": getattr(self, filt.lower() + "_err")
+            for filt in self.filters.keys()
+        }
+        return polish_xcam_spectrum(
+            spectrum = spectrum,
+            cam_info = DERIVED_CAM_DICT["MCAM"],
+            scale_to = scale_to,
+            average_filters = average_filters
+        )
+    # def filter_values(self, scale_to=None, average_filters=False):
+    #     """
+    #     scale_to: None or tuple of (lefteye filter name, righteye filter name)
+    #     """
+    #     values = {}
+    #     lefteye_scale = 1
+    #     righteye_scale = 1
+    #     if scale_to not in [None, "None"]:
+    #         scales = (getattr(self, scale_to[0]), getattr(self, scale_to[1]))
+    #         # don't scale eyes to a value that doesn't exist
+    #         if all(scales):
+    #             filter_mean = stats.mean(scales)
+    #             lefteye_scale = filter_mean / scales[0]
+    #             righteye_scale = filter_mean / scales[1]
+    #     real_filters_to_use = list(self.filters.keys())
+    #     if average_filters is True:
+    #         for virtual_filter, comps in self.virtual_filter_mapping.items():
+    #             # do not attempt to average filters if both filters of
+    #             # a pair are not present
+    #             if not all([getattr(self, comp) for comp in comps]):
+    #                 continue
+    #             [real_filters_to_use.remove(comp) for comp in comps]
+    #             values[virtual_filter] = {
+    #                 "wave": self.virtual_filters[virtual_filter],
+    #                 "mean": stats.mean(
+    #                     (
+    #                         getattr(self, comps[0]) * lefteye_scale,
+    #                         getattr(self, comps[1]) * righteye_scale,
+    #                     ),
+    #                 ),
+    #                 "err": (
+    #                     getattr(self, comps[0] + "_err")**2 +
+    #                     getattr(self, comps[1] + "_err")**2
+    #                 ) ** 0.5
+    #             }
+    #     for real_filter in real_filters_to_use:
+    #         mean_value = getattr(self, real_filter)
+    #         if mean_value is None:
+    #             continue
+    #         if real_filter.startswith("r"):
+    #             eye_scale = righteye_scale
+    #         else:
+    #             eye_scale = lefteye_scale
+    #         values[real_filter] = {
+    #             "wave": self.filters[real_filter],
+    #             "mean": getattr(self, real_filter) * eye_scale,
+    #             "err": getattr(self, real_filter + "_err") * eye_scale
+    #         }
+    #     return dict(sorted(values.items(), key=lambda item: item[1]["wave"]))
 
     def image_files(self) -> dict:
         filedict = {
@@ -813,35 +744,9 @@ class MSpec(Spectrum):
                         images[eye + "_size"] = image.size
         return images
 
-    # colors corresponding to ROIs drawn on false-color images by MASTCAM team.
-    # these are all somewhat uncertain, as they're based on color picker
-    # results
-    # from compressed images (compressed _after_ the polygons were drawn).
-    # it would be better to have official documentation and uncompressed
-    # images!
-    # TODO: replace this with 'from marslab.compatibility import
-    #  MERSPECT_COLOR_MAPPINGS'
-    color_mappings = {
-        "light green": "#80ff00",
-        "red": "#dc133d",
-        "dark red": "#7e0003",
-        "dark blue": "#010080",
-        "light blue": "#0000fe",
-        "light purple": "#ff00fe",
-        "dark purple": "#81007f",
-        "yellow": "#ffff00",
-        "teal": "#008083",
-        "dark green": "#138013",
-        "sienna": "#a1502e",
-        "light cyan": "#00ffff",
-        # following are somewhat speculative
-        "pink": "#ddc39f",
-        "goldenrod": "#fec069",
-        "bright red": "#d60702",
-    }
-
+    # color corresponding to ROIs drawn on false-color images by MASTCAM team.
     def roi_hex_code(self) -> str:
-        return self.color_mappings[self.color]
+        return MERSPECT_COLOR_MAPPINGS[self.color]
 
     def metadata_dict(self) -> dict:
         """

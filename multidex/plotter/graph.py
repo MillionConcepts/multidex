@@ -456,7 +456,7 @@ def toggle_averaged_filters(
     #            options for _ in range(number_of_outputs)
     #        ] + [options[choice(range(len(options)))]['value']
     #        for _ in range(number_of_outputs)]
-    cycler = cycle([0,1,2,3])
+    cycler = cycle([0, 1, 2, 3])
     return [options for _ in range(number_of_outputs)] + [
         options[next(cycler)]["value"] for _ in range(number_of_outputs)
     ]
@@ -1190,20 +1190,37 @@ def export_graph_csv(_clicks, selected, *, cget):
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("main_graph_filter_df").copy()
     if selected is not None:
-        search_ids = [point['customdata'] for point in selected['points']]
+        search_ids = [point["customdata"] for point in selected["points"]]
     else:
         search_ids = cget("main_search_ids")
     filter_df.columns = [column.upper() for column in filter_df.columns]
     metadata_df.columns = [column.upper() for column in metadata_df.columns]
     metadata_df = metadata_df.reindex(
-        columns=['SOL', 'SEQ_ID', 'INSTRUMENT', 'COLOR', 'FEATURE',
-                 'FORMATION', 'MEMBER', 'FLOAT', 'LTST', "TARGET_ELEVATION",
-                 "TAU_INTERPOLATED", "FOCAL_DISTANCE", "LAT", "LON"],
+        columns=[
+            "SOL",
+            "SEQ_ID",
+            "INSTRUMENT",
+            "COLOR",
+            "FEATURE",
+            "FORMATION",
+            "MEMBER",
+            "FLOAT",
+            "LTST",
+            "TARGET_ELEVATION",
+            "TAU_INTERPOLATED",
+            "FOCAL_DISTANCE",
+            "LAT",
+            "LON",
+        ],
     )
-    output_df = pd.concat(
-        [metadata_df, filter_df],
-        axis=1,
-    ).loc[search_ids].sort_values(by="SEQ_ID")
+    output_df = (
+        pd.concat(
+            [metadata_df, filter_df],
+            axis=1,
+        )
+        .loc[search_ids]
+        .sort_values(by="SEQ_ID")
+    )
     filename = (
         cget("spec_model_name")
         + "_"
