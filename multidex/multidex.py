@@ -354,7 +354,8 @@ app.callback(
         Input({"type": "search-trigger", "index": ALL}, "value"),
         Input({"type": "main-graph-scale-trigger", "index": 0}, "value"),
         Input({'type': 'highlight-trigger', 'index': 0}, 'value'),
-        Input('main-graph-bounds', 'value')
+        Input('main-graph-bounds', 'value'),
+        Input("main-graph-error", "value")
         # Input({'type': 'load-trigger', 'index': 0}, 'value')
     ],
     [State("main-graph", "figure")],
@@ -508,6 +509,7 @@ app.callback(
         Input("main-graph", "hoverData"),
         Input("main-spec-scale", "value"),
         Input("main-spec-average", "value"),
+        Input("main-spec-error", "value")
     ],
 )(update_spectrum_graph)
 
@@ -529,6 +531,7 @@ app.callback(
         Input({"type": "view-graph", "index": MATCH}, "hoverData"),
         Input("main-spec-scale", "value"),
         Input("main-spec-average", "value"),
+        Input("main-spec-error", "value")
     ],
 )(update_spectrum_graph)
 

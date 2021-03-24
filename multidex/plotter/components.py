@@ -62,7 +62,8 @@ def scale_to_drop(model, element_id, value=None):
 
 
 def scale_controls_container(
-    spec_model, id_prefix, scale_value=None, average_value=None
+    spec_model, id_prefix, scale_value=None, average_value=None,
+    error_value=None
 ):
     # TODO: this is a messy way to handle weird cases in loading.
     # this should be cleaned up.
@@ -85,6 +86,13 @@ def scale_controls_container(
                 {"label": "average nearby", "value": "average"},
             ],
             value=[average_value],
+        ),
+        dcc.Checklist(
+            id=id_prefix + "-error",
+            options=[
+                {"label": "show error", "value": "error"},
+            ],
+            value=[error_value],
         ),
     ]
     return scale_container
@@ -179,6 +187,8 @@ def main_graph_scatter(
     text: list,
     customdata: list,
     zoom: Optional[tuple[list[float, float]]] = None,
+    x_errors: Optional[list[float]] = None,
+    y_errors: Optional[list[float]] = None
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -212,6 +222,21 @@ def main_graph_scatter(
     fig.update_xaxes(GRAPH_AXIS_SETTINGS)
     fig.update_yaxes(GRAPH_AXIS_SETTINGS)
     fig.update_traces(**marker_property_dict)
+
+    for error, axis in [(x_errors, 'x'), (y_errors, 'y')]:
+        if error is None:
+            fig.update_traces({'error_' + axis: {'visible': False}})
+        else:
+            fig.update_traces(
+                {'error_' + axis:
+                     {
+                         'visible': True,
+                         'array': error,
+                         'color': 'rgba(0,0,0,0.3)'
+                     }
+                 }
+            )
+
     if zoom is not None:
         fig.update_layout(
             {
@@ -223,7 +248,8 @@ def main_graph_scatter(
 
 
 def mspec_graph_line(
-    spectrum: "MSpec", scale_to=("l1", "r1"), average_filters=True
+    spectrum: "MSpec", scale_to=("l1", "r1"), average_filters=True,
+    show_error=True
 ) -> go.Figure:
     """
     placeholder line graph for individual mastcam spectra.
@@ -231,10 +257,11 @@ def mspec_graph_line(
     roi_color.
     """
     spectrum_data = spectrum.filter_values(
-        scale_to=scale_to, average_filters=average_filters
+        scale_to=scale_to, average_filters=average_filters,
     )
     x_axis = [filt_value["wave"] for filt_value in spectrum_data.values()]
     y_axis = [filt_value["mean"] for filt_value in spectrum_data.values()]
+    y_error = [filt_value["err"] for filt_value in spectrum_data.values()]
     text = [
         filt + ", " + str(spectrum_data[filt]["wave"])
         for filt in spectrum_data
@@ -247,6 +274,7 @@ def mspec_graph_line(
             mode="lines+markers",
             text=text,
             line={"color": spectrum.roi_hex_code()},
+            error_y = {"array": y_error, "visible": show_error}
         )
     )
     # noinspection PyTypeChecker
@@ -896,7 +924,8 @@ def search_tab(
             html.Div(
                 children=[
                     scale_controls_container(
-                        spec_model, "main-spec", "L2_R2", "average"
+                        spec_model, "main-spec", "L2_R2", "average",
+                        "error"
                     ),
                 ]
             ),

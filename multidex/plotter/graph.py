@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import dash
 import dash_html_components as html
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from dash.exceptions import PreventUpdate
@@ -149,7 +150,8 @@ def truncate_id_list_for_missing_properties(
 
 
 def perform_spectrum_op(
-    id_list, spec_model, filter_df, settings, prefix, suffix, props
+    id_list, spec_model, filter_df, settings, prefix, suffix, props,
+        get_errors=False
 ):
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
@@ -161,7 +163,10 @@ def perform_spectrum_op(
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
     try:
-        return list(spectrum_op(queryset_df, spec_model, *filt_args).values)
+        vals, errors = spectrum_op(queryset_df, spec_model, *filt_args, get_errors)
+        if get_errors:
+            return list(np.array(vals)), list(np.array(errors))
+        return list(vals.values), None
     except ValueError:  # usually representing intermediate input states
         raise PreventUpdate
 
@@ -174,6 +179,7 @@ def make_axis(
     suffix: str,
     filter_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
+        get_errors: bool = False
 ) -> Optional[list[float]]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
@@ -188,7 +194,8 @@ def make_axis(
     props = keygrab(spec_model.accessible_properties, "value", axis_option)
     if props["type"] == "method":
         return perform_spectrum_op(
-            id_list, spec_model, filter_df, settings, prefix, suffix, props
+            id_list, spec_model, filter_df, settings, prefix, suffix, props,
+            get_errors
         )
     return metadata_df.loc[id_list][props["value"]]
 
@@ -215,8 +222,9 @@ def make_marker_properties(
     # really wants to put element-level style declarations on graph ticks!
     colorbar_dict = COLORBAR_SETTINGS.copy()
     if props["type"] == "method":
-        property_list = perform_spectrum_op(
+        property_list, _ = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, prefix, suffix, props
+
         )
     else:
         property_list = metadata_df.loc[id_list][props["value"]].values
@@ -330,6 +338,10 @@ def recalculate_main_graph(
     highlight_ids = cget("main_highlight_ids")
     filter_df = cget("main_graph_filter_df")
     metadata_df = cget("metadata_df")
+    if 'error' in ctx.inputs['main-graph-error.value']:
+        get_errors = True
+    else:
+        get_errors = False
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
@@ -338,7 +350,7 @@ def recalculate_main_graph(
         metadata_df,
         spec_model,
     )
-    x_axis = make_axis(
+    x_axis, x_errors = make_axis(
         x_settings,
         truncated_ids,
         spec_model,
@@ -346,8 +358,9 @@ def recalculate_main_graph(
         suffix="x.value",
         filter_df=filter_df,
         metadata_df=metadata_df,
+        get_errors=get_errors
     )
-    y_axis = make_axis(
+    y_axis, y_errors = make_axis(
         y_settings,
         truncated_ids,
         spec_model,
@@ -355,6 +368,7 @@ def recalculate_main_graph(
         suffix="y.value",
         filter_df=filter_df,
         metadata_df=metadata_df,
+        get_errors=get_errors
     )
     marker_properties = make_marker_properties(
         marker_settings,
@@ -409,7 +423,8 @@ def recalculate_main_graph(
     else:
         zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
     return graph_function(
-        x_axis, y_axis, marker_properties, text, customdata, zoom
+        x_axis, y_axis, marker_properties, text, customdata, zoom,
+        x_errors, y_errors
     )
 
 
@@ -786,6 +801,7 @@ def update_spectrum_graph(
     event_data,
     scale_to,
     average_input_value,
+    error_bar_value,
     *,
     spec_model,
     spec_graph_function,
@@ -793,11 +809,13 @@ def update_spectrum_graph(
     if scale_to != "None":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     average_filters = True if average_input_value == ["average"] else False
+    show_error = True if error_bar_value == ["error"] else False
     if not event_data:
         raise PreventUpdate
     spectrum = spectrum_from_graph_event(event_data, spec_model)
     return spec_graph_function(
-        spectrum, scale_to=scale_to, average_filters=average_filters
+        spectrum, scale_to=scale_to, average_filters=average_filters,
+        show_error=show_error
     )
 
 

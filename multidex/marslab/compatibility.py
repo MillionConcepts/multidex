@@ -1,5 +1,3 @@
-# TODO: decide whether we actually want this to be a dependency
-
 from math import floor
 from statistics import mean
 from itertools import chain, combinations
@@ -114,6 +112,7 @@ WAVELENGTH_TO_FILTER = {
     },
 }
 
+
 # rules currently in use:
 # set of virtual filters === the set of pairs of real filters with nominal
 # band centers within 5 nm of one another
@@ -128,14 +127,20 @@ def make_xcam_filter_dict(abbreviation):
     """
     form filter: wavelength dictionary for mastcam-family instruments
     """
-    wave_dict = {
-        **WAVELENGTH_TO_FILTER[abbreviation]['L'],
-        **WAVELENGTH_TO_FILTER[abbreviation]['R']
+    left = {
+        name: wavelength for wavelength, name in
+        WAVELENGTH_TO_FILTER[abbreviation]['L'].items()
+    }
+    right = {
+        name: wavelength for wavelength, name in
+        WAVELENGTH_TO_FILTER[abbreviation]['R'].items()
     }
     return {
         name: wavelength
-        for wavelength, name in
-        sorted(wave_dict.items())
+        for name, wavelength in
+        sorted(
+            {**left, **right}.items(), key=lambda item: item[1]
+        )
     }
 
 
@@ -204,7 +209,7 @@ DERIVED_CAM_DICT = {
 def polish_xcam_spectrum(
         spectrum: Mapping[str, float],
         cam_info: Mapping[str, dict],
-        scale_to: Optional[Sequence[str, str]],
+        scale_to: Optional[Sequence[str, str]] = None,
         average_filters: bool = True
 ):
     """
