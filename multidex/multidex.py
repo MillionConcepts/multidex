@@ -45,6 +45,7 @@ from plotter.graph import (
     save_search_tab_state,
     toggle_averaged_filters,
     update_filter_df, handle_main_highlight_save, export_graph_csv,
+    toggle_panel_visibility,
 )
 
 # initialize the app itself. HTML / react objects must be described in this
@@ -52,8 +53,9 @@ from plotter.graph import (
 # as dash components.
 # callback functions that handle user input must also be described in this
 # object.
-
-app = dash.Dash()
+# adding __name__ preserves relative path when and if this is not the  __main__
+# module (i.e. if served by gunicorn)
+app = dash.Dash(__name__)
 
 # we are using flask-caching to share state between callbacks,
 # because dash refuses to enforce thread safety in python globals and
@@ -440,7 +442,7 @@ app.callback(
 # handle creation and removal of search filters
 app.callback(
     [
-        Output("search-controls-container-div", "children"),
+        Output("search-controls-container", "children"),
         Output({"type": "submit-search", "index": 1}, "n_clicks"),
     ],
     [
@@ -449,7 +451,7 @@ app.callback(
         Input({"type": "remove-param", "index": ALL}, "n_clicks"),
     ],
     [
-        State("search-controls-container-div", "children"),
+        State("search-controls-container", "children"),
         State({"type": "submit-search", "index": 1}, "n_clicks"),
     ],
 )(control_search_dropdowns)
@@ -557,6 +559,20 @@ app.callback(
     [Input("main-export-csv", "n_clicks")],
     [State("main-graph", "selectedData")]
 )(export_graph_csv)
+
+app.callback(
+    [
+        Output({"type": "collapsible-panel", "index": MATCH}, "style"),
+        Output({"type": "collapse-arrow", "index": MATCH}, "style"),
+        Output({"type": "collapse-text", "index": MATCH}, "style")
+    ],
+    [Input({'type': "collapse-div", "index": MATCH}, "n_clicks")],
+    [
+        State({'type': "collapsible-panel", "index": MATCH}, "style"),
+        State({"type": "collapse-arrow", "index": MATCH}, "style"),
+        State({"type": "collapse-text", "index": MATCH}, "style")
+    ]
+)(toggle_panel_visibility)
 
 # app.run_server(debug=True, use_reloader=False,
 # dev_tools_silence_routes_logging=True)

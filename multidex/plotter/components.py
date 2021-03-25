@@ -62,8 +62,11 @@ def scale_to_drop(model, element_id, value=None):
 
 
 def scale_controls_container(
-    spec_model, id_prefix, scale_value=None, average_value=None,
-    error_value=None
+    spec_model,
+    id_prefix,
+    scale_value=None,
+    average_value=None,
+    error_value=None,
 ):
     # TODO: this is a messy way to handle weird cases in loading.
     # this should be cleaned up.
@@ -188,7 +191,7 @@ def main_graph_scatter(
     customdata: list,
     zoom: Optional[tuple[list[float, float]]] = None,
     x_errors: Optional[list[float]] = None,
-    y_errors: Optional[list[float]] = None
+    y_errors: Optional[list[float]] = None,
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -223,18 +226,19 @@ def main_graph_scatter(
     fig.update_yaxes(GRAPH_AXIS_SETTINGS)
     fig.update_traces(**marker_property_dict)
 
-    for error, axis in [(x_errors, 'x'), (y_errors, 'y')]:
+    for error, axis in [(x_errors, "x"), (y_errors, "y")]:
         if error is None:
-            fig.update_traces({'error_' + axis: {'visible': False}})
+            fig.update_traces({"error_" + axis: {"visible": False}})
         else:
             fig.update_traces(
-                {'error_' + axis:
-                     {
-                         'visible': True,
-                         'array': error,
-                         'color': 'rgba(0,0,0,0.3)'
-                     }
-                 }
+                {
+                    "error_"
+                    + axis: {
+                        "visible": True,
+                        "array": error,
+                        "color": "rgba(0,0,0,0.3)",
+                    }
+                }
             )
 
     if zoom is not None:
@@ -248,8 +252,10 @@ def main_graph_scatter(
 
 
 def mspec_graph_line(
-    spectrum: "MSpec", scale_to=("l1", "r1"), average_filters=True,
-    show_error=True
+    spectrum: "MSpec",
+    scale_to=("l1", "r1"),
+    average_filters=True,
+    show_error=True,
 ) -> go.Figure:
     """
     placeholder line graph for individual mastcam spectra.
@@ -257,7 +263,8 @@ def mspec_graph_line(
     roi_color.
     """
     spectrum_data = spectrum.filter_values(
-        scale_to=scale_to, average_filters=average_filters,
+        scale_to=scale_to,
+        average_filters=average_filters,
     )
     x_axis = [filt_value["wave"] for filt_value in spectrum_data.values()]
     y_axis = [filt_value["mean"] for filt_value in spectrum_data.values()]
@@ -274,7 +281,7 @@ def mspec_graph_line(
             mode="lines+markers",
             text=text,
             line={"color": spectrum.roi_hex_code()},
-            error_y = {"array": y_error, "visible": show_error}
+            error_y={"array": y_error, "visible": show_error},
         )
     )
     # noinspection PyTypeChecker
@@ -336,6 +343,24 @@ def color_drop(element_id: str, value: str = None) -> dcc.Dropdown:
         className="color-drop",
         options=options,
         value=value,
+    )
+
+
+def collapse_arrow(id_for, title):
+    return html.Div(
+        id={"type": "collapse-div", "index": id_for},
+        className="collapse-div",
+        children=[
+            html.P(
+                className="arrow",
+                id={"type": "collapse-arrow", "index": id_for},
+            ),
+            html.P(
+                className="collapse-text",
+                id={"type": "collapse-text", "index": id_for},
+                children=[title],
+            ),
+        ],
     )
 
 
@@ -586,7 +611,7 @@ def search_parameter_div(
 
 def search_container_div(searchable_fields, preset_parameters):
     search_container = html.Div(
-        id="search-controls-container-div",
+        id='search-controls-container',
         className="search-controls-container",
     )
     # list was 'serialized' to string to put it in a single df cell
@@ -697,8 +722,13 @@ def search_tab(
             html.Div(
                 className="graph-controls-container",
                 children=[
+                    collapse_arrow("main-graph-control-container-x", "x axis"),
                     html.Div(
                         className="axis-controls-container",
+                        id={
+                            "type": "collapsible-panel",
+                            "index": "main-graph-control-container-x",
+                        },
                         children=[
                             axis_value_drop(
                                 spec_model,
@@ -734,8 +764,13 @@ def search_tab(
                             ),
                         ],
                     ),
+                    collapse_arrow("main-graph-control-container-y", "y axis"),
                     html.Div(
                         className="axis-controls-container",
+                        id={
+                            "type": "collapsible-panel",
+                            "index": "main-graph-control-container-y",
+                        },
                         children=[
                             axis_value_drop(
                                 spec_model,
@@ -771,7 +806,14 @@ def search_tab(
                             ),
                         ],
                     ),
+                    collapse_arrow(
+                        "main-graph-control-container-marker", "markers"
+                    ),
                     html.Div(
+                        id={
+                            "type": "collapsible-panel",
+                            "index": "main-graph-control-container-marker",
+                        },
                         className="axis-controls-container",
                         children=[
                             marker_options_drop(
@@ -835,12 +877,23 @@ def search_tab(
                     trigger_div("load", 1),
                     trigger_div("save", 1),
                     trigger_div("highlight", 1),
+                    collapse_arrow("search-controls", "search"),
+                    html.Div(
+                        id={"type": "collapsible-panel",
+                         "index": "search-controls"},
+                        children=[
                     search_container_div(
                         spec_model.searchable_fields,
                         get_r("search_parameters"),
                     ),
+                            ]),
+                    collapse_arrow("search-buttons", "buttons"),
                     html.Div(
                         className="search-button-container",
+                        id={
+                            "type": "collapsible-panel",
+                            "index": "search-buttons",
+                        },
                         children=[
                             # hidden trigger for queryset update on dropdown
                             # removal
@@ -860,7 +913,12 @@ def search_tab(
                             ),
                         ],
                     ),
+                    collapse_arrow("numeric-controls", "scaling"),
                     html.Div(
+                        id={
+                            "type": "collapsible-panel",
+                            "index": "numeric-controls",
+                        },
                         children=[
                             html.Div(
                                 [
@@ -905,7 +963,10 @@ def search_tab(
             ),
             html.Div(children=[main_graph()], id="main-container"),
             dynamic_spec_div(
-                "main-spec-print", "main-spec-graph", "main-spec-image", 0
+                "main-spec-print",
+                "main-spec-graph",
+                "main-spec-image",
+                0,
             ),
             html.Div(
                 id="fire-on-load",
@@ -924,8 +985,7 @@ def search_tab(
             html.Div(
                 children=[
                     scale_controls_container(
-                        spec_model, "main-spec", "L2_R2", "average",
-                        "error"
+                        spec_model, "main-spec", "L2_R2", "average", "error"
                     ),
                 ]
             ),

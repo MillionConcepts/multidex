@@ -150,8 +150,14 @@ def truncate_id_list_for_missing_properties(
 
 
 def perform_spectrum_op(
-    id_list, spec_model, filter_df, settings, prefix, suffix, props,
-        get_errors=False
+    id_list,
+    spec_model,
+    filter_df,
+    settings,
+    prefix,
+    suffix,
+    props,
+    get_errors=False,
 ):
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
@@ -163,7 +169,9 @@ def perform_spectrum_op(
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
     try:
-        vals, errors = spectrum_op(queryset_df, spec_model, *filt_args, get_errors)
+        vals, errors = spectrum_op(
+            queryset_df, spec_model, *filt_args, get_errors
+        )
         if get_errors:
             return list(np.array(vals)), list(np.array(errors))
         return list(vals.values), None
@@ -179,8 +187,8 @@ def make_axis(
     suffix: str,
     filter_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
-        get_errors: bool = False
-) -> Optional[list[float]]:
+    get_errors: bool = False,
+) -> tuple[list[float], Optional[list[float]]]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
     our big precalculated metadata / data dataframes; data has already been
@@ -194,8 +202,14 @@ def make_axis(
     props = keygrab(spec_model.accessible_properties, "value", axis_option)
     if props["type"] == "method":
         return perform_spectrum_op(
-            id_list, spec_model, filter_df, settings, prefix, suffix, props,
-            get_errors
+            id_list,
+            spec_model,
+            filter_df,
+            settings,
+            prefix,
+            suffix,
+            props,
+            get_errors,
         )
     return metadata_df.loc[id_list][props["value"]]
 
@@ -224,7 +238,6 @@ def make_marker_properties(
     if props["type"] == "method":
         property_list, _ = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, prefix, suffix, props
-
         )
     else:
         property_list = metadata_df.loc[id_list][props["value"]].values
@@ -338,7 +351,7 @@ def recalculate_main_graph(
     highlight_ids = cget("main_highlight_ids")
     filter_df = cget("main_graph_filter_df")
     metadata_df = cget("metadata_df")
-    if 'error' in ctx.inputs['main-graph-error.value']:
+    if "error" in ctx.inputs["main-graph-error.value"]:
         get_errors = True
     else:
         get_errors = False
@@ -358,7 +371,7 @@ def recalculate_main_graph(
         suffix="x.value",
         filter_df=filter_df,
         metadata_df=metadata_df,
-        get_errors=get_errors
+        get_errors=get_errors,
     )
     y_axis, y_errors = make_axis(
         y_settings,
@@ -368,7 +381,7 @@ def recalculate_main_graph(
         suffix="y.value",
         filter_df=filter_df,
         metadata_df=metadata_df,
-        get_errors=get_errors
+        get_errors=get_errors,
     )
     marker_properties = make_marker_properties(
         marker_settings,
@@ -423,8 +436,14 @@ def recalculate_main_graph(
     else:
         zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
     return graph_function(
-        x_axis, y_axis, marker_properties, text, customdata, zoom,
-        x_errors, y_errors
+        x_axis,
+        y_axis,
+        marker_properties,
+        text,
+        customdata,
+        zoom,
+        x_errors,
+        y_errors,
     )
 
 
@@ -444,6 +463,42 @@ def toggle_search_input_visibility(field, *, spec_model):
     ):
         return [{"display": "none"}, {}]
     return [{}, {"display": "none"}]
+
+
+def style_toggle(style, style_property="display", states=("none", "revert")):
+    """
+    generic style-toggling function that just cycles
+    style property of component between states
+    by default it toggles visibility
+    """
+    if style is None:
+        style = {}
+    if style.get(style_property) not in states:
+        style[style_property] = states[0]
+        return style
+    style_cycle = cycle(states)
+    while next(style_cycle) != style.get(style_property):
+        continue
+    style[style_property] = next(style_cycle)
+    return style
+
+
+def toggle_panel_visibility(_click, panel_style, arrow_style, text_style):
+    """
+    switches collapsible panel between visible and invisible,
+    and rotates and sets text on its associated arrow.
+    """
+    if not_triggered():
+        raise PreventUpdate
+    panel_style = style_toggle(panel_style)
+    arrow_style = style_toggle(
+        arrow_style, "WebkitTransform", ("rotate(45deg)", "rotate(-45deg)")
+    )
+    arrow_style = style_toggle(
+        arrow_style, "transform", ("rotate(45deg)", "rotate(-45deg)")
+    )
+    text_style = style_toggle(text_style, states=("inline-block", "none"))
+    return panel_style, arrow_style, text_style
 
 
 def toggle_averaged_filters(
@@ -814,8 +869,10 @@ def update_spectrum_graph(
         raise PreventUpdate
     spectrum = spectrum_from_graph_event(event_data, spec_model)
     return spec_graph_function(
-        spectrum, scale_to=scale_to, average_filters=average_filters,
-        show_error=show_error
+        spectrum,
+        scale_to=scale_to,
+        average_filters=average_filters,
+        show_error=show_error,
     )
 
 

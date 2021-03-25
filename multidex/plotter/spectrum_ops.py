@@ -157,8 +157,8 @@ def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):
     ratio_value = filter_df[filt_1] / filter_df[filt_2]
     # TODO: this is not a good approximation
     if errors:
-        errs = filter_df[[filt_1 + "_err", filt_2 + "_err"]]
-        return ratio_value, norm(errs, axis=1)
+        errs = filter_df[[filt_1 + "_err",filt_2 + "_err"]]
+        return ratio_value, norm(errs, axis=1) * ratio_value
     return ratio_value, None
 
 
@@ -247,12 +247,12 @@ def band_depth_min(filter_df, spec_model, filt_1, filt_2, errors=False):
     min_wave = intervening_df.idxmin(axis=1)
 
     distance_series = min_wave - wave_1
-    slope_series = slope(filter_df, spec_model, filt_1, filt_2)
+    slope_series, _ = slope(filter_df, spec_model, filt_1, filt_2)
     continuum_ref = filter_df[filt_1] + slope_series * distance_series
     if errors:
         return (
             min_ref / continuum_ref,
-            norm(filter_df[[filt_1 + "_err".filt_2 + "_err"]], axis=1)
+            norm(filter_df[[filt_1 + "_err", filt_2 + "_err"]], axis=1)
             / continuum_ref,
         )
     else:

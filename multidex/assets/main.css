@@ -75,6 +75,30 @@ button {
     font-size: 0.7rem
 }
 
+.collapse-div {
+    min-width: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center
+}
+
+.arrow {
+    border: solid var(--midnight-ochre);
+    border-width: 0 0.25rem 0.25rem 0;
+    transform: rotate(-45deg);
+    -webkit-transform: rotate(-45deg);
+    background: rgba(0,0,0,0);
+    max-width:0;
+    padding: 0.4rem;
+}
+
+.collapse-text {
+    writing-mode: tb;
+    -webkit-writing-mode: tb;
+    display: none
+}
+
+
 @font-face {
     font-family: "Fira Mono";
     src: url("FiraMono-Regular.ttf") format("truetype");
@@ -92,6 +116,7 @@ button {
     src: url("FiraMono-Bold.ttf") format("truetype");
     font-weight: 700;
 }
+
 
 /*todo: figure out how hard it is to override core components with CSS --
     otherwise staying inside dash layer inside react virtual DOM
