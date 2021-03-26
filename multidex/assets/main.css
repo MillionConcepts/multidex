@@ -21,6 +21,19 @@ button {
     border: 1px solid var(--dark-tint-2);
     max-height: 2rem;
     font-size: 1rem;
+    margin-top: 0.2rem;
+}
+
+.filter-drop {
+    display: block;
+    min-width: 5rem;
+    margin-right: 1rem
+}
+
+.color-drop {
+    display: block;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem
 }
 
 .Select-control, .tab-container, .tab {
@@ -41,18 +54,21 @@ button {
     width: 12rem;
     margin-left:0.3rem;
     margin-right:0.3rem;
+    margin-top: 0.2rem
 }
 
 .search-button-container {
     max-width: 15rem;
     display: flex;
     flex-direction: column;
+    margin-top:1.1rem;
+    margin-left:0.1rem
 }
 
 .axis-controls-container {
-    width: 15rem;
     margin-left:0.3rem;
     margin-right:0.3rem;
+    margin-top: 0.2rem
 }
 
 .filter-container {

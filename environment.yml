@@ -1,0 +1,19 @@
+name: multidex
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - django
+  - pillow
+  - dash
+  - toolz
+  - jupyter
+  - django-extensions
+  - pandas
+  - plotly
+  - numpy
+  - fs
+  - matplotlib
+  - flask-caching
+prefix: /home/michael/miniconda3/envs/multidex

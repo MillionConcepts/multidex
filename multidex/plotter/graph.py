@@ -211,7 +211,7 @@ def make_axis(
             props,
             get_errors,
         )
-    return metadata_df.loc[id_list][props["value"]]
+    return metadata_df.loc[id_list][props["value"]], None
 
 
 def make_marker_properties(

@@ -533,14 +533,14 @@ class MSpec(Spectrum):
             "value_type": "quant",
         },
         {
-            "label": "band depth at middle",
+            "label": "band depth (middle)",
             "value": "band_depth_custom",
             "type": "method",
             "arity": 3,
             "value_type": "quant",
         },
         {
-            "label": "band depth at minimum",
+            "label": "band depth (minimum)",
             "value": "band_depth_min",
             "type": "method",
             "arity": 2,
