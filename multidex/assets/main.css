@@ -66,7 +66,6 @@ button {
 .graph-bounds-axis-container {
     display: flex;
     flex-direction: column;
-    max-width: 5rem;
     margin-left: 0.5rem;
     margin-bottom: 0.5rem
 }

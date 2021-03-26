@@ -490,7 +490,7 @@ def toggle_panel_visibility(_click, panel_style, arrow_style, text_style):
     """
     if not_triggered():
         raise PreventUpdate
-    panel_style = style_toggle(panel_style)
+    panel_style = style_toggle(panel_style, states=("none", "revert"))
     arrow_style = style_toggle(
         arrow_style, "WebkitTransform", ("rotate(45deg)", "rotate(-45deg)")
     )

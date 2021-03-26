@@ -52,21 +52,21 @@ def scale_to_drop(model, element_id, value=None):
     return dcc.Dropdown(
         id=element_id,
         options=[{"label": "None", "value": "None"}]
-        + [
-            {"label": filt, "value": filt}
-            for filt in model.virtual_filter_mapping
-        ],
+            + [
+                {"label": filt, "value": filt}
+                for filt in model.virtual_filter_mapping
+            ],
         value=value,
         style={"max-width": "10rem"},
     )
 
 
 def scale_controls_container(
-    spec_model,
-    id_prefix,
-    scale_value=None,
-    average_value=None,
-    error_value=None,
+        spec_model,
+        id_prefix,
+        scale_value=None,
+        average_value=None,
+        error_value=None,
 ):
     # TODO: this is a messy way to handle weird cases in loading.
     # this should be cleaned up.
@@ -102,7 +102,7 @@ def scale_controls_container(
 
 
 def dynamic_spec_div(
-    print_name: str, graph_name: str, image_name: str, index: int
+        print_name: str, graph_name: str, image_name: str, index: int
 ) -> html.Div:
     return html.Div(
         children=[
@@ -184,14 +184,14 @@ def image_holder(index: int = 0) -> dcc.Graph:
 
 
 def main_graph_scatter(
-    x_axis: list[float],
-    y_axis: list[float],
-    marker_property_dict: Mapping,
-    text: list,
-    customdata: list,
-    zoom: Optional[tuple[list[float, float]]] = None,
-    x_errors: Optional[list[float]] = None,
-    y_errors: Optional[list[float]] = None,
+        x_axis: list[float],
+        y_axis: list[float],
+        marker_property_dict: Mapping,
+        text: list,
+        customdata: list,
+        zoom: Optional[tuple[list[float, float]]] = None,
+        x_errors: Optional[list[float]] = None,
+        y_errors: Optional[list[float]] = None,
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -224,22 +224,25 @@ def main_graph_scatter(
     )
     fig.update_xaxes(GRAPH_AXIS_SETTINGS)
     fig.update_yaxes(GRAPH_AXIS_SETTINGS)
-    fig.update_traces(**marker_property_dict)
 
-    for error, axis in [(x_errors, "x"), (y_errors, "y")]:
+    for error, name in [
+        (x_errors, "x"), (y_errors, "y")
+    ]:
         if error is None:
-            fig.update_traces({"error_" + axis: {"visible": False}})
+            fig.update_traces({"error_" + name: {"visible": False}})
         else:
             fig.update_traces(
                 {
                     "error_"
-                    + axis: {
+                    + name: {
                         "visible": True,
                         "array": error,
-                        "color": "rgba(0,0,0,0.3)",
+                        "color": "rgba(0,0,0,0.3)"
                     }
                 }
             )
+
+    fig.update_traces(**marker_property_dict)
 
     if zoom is not None:
         fig.update_layout(
@@ -252,10 +255,10 @@ def main_graph_scatter(
 
 
 def mspec_graph_line(
-    spectrum: "MSpec",
-    scale_to=("l1", "r1"),
-    average_filters=True,
-    show_error=True,
+        spectrum: "MSpec",
+        scale_to=("l1", "r1"),
+        average_filters=True,
+        show_error=True,
 ) -> go.Figure:
     """
     placeholder line graph for individual mastcam spectra.
@@ -295,10 +298,10 @@ def mspec_graph_line(
 
 
 def marker_options_drop(
-    spec_model: "Spectrum",
-    element_id: str,
-    value: str = None,
-    label_content=None,
+        spec_model: "Spectrum",
+        element_id: str,
+        value: str = None,
+        label_content=None,
 ) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
@@ -346,7 +349,19 @@ def color_drop(element_id: str, value: str = None) -> dcc.Dropdown:
     )
 
 
-def collapse_arrow(id_for, title):
+def collapse_arrow(id_for, title, off=False):
+    if off:
+        arrow_style = {
+            "WebkitTransform": "rotate(45deg)",
+            "transform": "rotate(45deg)",
+        }
+        text_style = {
+            "display": "inline-block"
+        }
+    else:
+        arrow_style = None
+        text_style = None
+
     return html.Div(
         id={"type": "collapse-div", "index": id_for},
         className="collapse-div",
@@ -354,11 +369,13 @@ def collapse_arrow(id_for, title):
             html.P(
                 className="arrow",
                 id={"type": "collapse-arrow", "index": id_for},
+                style=arrow_style
             ),
             html.P(
                 className="collapse-text",
                 id={"type": "collapse-text", "index": id_for},
                 children=[title],
+                style=text_style
             ),
         ],
     )
@@ -460,7 +477,7 @@ def field_drop(fields, element_id, index, value=None):
 
 
 def model_options_drop(
-    element_id: str, index: int, value: Optional[str] = None
+        element_id: str, index: int, value: Optional[str] = None
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
@@ -475,10 +492,10 @@ def model_options_drop(
 
 
 def model_range_entry(
-    element_id: str,
-    index: int,
-    begin: Optional[float] = None,
-    end: Optional[float] = None,
+        element_id: str,
+        index: int,
+        begin: Optional[float] = None,
+        end: Optional[float] = None,
 ) -> list[dcc.Input]:
     """
     pair of entry fields for selecting a range of values for a
@@ -546,7 +563,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
     if value_dict is None:
         text = ""
     elif ("value_list" in value_dict.keys()) and (
-        ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
+            ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
     ):
         raise ValueError(
             "Entering both an explicit value list and a value range is "
@@ -562,7 +579,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
 
 
 def model_range_entry_2(
-    element_id: str, index: int, value_dict: Optional[Mapping] = None
+        element_id: str, index: int, value_dict: Optional[Mapping] = None
 ) -> dcc.Input:
     """
     entry field for selecting a range of values for a
@@ -585,7 +602,7 @@ def model_range_display(element_id: str, index: int) -> html.P:
 
 
 def search_parameter_div(
-    index: int, searchable_fields: Iterable[str], preset_parameter=None
+        index: int, searchable_fields: Iterable[str], preset_parameter=None
 ) -> html.Div:
     get_r = partial(get_if, preset_parameter is not None, preset_parameter)
     children = [
@@ -705,7 +722,7 @@ def save_search_input(element_id):
 
 # primary search panel
 def search_tab(
-    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
+        spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
 ):
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
@@ -880,45 +897,51 @@ def search_tab(
                     collapse_arrow("search-controls", "search"),
                     html.Div(
                         id={"type": "collapsible-panel",
-                         "index": "search-controls"},
+                            "index": "search-controls"},
                         children=[
-                    search_container_div(
-                        spec_model.searchable_fields,
-                        get_r("search_parameters"),
-                    ),
-                            ]),
+                            search_container_div(
+                                spec_model.searchable_fields,
+                                get_r("search_parameters"),
+                            ),
+                        ]),
                     collapse_arrow("search-buttons", "buttons"),
                     html.Div(
-                        className="search-button-container",
                         id={
-                            "type": "collapsible-panel",
-                            "index": "search-buttons",
+                           "type": "collapsible-panel",
+                           "index": "search-buttons",
                         },
                         children=[
-                            # hidden trigger for queryset update on dropdown
-                            # removal
-                            html.Button(
-                                id={"type": "submit-search", "index": 1},
-                                style={"display": "none"},
-                            ),
-                            html.Button("add param", id="add-param"),
-                            html.Button("clear search", id="clear-search"),
-                            html.Button(
-                                id={"type": "submit-search", "index": 0},
-                                children="Update graph",
-                            ),
-                            html.Button(
-                                id="viewer-open-button",
-                                children="open viewer",
-                            ),
-                        ],
+                        html.Div(
+                            className="search-button-container",
+                            children=[
+                                # hidden trigger for queryset update on dropdown
+                                # removal
+                                html.Button(
+                                    id={"type": "submit-search", "index": 1},
+                                    style={"display": "none"},
+                                ),
+                                html.Button("add param", id="add-param"),
+                                html.Button("clear search", id="clear-search"),
+                                html.Button(
+                                    id={"type": "submit-search", "index": 0},
+                                    children="Update graph",
+                                ),
+                                html.Button(
+                                    id="viewer-open-button",
+                                    children="open viewer",
+                                ),
+                            ],
+                        )
+                            ]
                     ),
-                    collapse_arrow("numeric-controls", "scaling"),
+                    collapse_arrow("numeric-controls", "scaling", off=True),
                     html.Div(
                         id={
                             "type": "collapsible-panel",
                             "index": "numeric-controls",
                         },
+                        className='graph-bounds-axis-container',
+                        style={"display": "none"},
                         children=[
                             html.Div(
                                 [
@@ -957,8 +980,30 @@ def search_tab(
                                 },
                             ),
                         ],
-                        style={"display": "flex"},
                     ),
+                    collapse_arrow('save-load-export', 'save/load/ex',
+                                   off=True),
+                    html.Div(
+                        id={'type': 'collapsible-panel',
+                            'index': 'save-load-export'},
+                        style={'display': 'none'},
+                        children=[
+                            html.H3("save/load/export"),
+                            html.Div(
+                                style={"display": "flex", "flex-direction": "column"},
+                                children=[
+                                    load_search_drop("load-search"),
+                                    save_search_input("save-search"),
+                                    html.Button(
+                                        "Export CSV",
+                                        id="main-export-csv",
+                                        style={"marginTop": "20px",
+                                               "marginLeft": "20px"},
+                                    ),
+                                ],
+                            ),
+                        ],
+                    )
                 ],
             ),
             html.Div(children=[main_graph()], id="main-container"),
@@ -989,19 +1034,7 @@ def search_tab(
                     ),
                 ]
             ),
-            html.H3("save/load/export", style={"marginTop": "5vh"}),
-            html.Div(
-                style={"display": "flex", "marginBottom": "25vh"},
-                children=[
-                    load_search_drop("load-search"),
-                    save_search_input("save-search"),
-                    html.Button(
-                        "Export CSV",
-                        id="main-export-csv",
-                        style={"marginTop": "20px", "marginLeft": "20px"},
-                    ),
-                ],
-            ),
+
         ],
         # display title
         label="SEARCH",

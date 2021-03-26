@@ -155,10 +155,10 @@ def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):
     ratio of reflectance values at filt_1 & filt_2
     """
     ratio_value = filter_df[filt_1] / filter_df[filt_2]
-    # TODO: this is not a good approximation
+    # TODO: this is a weak approximation
     if errors:
-        errs = filter_df[[filt_1 + "_err",filt_2 + "_err"]]
-        return ratio_value, norm(errs, axis=1) * ratio_value
+        errs = filter_df[filt_1 + "_err"], filter_df[filt_2 + "_err"]
+        return ratio_value, (errs[0] * errs[1] + errs[0]**2 + errs[1] + errs[0] + errs[1]**2)**0.5
     return ratio_value, None
 
 
