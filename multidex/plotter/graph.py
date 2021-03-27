@@ -395,7 +395,10 @@ def recalculate_main_graph(
     )
     # these text and customdata choices are likely placeholders
     truncated_metadata = metadata_df.loc[truncated_ids]
-    text = truncated_metadata["seq_id"] + " " + truncated_metadata["color"]
+    feature_color = truncated_metadata['feature'].copy()
+    no_feature_ix = feature_color.loc[feature_color.isna()].index
+    feature_color.loc[no_feature_ix] = truncated_metadata['color'].loc[no_feature_ix]
+    text = truncated_metadata["name"] + " " + feature_color
     customdata = truncated_ids
     # this case is most likely shortly after page load
     # when not everything is filled out
@@ -555,7 +558,7 @@ def update_search_options(
     if not field:
         raise PreventUpdate
     is_loading = (
-        "load-trigger" in dash.callback_context.triggered[0]["prop_id"]
+        "search-load-trigger" in dash.callback_context.triggered[0]["prop_id"]
     )
     props = keygrab(spec_model.searchable_fields, "label", field)
     metadata_df = cget("metadata_df")
@@ -579,6 +582,11 @@ def update_search_options(
     # otherwise, populate the term interface and reset the range display and
     # searches
     return [field_values(metadata_df, field), "", ""]
+
+
+def trigger_search_update(_load_trigger, search_triggers):
+    ctx = dash.callback_context
+    return ["bang" for _ in search_triggers]
 
 
 def change_calc_input_visibility(calc_type, *, spec_model):
@@ -1058,7 +1066,7 @@ def save_search_tab_state(
     save_name,
     trigger_value,
     cget,
-    filename="./saves/saved_searches.csv",
+    filename="saves/saved_searches.csv",
 ):
     """
     fairly permissive right now. this saves current search-tab state to a

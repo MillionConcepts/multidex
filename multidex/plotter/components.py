@@ -359,7 +359,6 @@ def collapse_arrow(id_for, title, off=False):
     else:
         arrow_style = None
         text_style = None
-
     return html.Div(
         id={"type": "collapse-div", "index": id_for},
         className="collapse-div",
@@ -376,6 +375,23 @@ def collapse_arrow(id_for, title, off=False):
                 style=text_style,
             ),
         ],
+    )
+
+
+def collapse(collapse_id, title, off=False, component=html.Div()):
+    style_dict = {}
+    if off is True:
+        style_dict = {"display": "none"}
+    return (
+        collapse_arrow(collapse_id, title, off),
+        html.Div(
+            id={
+                "type": "collapsible-panel",
+                "index": collapse_id,
+            },
+            style=style_dict,
+            children=[component],
+        ),
     )
 
 
@@ -572,9 +588,9 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
             "currently not supported."
         )
     elif "value_list" in value_dict.keys():
-        text = ",".join(value_dict["value_list"])
+        text = ",".join([str(val) for val in value_dict["value_list"]])
     elif ("begin" in value_dict.keys()) or ("end" in value_dict.keys()):
-        text = value_dict["begin"] + "-" + value_dict["end"]
+        text = str(value_dict["begin"]) + " -- " + str(value_dict["end"])
     else:
         text = ""
     return text
@@ -612,7 +628,15 @@ def search_parameter_div(
         field_drop(searchable_fields, "field-search", index, get_r("field")),
         model_options_drop("term-search", index, get_r("term")),
         model_range_display("number-range-display", index),
-        model_range_entry_2("number-search", index, get_r("value_dict")),
+        model_range_entry_2("number-search", index, preset_parameter),
+        html.Div(
+            children=[
+                dcc.Input(
+                    id={"type": "search-load-trigger", "index": index}, value=0
+                )
+            ],
+            style={"display": "none"},
+        ),
     ]
     if index != 0:
         children.append(
@@ -726,6 +750,46 @@ def save_search_input(element_id):
     )
 
 
+def main_graph_x_y_drop(x_or_y, spec_model, get_r, filter_options):
+    return html.Div(
+        className="axis-controls-container",
+        children=[
+            axis_value_drop(
+                spec_model,
+                "main-graph-option-" + x_or_y,
+                value=get_r("graph-option-" + x_or_y),
+                label_content=x_or_y + " axis",
+            ),
+            html.Div(
+                className="filter-container",
+                children=[
+                    filter_drop(
+                        spec_model,
+                        "main-filter-1-" + x_or_y,
+                        value=get_r("main-filter-1-" + x_or_y + ".value"),
+                        label_content="left",
+                        options=filter_options,
+                    ),
+                    filter_drop(
+                        spec_model,
+                        "main-filter-3-" + x_or_y,
+                        value=get_r("main-filter-3-" + x_or_y + ".value"),
+                        label_content="center",
+                        options=filter_options,
+                    ),
+                    filter_drop(
+                        spec_model,
+                        "main-filter-2-" + x_or_y,
+                        value=get_r("main-filter-2-" + x_or_y + ".value"),
+                        label_content="right",
+                        options=filter_options,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
 # primary search panel
 def search_tab(
     spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
@@ -745,98 +809,27 @@ def search_tab(
             html.Div(
                 className="graph-controls-container",
                 children=[
-                    collapse_arrow("main-graph-control-container-x", "x axis"),
-                    html.Div(
-                        className="axis-controls-container",
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "main-graph-control-container-x",
-                        },
-                        children=[
-                            axis_value_drop(
-                                spec_model,
-                                "main-graph-option-x",
-                                value=get_r("graph-option-x"),
-                                label_content="x axis",
-                            ),
-                            html.Div(
-                                className="filter-container",
-                                children=[
-                                    filter_drop(
-                                        spec_model,
-                                        "main-filter-1-x",
-                                        value=get_r("main-filter-1-x.value"),
-                                        label_content="left",
-                                        options=filter_options,
-                                    ),
-                                    filter_drop(
-                                        spec_model,
-                                        "main-filter-3-x",
-                                        value=get_r("main-filter-3-x.value"),
-                                        label_content="center",
-                                        options=filter_options,
-                                    ),
-                                    filter_drop(
-                                        spec_model,
-                                        "main-filter-2-x",
-                                        value=get_r("main-filter-2-x.value"),
-                                        label_content="right",
-                                        options=filter_options,
-                                    ),
-                                ],
-                            ),
-                        ],
+                    *collapse(
+                        "main-graph-control-container-x",
+                        "x axis",
+                        False,
+                        main_graph_x_y_drop(
+                            "x", spec_model, get_r, filter_options
+                        ),
                     ),
-                    collapse_arrow("main-graph-control-container-y", "y axis"),
-                    html.Div(
-                        className="axis-controls-container",
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "main-graph-control-container-y",
-                        },
-                        children=[
-                            axis_value_drop(
-                                spec_model,
-                                "main-graph-option-y",
-                                value=get_r("main-graph-option-y.value"),
-                                label_content="y axis",
-                            ),
-                            html.Div(
-                                className="filter-container",
-                                children=[
-                                    filter_drop(
-                                        spec_model,
-                                        "main-filter-1-y",
-                                        value=get_r("main-filter-1-y.value"),
-                                        label_content="left",
-                                        options=filter_options,
-                                    ),
-                                    filter_drop(
-                                        spec_model,
-                                        "main-filter-3-y",
-                                        value=get_r("main-filter-3-y.value"),
-                                        label_content="middle",
-                                        options=filter_options,
-                                    ),
-                                    filter_drop(
-                                        spec_model,
-                                        "main-filter-2-y",
-                                        value=get_r("main-filter-2-y.value"),
-                                        label_content="right",
-                                        options=filter_options,
-                                    ),
-                                ],
-                            ),
-                        ],
+                    *collapse(
+                        "main-graph-control-container-y",
+                        "y axis",
+                        False,
+                        main_graph_x_y_drop(
+                            "y", spec_model, get_r, filter_options
+                        ),
                     ),
-                    collapse_arrow(
-                        "main-graph-control-container-marker", "markers"
-                    ),
+                    *collapse(
+                        "main-graph-control-container-marker",
+                        "markers",
+                        False,
                     html.Div(
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "main-graph-control-container-marker",
-                        },
                         className="axis-controls-container",
                         children=[
                             marker_options_drop(
@@ -882,208 +875,186 @@ def search_tab(
                                 value=get_r("main-color.value"),
                             ),
                         ],
+                    )),
+                    *collapse(
+                        "highlight-controls",
+                        "highlight",
+                        True,
+                        html.Div(
+                            className="axis-controls-container",
+                            children=[
+                                html.Button(
+                                    "set highlight",
+                                    id="main-highlight-save",
+                                    style={"marginTop": "1rem"},
+                                ),
+                                dcc.RadioItems(
+                                    id="main-highlight-toggle",
+                                    options=[
+                                        {
+                                            "label": "highlight on",
+                                            "value": "on",
+                                        },
+                                        {"label": "off", "value": "off"},
+                                    ],
+                                    value="off",
+                                ),
+                                html.P(
+                                    id="main-highlight-description",
+                                    style={
+                                        "maxWidth": "12rem",
+                                    },
+                                ),
+                            ],
+                        ),
                     ),
-                    collapse_arrow("highlight-controls", "highlight", off=True),
-                    html.Div(
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "highlight-controls",
-                        },
-                        style={'display':'none'},
-                        children=[
-                            html.Div(
-                                className="axis-controls-container",
-                                children=[
-                                    html.Button(
-                                        "set highlight",
-                                        id="main-highlight-save",
-                                        style={'marginTop':'1rem'}
-                                    ),
-                                    dcc.RadioItems(
-                                        id="main-highlight-toggle",
-                                        options=[
-                                            {
-                                                "label": "highlight on",
-                                                "value": "on",
+                    *collapse(
+                        "search-controls",
+                        "search",
+                        False,
+                        html.Div(
+                            style={"display": "flex", "flex-direction": "row"},
+                            children=[
+                                search_container_div(
+                                    spec_model.searchable_fields,
+                                    get_r("search_parameters"),
+                                ),
+                                html.Div(
+                                    className="search-button-container",
+                                    children=[
+                                        # hidden trigger for queryset
+                                        # update on
+                                        # dropdown
+                                        # removal
+                                        html.Button(
+                                            id={
+                                                "type": "submit-search",
+                                                "index": 1,
                                             },
-                                            {"label": "off", "value": "off"},
-                                        ],
-                                        value="off",
-                                    ),
-                                    html.P(
-                                        id="main-highlight-description",
-                                        style={
-                                            "maxWidth": "12rem",
-                                        },
-                                    ),
-                                ],
-                            )
-                        ],
+                                            style={"display": "none"},
+                                        ),
+                                        html.Button(
+                                            "clear search", id="clear-search"
+                                        ),
+                                        html.Button(
+                                            id={
+                                                "type": "submit-search",
+                                                "index": 0,
+                                            },
+                                            children="Update graph",
+                                        ),
+                                        html.Button(
+                                            id="viewer-open-button",
+                                            children="open viewer",
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
                     ),
-                    trigger_div("main-graph-scale", 1),
-                    trigger_div("search", 2),
-                    trigger_div("load", 1),
-                    trigger_div("save", 1),
-                    trigger_div("highlight", 1),
-                    collapse_arrow("search-controls", "search"),
-                    html.Div(
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "search-controls",
-                        },
-                        style={'display':'flex'},
-                        children=[
-                            html.Div(
-                                style={'display': 'flex', 'flex-direction': 'row'},
-                                children= [
-                            search_container_div(
-                                spec_model.searchable_fields,
-                                get_r("search_parameters"),
-                            ),
-                            html.Div(
-                                className="search-button-container",
-                                children=[
-                                    # hidden trigger for queryset update on
-                                    # dropdown
-                                    # removal
-                                    html.Button(
-                                        id={
-                                            "type": "submit-search",
-                                            "index": 1,
-                                        },
-                                        style={"display": "none"},
-                                    ),
-                                    html.Button(
-                                        "clear search", id="clear-search"
-                                    ),
-                                    html.Button(
-                                        id={
-                                            "type": "submit-search",
-                                            "index": 0,
-                                        },
-                                        children="Update graph",
-                                    ),
-                                    html.Button(
-                                        id="viewer-open-button",
-                                        children="open viewer",
-                                    ),
-                                    ]),
-                                ],
-                            ),
-                        ],
+                    *collapse(
+                        "numeric-controls",
+                        "scaling",
+                        True,
+                        html.Div(
+                            children=[
+                                html.Div(
+                                    className="graph-bounds-axis-container",
+                                    children=[
+                                        html.Label(
+                                            children=["set bounds"],
+                                            htmlFor="main-graph-bounds",
+                                        ),
+                                        dcc.Input(
+                                            type="text",
+                                            id="main-graph-bounds",
+                                            style={
+                                                "height": "1.8rem",
+                                                "width": "10rem",
+                                            },
+                                            placeholder="xmin xmax ymin ymax",
+                                        ),
+                                    ],
+                                    style={
+                                        "display": "flex",
+                                        "flexDirection": "column",
+                                        "marginRight": "0.3rem",
+                                        "marginLeft": "0.3rem",
+                                    },
+                                ),
+                                scale_controls_container(
+                                    spec_model,
+                                    "main-graph",
+                                    scale_value=get_r("scale_to"),
+                                    average_value=get_r("average_filters"),
+                                ),
+                            ]
+                        ),
                     ),
-                    collapse_arrow("numeric-controls", "scaling", off=True),
-                    html.Div(
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "numeric-controls",
-                        },
-                        className="graph-bounds-axis-container",
-                        style={"display": "none"},
-                        children=[
-                            html.Div(
-                                [
-                                    html.Label(
-                                        children=["set bounds"],
-                                        htmlFor="main-graph-bounds",
-                                    ),
-                                    dcc.Input(
-                                        type="text",
-                                        id="main-graph-bounds",
-                                        style={
-                                            "height": "1.8rem",
-                                            "width": "10rem",
-                                        },
-                                        placeholder="xmin xmax ymin ymax",
-                                    ),
-                                ],
-                                style={
-                                    "display": "flex",
-                                    "flexDirection": "column",
-                                    "marginRight": "0.3rem",
-                                    "marginLeft": "0.3rem",
-                                },
-                            ),
-                            scale_controls_container(
-                                spec_model,
-                                "main-graph",
-                                scale_value=get_r("scale_to"),
-                                average_value=get_r("average_filters"),
-                            ),
-                        ],
-                    ),
-                    collapse_arrow("load-panel", "load", off=True),
-                    html.Div(
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "load-panel",
-                        },
-                        style={"display": "none"},
-                        children=[
+                    *collapse(
+                        "load-panel",
+                        "load",
+                        True,
+                        html.Div(
                             load_search_drop("load-search"),
-                        ],
+                        ),
                     ),
-                    collapse_arrow("save-panel", "save", off=True),
-                    html.Div(
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "save-panel",
-                        },
-                        style={"display": "none"},
-                        children=[
-                            save_search_input("save-search"),
-                        ],
-                    ),
-                    collapse_arrow("export-panel", "export", off=True),
-                    html.Div(
-                        id={
-                            "type": "collapsible-panel",
-                            "index": "export-panel",
-                        },
-                        style={"display": "none"},
-                        children=[
-                            html.Button(
-                                "Export CSV",
-                                id="main-export-csv",
-                                style={"margin-top": "1rem"},
-                            )
-                        ],
-                    )
-                    ]),
-
-                    html.Div(children=[main_graph()], id="main-container"),
-                    dynamic_spec_div(
-                        "main-spec-print",
-                        "main-spec-graph",
-                        "main-spec-image",
-                        0,
-                    ),
-                    html.Div(
-                        id="fire-on-load",
-                        children="2",
-                        style={"display": "none"},
-                    ),
-                    html.Div(
-                        id="fake-output-for-callback-with-only-side-effects-0",
-                        style={"display": "none"},
-                    ),
-                    html.Div(
-                        id="fake-output-for-callback-with-only-side-effects-1",
-                        style={"display": "none"},
-                    ),
-                    html.Div(id="search-load-progress-flag"),
-                    html.Div(
-                        children=[
-                            scale_controls_container(
-                                spec_model,
-                                "main-spec",
-                                "L2_R2",
-                                "average",
-                                "error",
-                            ),
-                        ]
+                    *collapse(
+                        "save-panel",
+                        "save",
+                        True,
+                        html.Div(
+                            [
+                                save_search_input("save-search"),
+                                html.Button(
+                                    "Export CSV",
+                                    id="main-export-csv",
+                                    style={"margin-top": "1rem"},
+                                ),
+                            ]
+                        ),
                     ),
                 ],
+            ),
+            html.Div(children=[main_graph()], id="main-container"),
+            dynamic_spec_div(
+                "main-spec-print",
+                "main-spec-graph",
+                "main-spec-image",
+                0,
+            ),
+            html.Div(
+                children=[
+                    scale_controls_container(
+                        spec_model,
+                        "main-spec",
+                        "L2_R2",
+                        "average",
+                        "error",
+                    ),
+                ]
+            ),
+            # hidden divs for async triggers, dummy outputs, etc
+            trigger_div("main-graph-scale", 1),
+            trigger_div("search", 2),
+            trigger_div("load", 1),
+            trigger_div("save", 1),
+            trigger_div("highlight", 1),
+            html.Div(
+                id="fire-on-load",
+                children="2",
+                style={"display": "none"},
+            ),
+            html.Div(
+                id="fake-output-for-callback-with-only-side-effects-0",
+                style={"display": "none"},
+            ),
+            html.Div(
+                id="fake-output-for-callback-with-only-side-effects-1",
+                style={"display": "none"},
+            ),
+            html.Div(id="search-load-progress-flag"),
+        ],
         # display title
         label="SEARCH",
         # used only by dcc.Tabs, apparently

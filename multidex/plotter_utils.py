@@ -213,6 +213,8 @@ def not_triggered() -> bool:
     """
     detect likely spurious triggers.
     will only function if called inside a callback.
+    TODO: this is overly broad due to falsy evaluation of
+        integers etc. probably eliminate it.
     """
     if not dash.callback_context.triggered[0]["value"]:
         return True

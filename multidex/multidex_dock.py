@@ -45,7 +45,7 @@ from plotter.graph import (
     save_search_tab_state,
     toggle_averaged_filters,
     update_filter_df, handle_main_highlight_save, export_graph_csv,
-    toggle_panel_visibility, trigger_search_update,
+    toggle_panel_visibility,
 )
 
 # initialize the app itself. HTML / react objects must be described in this
@@ -364,13 +364,6 @@ app.callback(
 )(recalculate_main_graph)
 
 
-# trigger updates on page load
-app.callback(
-    Output({'type':'search-load-trigger', 'index': ALL}, 'value'),
-    Input({'type':'load-trigger', 'index':0}, 'value'),
-    [State({'type':'search-load-trigger', 'index': ALL}, 'value')]
-)(trigger_search_update)
-
 app.callback(
     [
         Output('main-highlight-description', 'children'),
@@ -404,7 +397,7 @@ app.callback(
     ],
     [
         Input({"type": "field-search", "index": MATCH}, "value"),
-        Input({"type": "search-load-trigger", "index": MATCH}, "value"),
+        Input({"type": "load-trigger", "index": 0}, "value"),
     ],
     [
         State({"type": "number-search", "index": MATCH}, "value"),
@@ -583,4 +576,8 @@ app.callback(
 
 # app.run_server(debug=True, use_reloader=False,
 # dev_tools_silence_routes_logging=True)
-app.run_server(dev_tools_silence_routes_logging=True, port=8050)
+app.run_server(
+    dev_tools_silence_routes_logging=True,
+    port=10001,
+    host='0.0.0.0'
+)

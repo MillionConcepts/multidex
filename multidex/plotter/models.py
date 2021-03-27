@@ -586,18 +586,23 @@ class MSpec(Spectrum):
             "value_type": "quant",
         },
         {
+            "label": "feature",
+            "value": "feature",
+            "type": "self_property",
+            "value_type": "qual"
+        },
+        {
             "label": "color",
             "value": "color",
             "type": "self_property",
             "value_type": "qual",
         },
-        # need to use dateutil.parser.parse or similar if you're going to
-        # have this
-        # {
-        #     "label": "ltst",
-        #     "type": "parent_property",
-        #     "value_type": "quant",
-        # },
+        {
+            "label": "name",
+            "value": "name",
+            "type": "parent_property",
+            "value_type": "qual",
+        },
         {
             "label": "seq_id",
             "value": "seq_id",
