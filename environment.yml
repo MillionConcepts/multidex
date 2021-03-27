@@ -16,4 +16,4 @@ dependencies:
   - fs
   - matplotlib
   - flask-caching
-prefix: /home/michael/miniconda3/envs/multidex
+
