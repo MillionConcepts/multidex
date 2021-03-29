@@ -73,15 +73,14 @@ class Spectrum(models.Model):
     """
 
     # this is not intended to hold all transmission information about the
-    # filters, unlike FilterSet from wwu_spec (or some version that may be
-    # instantiated here later) it is primarily a container. so just: filter
-    # names and canonical center values.
+    # filters. it is primarily a container.
 
     filters = {}
     virtual_filters = {}
     virtual_filter_mapping = {}
     axis_value_properties = []
     accessible_properties = []
+    graphable_properties = []
     searchable_fields = []
 
     def all_filter_waves(self):
@@ -668,7 +667,7 @@ class MSpec(Spectrum):
         self,
         scale_to: Optional[Sequence] = None,
         average_filters: bool = False,
-    ) -> dict[str, float]:
+    ) -> dict[str, dict]:
         """
         return dictionary of filter values, optionally scaled and merged
         according to MERSPECT-style rules
