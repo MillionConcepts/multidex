@@ -8,7 +8,11 @@ from PIL import Image
 from django.db import models
 from toolz import keyfilter
 
-from marslab.compatibility import MERSPECT_COLOR_MAPPINGS, DERIVED_CAM_DICT, polish_xcam_spectrum
+from marslab.compatibility import (
+    MERSPECT_COLOR_MAPPINGS,
+    DERIVED_CAM_DICT,
+    polish_xcam_spectrum,
+)
 from plotter_utils import modeldict
 
 
@@ -119,11 +123,9 @@ class MObs(Observation):
     target_elevation = models.FloatField(
         "Target Elevation", null=True, db_index=True
     )
-    tau_interpolated = models.FloatField(
-        "Interpolated Tau", blank=True, null=True, db_index=True
+    tau = models.FloatField(
+        "Tau", blank=True, null=True, db_index=True
     )
-    # this field is duplicated in the original data set. assuming for now
-    # that this is a mistake.
     focal_distance = models.FloatField(
         "Focal Distance", blank=True, null=True, db_index=True
     )
@@ -132,6 +134,9 @@ class MObs(Observation):
     )
     emission_angle = models.FloatField(
         "Emission Angle", blank=True, null=True, db_index=True
+    )
+    phase_angle = models.FloatField(
+        "Phase Angle", blank=True, null=True, db_index=True
     )
     l_s = models.FloatField(
         "Solar Longitude", blank=True, null=True, db_index=True
@@ -147,9 +152,8 @@ class MObs(Observation):
     lat = models.FloatField("Latitude", blank=True, null=True, db_index=True)
     lon = models.FloatField("Longitude", blank=True, null=True, db_index=True)
 
-    # don't know what this is
-    traverse = models.FloatField(
-        "Traverse", blank=True, null=True, db_index=True
+    odometry = models.FloatField(
+        "Odometry", blank=True, null=True, db_index=True
     )
 
     filename = models.CharField(
@@ -488,15 +492,17 @@ class MSpec(Spectrum):
     l6_err = models.FloatField("l6 err", blank=True, null=True, db_index=True)
 
     # mappings from filter name to nominal band centers, in nm
-    filters = DERIVED_CAM_DICT['MCAM']['filters']
-    virtual_filters = DERIVED_CAM_DICT['MCAM']['virtual_filters']
+    filters = DERIVED_CAM_DICT["MCAM"]["filters"]
+    virtual_filters = DERIVED_CAM_DICT["MCAM"]["virtual_filters"]
     # which real filters do virtual filters correspond to?
-    virtual_filter_mapping = DERIVED_CAM_DICT['MCAM']['virtual_filter_mapping']
+    virtual_filter_mapping = DERIVED_CAM_DICT["MCAM"]["virtual_filter_mapping"]
     # if we're only giving options for averaged filters,
     # what is the canonical list?
-    canonical_averaged_filters = DERIVED_CAM_DICT['MCAM']['canonical_averaged_filters']
+    canonical_averaged_filters = DERIVED_CAM_DICT["MCAM"][
+        "canonical_averaged_filters"
+    ]
 
-    axis_value_properties = [
+    accessible_properties = [
         {
             "label": "band value",
             "value": "ref",
@@ -547,12 +553,6 @@ class MSpec(Spectrum):
             "value_type": "quant",
         },
         {
-            "label": "sol",
-            "value": "sol",
-            "type": "parent_property",
-            "value_type": "quant",
-        },
-        {
             "label": "target elevation",
             "value": "target_elevation",
             "type": "parent_property",
@@ -564,9 +564,6 @@ class MSpec(Spectrum):
             "type": "parent_property",
             "value_type": "quant",
         },
-    ]
-
-    searchable_fields = [
         {
             "label": "formation",
             "value": "formation",
@@ -589,7 +586,7 @@ class MSpec(Spectrum):
             "label": "feature",
             "value": "feature",
             "type": "self_property",
-            "value_type": "qual"
+            "value_type": "qual",
         },
         {
             "label": "color",
@@ -610,8 +607,8 @@ class MSpec(Spectrum):
             "value_type": "qual",
         },
         {
-            "label": "tau_interpolated",
-            "value": "tau_interpolated",
+            "label": "tau",
+            "value": "tau",
             "type": "parent_property",
             "value_type": "quant",
         },
@@ -633,23 +630,44 @@ class MSpec(Spectrum):
             "type": "parent_property",
             "value_type": "quant",
         },
+        {
+            "label": "emission_angle",
+            "value": "emission_angle",
+            "type": "parent_property",
+            "value_type": "quant",
+        },
+        {
+            "label": "incidence_angle",
+            "value": "incidence_angle",
+            "type": "parent_property",
+            "value_type": "quant",
+        },
+        {
+            "label": "phase_angle",
+            "value": "phase_angle",
+            "type": "parent_property",
+            "value_type": "quant",
+        },
     ]
 
-    accessible_properties = axis_value_properties + searchable_fields
-    accessible_metadata_fields = [
-        property["value"]
-        for property in accessible_properties
-        if property["type"] != "method"
+    graphable_properties =[
+        prop for prop in accessible_properties
+        if prop not in ("color", "seq_id", "name")
     ]
+    searchable_fields = [
+        prop for prop in accessible_properties
+        if prop["type"] != "method"
+    ]
+
 
     def filter_values(
-            self,
-            scale_to: Optional[Sequence] = None,
-            average_filters: bool = False
-    ):
+        self,
+        scale_to: Optional[Sequence] = None,
+        average_filters: bool = False,
+    ) -> dict[str, float]:
         """
-        return dictionary of filter values, optionally scaled and merged according
-        to MERSPECT-style rules
+        return dictionary of filter values, optionally scaled and merged
+        according to MERSPECT-style rules
         scale_to: None or tuple of (lefteye filter name, righteye filter name)
         """
         spectrum = {
@@ -660,60 +678,11 @@ class MSpec(Spectrum):
             for filt in self.filters.keys()
         }
         return polish_xcam_spectrum(
-            spectrum = spectrum,
-            cam_info = DERIVED_CAM_DICT["MCAM"],
-            scale_to = scale_to,
-            average_filters = average_filters
+            spectrum=spectrum,
+            cam_info=DERIVED_CAM_DICT["MCAM"],
+            scale_to=scale_to,
+            average_filters=average_filters,
         )
-    # def filter_values(self, scale_to=None, average_filters=False):
-    #     """
-    #     scale_to: None or tuple of (lefteye filter name, righteye filter name)
-    #     """
-    #     values = {}
-    #     lefteye_scale = 1
-    #     righteye_scale = 1
-    #     if scale_to not in [None, "None"]:
-    #         scales = (getattr(self, scale_to[0]), getattr(self, scale_to[1]))
-    #         # don't scale eyes to a value that doesn't exist
-    #         if all(scales):
-    #             filter_mean = stats.mean(scales)
-    #             lefteye_scale = filter_mean / scales[0]
-    #             righteye_scale = filter_mean / scales[1]
-    #     real_filters_to_use = list(self.filters.keys())
-    #     if average_filters is True:
-    #         for virtual_filter, comps in self.virtual_filter_mapping.items():
-    #             # do not attempt to average filters if both filters of
-    #             # a pair are not present
-    #             if not all([getattr(self, comp) for comp in comps]):
-    #                 continue
-    #             [real_filters_to_use.remove(comp) for comp in comps]
-    #             values[virtual_filter] = {
-    #                 "wave": self.virtual_filters[virtual_filter],
-    #                 "mean": stats.mean(
-    #                     (
-    #                         getattr(self, comps[0]) * lefteye_scale,
-    #                         getattr(self, comps[1]) * righteye_scale,
-    #                     ),
-    #                 ),
-    #                 "err": (
-    #                     getattr(self, comps[0] + "_err")**2 +
-    #                     getattr(self, comps[1] + "_err")**2
-    #                 ) ** 0.5
-    #             }
-    #     for real_filter in real_filters_to_use:
-    #         mean_value = getattr(self, real_filter)
-    #         if mean_value is None:
-    #             continue
-    #         if real_filter.startswith("r"):
-    #             eye_scale = righteye_scale
-    #         else:
-    #             eye_scale = lefteye_scale
-    #         values[real_filter] = {
-    #             "wave": self.filters[real_filter],
-    #             "mean": getattr(self, real_filter) * eye_scale,
-    #             "err": getattr(self, real_filter + "_err") * eye_scale
-    #         }
-    #     return dict(sorted(values.items(), key=lambda item: item[1]["wave"]))
 
     def image_files(self) -> dict:
         filedict = {
@@ -761,6 +730,6 @@ class MSpec(Spectrum):
         # noinspection PyTypeChecker
         obs_dict = modeldict(self.observation)
         return keyfilter(
-            lambda x: x in self.accessible_metadata_fields,
+            lambda x: x in [field['value'] for field in self.searchable_fields],
             spec_dict | obs_dict,
         )

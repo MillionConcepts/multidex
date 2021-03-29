@@ -25,6 +25,13 @@ if TYPE_CHECKING:
 # generic
 
 
+def re_get(mapping, pattern):
+    for key in mapping.keys():
+        if re.search(pattern, key):
+            return mapping[key]
+    return None
+
+
 def seconds_since_beginning_of_day(time: dt.time) -> float:
     return (
             dt.datetime.combine(dt.date(1, 1, 1), time)
@@ -275,11 +282,11 @@ def make_printer(
 # ## lambda replacements
 
 
-def in_me(container):
+def in_me(container: Iterable) -> Callable:
     """returns function that checks if all its arguments are in container"""
     inclusion = partial(contains, container)
 
-    def is_in(*args):
+    def is_in(*args: Any) -> bool:
         return reduce(and_, map(inclusion, args))
 
     return is_in
@@ -301,7 +308,7 @@ def get_parameters(func: Callable) -> list[str]:
 
 def partially_evaluate_from_parameters(
         func: Callable, parameters: Mapping
-) -> callable:
+) -> Callable:
     """
     return a copy of the input function partially evaluated from any value
     of the dict with a key matching a named argument of the function.
@@ -504,6 +511,7 @@ def df_flexible_query(
     """
     # allow exact phrase searches
     exact = metadata_df[field] == value
+    # noinspection PyTypeChecker
     if any(exact):
         return metadata_df[field].loc[exact].index
     # otherwise treat multiple words as an 'or' search",
@@ -650,3 +658,17 @@ def model_metadata_df(model: Any, relation_names: list[str]) -> pd.DataFrame:
         value_list.append(dict_function(obj))
         id_list.append(obj.id)
     return pd.DataFrame(value_list, index=id_list)
+
+
+# not currently used
+def regex_keyfilter(regex: str, dictionary: Mapping) -> dict:
+    return {
+        key: value
+        for key, value in dictionary.items()
+        if re.search(regex, key)
+    }
+
+
+def dedict(dictionary: Mapping) -> Any:
+    assert len(dictionary) == 1
+    return dictionary[list(dictionary)[0]]

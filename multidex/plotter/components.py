@@ -306,7 +306,7 @@ def marker_options_drop(
     """
     options = [
         {"label": option["label"], "value": option["value"]}
-        for option in spec_model.accessible_properties
+        for option in spec_model.graphable_properties
     ]
     if not value:
         value = "ratio"
@@ -321,7 +321,7 @@ def marker_options_drop(
             html.Label(children=[label_content], htmlFor=element_id),
             dcc.Dropdown(
                 id=element_id,
-                className="marker-value-drop",
+                className="axis-value-drop",
                 options=options,
                 value=value,
                 clearable=False,
@@ -401,7 +401,7 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
     """
     options = [
         {"label": option["label"], "value": option["value"]}
-        for option in spec_model.accessible_properties
+        for option in spec_model.graphable_properties
     ]
     if not value:
         value = "ratio"

@@ -10,7 +10,6 @@ import datetime as dt
 import re
 from ast import literal_eval
 from collections import Iterable
-from collections.abc import Mapping
 from copy import deepcopy
 from functools import reduce
 from itertools import chain, cycle
@@ -37,7 +36,6 @@ from plotter_utils import (
     dict_to_paragraphs,
     rows,
     keygrab,
-    first,
     pickctx,
     not_blank,
     not_triggered,
@@ -48,7 +46,7 @@ from plotter_utils import (
     none_to_quote_unquote_none,
     field_values,
     fetch_css_variables,
-    df_multiple_field_search,
+    df_multiple_field_search, re_get,
 )
 
 if TYPE_CHECKING:
@@ -89,19 +87,6 @@ def cache_get(cache: "flask_caching.Cache") -> Callable[[str], Any]:
     return cget
 
 
-def regex_keyfilter(regex: str, dictionary: Mapping) -> dict:
-    return {
-        key: value
-        for key, value in dictionary.items()
-        if re.search(regex, key)
-    }
-
-
-def dedict(dictionary: Mapping) -> Any:
-    assert len(dictionary) == 1
-    return dictionary[list(dictionary)[0]]
-
-
 def truncate_id_list_for_missing_properties(
     settings: dict,
     id_list: Iterable,
@@ -114,11 +99,9 @@ def truncate_id_list_for_missing_properties(
     filt_args = []
     indices = []
     for suffix in input_suffixes:
-        axis_option = dedict(
-            regex_keyfilter("-graph-option-" + suffix, settings)
-        )
+        axis_option = re_get(settings, "-graph-option-" + suffix)
         model_property = keygrab(
-            spec_model.accessible_properties, "value", axis_option
+            spec_model.graphable_properties, "value", axis_option
         )
         if model_property["type"] == "method":
             # we assume here that 'methods' all take a spectrum's filter names
@@ -126,11 +109,7 @@ def truncate_id_list_for_missing_properties(
             # inputs.
             filt_args.append(
                 [
-                    dedict(
-                        regex_keyfilter(
-                            "-filter-" + str(ix) + "-" + suffix, settings
-                        )
-                    )
+                    re_get(settings, "-filter-" + str(ix) + "-" + suffix)
                     for ix in range(1, model_property["arity"] + 1)
                 ]
             )
@@ -154,8 +133,6 @@ def perform_spectrum_op(
     spec_model,
     filter_df,
     settings,
-    prefix,
-    suffix,
     props,
     get_errors=False,
 ):
@@ -164,7 +141,7 @@ def perform_spectrum_op(
     # the inputs.
     queryset_df = filter_df.loc[id_list]
     filt_args = [
-        settings[prefix + "-filter-" + str(ix) + "-" + suffix]
+        re_get(settings, "-filter-" + str(ix))
         for ix in range(1, props["arity"] + 1)
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
@@ -183,31 +160,27 @@ def make_axis(
     settings: dict,
     id_list: Iterable,
     spec_model: Any,
-    prefix: str,
-    suffix: str,
     filter_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
-    get_errors: bool = False,
+    get_errors: bool,
+    _highlight
 ) -> tuple[list[float], Optional[list[float]]]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
     our big precalculated metadata / data dataframes; data has already been
-    scaled
-    and averaged as desired. expects a list that has been
+    scaled and averaged as desired. expects a list that has been
     processed by truncate_id_list_for_missing_properties
     """
     # what is requested function or property?
-    axis_option = settings[prefix + "-graph-option-" + suffix]
+    axis_option = re_get(settings, "-graph-option-")
     # what are the characteristics of that function or property?
-    props = keygrab(spec_model.accessible_properties, "value", axis_option)
+    props = keygrab(spec_model.graphable_properties, "value", axis_option)
     if props["type"] == "method":
         return perform_spectrum_op(
             id_list,
             spec_model,
             filter_df,
             settings,
-            prefix,
-            suffix,
             props,
             get_errors,
         )
@@ -218,18 +191,17 @@ def make_marker_properties(
     settings,
     id_list,
     spec_model,
-    prefix,
-    suffix,
-    highlight_id_list,
     filter_df,
     metadata_df,
+    _get_errors,
+    highlight_id_list
 ):
     """
     this expects an id list that has already
     been processed by truncate_id_list_for_missing_properties
     """
-    marker_option = settings[prefix + "-graph-option-" + suffix]
-    props = keygrab(spec_model.accessible_properties, "value", marker_option)
+    marker_option = re_get(settings, "-graph-option-")
+    props = keygrab(spec_model.graphable_properties, "value", marker_option)
     # it would really be better to do this in components
     # but is difficult because you have to instantiate the colorbar somewhere
     # it would also be better to style with CSS but it seems like plotly
@@ -237,7 +209,7 @@ def make_marker_properties(
     colorbar_dict = COLORBAR_SETTINGS.copy()
     if props["type"] == "method":
         property_list, _ = perform_spectrum_op(
-            id_list, spec_model, filter_df, settings, prefix, suffix, props
+            id_list, spec_model, filter_df, settings, props
         )
     else:
         property_list = metadata_df.loc[id_list][props["value"]].values
@@ -256,13 +228,16 @@ def make_marker_properties(
                     map(seconds_since_beginning_of_day, property_list)
                 )
         color_indices = property_list
-    colormap = settings[prefix + "-color.value"]
+    colormap = re_get(settings, "-color.value")
 
-    marker_size = 8
-    if settings[prefix + "-highlight-toggle.value"] == "on":
+    if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
             32 if spectrum in highlight_id_list else 8 for spectrum in id_list
         ]
+        opacity = 0.5
+    else:
+        marker_size = [8 for _ in id_list]
+        opacity = 1
 
     return {
         "marker": {
@@ -270,44 +245,17 @@ def make_marker_properties(
             "colorscale": colormap,
             "colorbar": go.scatter.marker.ColorBar(**colorbar_dict),
             "size": marker_size,
-        }
+            "opacity": opacity,
+        },
+        "line": {"color": "black", "width": 5},
     }
 
 
-def sibling_ids(spec_id, cget):
-    """wrapper for getting sets of spectra siblings precalculated in
-    update_queryset"""
-    return first(lambda x: spec_id in x, cget("sibling_set"))
-
-
-# def main_graph_hover_styler(ctx, cget):
-#     """
-#     this is drastically inefficient, i would think. perhaps there's a more
-#     performant way to do it
-#     in some of the marker controls.
-#     """
-#
-#     hovered_point = ctx.triggered[0]["value"]["points"][0]["customdata"]
-#     figure = go.Figure(ctx.states["main-graph.figure"])
-#     sibs = sibling_ids(hovered_point, cget)
-#     figure.update_traces(
-#         marker={
-#             "color": [
-#                 redorblue(point, sibs)
-#                 for point in figure["data"][0]["customdata"]
-#             ]
-#         }
-#     )
-#     return figure
-
-
-# this is somewhat nasty.
-# is there a cleaner way to do this?
+# this is somewhat nasty. is there a cleaner way to do this?
 # flow control becomes really hard if we break the function up.
 # it requires triggers spread across multiple divs or cached globals
 # and is much uglier than even this. dash's restriction on callbacks to a
-# single output
-# makes it even worse. probably the best thing to do
+# single output makes it even worse. probably the best thing to do
 # in the long run is to treat this basically as a dispatch function.
 def recalculate_main_graph(
     *args,
@@ -363,47 +311,26 @@ def recalculate_main_graph(
         metadata_df,
         spec_model,
     )
-    x_axis, x_errors = make_axis(
-        x_settings,
+    graph_content = [
         truncated_ids,
         spec_model,
-        prefix="main",
-        suffix="x.value",
-        filter_df=filter_df,
-        metadata_df=metadata_df,
-        get_errors=get_errors,
-    )
-    y_axis, y_errors = make_axis(
-        y_settings,
-        truncated_ids,
-        spec_model,
-        prefix="main",
-        suffix="y.value",
-        filter_df=filter_df,
-        metadata_df=metadata_df,
-        get_errors=get_errors,
-    )
-    marker_properties = make_marker_properties(
-        marker_settings,
-        truncated_ids,
-        spec_model,
-        "main",
-        "marker.value",
-        highlight_ids,
         filter_df,
         metadata_df,
-    )
-    # these text and customdata choices are likely placeholders
+        get_errors,
+        highlight_ids
+    ]
+    x_axis, x_errors = make_axis(x_settings, *graph_content)
+    y_axis, y_errors = make_axis(y_settings, *graph_content)
+    marker_properties = make_marker_properties(marker_settings, *graph_content)
+
     truncated_metadata = metadata_df.loc[truncated_ids]
-    feature_color = truncated_metadata['feature'].copy()
+    feature_color = truncated_metadata["feature"].copy()
     no_feature_ix = feature_color.loc[feature_color.isna()].index
-    feature_color.loc[no_feature_ix] = truncated_metadata['color'].loc[no_feature_ix]
+    feature_color.loc[no_feature_ix] = truncated_metadata["color"].loc[
+        no_feature_ix
+    ]
     text = truncated_metadata["name"] + " " + feature_color
     customdata = truncated_ids
-    # this case is most likely shortly after page load
-    # when not everything is filled out
-    # if not (x_axis and y_axis):
-    #     raise PreventUpdate
 
     # for functions that (perhaps asynchronously) fetch the state of the graph.
     # this is another perhaps ugly flow control thing!
@@ -585,7 +512,6 @@ def update_search_options(
 
 
 def trigger_search_update(_load_trigger, search_triggers):
-    ctx = dash.callback_context
     return ["bang" for _ in search_triggers]
 
 
@@ -595,7 +521,7 @@ def change_calc_input_visibility(calc_type, *, spec_model):
     on and off in response to changes in arity / type of
     requested calc
     """
-    props = keygrab(spec_model.accessible_properties, "value", calc_type)
+    props = keygrab(spec_model.graphable_properties, "value", calc_type)
     # 'methods' are specifically those methods of spec_model
     # that take its filters as arguments
     if props["type"] == "method":
@@ -741,9 +667,6 @@ def update_search_ids(
         cset("main_search_ids", search)
         # save search parameters for graph description
         cset("search_parameters", search_list)
-        # precalculate sets of 'sibling' spectra
-        # TODO: DO I NEED THIS? NOT RIGHT NOW
-        # cset("sibling_set", spectrum_queryset_siblings(cget("queryset")))
         return search_trigger_dummy_value + 1
     raise PreventUpdate
 
@@ -767,7 +690,7 @@ def add_dropdown(children, spec_model, cget, cset):
     return children
 
 
-def remove_dropdown(index, children, cget, cset):
+def remove_dropdown(index, children, _cget, _cset):
     """
     remove a search constraint dropdown, and its attendant constraints on
     searches.
@@ -852,11 +775,11 @@ def graph_point_to_metadata(event_data, *, spec_model, style=None):
     # into html <p> elements containing metadata of associated Spectrum
     if not event_data:
         raise PreventUpdate
-    n = dict_to_paragraphs(
+    meta_print = dict_to_paragraphs(
         spectrum_from_graph_event(event_data, spec_model).metadata_dict(),
         style,
     )
-    return n
+    return meta_print
 
 
 # TODO: probably inefficient
@@ -885,7 +808,7 @@ def update_spectrum_graph(
 
 
 def make_mspec_browse_image_components(
-    mspec, image_directory, base_size, static_image_url
+    mspec, image_directory, static_image_url
 ):
     """
     MSpec object, size factor (viewport units), image directory ->
@@ -919,7 +842,7 @@ def make_mspec_browse_image_components(
 
 
 def update_spectrum_images(
-    event_data, *, spec_model, image_directory, base_size, static_image_url
+    event_data, *, spec_model, image_directory, static_image_url
 ):
     """
     just a callback-responsive wrapper to make_mspec_browse_image_components --
@@ -931,7 +854,7 @@ def update_spectrum_images(
     # noinspection PyTypeChecker
     spectrum: "MSpec" = spectrum_from_graph_event(event_data, spec_model)
     return make_mspec_browse_image_components(
-        spectrum, image_directory, base_size, static_image_url
+        spectrum, image_directory, static_image_url
     )
 
 
@@ -1001,12 +924,9 @@ def describe_current_graph(cget):
     """
     note this this relies on cached 'globals' from recalculate_graph
     and update_queryset! if this turns out to be an excessively ugly flow
-    control
-    solution, we could instead turn it into a callback that dynamically
-    monitors state
-    of the same objects they monitor the state of...but that parallel
-    structure seems
-    worse.
+    control solution, we could instead turn it into a callback that dynamically
+    monitors state of the same objects they monitor the state of...but that
+    parallel structure seems worse.
     """
     return {
         parameter: cget(parameter) for parameter in SPlot.canonical_parameters
@@ -1070,8 +990,7 @@ def save_search_tab_state(
 ):
     """
     fairly permissive right now. this saves current search-tab state to a
-    file as csv,
-    which can then be reloaded by make_loaded_search_tab.
+    file as csv, which can then be reloaded by make_loaded_search_tab.
     """
 
     if not_triggered():
@@ -1197,8 +1116,7 @@ def control_tabs(
             tabs, load_row, spec_model, search_file, cset
         )
         # this cache parameter is for semi-asynchronous flow control of the
-        # load process
-        # without having to literally
+        # load process without having to literally
         # have one dispatch callback function for the entire app
         cset("load_state", {"update_search_options": True})
         return new_tabs, active_tab_value, load_trigger_index
