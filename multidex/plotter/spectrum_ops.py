@@ -1,32 +1,58 @@
+import math
+from collections.abc import Mapping
+from typing import Union, Optional
+
+import numpy as np
 from numpy.linalg import norm
 import pandas as pd
 
+from plotter_utils import qlist
 
-def filter_df_from_queryset(queryset, **scale_kwargs):
+
+def d2r(degrees: Union[float, np.ndarray, pd.Series]) -> Union[float, np.ndarray, pd.Series]:
+    """degrees to radians"""
+    return math.pi * degrees / 180
+
+
+def r2d(radians: Union[float, np.ndarray, pd.Series]) -> Union[float, np.ndarray, pd.Series]:
+    """radians to degrees"""
+    return 180 * radians / math.pi
+
+
+def filter_df_from_queryset(
+    queryset,
+    r_star=True,
+    average_filters=False,
+    scale_to=None,
+):
     filter_value_list = []
     id_list = []
     for spectrum in queryset:
         mean_dict = {
             filt: value["mean"]
-            for filt, value in spectrum.filter_values(**scale_kwargs).items()
+            for filt, value in spectrum.filter_values(
+                average_filters=average_filters, scale_to=scale_to
+            ).items()
         }
         err_dict = {
             filt + "_err": value["err"]
-            for filt, value in spectrum.filter_values(**scale_kwargs).items()
+            for filt, value in spectrum.filter_values(
+                average_filters=average_filters, scale_to=scale_to
+            ).items()
         }
         filter_value_list.append(mean_dict | err_dict)
         id_list.append(spectrum.id)
-    return pd.DataFrame(filter_value_list, index=id_list)
-
-
-def errfilter(dataframe, get_errors=False):
-    return dataframe[
-        [
-            column
-            for column in dataframe.columns
-            if ("_err" in column) == get_errors
-        ]
-    ]
+    filter_df = pd.DataFrame(filter_value_list, index=id_list)
+    # TODO: I'm not actually sure this should be happening here. Assess whether
+    #  it's preferable to have rules for this on models.
+    if r_star:
+        theta_i = np.cos(d2r(pd.Series(qlist(
+            queryset.prefetch_related("observation"),
+            "observation__incidence_angle"
+        ))))
+        for column in filter_df.columns:
+            filter_df[column] = filter_df[column] / theta_i
+    return filter_df
 
 
 def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):
@@ -52,8 +78,8 @@ def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):
     if errors:
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
         error_df.columns = [
-            spec_model().all_filter_waves()[column] for column in
-            band_df.columns
+            spec_model().all_filter_waves()[column]
+            for column in band_df.columns
         ]
     else:
         error_df = None
@@ -86,8 +112,8 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
     if errors:
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
         error_df.columns = [
-            spec_model().all_filter_waves()[column] for column in
-            band_df.columns
+            spec_model().all_filter_waves()[column]
+            for column in band_df.columns
         ]
     else:
         error_df = None
@@ -166,7 +192,17 @@ def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):
     # TODO: this is a weak approximation
     if errors:
         errs = filter_df[filt_1 + "_err"], filter_df[filt_2 + "_err"]
-        return ratio_value, (errs[0] * errs[1] + errs[0]**2 + errs[1] + errs[0] + errs[1]**2)**0.5
+        return (
+            ratio_value,
+            (
+                errs[0] * errs[1]
+                + errs[0] ** 2
+                + errs[1]
+                + errs[0]
+                + errs[1] ** 2
+            )
+            ** 0.5,
+        )
     return ratio_value, None
 
 

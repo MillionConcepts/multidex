@@ -442,6 +442,7 @@ app.callback(
         Input({"type": "load-trigger", "index": 0}, "value"),
         Input("main-graph-scale", "value"),
         Input("main-graph-average", "value"),
+        Input("main-graph-r-star", "value")
     ],
     [State({"type": "main-graph-scale-trigger", "index": 0}, "value")],
 )(update_filter_df)
@@ -517,6 +518,7 @@ app.callback(
     [
         Input("main-graph", "hoverData"),
         Input("main-spec-scale", "value"),
+        Input("main-spec-r-star", "value"),
         Input("main-spec-average", "value"),
         Input("main-spec-error", "value")
     ],

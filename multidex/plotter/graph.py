@@ -586,12 +586,13 @@ def update_filter_df(
     _load_trigger,
     scale_to,
     average_filters,
-    scale_trigger_dummy_value,
+    r_star,
+    scale_trigger_count,
     *,
     cset,
     spec_model,
 ):
-    if not_triggered():
+    if dash.callback_context.triggered[0]['prop_id'] == '.':
         raise PreventUpdate
     if "average" in average_filters:
         average_filters = True
@@ -599,12 +600,17 @@ def update_filter_df(
         average_filters = False
     if scale_to != "None":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
+    if "r-star" in r_star:
+        r_star = True
+    else:
+        r_star = False
     cset(
         "main_graph_filter_df",
         filter_df_from_queryset(
             spec_model.objects.all(),
             average_filters=average_filters,
             scale_to=scale_to,
+            r_star=r_star,
         ),
     )
     if scale_to != "None":
@@ -613,9 +619,9 @@ def update_filter_df(
         scale_to_string = scale_to
     cset("scale_to", scale_to_string)
     cset("average_filters", average_filters)
-    if not scale_trigger_dummy_value:
+    if not scale_trigger_count:
         return 1
-    return scale_trigger_dummy_value + 1
+    return scale_trigger_count + 1
 
 
 def make_sibling_set(observations):
@@ -803,6 +809,7 @@ def graph_point_to_metadata(event_data, *, spec_model, style=None):
 def update_spectrum_graph(
     event_data,
     scale_to,
+    r_star,
     average_input_value,
     error_bar_value,
     *,
@@ -820,6 +827,7 @@ def update_spectrum_graph(
         spectrum,
         scale_to=scale_to,
         average_filters=average_filters,
+        r_star = r_star,
         show_error=show_error,
     )
 
@@ -1201,6 +1209,7 @@ def print_selected(selected):
     print(selected)
     return 0
 
+# TODO: This should be reading from something in mcam_spect_data_conversion probably
 
 def export_graph_csv(_clicks, selected, *, cget):
     if not_triggered():
@@ -1224,11 +1233,16 @@ def export_graph_csv(_clicks, selected, *, cget):
             "MEMBER",
             "FLOAT",
             "LTST",
+            "ROVER_ELEVATION",
             "TARGET_ELEVATION",
-            "TAU_INTERPOLATED",
+            "INCIDENCE_ANGLE",
+            "PHASE_ANGLE",
+            "EMISSION_ANGLE",
+            "TAU",
             "FOCAL_DISTANCE",
             "LAT",
             "LON",
+            "ODOMETRY"
         ],
     )
     output_df = (
