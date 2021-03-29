@@ -15,7 +15,6 @@ from marslab.compatibility import (
 )
 from plotter_utils import modeldict
 
-
 MSPEC_IMAGE_TYPES = [
     "righteye_roi_image_1",
     "righteye_roi_image_2",
@@ -123,9 +122,7 @@ class MObs(Observation):
     target_elevation = models.FloatField(
         "Target Elevation", null=True, db_index=True
     )
-    tau = models.FloatField(
-        "Tau", blank=True, null=True, db_index=True
-    )
+    tau = models.FloatField("Tau", blank=True, null=True, db_index=True)
     focal_distance = models.FloatField(
         "Focal Distance", blank=True, null=True, db_index=True
     )
@@ -501,13 +498,19 @@ class MSpec(Spectrum):
     canonical_averaged_filters = DERIVED_CAM_DICT["MCAM"][
         "canonical_averaged_filters"
     ]
-
     accessible_properties = [
         {
             "label": "band value",
             "value": "ref",
             "type": "method",
             "arity": 1,
+            "value_type": "quant",
+        },
+        {
+            "label": "band slope",
+            "value": "slope",
+            "type": "method",
+            "arity": 2,
             "value_type": "quant",
         },
         {
@@ -553,7 +556,7 @@ class MSpec(Spectrum):
             "value_type": "quant",
         },
         {
-            "label": "target elevation",
+            "label": "target_elevation",
             "value": "target_elevation",
             "type": "parent_property",
             "value_type": "quant",
@@ -650,15 +653,16 @@ class MSpec(Spectrum):
         },
     ]
 
-    graphable_properties =[
-        prop for prop in accessible_properties
-        if prop not in ("color", "seq_id", "name")
+    graphable_properties = [
+        prop
+        for prop in accessible_properties
+        if prop["value"] not in ("color", "seq_id", "name")
     ]
     searchable_fields = [
-        prop for prop in accessible_properties
-        if prop["type"] != "method"
+        prop
+        for prop in accessible_properties
+        if (prop["type"] != "method") and prop["value"] not in "ltst"
     ]
-
 
     def filter_values(
         self,
@@ -730,6 +734,7 @@ class MSpec(Spectrum):
         # noinspection PyTypeChecker
         obs_dict = modeldict(self.observation)
         return keyfilter(
-            lambda x: x in [field['value'] for field in self.searchable_fields],
+            lambda x: x
+            in [field["value"] for field in self.searchable_fields],
             spec_dict | obs_dict,
         )

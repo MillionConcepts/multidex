@@ -225,6 +225,8 @@ def main_graph_scatter(
     fig.update_xaxes(GRAPH_AXIS_SETTINGS)
     fig.update_yaxes(GRAPH_AXIS_SETTINGS)
 
+    fig.update_traces(**marker_property_dict)
+
     for error, name in [(x_errors, "x"), (y_errors, "y")]:
         if error is None:
             fig.update_traces({"error_" + name: {"visible": False}})
@@ -240,7 +242,6 @@ def main_graph_scatter(
                 }
             )
 
-    fig.update_traces(**marker_property_dict)
 
     if zoom is not None:
         fig.update_layout(
@@ -426,36 +427,6 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
     )
 
 
-# def graph_bounds_div(prefix):
-#     return html.Div(
-#         className="graph-bounds-div",
-#         id=prefix + "-graph-bounds-div",
-#         children=[
-#             html.Div(
-#                 className="graph-bounds-axis-container",
-#                 children=[
-#                     html.Label(
-#                         children=[axis + " min"],
-#                         htmlFor=prefix + "-" + axis + "-min-input"
-#                     ),
-#                     dcc.Input(
-#                         type="text", id=prefix + "-" + axis + "-min-input",
-#                         className='bounds-input'
-#                     ),
-#                     html.Label(
-#                         children=[axis + " max"],
-#                         htmlFor=prefix + "-" + axis + "-min-input"
-#                     ),
-#                     dcc.Input(
-#                         type="text", id=prefix + "-" + axis + "-max-input",
-#                         className='bounds-input'
-#                     ),
-#                 ]
-#             )
-#             for axis in ["x", "y", "m"]
-#         ],
-#     )
-
 
 def filter_drop(model, element_id, value, label_content=None, options=None):
     """dropdown for filter selection"""
@@ -473,7 +444,7 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
                 id=element_id,
                 options=options,
                 value=value,
-                className=["dash-dropdown", "filter-drop"],
+                className="dash-dropdown filter-drop",
                 clearable=False
                 # style={"width": "6rem", "display": "inline-block"},
                 # style={"display":"inline-block"}
