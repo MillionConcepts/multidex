@@ -51,6 +51,10 @@ def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):
     ]
     if errors:
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
+        error_df.columns = [
+            spec_model().all_filter_waves()[column] for column in
+            band_df.columns
+        ]
     else:
         error_df = None
     band_df.columns = [
@@ -81,6 +85,10 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
     ]
     if errors:
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
+        error_df.columns = [
+            spec_model().all_filter_waves()[column] for column in
+            band_df.columns
+        ]
     else:
         error_df = None
     band_df.columns = [
@@ -116,9 +124,11 @@ def band_avg(filter_df, spec_model, filt_1, filt_2, errors=False):
     return band_df.mean(axis=1), None
 
 
-def band_max(filter_df, spec_model, filt_1, filt_2, errors=False):
+def band_max(filter_df, spec_model, filt_1, filt_2, _):
     """
     max reflectance value between filt_1 and filt_2 (inclusive)
+    note that error values aren't meaningful here so the request
+    is ignored
     """
     filter_waves = spec_model().all_filter_waves()
     band_df, error_df = band(
@@ -126,16 +136,16 @@ def band_max(filter_df, spec_model, filt_1, filt_2, errors=False):
         spec_model,
         filter_waves[filt_1],
         filter_waves[filt_2],
-        errors,
+        False,
     )
-    if errors:
-        return band_df.max(axis=1), error_df.max(axis=1)
-    return band_df.max(axis=1), None
+    return band_df.idxmax(axis=1), None
 
 
-def band_min(filter_df, spec_model, filt_1, filt_2, errors=False):
+def band_min(filter_df, spec_model, filt_1, filt_2, _):
     """
     min reflectance value between filt_1 and filt_2 (inclusive)
+    note that error values aren't meaningful here so the request
+    is ignored
     """
     filter_waves = spec_model().all_filter_waves()
     band_df, error_df = band(
@@ -143,11 +153,9 @@ def band_min(filter_df, spec_model, filt_1, filt_2, errors=False):
         spec_model,
         filter_waves[filt_1],
         filter_waves[filt_2],
-        errors,
+        False,
     )
-    if errors:
-        return band_df.min(axis=1), error_df.min(axis=1)
-    return band_df.min(axis=1), None
+    return band_df.idxmin(axis=1), None
 
 
 def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):

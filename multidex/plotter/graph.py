@@ -46,7 +46,8 @@ from plotter_utils import (
     none_to_quote_unquote_none,
     field_values,
     fetch_css_variables,
-    df_multiple_field_search, re_get,
+    df_multiple_field_search,
+    re_get,
 )
 
 if TYPE_CHECKING:
@@ -163,7 +164,7 @@ def make_axis(
     filter_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
     get_errors: bool,
-    _highlight
+    _highlight,
 ) -> tuple[list[float], Optional[list[float]]]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
@@ -184,7 +185,13 @@ def make_axis(
             props,
             get_errors,
         )
-    return metadata_df.loc[id_list][props["value"]], None
+    value_series = metadata_df.loc[id_list][props["value"]]
+    if props["value"] == "ltst":
+        value_series = [
+            instant.hour * 3600 + instant.minute * 60 + instant.second
+            for instant in value_series
+        ]
+    return value_series, None
 
 
 def make_marker_properties(
@@ -194,7 +201,7 @@ def make_marker_properties(
     filter_df,
     metadata_df,
     _get_errors,
-    highlight_id_list
+    highlight_id_list,
 ):
     """
     this expects an id list that has already
@@ -236,9 +243,10 @@ def make_marker_properties(
         ]
         opacity = 0.5
     else:
-        marker_size = [8 for _ in id_list]
+        # marker_size = [8 for _ in id_list]
+        # opacity = 1
+        marker_size = 8
         opacity = 1
-
     return {
         "marker": {
             "color": color_indices,
@@ -317,7 +325,7 @@ def recalculate_main_graph(
         filter_df,
         metadata_df,
         get_errors,
-        highlight_ids
+        highlight_ids,
     ]
     x_axis, x_errors = make_axis(x_settings, *graph_content)
     y_axis, y_errors = make_axis(y_settings, *graph_content)
@@ -329,7 +337,14 @@ def recalculate_main_graph(
     feature_color.loc[no_feature_ix] = truncated_metadata["color"].loc[
         no_feature_ix
     ]
-    text = truncated_metadata["name"] + " " + feature_color
+    text = (
+        "sol"
+        + truncated_metadata["sol"].astype(str)
+        + " "
+        + truncated_metadata["name"]
+        + " "
+        + feature_color
+    )
     customdata = truncated_ids
 
     # for functions that (perhaps asynchronously) fetch the state of the graph.
@@ -468,6 +483,8 @@ def spectrum_values_range(metadata_df, field):
     for cueing or aiding searches.
     """
     values = metadata_df[field]
+    if field == "ltst":
+        values = [0 for _ in values]
     return values.min(), values.max()
 
 
