@@ -42,7 +42,7 @@ def filter_df_from_queryset(
         }
         filter_value_list.append(mean_dict | err_dict)
         id_list.append(spectrum.id)
-    filter_df = pd.DataFrame(filter_value_list, index=id_list)
+    filter_df = pd.DataFrame(filter_value_list)
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #  it's preferable to have rules for this on models.
     if r_star:
@@ -52,6 +52,7 @@ def filter_df_from_queryset(
         ))))
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
+    filter_df.index = id_list
     return filter_df
 
 
@@ -263,8 +264,9 @@ def band_depth_custom(
         ]
         return (
             filter_df[filt_middle] / continuum_ref,
-            norm(errs, axis=1) / continuum_ref,
+            norm(errs, axis=1) / continuum_ref
         )
+    return filter_df[filt_middle] / continuum_ref, None
 
 
 def band_depth_min(filter_df, spec_model, filt_1, filt_2, errors=False):

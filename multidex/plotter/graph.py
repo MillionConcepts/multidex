@@ -50,9 +50,10 @@ from plotter_utils import (
     re_get,
 )
 
+from plotter.models import MSpec, ZSpec
+
 if TYPE_CHECKING:
     from django.db.models import Model
-    from plotter.models import MSpec
     import flask_caching
 
 css_variables = fetch_css_variables()
@@ -865,6 +866,40 @@ def make_mspec_browse_image_components(
         )
     return component
 
+# TODO: assess whether this hack remains in
+def make_zspec_browse_image_components(
+    zspec, image_directory, static_image_url
+):
+    """
+    ZSpec object, size factor (viewport units), image directory ->
+    pair of dash html.Img components containing the rgb and enhanced
+    images associated with that object, pathed to the static image
+    route defined in the live app instance -- silly hack rn
+    """
+    file_info = zspec.overlay_browse_file_info(image_directory)
+    image_div_children = []
+    for image_type in ["rgb_image", "enhanced_image"]:
+        try:
+            # size = file_info[eye + "_size"]
+            filename = static_image_url + file_info[image_type + "_file"]
+        except KeyError:
+            # size = (480, 480)
+            filename = static_image_url + "missing.jpg"
+        # aspect_ratio = size[0] / size[1]
+        # width = base_size * aspect_ratio
+        # height = base_size / aspect_ratio
+        image_div_children.append(
+            html.Img(
+                src=filename,
+                style={"width": "50%", "height": "50%"},
+                id="spec-image-" + image_type,
+            )
+        )
+        component = html.Div(
+            children=image_div_children,
+        )
+    return component
+
 
 def update_spectrum_images(
     event_data, *, spec_model, image_directory, static_image_url
@@ -877,7 +912,13 @@ def update_spectrum_images(
         raise PreventUpdate
     # type checking just can't handle django class inheritance
     # noinspection PyTypeChecker
-    spectrum: "MSpec" = spectrum_from_graph_event(event_data, spec_model)
+    spectrum = spectrum_from_graph_event(event_data, spec_model)
+    # TODO: turn this into a dispatch function, if this ends up actually
+    #  wanting distinct behavior
+    if spec_model == ZSpec:
+        return make_zspec_browse_image_components(
+            spectrum, image_directory, static_image_url
+        )
     return make_mspec_browse_image_components(
         spectrum, image_directory, static_image_url
     )
