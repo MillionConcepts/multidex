@@ -1018,7 +1018,7 @@ def search_tab(
                     scale_controls_container(
                         spec_model,
                         "main-spec",
-                        "L2_R2",
+                        "L1_R1",
                         "r-star",
                         "average",
                         "error",
