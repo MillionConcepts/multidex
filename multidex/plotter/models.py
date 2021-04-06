@@ -833,7 +833,7 @@ class MSpec(Spectrum):
         obs_dict = modeldict(self.observation)
         return keyfilter(
             lambda x: x
-            in [field["value"] for field in self.searchable_fields],
+            in [field["value"] for field in self.accessible_properties],
             spec_dict | obs_dict,
         )
 
@@ -1217,6 +1217,6 @@ class ZSpec(Spectrum):
         obs_dict = modeldict(self.observation)
         return keyfilter(
             lambda x: x
-            in [field["value"] for field in self.searchable_fields],
+            in [field["value"] for field in self.accessible_properties],
             spec_dict | obs_dict,
         )
