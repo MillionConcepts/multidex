@@ -229,6 +229,7 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
+    colorbar_dict |= {"title_text": title}
     if props["value_type"] == "qual":
         string_hash, color_indices = arbitrarily_hash_strings(
             none_to_quote_unquote_none(property_list)
@@ -236,7 +237,6 @@ def make_marker_properties(
         colorbar_dict |= {
             "tickvals": list(string_hash.values()),
             "ticktext": list(string_hash.keys()),
-            "title_text": title
         }
     else:
         if len(property_list) > 0:
