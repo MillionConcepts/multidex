@@ -61,7 +61,8 @@ COLORBAR_SETTINGS = {
     "tickfont": {
         "family": "Fira Mono",
         "color": css_variables["midnight-ochre"],
-    }
+    },
+    "titlefont": {"family": "Fira Mono"}
 }
 
 
