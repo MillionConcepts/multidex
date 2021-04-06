@@ -196,6 +196,12 @@ marker_inputs = [
     Input("main-graph-option-marker", "value"),
     Input("main-color", "value"),
     Input("main-highlight-toggle", "value"),
+    Input("main-marker-outline-radio", "value")
+]
+
+graph_display_inputs = [
+    Input("main-graph-bg-radio", "value"),
+    Input("main-graph-gridlines-radio", "value")
 ]
 
 filter_dropdown_outputs = [
@@ -224,6 +230,7 @@ settings = {
     "x_inputs": x_inputs,
     "y_inputs": y_inputs,
     "marker_inputs": marker_inputs,
+    "graph_display_inputs": graph_display_inputs,
     "cget": cget,
     "cset": cset,
     # factory functions for plotly figures (which Dash
@@ -353,6 +360,7 @@ app.callback(
         *x_inputs,
         *y_inputs,
         *marker_inputs,
+        *graph_display_inputs,
         Input({"type": "search-trigger", "index": ALL}, "value"),
         Input({"type": "main-graph-scale-trigger", "index": 0}, "value"),
         Input({'type': 'highlight-trigger', 'index': 0}, 'value'),
