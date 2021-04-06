@@ -147,13 +147,18 @@ def perform_spectrum_op(
         for ix in range(1, props["arity"] + 1)
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
+    title = props["value"] + " " + str(" ".join(filt_args))
     try:
         vals, errors = spectrum_op(
             queryset_df, spec_model, *filt_args, get_errors
         )
         if get_errors:
-            return list(np.array(vals)), list(np.array(errors))
-        return list(vals.values), None
+            return (
+                list(np.array(vals)),
+                list(np.array(errors)),
+                title,
+            )
+        return list(vals.values), None, title
     except ValueError:  # usually representing intermediate input states
         raise PreventUpdate
 
@@ -166,7 +171,7 @@ def make_axis(
     metadata_df: pd.DataFrame,
     get_errors: bool,
     _highlight,
-) -> tuple[list[float], Optional[list[float]]]:
+) -> tuple[list[float], Optional[list[float]], str]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
     our big precalculated metadata / data dataframes; data has already been
@@ -192,7 +197,7 @@ def make_axis(
             instant.hour * 3600 + instant.minute * 60 + instant.second
             for instant in value_series
         ]
-    return value_series, None
+    return value_series, None, axis_option
 
 
 def make_marker_properties(
@@ -216,11 +221,14 @@ def make_marker_properties(
     # really wants to put element-level style declarations on graph ticks!
     colorbar_dict = COLORBAR_SETTINGS.copy()
     if props["type"] == "method":
-        property_list, _ = perform_spectrum_op(
+        property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
         )
     else:
-        property_list = metadata_df.loc[id_list][props["value"]].values
+        property_list, title = (
+            metadata_df.loc[id_list][props["value"]].values,
+            props["value"],
+        )
     if props["value_type"] == "qual":
         string_hash, color_indices = arbitrarily_hash_strings(
             none_to_quote_unquote_none(property_list)
@@ -228,6 +236,7 @@ def make_marker_properties(
         colorbar_dict |= {
             "tickvals": list(string_hash.values()),
             "ticktext": list(string_hash.keys()),
+            "title_text": title
         }
     else:
         if len(property_list) > 0:
@@ -238,16 +247,30 @@ def make_marker_properties(
         color_indices = property_list
     colormap = re_get(settings, "-color.value")
 
+    # define marker size settings
+    # note that you have to define individual marker sizes
+    # in order to be able to set marker outlines -- it causes them to be
+    # drawn in some different (and more expensive) way
+    opacity = 1
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
-            32 if spectrum in highlight_id_list else 8 for spectrum in id_list
+            32 if spectrum in highlight_id_list else 9 for spectrum in id_list
         ]
         opacity = 0.5
+    elif re_get(settings, "-outline-radio.value") != "off":
+        marker_size = [9 for _ in id_list]
     else:
-        # marker_size = [8 for _ in id_list]
-        # opacity = 1
-        marker_size = 8
-        opacity = 1
+        marker_size = 9
+
+    # define marker outline
+    if re_get(settings, "-outline-radio.value") != "off":
+        marker_line = {
+            "color": re_get(settings, "-outline-radio.value"),
+            "width": 5,
+        }
+    else:
+        marker_line = {}
+
     return {
         "marker": {
             "color": color_indices,
@@ -256,8 +279,21 @@ def make_marker_properties(
             "size": marker_size,
             "opacity": opacity,
         },
-        "line": {"color": "black", "width": 5},
+        "line": marker_line,
     }
+
+
+def make_graph_display_settings(settings):
+    settings_dict = {}
+    axis_settings_dict = {}
+    if re_get(settings, "-graph-bg"):
+        settings_dict["plot_bgcolor"] = re_get(settings, "-graph-bg")
+    if re_get(settings, "-gridlines") == "on":
+        axis_settings_dict["showgrid"] = True
+    else:
+        axis_settings_dict["showgrid"] = False
+
+    return settings_dict, axis_settings_dict
 
 
 # this is somewhat nasty. is there a cleaner way to do this?
@@ -271,6 +307,7 @@ def recalculate_main_graph(
     x_inputs,
     y_inputs,
     marker_inputs,
+    graph_display_inputs,
     graph_function,
     cget,
     cset,
@@ -300,6 +337,7 @@ def recalculate_main_graph(
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
+    graph_display_settings = pickctx(ctx, graph_display_inputs)
     if isinstance(ctx.triggered[0]["prop_id"], dict):
         if ctx.triggered[0]["prop_id"]["type"] == "highlight-trigger":
             if marker_settings["main-highlight-toggle.value"] == "off":
@@ -328,10 +366,9 @@ def recalculate_main_graph(
         get_errors,
         highlight_ids,
     ]
-    x_axis, x_errors = make_axis(x_settings, *graph_content)
-    y_axis, y_errors = make_axis(y_settings, *graph_content)
+    x_axis, x_errors, x_title = make_axis(x_settings, *graph_content)
+    y_axis, y_errors, y_title = make_axis(y_settings, *graph_content)
     marker_properties = make_marker_properties(marker_settings, *graph_content)
-
     truncated_metadata = metadata_df.loc[truncated_ids]
     feature_color = truncated_metadata["feature"].copy()
     no_feature_ix = feature_color.loc[feature_color.isna()].index
@@ -347,9 +384,12 @@ def recalculate_main_graph(
         + feature_color
     )
     customdata = truncated_ids
-
+    graph_display_dict, axis_display_dict = make_graph_display_settings(
+        graph_display_settings
+    )
     # for functions that (perhaps asynchronously) fetch the state of the graph.
     # this is another perhaps ugly flow control thing!
+    # TODO (maybe): add graph display settings to recorded settings
     if record_settings:
         for parameter in (
             "x_settings",
@@ -381,15 +421,20 @@ def recalculate_main_graph(
         zoom = None
     else:
         zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
+    # TODO: refactor (too many arguments)
     return graph_function(
         x_axis,
         y_axis,
         marker_properties,
+        graph_display_dict,
+        axis_display_dict,
         text,
         customdata,
         zoom,
         x_errors,
         y_errors,
+        x_title,
+        y_title,
     )
 
 
@@ -593,7 +638,7 @@ def update_filter_df(
     cset,
     spec_model,
 ):
-    if dash.callback_context.triggered[0]['prop_id'] == '.':
+    if dash.callback_context.triggered[0]["prop_id"] == ".":
         raise PreventUpdate
     if "average" in average_filters:
         average_filters = True
@@ -791,7 +836,7 @@ def spectrum_from_graph_event(
     )
 
 
-# TODO: inefficient
+# TODO: inefficient -- but this may be irrelevant?
 def graph_point_to_metadata(event_data, *, spec_model, style=None):
     if style is None:
         style = {"margin": 0, "fontSize": 14}
@@ -801,7 +846,8 @@ def graph_point_to_metadata(event_data, *, spec_model, style=None):
         raise PreventUpdate
     meta_print = dict_to_paragraphs(
         spectrum_from_graph_event(event_data, spec_model).metadata_dict(),
-        style,
+        style=style,
+        ordering=["name", "sol", "seq_id", "feature"],
     )
     return meta_print
 
@@ -828,7 +874,7 @@ def update_spectrum_graph(
         spectrum,
         scale_to=scale_to,
         average_filters=average_filters,
-        r_star = r_star,
+        r_star=r_star,
         show_error=show_error,
     )
 
@@ -865,6 +911,7 @@ def make_mspec_browse_image_components(
             children=image_div_children,
         )
     return component
+
 
 # TODO: assess whether this hack remains in
 def make_zspec_browse_image_components(
@@ -1250,7 +1297,9 @@ def print_selected(selected):
     print(selected)
     return 0
 
+
 # TODO: This should be reading from something in mcam_spect_data_conversion probably
+
 
 def export_graph_csv(_clicks, selected, *, cget):
     if not_triggered():
@@ -1283,7 +1332,7 @@ def export_graph_csv(_clicks, selected, *, cget):
             "FOCAL_DISTANCE",
             "LAT",
             "LON",
-            "ODOMETRY"
+            "ODOMETRY",
         ],
     )
     output_df = (

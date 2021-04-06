@@ -1,6 +1,5 @@
 import math
-from collections.abc import Mapping
-from typing import Union, Optional
+from typing import Union
 
 import numpy as np
 from numpy.linalg import norm
@@ -9,12 +8,16 @@ import pandas as pd
 from plotter_utils import qlist
 
 
-def d2r(degrees: Union[float, np.ndarray, pd.Series]) -> Union[float, np.ndarray, pd.Series]:
+def d2r(
+    degrees: Union[float, np.ndarray, pd.Series]
+) -> Union[float, np.ndarray, pd.Series]:
     """degrees to radians"""
     return math.pi * degrees / 180
 
 
-def r2d(radians: Union[float, np.ndarray, pd.Series]) -> Union[float, np.ndarray, pd.Series]:
+def r2d(
+    radians: Union[float, np.ndarray, pd.Series]
+) -> Union[float, np.ndarray, pd.Series]:
     """radians to degrees"""
     return 180 * radians / math.pi
 
@@ -46,10 +49,16 @@ def filter_df_from_queryset(
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #  it's preferable to have rules for this on models.
     if r_star:
-        theta_i = np.cos(d2r(pd.Series(qlist(
-            queryset.prefetch_related("observation"),
-            "observation__incidence_angle"
-        ))))
+        theta_i = np.cos(
+            d2r(
+                pd.Series(
+                    qlist(
+                        queryset.prefetch_related("observation"),
+                        "observation__incidence_angle",
+                    )
+                )
+            )
+        )
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
     filter_df.index = id_list
@@ -264,7 +273,7 @@ def band_depth_custom(
         ]
         return (
             filter_df[filt_middle] / continuum_ref,
-            norm(errs, axis=1) / continuum_ref
+            norm(errs, axis=1) / continuum_ref,
         )
     return filter_df[filt_middle] / continuum_ref, None
 

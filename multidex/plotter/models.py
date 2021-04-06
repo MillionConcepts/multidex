@@ -454,12 +454,6 @@ class ZObs(Observation):
 class MSpec(Spectrum):
     """Spectrum subclass for MASTCAM"""
 
-    # feature type (rock, dust, etc) (not apparently exported with Tina's
-    # sample data)
-    feature_type = models.CharField(
-        "Feature Type", blank=True, max_length=50, db_index=True
-    )
-
     # ##########################################################
     # ## relationships with parent observation and images
     # ##########################################################
@@ -846,12 +840,6 @@ class MSpec(Spectrum):
 
 class ZSpec(Spectrum):
     """Spectrum subclass for ZCAM"""
-
-    # feature type (rock, dust, etc) (not apparently exported with Tina's
-    # sample data)
-    feature_type = models.CharField(
-        "Feature Type", blank=True, max_length=50, db_index=True
-    )
 
     # ##########################################################
     # ## relationships with parent observation and images

@@ -151,17 +151,30 @@ def columns(dataframe: pd.DataFrame) -> list[np.ndarray]:
 
 # dash-y dictionary utilities
 
-# TODO: what is this for?
-def dict_to_paragraphs(dictionary, style):
+def dict_to_paragraphs(dictionary, style=None, ordering=None):
     """
     parses dictionary to list of dash <p> components
     """
-    return [
-        html.P(
-            str(key) + " " + str(value), style={"margin": 0, "fontSize": 14}
+    if style is None:
+        style = {"margin": 0, "fontSize": 14}
+
+    def make_paragraph(key, value):
+        return html.P(
+            str(key) + " " + str(value), style=style
         )
-        for key, value in dictionary.items()
+
+    if ordering is None:
+        ordering = []
+    ordered_grafs = [
+        make_paragraph(key, dictionary.get(key))
+        for key in ordering
+        if key in dictionary.keys()
     ]
+    unordered_grafs = [
+        make_paragraph(key, value) for key, value in dictionary.items()
+        if key not in ordering
+    ]
+    return ordered_grafs + unordered_grafs
 
 
 def pickitems(dictionary: Mapping, some_list: Iterable) -> dict:

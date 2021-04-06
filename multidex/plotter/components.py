@@ -11,18 +11,19 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from plotter.spectrum_ops import d2r
-from plotter_utils import get_if, none_to_empty, fetch_css_variables
+from plotter_utils import get_if, none_to_empty, fetch_css_variables, re_get
 
 if TYPE_CHECKING:
     from plotter.models import MSpec, Spectrum
 
 # TODO: is this a terrible placeholder?
 css_variables = fetch_css_variables()
-GRAPH_COLOR_SETTINGS = {
+GRAPH_DISPLAY_DEFAULTS = {
+    "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
     "plot_bgcolor": css_variables["dark-tint-0"],
     "paper_bgcolor": css_variables["clean-parchment"],
 }
-GRAPH_AXIS_SETTINGS = {
+AXIS_DISPLAY_DEFAULTS = {
     "showline": True,
     "showgrid": True,
     "mirror": True,
@@ -33,6 +34,8 @@ GRAPH_AXIS_SETTINGS = {
     "spikecolor": css_variables["dark-tint-1"],
     "tickcolor": css_variables["midnight-ochre"],
     "tickfont": {"family": "Fira Mono"},
+    "titlefont": {"family": "Fira Mono"},
+    "title_text": "bunny"
 }
 GRAPH_CONFIG_SETTINGS = {
     "modeBarButtonsToRemove": [
@@ -54,22 +57,22 @@ def scale_to_drop(model, element_id, value=None):
     return dcc.Dropdown(
         id=element_id,
         options=[{"label": "None", "value": "None"}]
-                + [
-                    {"label": filt, "value": filt}
-                    for filt in model.virtual_filter_mapping
-                ],
+        + [
+            {"label": filt, "value": filt}
+            for filt in model.virtual_filter_mapping
+        ],
         value=value,
         style={"max-width": "10rem"},
     )
 
 
 def scale_controls_container(
-        spec_model,
-        id_prefix,
-        scale_value=None,
-        r_star_value=None,
-        average_value=None,
-        error_value=None,
+    spec_model,
+    id_prefix,
+    scale_value=None,
+    r_star_value=None,
+    average_value=None,
+    error_value=None,
 ):
     # TODO: this is a messy way to handle weird cases in loading.
     # this should be cleaned up.
@@ -114,7 +117,7 @@ def scale_controls_container(
 
 
 def dynamic_spec_div(
-        print_name: str, graph_name: str, image_name: str, index: int
+    print_name: str, graph_name: str, image_name: str, index: int
 ) -> html.Div:
     return html.Div(
         children=[
@@ -155,12 +158,7 @@ def main_graph() -> dcc.Graph:
     """dash component factory for main graph"""
     fig = go.Figure()
     # noinspection PyTypeChecker
-    fig.update_layout(
-        {
-            "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
-        }
-        | GRAPH_COLOR_SETTINGS
-    )
+    fig.update_layout(GRAPH_DISPLAY_DEFAULTS)
     return dcc.Graph(
         id="main-graph",
         figure=fig,
@@ -174,12 +172,7 @@ def spec_graph(name: str, index: int) -> dcc.Graph:
     """dash component factory for reflectance graphs"""
     fig = go.Figure()
     # noinspection PyTypeChecker
-    fig.update_layout(
-        {
-            "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
-        }
-        | GRAPH_COLOR_SETTINGS
-    )
+    fig.update_layout(GRAPH_DISPLAY_DEFAULTS)
     return dcc.Graph(
         id={"type": name, "index": index},
         figure=fig,
@@ -196,14 +189,18 @@ def image_holder(index: int = 0) -> dcc.Graph:
 
 
 def main_graph_scatter(
-        x_axis: list[float],
-        y_axis: list[float],
-        marker_property_dict: Mapping,
-        text: list,
-        customdata: list,
-        zoom: Optional[tuple[list[float, float]]] = None,
-        x_errors: Optional[list[float]] = None,
-        y_errors: Optional[list[float]] = None,
+    x_axis: list[float],
+    y_axis: list[float],
+    marker_property_dict: Mapping,
+    graph_display_settings: Mapping,
+    axis_display_settings: Mapping,
+    text: list,
+    customdata: list,
+    zoom: Optional[tuple[list[float, float]]] = None,
+    x_errors: Optional[list[float]] = None,
+    y_errors: Optional[list[float]] = None,
+    x_title: str = None,
+    y_title: str = None
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -219,24 +216,19 @@ def main_graph_scatter(
         go.Scatter(
             x=x_axis,
             y=y_axis,
-            # change this to be hella popup text
             text=text,
             customdata=customdata,
             mode="markers",
             marker={"color": "black", "size": 8},
         )
     )
+    display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
+    axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
 
     # noinspection PyTypeChecker
-    fig.update_layout(
-        {
-            "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
-        }
-        | GRAPH_COLOR_SETTINGS
-    )
-    fig.update_xaxes(GRAPH_AXIS_SETTINGS)
-    fig.update_yaxes(GRAPH_AXIS_SETTINGS)
-
+    fig.update_layout(display_dict)
+    fig.update_xaxes(axis_display_dict | {"title_text": x_title})
+    fig.update_yaxes(axis_display_dict | {"title_text": y_title})
     fig.update_traces(**marker_property_dict)
 
     for error, name in [(x_errors, "x"), (y_errors, "y")]:
@@ -265,11 +257,11 @@ def main_graph_scatter(
 
 
 def mspec_graph_line(
-        spectrum: "MSpec",
-        scale_to=("l1", "r1"),
-        average_filters=True,
-        show_error=True,
-        r_star = True
+    spectrum: "MSpec",
+    scale_to=("l1", "r1"),
+    average_filters=True,
+    show_error=True,
+    r_star=True,
 ) -> go.Figure:
     """
     placeholder line graph for individual mastcam spectra.
@@ -305,20 +297,18 @@ def mspec_graph_line(
         )
     )
     # noinspection PyTypeChecker
-    fig.update_layout(
-        {"margin": {"l": 10, "r": 10, "t": 25, "b": 0}} | GRAPH_COLOR_SETTINGS
-    )
-    fig.update_xaxes(GRAPH_AXIS_SETTINGS)
-    fig.update_yaxes(GRAPH_AXIS_SETTINGS)
+    fig.update_layout(GRAPH_DISPLAY_DEFAULTS)
+    fig.update_xaxes(AXIS_DISPLAY_DEFAULTS)
+    fig.update_yaxes(AXIS_DISPLAY_DEFAULTS)
     fig.update_layout({"yaxis": {"range": [0, min(y_axis) + max(y_axis)]}})
     return fig
 
 
 def marker_options_drop(
-        spec_model: "Spectrum",
-        element_id: str,
-        value: str = None,
-        label_content=None,
+    spec_model: "Spectrum",
+    element_id: str,
+    value: str = None,
+    label_content=None,
 ) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
@@ -483,7 +473,7 @@ def field_drop(fields, element_id, index, value=None):
 
 
 def model_options_drop(
-        element_id: str, index: int, value: Optional[str] = None
+    element_id: str, index: int, value: Optional[str] = None
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
@@ -498,10 +488,10 @@ def model_options_drop(
 
 
 def model_range_entry(
-        element_id: str,
-        index: int,
-        begin: Optional[float] = None,
-        end: Optional[float] = None,
+    element_id: str,
+    index: int,
+    begin: Optional[float] = None,
+    end: Optional[float] = None,
 ) -> list[dcc.Input]:
     """
     pair of entry fields for selecting a range of values for a
@@ -569,7 +559,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
     if value_dict is None:
         text = ""
     elif ("value_list" in value_dict.keys()) and (
-            ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
+        ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
     ):
         raise ValueError(
             "Entering both an explicit value list and a value range is "
@@ -585,7 +575,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
 
 
 def model_range_entry_2(
-        element_id: str, index: int, value_dict: Optional[Mapping] = None
+    element_id: str, index: int, value_dict: Optional[Mapping] = None
 ) -> dcc.Input:
     """
     entry field for selecting a range of values for a
@@ -608,7 +598,7 @@ def model_range_display(element_id: str, index: int) -> html.P:
 
 
 def search_parameter_div(
-        index: int, searchable_fields: Iterable[str], preset_parameter=None
+    index: int, searchable_fields: Iterable[str], preset_parameter=None
 ) -> html.Div:
     get_r = partial(get_if, preset_parameter is not None, preset_parameter)
     children = [
@@ -779,8 +769,11 @@ def main_graph_x_y_drop(x_or_y, spec_model, get_r, filter_options):
 
 
 # primary search panel
+# TODO: it is getting very obnoxious to keep track of indentation, even with
+#  the level of abstraction currently in use, and it needs to be further
+#  refactored -- maybe into a flat list of some kind?
 def search_tab(
-        spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
+    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
 ):
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
@@ -818,53 +811,95 @@ def search_tab(
                         "markers",
                         False,
                         html.Div(
-                            className="axis-controls-container",
+                            style={
+                                "display": "flex",
+                                "flex-direction": "row",
+                            },
                             children=[
-                                marker_options_drop(
-                                    spec_model,
-                                    "main-graph-option-marker",
-                                    value=get_r(
-                                        "main-graph-option-marker.value"),
-                                    label_content="marker color",
-                                ),
                                 html.Div(
-                                    className="filter-container",
+                                    className="axis-controls-container",
                                     children=[
-                                        filter_drop(
+                                        marker_options_drop(
                                             spec_model,
-                                            "main-filter-1-marker",
+                                            "main-graph-option-marker",
                                             value=get_r(
-                                                "main-filter-1-marker.value"
+                                                "main-graph-option-marker.value"
                                             ),
-                                            label_content="left",
-                                            options=filter_options,
+                                            label_content="marker color",
                                         ),
-                                        filter_drop(
-                                            spec_model,
-                                            "main-filter-3-marker",
-                                            value=get_r(
-                                                "main-filter-3-marker.value"
-                                            ),
-                                            label_content="middle",
-                                            options=filter_options,
+                                        html.Div(
+                                            className="filter-container",
+                                            children=[
+                                                filter_drop(
+                                                    spec_model,
+                                                    "main-filter-1-marker",
+                                                    value=get_r(
+                                                        "main-filter-1-marker.value"
+                                                    ),
+                                                    label_content="left",
+                                                    options=filter_options,
+                                                ),
+                                                filter_drop(
+                                                    spec_model,
+                                                    "main-filter-3-marker",
+                                                    value=get_r(
+                                                        "main-filter-3-marker.value"
+                                                    ),
+                                                    label_content="middle",
+                                                    options=filter_options,
+                                                ),
+                                                filter_drop(
+                                                    spec_model,
+                                                    "main-filter-2-marker",
+                                                    value=get_r(
+                                                        "main-filter-2-marker.value"
+                                                    ),
+                                                    label_content="right",
+                                                    options=filter_options,
+                                                ),
+                                            ],
                                         ),
-                                        filter_drop(
-                                            spec_model,
-                                            "main-filter-2-marker",
+                                        color_drop(
+                                            "main-color",
                                             value=get_r(
-                                                "main-filter-2-marker.value"
+                                                "main-color.value"
                                             ),
-                                            label_content="right",
-                                            options=filter_options,
                                         ),
                                     ],
                                 ),
-                                color_drop(
-                                    "main-color",
-                                    value=get_r("main-color.value"),
+                                html.Div(
+                                    style={
+                                        "display": "flex",
+                                        "flex-direction": "column",
+                                    },
+                                    children=[
+                                        html.Label(
+                                            children=["marker outlines"],
+                                            htmlFor="main-marker-outline-radio",
+                                        ),
+                                        dcc.RadioItems(
+                                            id="main-marker-outline-radio",
+                                            options=[
+                                                {
+                                                    "label": "off",
+                                                    "value": "off",
+                                                },
+                                                {
+                                                    "label": "black",
+                                                    "value": "rgba(0,0,0,1)"
+                                                },
+                                                {
+                                                    "label": "white",
+                                                    "value": "rgba(255,255,255,1)"
+                                                },
+                                            ],
+                                            value = "off"
+                                        ),
+                                    ],
                                 ),
                             ],
-                        )),
+                        ),
+                    ),
                     *collapse(
                         "highlight-controls",
                         "highlight",
@@ -902,7 +937,10 @@ def search_tab(
                         "search",
                         False,
                         html.Div(
-                            style={"display": "flex", "flex-direction": "row"},
+                            style={
+                                "display": "flex",
+                                "flex-direction": "row",
+                            },
                             children=[
                                 search_container_div(
                                     spec_model.searchable_fields,
@@ -923,7 +961,8 @@ def search_tab(
                                             style={"display": "none"},
                                         ),
                                         html.Button(
-                                            "clear search", id="clear-search"
+                                            "clear search",
+                                            id="clear-search",
                                         ),
                                         html.Button(
                                             id={
@@ -976,7 +1015,9 @@ def search_tab(
                                     "main-graph",
                                     scale_value=get_r("scale_to"),
                                     average_value=get_r("average_filters"),
-                                    r_star_value="r-star", #TODO: fix init issue, need extra layer somewhere
+                                    # TODO: fix init issue, need extra layer
+                                    #  somewhere
+                                    r_star_value="r-star",
                                 ),
                             ]
                         ),
@@ -1004,6 +1045,55 @@ def search_tab(
                             ]
                         ),
                     ),
+                    *collapse(
+                        "graph-display-panel",
+                        "display",
+                        True,
+                        html.Div(
+                            children=[
+                                html.Label(
+                                    children=["graph background"],
+                                    htmlFor="main-graph-bg-color",
+                                ),
+                                dcc.RadioItems(
+                                    id="main-graph-bg-radio",
+                                    options=[
+                                        {
+                                            "label": "white",
+                                            "value": "rgba(255,255,255,1)",
+                                        },
+                                        {
+                                            "label": "light gray",
+                                            "value": css_variables["dark-tint-0"],
+                                        },
+                                        {
+                                            "label": "dark gray",
+                                            "value": css_variables["dark-tint-1"]
+                                        },
+                                    ],
+                                    value=css_variables["dark-tint-0"]
+                                ),
+                                html.Label(
+                                    children=["gridlines"],
+                                    htmlFor="main-graph-gridlines-radio",
+                                ),
+                                dcc.RadioItems(
+                                    id="main-graph-gridlines-radio",
+                                    options=[
+                                        {
+                                            "label": "off",
+                                            "value": "off",
+                                        },
+                                        {
+                                            "label": "on",
+                                            "value": "on",
+                                        },
+                                    ],
+                                    value="on"
+                                ),
+                            ]
+                        )
+                    )
                 ],
             ),
             html.Div(children=[main_graph()], id="main-container"),
