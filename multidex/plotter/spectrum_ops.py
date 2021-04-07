@@ -272,10 +272,10 @@ def band_depth_custom(
             [filt + "_err" for filt in [filt_left, filt_right, filt_middle]]
         ]
         return (
-            filter_df[filt_middle] / continuum_ref,
+            1 - filter_df[filt_middle] / continuum_ref,
             norm(errs, axis=1) / continuum_ref,
         )
-    return filter_df[filt_middle] / continuum_ref, None
+    return 1 - filter_df[filt_middle] / continuum_ref, None
 
 
 def band_depth_min(filter_df, spec_model, filt_1, filt_2, errors=False):
@@ -306,9 +306,9 @@ def band_depth_min(filter_df, spec_model, filt_1, filt_2, errors=False):
     continuum_ref = filter_df[filt_1] + slope_series * distance_series
     if errors:
         return (
-            min_ref / continuum_ref,
+            1 - min_ref / continuum_ref,
             norm(filter_df[[filt_1 + "_err", filt_2 + "_err"]], axis=1)
             / continuum_ref,
         )
     else:
-        return min_ref / continuum_ref, None
+        return 1 - min_ref / continuum_ref, None
