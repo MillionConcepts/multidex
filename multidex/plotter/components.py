@@ -35,7 +35,7 @@ AXIS_DISPLAY_DEFAULTS = {
     "tickcolor": css_variables["midnight-ochre"],
     "tickfont": {"family": "Fira Mono"},
     "titlefont": {"family": "Fira Mono"},
-    "title_text": "bunny"
+    "title_text": None
 }
 GRAPH_CONFIG_SETTINGS = {
     "modeBarButtonsToRemove": [
@@ -298,8 +298,8 @@ def mspec_graph_line(
     )
     # noinspection PyTypeChecker
     fig.update_layout(GRAPH_DISPLAY_DEFAULTS)
-    fig.update_xaxes(AXIS_DISPLAY_DEFAULTS)
-    fig.update_yaxes(AXIS_DISPLAY_DEFAULTS)
+    fig.update_xaxes(AXIS_DISPLAY_DEFAULTS | {"title_text": "wavelength"})
+    fig.update_yaxes(AXIS_DISPLAY_DEFAULTS | {"title_text": "reflectance"})
     fig.update_layout({"yaxis": {"range": [0, min(y_axis) + max(y_axis)]}})
     return fig
 
