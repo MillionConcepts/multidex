@@ -233,12 +233,12 @@ def not_triggered() -> bool:
     """
     detect likely spurious triggers.
     will only function if called inside a callback.
-    TODO: this is overly broad due to falsy evaluation of
-        integers etc. probably eliminate it.
+    TODO: falsy evaluation of integers etc. makes a generic truthiness test
+     terrible. make sure this version doesn't break anything.
     """
-    if not dash.callback_context.triggered[0]["value"]:
-        return True
-    return False
+    if dash.callback_context.triggered[0]["value"] in (None, ""):
+        return False
+    return True
 
 
 def triggered_by(component_id: str) -> bool:

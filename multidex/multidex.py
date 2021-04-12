@@ -12,8 +12,11 @@ from flask_caching import Cache
 
 from plotter.debug import debug_check_cache
 from plotter.spectrum_ops import filter_df_from_queryset
-from plotter_utils import partially_evaluate_from_parameters, qlist, \
-    model_metadata_df
+from plotter_utils import (
+    partially_evaluate_from_parameters,
+    qlist,
+    model_metadata_df,
+)
 
 # note: ignore any PEP 8-based linter / IDE complaints about import order: the
 # following statements _must_ come before we import all the django dependencies
@@ -44,8 +47,11 @@ from plotter.graph import (
     populate_saved_search_drop,
     save_search_tab_state,
     toggle_averaged_filters,
-    update_filter_df, handle_main_highlight_save, export_graph_csv,
-    toggle_panel_visibility, trigger_search_update,
+    update_filter_df,
+    handle_main_highlight_save,
+    export_graph_csv,
+    toggle_panel_visibility,
+    trigger_search_update,
 )
 
 # initialize the app itself. HTML / react objects must be described in this
@@ -150,7 +156,7 @@ cset(
 
 cset("main_graph_filter_df", filter_df_from_queryset(spec_model.objects.all()))
 
-cset("metadata_df", model_metadata_df(spec_model, ['observation']))
+cset("metadata_df", model_metadata_df(spec_model, ["observation"]))
 
 # this variable is a list of open graph-view tabs;
 # these are separate from the 'main' / 'search' tab.
@@ -196,12 +202,12 @@ marker_inputs = [
     Input("main-graph-option-marker", "value"),
     Input("main-color", "value"),
     Input("main-highlight-toggle", "value"),
-    Input("main-marker-outline-radio", "value")
+    Input("main-marker-outline-radio", "value"),
 ]
 
 graph_display_inputs = [
     Input("main-graph-bg-radio", "value"),
-    Input("main-graph-gridlines-radio", "value")
+    Input("main-graph-gridlines-radio", "value"),
 ]
 
 filter_dropdown_outputs = [
@@ -270,7 +276,7 @@ functions_requiring_settings = [
     toggle_averaged_filters,
     debug_check_cache,
     handle_main_highlight_save,
-    export_graph_csv
+    export_graph_csv,
 ]
 for function in functions_requiring_settings:
     globals()[function.__name__] = partially_evaluate_from_parameters(
@@ -363,8 +369,8 @@ app.callback(
         *graph_display_inputs,
         Input({"type": "search-trigger", "index": ALL}, "value"),
         Input({"type": "main-graph-scale-trigger", "index": 0}, "value"),
-        Input({'type': 'highlight-trigger', 'index': 0}, 'value'),
-        Input('main-graph-bounds', 'value'),
+        Input({"type": "highlight-trigger", "index": 0}, "value"),
+        Input("main-graph-bounds", "value"),
         Input("main-graph-error", "value")
         # Input({'type': 'load-trigger', 'index': 0}, 'value')
     ],
@@ -374,21 +380,21 @@ app.callback(
 
 # trigger updates on page load
 app.callback(
-    Output({'type':'search-load-trigger', 'index': ALL}, 'value'),
-    Input({'type':'load-trigger', 'index':0}, 'value'),
-    [State({'type':'search-load-trigger', 'index': ALL}, 'value')]
+    Output({"type": "search-load-trigger", "index": ALL}, "value"),
+    Input({"type": "load-trigger", "index": 0}, "value"),
+    [State({"type": "search-load-trigger", "index": ALL}, "value")],
 )(trigger_search_update)
 
 app.callback(
     [
-        Output('main-highlight-description', 'children'),
-        Output({"type": "highlight-trigger", "index": 0}, "value")
+        Output("main-highlight-description", "children"),
+        Output({"type": "highlight-trigger", "index": 0}, "value"),
     ],
     [
         Input({"type": "load-trigger", "index": 0}, "value"),
-        Input('main-highlight-save', 'n_clicks'),
+        Input("main-highlight-save", "n_clicks"),
     ],
-    [State({"type": "highlight-trigger", "index": 0}, "value")]
+    [State({"type": "highlight-trigger", "index": 0}, "value")],
 )(handle_main_highlight_save)
 
 
@@ -450,7 +456,7 @@ app.callback(
         Input({"type": "load-trigger", "index": 0}, "value"),
         Input("main-graph-scale", "value"),
         Input("main-graph-average", "value"),
-        Input("main-graph-r-star", "value")
+        Input("main-graph-r-star", "value"),
     ],
     [State({"type": "main-graph-scale-trigger", "index": 0}, "value")],
 )(update_filter_df)
@@ -463,7 +469,7 @@ app.callback(
     ],
     [
         Input("add-param", "n_clicks"),
-        Input("clear-search", 'n_clicks'),
+        Input("clear-search", "n_clicks"),
         Input({"type": "remove-param", "index": ALL}, "n_clicks"),
     ],
     [
@@ -528,7 +534,7 @@ app.callback(
         Input("main-spec-scale", "value"),
         Input("main-spec-r-star", "value"),
         Input("main-spec-average", "value"),
-        Input("main-spec-error", "value")
+        Input("main-spec-error", "value"),
     ],
 )(update_spectrum_graph)
 
@@ -536,7 +542,7 @@ app.callback(
     Output({"type": "view-spec-image", "index": MATCH}, "children"),
     [
         Input({"type": "view-graph", "index": MATCH}, "hoverData"),
-    ]
+    ],
 )(update_spectrum_images)
 
 app.callback(
@@ -550,45 +556,45 @@ app.callback(
         Input({"type": "view-graph", "index": MATCH}, "hoverData"),
         Input("main-spec-scale", "value"),
         Input("main-spec-average", "value"),
-        Input("main-spec-error", "value")
+        Input("main-spec-error", "value"),
     ],
 )(update_spectrum_graph)
 
 app.callback(
-    Output({'type': "save-trigger", 'index': 0}, 'value'),
+    Output({"type": "save-trigger", "index": 0}, "value"),
     [Input("save-search-save-button", "n_clicks")],
     [
         State("save-search-name-input", "value"),
-        State({'type': "save-trigger", 'index': 0}, 'value')
-    ]
+        State({"type": "save-trigger", "index": 0}, "value"),
+    ],
 )(save_search_tab_state)
 
 app.callback(
     Output("load-search-drop", "options"),
     [
-        Input({'type': 'save-trigger', 'index': 0}, "value"),
-        Input('fire-on-load', 'children')
+        Input({"type": "save-trigger", "index": 0}, "value"),
+        Input("fire-on-load", "children"),
     ],
 )(populate_saved_search_drop)
 
 app.callback(
     Output("fake-output-for-callback-with-only-side-effects-1", "children"),
     [Input("main-export-csv", "n_clicks")],
-    [State("main-graph", "selectedData")]
+    [State("main-graph", "selectedData")],
 )(export_graph_csv)
 
 app.callback(
     [
         Output({"type": "collapsible-panel", "index": MATCH}, "style"),
         Output({"type": "collapse-arrow", "index": MATCH}, "style"),
-        Output({"type": "collapse-text", "index": MATCH}, "style")
+        Output({"type": "collapse-text", "index": MATCH}, "style"),
     ],
-    [Input({'type': "collapse-div", "index": MATCH}, "n_clicks")],
+    [Input({"type": "collapse-div", "index": MATCH}, "n_clicks")],
     [
-        State({'type': "collapsible-panel", "index": MATCH}, "style"),
+        State({"type": "collapsible-panel", "index": MATCH}, "style"),
         State({"type": "collapse-arrow", "index": MATCH}, "style"),
-        State({"type": "collapse-text", "index": MATCH}, "style")
-    ]
+        State({"type": "collapse-text", "index": MATCH}, "style"),
+    ],
 )(toggle_panel_visibility)
 
 # app.run_server(debug=True, use_reloader=False,
