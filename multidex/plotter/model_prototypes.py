@@ -75,13 +75,6 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
     ),
 }
 
-# ZCAM also needs:
-z = {
-    "zoom": models.CharField(
-        "Zoom Code", blank=True, null=True, max_length=10, db_index=True
-    )
-}
-
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
 # metadata, however that is defined wrt mission-level divisions
 XCAM_SINGLE_SPECTRUM_FIELDS = {
@@ -376,7 +369,7 @@ class XSpec(models.Model):
         return keyfilter(
             lambda x: x
             in [prop["value"] for prop in self.accessible_properties],
-            modeldict(self)
+            modeldict(self),
         )
 
     def __str__(self):
@@ -399,7 +392,9 @@ def filter_fields_factory(filter_name):
     variance / stdev / etc
     """
     mean = models.FloatField(
-        filter_name + " mean", blank=True, null=True, db_index=True
+        filter_name.lower() + " mean", blank=True, null=True, db_index=True
     )
-    err = models.FloatField(filter_name + " stdev")
+    err = models.FloatField(
+        filter_name.lower() + " error", blank=True, null=True, db_index=True
+    )
     return mean, err
