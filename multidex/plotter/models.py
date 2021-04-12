@@ -2,7 +2,8 @@ from django.db import models
 
 from marslab.compatibility import (
     DERIVED_CAM_DICT,
-    MERSPECT_MSL_COLOR_MAPPINGS, MERSPECT_M20_COLOR_MAPPINGS,
+    MERSPECT_MSL_COLOR_MAPPINGS,
+    MERSPECT_M20_COLOR_MAPPINGS,
 )
 from plotter.model_prototypes import (
     XSpec,
@@ -30,22 +31,32 @@ class MSpec(XSpec):
 # bulk setup for each XCAM instrument
 for spec_model in [ZSpec, MSpec]:
     # mappings from filter name to nominal band centers, in nm
-    filters = DERIVED_CAM_DICT[spec_model.instrument]["filters"]
-    virtual_filters = DERIVED_CAM_DICT[spec_model.instrument][
-        "virtual_filters"
-    ]
+    setattr(
+        spec_model,
+        "filters",
+        DERIVED_CAM_DICT[spec_model.instrument]["filters"],
+    )
+    setattr(
+        spec_model,
+        "virtual_filters",
+        DERIVED_CAM_DICT[spec_model.instrument]["virtual_filters"],
+    )
     # which real filters do virtual filters correspond to?
-    virtual_filter_mapping = DERIVED_CAM_DICT[spec_model.instrument][
-        "virtual_filter_mapping"
-    ]
+    setattr(
+        spec_model,
+        "virtual_filter_mapping",
+        DERIVED_CAM_DICT[spec_model.instrument]["virtual_filter_mapping"],
+    )
     # if we're only giving options for averaged filters,
     # what is the canonical list?
-    canonical_averaged_filters = DERIVED_CAM_DICT[spec_model.instrument][
-        "canonical_averaged_filters"
-    ]
+    setattr(
+        spec_model,
+        "canonical_averaged_filters",
+        DERIVED_CAM_DICT[spec_model.instrument]["canonical_averaged_filters"],
+    )
 
     # set up SQL fields for each filter
-    for filter_name in filters.keys():
-        mean_field, err_field = filter_fields_factory(filter_name)
-        mean_field.contribute_to_class(spec_model, filter_name)
-        err_field.contribute_to_class(spec_model, filter_name + "_err")
+    for filt in DERIVED_CAM_DICT[spec_model.instrument]["filters"].keys():
+        mean_field, err_field = filter_fields_factory(filt)
+        mean_field.contribute_to_class(spec_model, filt.lower())
+        err_field.contribute_to_class(spec_model, filt.lower() + "_err")
