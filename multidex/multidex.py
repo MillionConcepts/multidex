@@ -51,7 +51,7 @@ from plotter.graph import (
     handle_main_highlight_save,
     export_graph_csv,
     toggle_panel_visibility,
-    trigger_search_update,
+    trigger_search_update, toggle_color_drop_visibility,
 )
 
 # initialize the app itself. HTML / react objects must be described in this
@@ -200,7 +200,9 @@ marker_inputs = [
     if dropdown.endswith("-marker")
 ] + [
     Input("main-graph-option-marker", "value"),
-    Input("main-color_scale", "value"),
+    Input("main-coloring-type", "value"),
+    Input("main-color-scale", "value"),
+    Input("main-color-solid", "value"),
     Input("main-highlight-toggle", "value"),
     Input("main-marker-outline-radio", "value"),
 ]
@@ -412,6 +414,14 @@ app.callback(
     ],
     prevent_initial_call=True,
 )(toggle_panel_visibility)
+
+app.callback(
+    [
+        Output('main-color-scale', 'style'),
+        Output('main-color-solid', 'style')
+    ],
+    [Input('main-coloring-type', 'value')]
+)(toggle_color_drop_visibility)
 
 
 # change visibility of search filter inputs
