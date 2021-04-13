@@ -438,7 +438,11 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
 def filter_drop(model, element_id, value, label_content=None, options=None):
     """dropdown for filter selection"""
     if options is None:
-        options = [{"label": filt, "value": filt} for filt in model.filters]
+        options = [
+            {
+                "label": filt + " " + str(wave) + "nm", "value": filt
+            } for filt, wave in model.filters.items()
+        ]
     if not value:
         value = random.choice(options)["value"]
     return html.Div(
