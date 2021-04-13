@@ -200,8 +200,9 @@ def make_axis(
         ]
     return value_series, None, axis_option
 
+
 # TODO: this is sloppy but cleanup would be better after everything's implemented...
-# probably...
+#  probably...
 def make_marker_properties(
     settings,
     id_list,
@@ -230,8 +231,7 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-
-    if re_get(settings, '-coloring-type.value') == "fixed":
+    if re_get(settings, '-coloring-type.value') == "solid":
         color = re_get(settings, "-color-solid.value")
         colormap = None
         colorbar = None
@@ -256,20 +256,23 @@ def make_marker_properties(
         colorbar = go.scatter.marker.ColorBar(**colorbar_dict)
 
     # define marker size settings
-    # note that you have to define individual marker sizes
-    # in order to be able to set marker outlines -- it causes them to be
-    # drawn in some different (and more expensive) way -- hence this dumb
-    # logic tree
+    # note that you have to define marker size as a sequence
+    # in order to be able to set marker outlines -- however, this also causes
+    # markers to be drawn in some different (and more expensive) way -- hence
+    # this dumb logic tree
     opacity = 1
+    base_size = re_get(settings, '-marker-base-size.value')
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
-            38 if spectrum in highlight_id_list else 9 for spectrum in id_list
+            32 + base_size if spectrum in highlight_id_list
+            else base_size
+            for spectrum in id_list
         ]
         opacity = 0.5
     elif re_get(settings, "-outline-radio.value") != "off":
-        marker_size = [9 for _ in id_list]
+        marker_size = [base_size for _ in id_list]
     else:
-        marker_size = 9
+        marker_size = base_size
 
     # define marker outline
     if re_get(settings, "-outline-radio.value") != "off":
@@ -502,7 +505,7 @@ def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
     just show or hide scale/solid color dropdowns per coloring type radio
     button selection. very unsophisticated for now.
     """
-    if type_selection == 'fixed':
+    if type_selection == 'solid':
         return {'display': 'none'}, {'display': 'block'}
     return {'display': 'block'}, {'display': 'none'}
 

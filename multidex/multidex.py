@@ -205,6 +205,7 @@ marker_inputs = [
     Input("main-color-solid", "value"),
     Input("main-highlight-toggle", "value"),
     Input("main-marker-outline-radio", "value"),
+    Input("main-marker-base-size", 'value')
 ]
 
 graph_display_inputs = [
