@@ -755,13 +755,14 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
             style={
                 "display": "flex",
                 "flexDirection": "column",
+                "marginRight": "0.6rem"
             },
             children=[
                 dcc.RadioItems(
                     id=prefix + 'coloring-type',
                     options = [
-                        {"label": "scale", "value": "scale"},
-                        {"label": "fixed", "value": "fixed"},
+                        {"label": "color scale", "value": "scale"},
+                        {"label": "solid", "value": "solid"},
                     ],
                     value=coloring_type
                 ),
@@ -777,10 +778,10 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
                 ),
                 html.Label(
                     children=["marker outlines"],
-                    htmlFor="main-marker-outline-radio",
+                    htmlFor= prefix + "marker-outline-radio",
                 ),
                 dcc.RadioItems(
-                    id="main-marker-outline-radio",
+                    id= prefix + "marker-outline-radio",
                     options=[
                         {
                             "label": "off",
@@ -793,6 +794,28 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
                 ),
             ],
         ),
+        html.Div(
+            style={
+                "display": "flex",
+                "flexDirection": "column",
+                "marginRight": "0.3rem"
+            },
+            children=[
+                html.Label(
+                    children=["marker base size"],
+                    htmlFor=prefix + "marker-base-size",
+                ),
+                dcc.RadioItems(
+                    id=prefix + "marker-base-size",
+                    options=[
+                        {"label": "small", "value": 4},
+                        {"label": "medium", "value": 9},
+                        {"label": "large", "value": 18}
+                    ],
+                    value=9,
+                )
+            ]
+        )
     ]
     return html.Div(
         style={"display": "flex", "flexDirection": "row"},
