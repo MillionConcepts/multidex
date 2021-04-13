@@ -200,7 +200,7 @@ marker_inputs = [
     if dropdown.endswith("-marker")
 ] + [
     Input("main-graph-option-marker", "value"),
-    Input("main-color", "value"),
+    Input("main-color_scale", "value"),
     Input("main-highlight-toggle", "value"),
     Input("main-marker-outline-radio", "value"),
 ]
