@@ -57,10 +57,9 @@ def scale_to_drop(model, element_id, value=None):
     return dcc.Dropdown(
         id=element_id,
         options=[{"label": "None", "value": "None"}]
-        + [
-            {"label": filt, "value": filt}
-            for filt in model.virtual_filter_mapping
-        ],
+        + [{
+                "label": filt + " " + str(wave) + "nm", "value": filt
+            } for filt, wave in model.virtual_filters.items()],
         value=value,
         style={"maxWidth": "10rem"},
     )
