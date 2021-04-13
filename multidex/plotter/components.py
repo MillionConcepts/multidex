@@ -35,7 +35,7 @@ AXIS_DISPLAY_DEFAULTS = {
     "tickcolor": css_variables["midnight-ochre"],
     "tickfont": {"family": "Fira Mono"},
     "titlefont": {"family": "Fira Mono"},
-    "title_text": None
+    "title_text": None,
 }
 GRAPH_CONFIG_SETTINGS = {
     "modeBarButtonsToRemove": [
@@ -57,9 +57,10 @@ def scale_to_drop(model, element_id, value=None):
     return dcc.Dropdown(
         id=element_id,
         options=[{"label": "None", "value": "None"}]
-        + [{
-                "label": filt + " " + str(wave) + "nm", "value": filt
-            } for filt, wave in model.virtual_filters.items()],
+        + [
+            {"label": filt + " " + str(wave) + "nm", "value": filt}
+            for filt, wave in model.virtual_filters.items()
+        ],
         value=value,
         style={"maxWidth": "10rem"},
     )
@@ -199,7 +200,7 @@ def main_graph_scatter(
     x_errors: Optional[list[float]] = None,
     y_errors: Optional[list[float]] = None,
     x_title: str = None,
-    y_title: str = None
+    y_title: str = None,
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -303,42 +304,7 @@ def mspec_graph_line(
     return fig
 
 
-def marker_options_drop(
-    spec_model: "Spectrum",
-    element_id: str,
-    value: str = None,
-    label_content=None,
-) -> dcc.Dropdown:
-    """
-    dropdown for selecting calculation options for marker settings
-    """
-    options = [
-        {"label": option["label"], "value": option["value"]}
-        for option in spec_model.graphable_properties
-    ]
-    if not value:
-        value = "ratio"
-    return html.Div(
-        className="info-text",
-        style={
-            "display": "flex",
-            "flexDirection": "column",
-            "fontSize": "1rem",
-        },
-        children=[
-            html.Label(children=[label_content], htmlFor=element_id),
-            dcc.Dropdown(
-                id=element_id,
-                className="axis-value-drop",
-                options=options,
-                value=value,
-                clearable=False,
-            ),
-        ],
-    )
-
-
-def color_drop(element_id: str, value: str = None) -> dcc.Dropdown:
+def color_scale_drop(element_id: str, value: str = None) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
     """
@@ -350,7 +316,7 @@ def color_drop(element_id: str, value: str = None) -> dcc.Dropdown:
         value = "haline"
     return dcc.Dropdown(
         id=element_id,
-        className="color-drop",
+        className="color-scale-drop",
         options=options,
         value=value,
         clearable=False,
@@ -438,9 +404,8 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
     """dropdown for filter selection"""
     if options is None:
         options = [
-            {
-                "label": filt + " " + str(wave) + "nm", "value": filt
-            } for filt, wave in model.filters.items()
+            {"label": filt + " " + str(wave) + "nm", "value": filt}
+            for filt, wave in model.filters.items()
         ]
     if not value:
         value = random.choice(options)["value"]
@@ -731,43 +696,88 @@ def save_search_input(element_id):
     )
 
 
-def main_graph_x_y_drop(x_or_y, spec_model, get_r, filter_options):
-    return html.Div(
-        className="axis-controls-container",
-        children=[
-            axis_value_drop(
-                spec_model,
-                "main-graph-option-" + x_or_y,
-                value=get_r("graph-option-" + x_or_y),
-                label_content=x_or_y + " axis",
-            ),
-            html.Div(
-                className="filter-container",
-                children=[
-                    filter_drop(
-                        spec_model,
-                        "main-filter-1-" + x_or_y,
-                        value=get_r("main-filter-1-" + x_or_y + ".value"),
-                        label_content="left",
-                        options=filter_options,
-                    ),
-                    filter_drop(
-                        spec_model,
-                        "main-filter-3-" + x_or_y,
-                        value=get_r("main-filter-3-" + x_or_y + ".value"),
-                        label_content="center",
-                        options=filter_options,
-                    ),
-                    filter_drop(
-                        spec_model,
-                        "main-filter-2-" + x_or_y,
-                        value=get_r("main-filter-2-" + x_or_y + ".value"),
-                        label_content="right",
-                        options=filter_options,
-                    ),
-                ],
-            ),
-        ],
+def axis_controls_container(axis, prefix, spec_model, get_r, filter_options):
+    children = [
+        axis_value_drop(
+            spec_model,
+            prefix + "graph-option-" + axis,
+            value=get_r("graph-option-" + axis),
+            label_content=axis + " axis",
+        ),
+        html.Div(
+            className="filter-container",
+            children=[
+                filter_drop(
+                    spec_model,
+                    prefix + "filter-1-" + axis,
+                    value=get_r(prefix + "filter-1-" + axis + ".value"),
+                    label_content="left",
+                    options=filter_options,
+                ),
+                filter_drop(
+                    spec_model,
+                    prefix + "filter-3-" + axis,
+                    value=get_r(prefix + "filter-3-" + axis + ".value"),
+                    label_content="center",
+                    options=filter_options,
+                ),
+                filter_drop(
+                    spec_model,
+                    prefix + "filter-2-" + axis,
+                    value=get_r(prefix + "filter-2-" + axis + ".value"),
+                    label_content="right",
+                    options=filter_options,
+                ),
+            ],
+        ),
+    ]
+    return html.Div(className="axis-controls-container", children=children)
+
+
+def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
+    children = [
+        html.Div(
+            className="axis-controls-container",
+            children=[
+                axis_controls_container(
+                    axis, prefix, spec_model, get_r, filter_options
+                ),
+                color_scale_drop(
+                    prefix + "color_scale",
+                    value=get_r(prefix + "color_scale.value"),
+                ),
+            ],
+        ),
+        html.Div(
+            style={
+                "display": "flex",
+                "flexDirection": "column",
+            },
+            children=[
+                html.Label(
+                    children=["marker outlines"],
+                    htmlFor="main-marker-outline-radio",
+                ),
+                dcc.RadioItems(
+                    id="main-marker-outline-radio",
+                    options=[
+                        {
+                            "label": "off",
+                            "value": "off",
+                        },
+                        {"label": "black", "value": "rgba(0,0,0,1)"},
+                        {"label": "white", "value": "rgba(255,255,255,1)"},
+                    ],
+                    value="off",
+                ),
+            ],
+        ),
+    ]
+    return (
+        html.Div(
+            style={"display": "flex", "flexDirection": "row"},
+            children=children,
+        )
     )
 
 
@@ -782,12 +792,12 @@ def search_tab(
     # if not, this function politely acts as None
     get_r = partial(get_if, restore_dictionary is not None, restore_dictionary)
     if get_r("average_filters"):
-        filter_options = [
+        filts = [
             {"label": filt, "value": filt}
             for filt in spec_model.canonical_averaged_filters
         ]
     else:
-        filter_options = None
+        filts = None
     return dcc.Tab(
         children=[
             html.Div(
@@ -797,111 +807,25 @@ def search_tab(
                         "main-graph-control-container-x",
                         "x axis",
                         False,
-                        main_graph_x_y_drop(
-                            "x", spec_model, get_r, filter_options
+                        axis_controls_container(
+                            "x", "main-", spec_model, get_r, filts
                         ),
                     ),
                     *collapse(
                         "main-graph-control-container-y",
                         "y axis",
                         False,
-                        main_graph_x_y_drop(
-                            "y", spec_model, get_r, filter_options
+                        axis_controls_container(
+                            "y", "main-", spec_model, get_r, filts
                         ),
                     ),
                     *collapse(
                         "main-graph-control-container-marker",
                         "markers",
                         False,
-                        html.Div(
-                            style={
-                                "display": "flex",
-                                "flexDirection": "row",
-                            },
-                            children=[
-                                html.Div(
-                                    className="axis-controls-container",
-                                    children=[
-                                        marker_options_drop(
-                                            spec_model,
-                                            "main-graph-option-marker",
-                                            value=get_r(
-                                                "main-graph-option-marker.value"
-                                            ),
-                                            label_content="marker color",
-                                        ),
-                                        html.Div(
-                                            className="filter-container",
-                                            children=[
-                                                filter_drop(
-                                                    spec_model,
-                                                    "main-filter-1-marker",
-                                                    value=get_r(
-                                                        "main-filter-1-marker.value"
-                                                    ),
-                                                    label_content="left",
-                                                    options=filter_options,
-                                                ),
-                                                filter_drop(
-                                                    spec_model,
-                                                    "main-filter-3-marker",
-                                                    value=get_r(
-                                                        "main-filter-3-marker.value"
-                                                    ),
-                                                    label_content="middle",
-                                                    options=filter_options,
-                                                ),
-                                                filter_drop(
-                                                    spec_model,
-                                                    "main-filter-2-marker",
-                                                    value=get_r(
-                                                        "main-filter-2-marker.value"
-                                                    ),
-                                                    label_content="right",
-                                                    options=filter_options,
-                                                ),
-                                            ],
-                                        ),
-                                        color_drop(
-                                            "main-color",
-                                            value=get_r(
-                                                "main-color.value"
-                                            ),
-                                        ),
-                                    ],
-                                ),
-                                html.Div(
-                                    style={
-                                        "display": "flex",
-                                        "flexDirection": "column",
-                                    },
-                                    children=[
-                                        html.Label(
-                                            children=["marker outlines"],
-                                            htmlFor="main-marker-outline-radio",
-                                        ),
-                                        dcc.RadioItems(
-                                            id="main-marker-outline-radio",
-                                            options=[
-                                                {
-                                                    "label": "off",
-                                                    "value": "off",
-                                                },
-                                                {
-                                                    "label": "black",
-                                                    "value": "rgba(0,0,0,1)"
-                                                },
-                                                {
-                                                    "label": "white",
-                                                    "value": "rgba(255,255,255,1)"
-                                                },
-                                            ],
-                                            value = "off"
-                                        ),
-                                    ],
-                                ),
-                            ],
-                        ),
+                        marker_controls_container(
+                            "marker", "main-", spec_model, get_r, filts
+                        )
                     ),
                     *collapse(
                         "highlight-controls",
@@ -1067,14 +991,18 @@ def search_tab(
                                         },
                                         {
                                             "label": "light gray",
-                                            "value": css_variables["dark-tint-0"],
+                                            "value": css_variables[
+                                                "dark-tint-0"
+                                            ],
                                         },
                                         {
                                             "label": "dark gray",
-                                            "value": css_variables["dark-tint-1"]
+                                            "value": css_variables[
+                                                "dark-tint-1"
+                                            ],
                                         },
                                     ],
-                                    value=css_variables["dark-tint-0"]
+                                    value=css_variables["dark-tint-0"],
                                 ),
                                 html.Label(
                                     children=["gridlines"],
@@ -1092,11 +1020,11 @@ def search_tab(
                                             "value": "on",
                                         },
                                     ],
-                                    value="on"
+                                    value="on",
                                 ),
                             ]
-                        )
-                    )
+                        ),
+                    ),
                 ],
             ),
             html.Div(children=[main_graph()], id="main-container"),

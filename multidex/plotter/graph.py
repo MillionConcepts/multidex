@@ -246,7 +246,7 @@ def make_marker_properties(
                     map(seconds_since_beginning_of_day, property_list)
                 )
         color_indices = property_list
-    colormap = re_get(settings, "-color.value")
+    colormap = re_get(settings, "-color_scale.value")
 
     # define marker size settings
     # note that you have to define individual marker sizes
