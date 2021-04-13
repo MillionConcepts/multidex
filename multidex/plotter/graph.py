@@ -47,7 +47,7 @@ from plotter_utils import (
     field_values,
     fetch_css_variables,
     df_multiple_field_search,
-    re_get,
+    re_get, ctxdict,
 )
 
 from plotter.models import MSpec, ZSpec
@@ -331,6 +331,7 @@ def recalculate_main_graph(
     record_settings=True,
 ):
     ctx = dash.callback_context
+    # handle explicit bounds changes
     if ctx.triggered[0]["prop_id"] == "main-graph-bounds.value":
         zoom_string = ctx.triggered[0]["value"].split()
         if len(zoom_string) != 4:
@@ -349,6 +350,17 @@ def recalculate_main_graph(
             }
         )
         return graph
+
+    # handle label addition / removal
+    label_ids = cget('main_label_ids')
+    if ctx.triggered[0]['prop_id'] == 'main-graph.clickData':
+        clicked_id = ctx.triggered[0]["value"]["points"][0]['customdata']
+        if clicked_id in label_ids:
+            label_ids.remove(clicked_id)
+        else:
+            label_ids.append(clicked_id)
+        cset('main_label_ids', label_ids)
+    # TODO: performance increase is possible here by just returning the graph
 
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
@@ -435,7 +447,7 @@ def recalculate_main_graph(
     else:
         zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
     # TODO: refactor (too many arguments)
-    return graph_function(
+    return (graph_function(
         x_axis,
         y_axis,
         marker_properties,
@@ -443,12 +455,13 @@ def recalculate_main_graph(
         axis_display_dict,
         text,
         customdata,
+        label_ids,
         zoom,
         x_errors,
         y_errors,
         x_title,
         y_title,
-    )
+    ), {})
 
 
 def toggle_search_input_visibility(field, *, spec_model):

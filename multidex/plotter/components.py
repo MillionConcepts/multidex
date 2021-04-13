@@ -47,7 +47,14 @@ GRAPH_CONFIG_SETTINGS = {
     ],
     "displaylogo": False,
 }
-
+ANNOTATION_SETTINGS = {
+    'font': {'family': 'Fira Mono', 'size': 14, 'color': css_variables["clean-parchment"]},
+    'bgcolor': 'rgba(0,0,0,0.8)',
+    'arrowwidth': 3,
+    'xshift': -8,
+    'yshift': 8,
+    'captureevents': False
+}
 
 # note that style properties are camelCased rather than hyphenated
 # b/c React
@@ -197,6 +204,7 @@ def main_graph_scatter(
     axis_display_settings: Mapping,
     text: list,
     customdata: list,
+    label_ids: list[int],
     zoom: Optional[tuple[list[float, float]]] = None,
     x_errors: Optional[list[float]] = None,
     y_errors: Optional[list[float]] = None,
@@ -213,13 +221,28 @@ def main_graph_scatter(
     # go.Scatter (SVG), but go.Scatter may be inadequately performant with
     # all the points
     # in the data set. can we optimize a bit? hard with plotly...
+
+    # add floating labels from clicked points
+    # doing it this way instead of with 'text' because plotly
+    # requires redraws to show the text, and fails to do so every other time
+    # for ... reasons ... so it looks like it
+    # does nothing every other time unless you pan or whatever
+    for database_id, string, xpos, ypos in zip(customdata, text, x_axis, y_axis):
+        if database_id in label_ids:
+            fig.add_annotation(
+                x=xpos,
+                y=ypos,
+                text=string,
+                **ANNOTATION_SETTINGS
+            )
+
     fig.add_trace(
         go.Scatter(
             x=x_axis,
             y=y_axis,
-            text=text,
+            hovertext=text,
             customdata=customdata,
-            mode="markers",
+            mode="markers + text",
             marker={"color": "black", "size": 8},
         )
     )
