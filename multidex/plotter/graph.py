@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from dash.exceptions import PreventUpdate
+from toolz import keyfilter
 
 from plotter import spectrum_ops
 from plotter.components import (
@@ -38,7 +39,6 @@ from plotter_utils import (
     keygrab,
     pickctx,
     not_blank,
-    not_triggered,
     trigger_index,
     triggered_by,
     seconds_since_beginning_of_day,
@@ -62,7 +62,7 @@ COLORBAR_SETTINGS = {
         "family": "Fira Mono",
         "color": css_variables["midnight-ochre"],
     },
-    "titlefont": {"family": "Fira Mono"}
+    "titlefont": {"family": "Fira Mono"},
 }
 
 
@@ -409,16 +409,13 @@ def recalculate_main_graph(
     # automatically reset graph zoom only if we're loading the page or
     # changing options and therefore scales
     if (
-        not_triggered()
-        or (
-            ctx.triggered[0]["prop_id"]
-            in [
-                "main-graph-option-y.value",
-                "main-graph-option-x.value",
-            ]
-        )
-        or (len(ctx.triggered) > 1)
-    ):
+        ctx.triggered[0]["prop_id"]
+        in [
+            "main-graph-option-y.value",
+            "main-graph-option-x.value",
+            '.'
+        ]
+    ) or (len(ctx.triggered) > 1):
         zoom = None
     else:
         zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
@@ -480,8 +477,6 @@ def toggle_panel_visibility(_click, panel_style, arrow_style, text_style):
     switches collapsible panel between visible and invisible,
     and rotates and sets text on its associated arrow.
     """
-    if not_triggered():
-        raise PreventUpdate
     panel_style = style_toggle(panel_style, states=("none", "revert"))
     arrow_style = style_toggle(
         arrow_style, "WebkitTransform", ("rotate(45deg)", "rotate(-45deg)")
@@ -544,8 +539,6 @@ def update_search_options(
     currently this does _not_ cascade according to selected terms. this may
     or may not be desirable
     """
-    if not_triggered():
-        raise PreventUpdate
     if not field:
         raise PreventUpdate
     is_loading = (
@@ -671,22 +664,6 @@ def update_filter_df(
     return scale_trigger_count + 1
 
 
-def make_sibling_set(observations):
-    """
-    returns a set of tuples, each containing the child spectra of one
-    observation.
-    for pairing spectra with their siblings without hitting the database
-    repeatedly.
-    """
-    return set(
-        [tuple([spec.id for spec in obs.spectra()]) for obs in observations]
-    )
-
-
-def spectrum_queryset_siblings(queryset):
-    return make_sibling_set(set([spec.observation for spec in queryset]))
-
-
 def update_search_ids(
     _search_n_clicks,
     _load_trigger_index,
@@ -702,10 +679,7 @@ def update_search_ids(
     """
     updates the spectra displayed in the graph view.
     """
-    # don't do anything on page load
-    if not_triggered():
-        raise PreventUpdate
-    # or if a blank request is issued
+    # don't do anything if a blank request is issued
     if not (fields and (terms or quant_search_entries)):
         raise PreventUpdate
     # construct a list of search parameters from the filled inputs
@@ -799,8 +773,6 @@ def control_search_dropdowns(
     based on requests to add or remove components.
     returns the new list and an incremented value to trigger update_queryset
     """
-    if not_triggered():
-        raise PreventUpdate
     if search_trigger_clicks is None:
         search_trigger_clicks = 0
     if triggered_by("add-param"):
@@ -894,8 +866,10 @@ def make_mspec_browse_image_components(
     for eye in ["left", "right"]:
         try:
             # size = file_info[eye + "_size"]
-            filename = static_image_url + file_info[eye + "_file"]
-        except KeyError:
+            eye_images = keyfilter(lambda key: eye in key, file_info)
+            assert len(eye_images) >= 1
+            filename = static_image_url + list(eye_images.values())[0]
+        except AssertionError:
             # size = (480, 480)
             filename = static_image_url + "missing.jpg"
         # aspect_ratio = size[0] / size[1]
@@ -926,7 +900,7 @@ def make_zspec_browse_image_components(
     """
     file_info = zspec.overlay_browse_file_info(image_directory)
     image_div_children = []
-    for image_type in ["rgb_image", "enhanced_image"]:
+    for image_type in ["rgb", "enhanced"]:
         try:
             # size = file_info[eye + "_size"]
             filename = static_image_url + file_info[image_type + "_file"]
@@ -1106,10 +1080,6 @@ def save_search_tab_state(
     fairly permissive right now. this saves current search-tab state to a
     file as csv, which can then be reloaded by make_loaded_search_tab.
     """
-
-    if not_triggered():
-        raise PreventUpdate
-
     try:
         state_variable_names = [
             *cget("x_settings").keys(),
@@ -1203,8 +1173,6 @@ def control_tabs(
 
     TODO, maybe: add ability to just open selectedData from main-graph
     """
-    if not_triggered():
-        raise PreventUpdate
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
     if "viewer-open-button" in trigger:
@@ -1264,8 +1232,6 @@ def pretty_print_search_params(search_parameters):
 def handle_main_highlight_save(
     _load_trigger, _save_button, trigger_value, *, cget, cset, spec_model
 ):
-    if not_triggered():
-        raise PreventUpdate
     ctx = dash.callback_context
     if "load-trigger" in str(ctx.triggered):
         # main highlight parameters are currently restored
@@ -1303,8 +1269,6 @@ def print_selected(selected):
 
 
 def export_graph_csv(_clicks, selected, *, cget):
-    if not_triggered():
-        raise PreventUpdate
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("main_graph_filter_df").copy()
     if selected is not None:

@@ -156,7 +156,7 @@ cset(
 
 cset("main_graph_filter_df", filter_df_from_queryset(spec_model.objects.all()))
 
-cset("metadata_df", model_metadata_df(spec_model, ["observation"]))
+cset("metadata_df", model_metadata_df(spec_model))
 
 # this variable is a list of open graph-view tabs;
 # these are separate from the 'main' / 'search' tab.
@@ -395,7 +395,23 @@ app.callback(
         Input("main-highlight-save", "n_clicks"),
     ],
     [State({"type": "highlight-trigger", "index": 0}, "value")],
+    prevent_initial_call = True
 )(handle_main_highlight_save)
+
+app.callback(
+    [
+        Output({"type": "collapsible-panel", "index": MATCH}, "style"),
+        Output({"type": "collapse-arrow", "index": MATCH}, "style"),
+        Output({"type": "collapse-text", "index": MATCH}, "style"),
+    ],
+    [Input({"type": "collapse-div", "index": MATCH}, "n_clicks")],
+    [
+        State({"type": "collapsible-panel", "index": MATCH}, "style"),
+        State({"type": "collapse-arrow", "index": MATCH}, "style"),
+        State({"type": "collapse-text", "index": MATCH}, "style"),
+    ],
+    prevent_initial_call=True,
+)(toggle_panel_visibility)
 
 
 # change visibility of search filter inputs
@@ -423,6 +439,7 @@ app.callback(
     [
         State({"type": "number-search", "index": MATCH}, "value"),
     ],
+    prevent_initial_call=True,
 )(update_search_options)
 
 # trigger active queryset / df update on new searches
@@ -439,6 +456,7 @@ app.callback(
         State({"type": "number-search", "index": ALL}, "value"),
         State({"type": "search-trigger", "index": 0}, "value"),
     ],
+    prevent_initial_call=True,
 )(update_search_ids)
 
 # change and reset options on averaging request
@@ -461,6 +479,7 @@ app.callback(
     [State({"type": "main-graph-scale-trigger", "index": 0}, "value")],
 )(update_filter_df)
 
+
 # handle creation and removal of search filters
 app.callback(
     [
@@ -476,6 +495,7 @@ app.callback(
         State("search-controls-container", "children"),
         State({"type": "submit-search", "index": 1}, "n_clicks"),
     ],
+    prevent_initial_call=True,
 )(control_search_dropdowns)
 
 # make graph viewer tabs
@@ -495,6 +515,7 @@ app.callback(
         State("load-search-drop", "value"),
         State({"type": "load-trigger", "index": 0}, "value"),
     ],
+    prevent_initial_call=True,
 )(control_tabs)
 
 # debug printer
@@ -567,6 +588,7 @@ app.callback(
         State("save-search-name-input", "value"),
         State({"type": "save-trigger", "index": 0}, "value"),
     ],
+    prevent_initial_call=True,
 )(save_search_tab_state)
 
 app.callback(
@@ -581,22 +603,11 @@ app.callback(
     Output("fake-output-for-callback-with-only-side-effects-1", "children"),
     [Input("main-export-csv", "n_clicks")],
     [State("main-graph", "selectedData")],
+    prevent_initial_call = True
 )(export_graph_csv)
 
-app.callback(
-    [
-        Output({"type": "collapsible-panel", "index": MATCH}, "style"),
-        Output({"type": "collapse-arrow", "index": MATCH}, "style"),
-        Output({"type": "collapse-text", "index": MATCH}, "style"),
-    ],
-    [Input({"type": "collapse-div", "index": MATCH}, "n_clicks")],
-    [
-        State({"type": "collapsible-panel", "index": MATCH}, "style"),
-        State({"type": "collapse-arrow", "index": MATCH}, "style"),
-        State({"type": "collapse-text", "index": MATCH}, "style"),
-    ],
-)(toggle_panel_visibility)
 
-# app.run_server(debug=True, use_reloader=False,
-# dev_tools_silence_routes_logging=True)
-app.run_server(dev_tools_silence_routes_logging=True, port=8050)
+app.run_server(
+    debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
+)
+# app.run_server(dev_tools_silence_routes_logging=True, port=8050)
