@@ -11,7 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from plotter.spectrum_ops import d2r
-from plotter_utils import get_if, none_to_empty, fetch_css_variables, re_get
+from plotter_utils import get_if, none_to_empty, fetch_css_variables
 
 if TYPE_CHECKING:
     from plotter.models import MSpec, Spectrum
@@ -62,7 +62,7 @@ def scale_to_drop(model, element_id, value=None):
             for filt in model.virtual_filter_mapping
         ],
         value=value,
-        style={"max-width": "10rem"},
+        style={"maxWidth": "10rem"},
     )
 
 
@@ -277,8 +277,8 @@ def mspec_graph_line(
     y_error = [filt_value["err"] for filt_value in spectrum_data.values()]
     # TODO: this definitely shouldn't be happening here
     if r_star:
-        if spectrum.observation.incidence_angle:
-            cos_theta_i = np.cos(d2r(spectrum.observation.incidence_angle))
+        if spectrum.incidence_angle:
+            cos_theta_i = np.cos(d2r(spectrum.incidence_angle))
             y_axis = [mean / cos_theta_i for mean in y_axis]
             y_error = [err / cos_theta_i for err in y_error]
     text = [
@@ -813,7 +813,7 @@ def search_tab(
                         html.Div(
                             style={
                                 "display": "flex",
-                                "flex-direction": "row",
+                                "flexDirection": "row",
                             },
                             children=[
                                 html.Div(
@@ -870,7 +870,7 @@ def search_tab(
                                 html.Div(
                                     style={
                                         "display": "flex",
-                                        "flex-direction": "column",
+                                        "flexDirection": "column",
                                     },
                                     children=[
                                         html.Label(
@@ -939,7 +939,7 @@ def search_tab(
                         html.Div(
                             style={
                                 "display": "flex",
-                                "flex-direction": "row",
+                                "flexDirection": "row",
                             },
                             children=[
                                 search_container_div(
@@ -1040,7 +1040,7 @@ def search_tab(
                                 html.Button(
                                     "Export CSV",
                                     id="main-export-csv",
-                                    style={"margin-top": "1rem"},
+                                    style={"marginTop": "1rem"},
                                 ),
                             ]
                         ),

@@ -6,7 +6,8 @@ import re
 from functools import partial, reduce
 from inspect import signature
 from operator import and_, gt, ge, lt, le, or_, contains
-from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping, Union
+from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping, Union, \
+    Optional
 
 import dash
 import dash_html_components as html
@@ -227,18 +228,6 @@ def ctxdict(ctx: dash._callback_context.CallbackContext) -> dict:
         "states": ctx.states,
         "response": ctx.response,
     }
-
-
-def not_triggered() -> bool:
-    """
-    detect likely spurious triggers.
-    will only function if called inside a callback.
-    TODO: this is overly broad due to falsy evaluation of
-        integers etc. probably eliminate it.
-    """
-    if not dash.callback_context.triggered[0]["value"]:
-        return True
-    return False
 
 
 def triggered_by(component_id: str) -> bool:
@@ -660,11 +649,13 @@ def fetch_css_variables(css_file: str = "assets/main.css") -> dict[str, str]:
     return css_variable_dictionary
 
 
-def model_metadata_df(model: Any, relation_names: list[str]) -> pd.DataFrame:
+def model_metadata_df(model: Any, relation_names: Optional[list[str]] = None) -> pd.DataFrame:
     try:
         dict_function = getattr(model, 'metadata_dict')
     except AttributeError:
         dict_function = modeldict
+    if relation_names is None:
+        relation_names = []
     value_list = []
     id_list = []
     for obj in model.objects.all().prefetch_related(*relation_names):
