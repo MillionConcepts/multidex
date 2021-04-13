@@ -50,14 +50,7 @@ def filter_df_from_queryset(
     #  it's preferable to have rules for this on models.
     if r_star:
         theta_i = np.cos(
-            d2r(
-                pd.Series(
-                    qlist(
-                        queryset.prefetch_related("observation"),
-                        "observation__incidence_angle",
-                    )
-                )
-            )
+            d2r(pd.Series(qlist(queryset, "incidence_angle")))
         )
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i

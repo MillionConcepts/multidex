@@ -1,3 +1,8 @@
+"""
+prototypes / abstractions and literals to be used in the creation
+of database models in plotter.models
+"""
+
 from ast import literal_eval
 from typing import Optional, Sequence
 
@@ -346,21 +351,6 @@ class XSpec(models.Model):
             scale_to=scale_to,
             average_filters=average_filters,
         )
-
-    def overlay_browse_file_info(self, image_directory: str) -> dict:
-        """
-        TODO: what even should be the generalized interface for this?
-        """
-        files = self.image_files()
-        images = {}
-        for image_type, filename in files.items():
-            browse_filename = fs.path.splitext(filename)[0] + "_browse.jpg"
-            images[image_type + "_file"] = browse_filename
-            with PIL.Image.open(
-                fs.path.join(image_directory, browse_filename)
-            ) as image:
-                images[image_type + "_size"] = image.size
-        return images
 
     def metadata_dict(self) -> dict:
         """
