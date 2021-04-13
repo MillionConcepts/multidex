@@ -155,6 +155,11 @@ cset(
     qlist(spec_model.objects.all(), "id"),
 )
 
+cset(
+    'main_label_ids',
+    []
+)
+
 cset("main_graph_filter_df", filter_df_from_queryset(spec_model.objects.all()))
 
 cset("metadata_df", model_metadata_df(spec_model))
@@ -365,7 +370,10 @@ for value_class in ["x", "y", "marker"]:
 # trigger redraw of main graph
 # on new search, axis calculation change, etc
 app.callback(
-    Output("main-graph", "figure"),
+    [
+        Output("main-graph", "figure"),
+        Output("main-graph", "clickData")
+    ],
     # maybe later add an explicit recalculate button?
     [
         *x_inputs,
@@ -376,7 +384,8 @@ app.callback(
         Input({"type": "main-graph-scale-trigger", "index": 0}, "value"),
         Input({"type": "highlight-trigger", "index": 0}, "value"),
         Input("main-graph-bounds", "value"),
-        Input("main-graph-error", "value")
+        Input("main-graph-error", "value"),
+        Input("main-graph", "clickData")
         # Input({'type': 'load-trigger', 'index': 0}, 'value')
     ],
     [State("main-graph", "figure")],
