@@ -27,8 +27,7 @@ django.setup()
 from plotter.components import (
     main_graph,
     main_graph_scatter,
-    mspec_graph_line,
-    search_tab,
+    search_tab, mspec_graph_line,
 )
 from plotter.models import ZSpec
 from plotter.graph import (
@@ -52,6 +51,7 @@ from plotter.graph import (
     export_graph_csv,
     toggle_panel_visibility,
     trigger_search_update,
+    toggle_color_drop_visibility,
 )
 
 # initialize the app itself. HTML / react objects must be described in this
@@ -200,9 +200,13 @@ marker_inputs = [
     if dropdown.endswith("-marker")
 ] + [
     Input("main-graph-option-marker", "value"),
-    Input("main-color", "value"),
+    Input("main-coloring-type", "value"),
+    Input("main-color-scale", "value"),
+    Input("main-color-solid", "value"),
     Input("main-highlight-toggle", "value"),
     Input("main-marker-outline-radio", "value"),
+    Input("main-marker-base-size", "value"),
+    Input("main-marker-symbol", "value"),
 ]
 
 graph_display_inputs = [
@@ -395,7 +399,7 @@ app.callback(
         Input("main-highlight-save", "n_clicks"),
     ],
     [State({"type": "highlight-trigger", "index": 0}, "value")],
-    prevent_initial_call = True
+    prevent_initial_call=True,
 )(handle_main_highlight_save)
 
 app.callback(
@@ -412,6 +416,11 @@ app.callback(
     ],
     prevent_initial_call=True,
 )(toggle_panel_visibility)
+
+app.callback(
+    [Output("main-color-scale", "style"), Output("main-color-solid", "style")],
+    [Input("main-coloring-type", "value")],
+)(toggle_color_drop_visibility)
 
 
 # change visibility of search filter inputs
@@ -603,7 +612,7 @@ app.callback(
     Output("fake-output-for-callback-with-only-side-effects-1", "children"),
     [Input("main-export-csv", "n_clicks")],
     [State("main-graph", "selectedData")],
-    prevent_initial_call = True
+    prevent_initial_call=True,
 )(export_graph_csv)
 
 

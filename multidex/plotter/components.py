@@ -10,7 +10,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
-from plotter.proffered_colors import SOLID_MARKER_COLORS
+from plotter.proffered_markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
 from plotter.spectrum_ops import d2r
 from plotter_utils import get_if, none_to_empty, fetch_css_variables
 
@@ -742,6 +742,9 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
     solid_color = get_r(prefix + 'color-solid')
     if solid_color is None:
         solid_color = 'black'
+    marker_symbol = get_r(prefix + 'marker-symbol')
+    if marker_symbol is None:
+        marker_symbol = 'circle'
     children = [
         html.Div(
             className="axis-controls-container",
@@ -792,6 +795,7 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
                     ],
                     value="off",
                 ),
+
             ],
         ),
         html.Div(
@@ -813,7 +817,20 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
                         {"label": "large", "value": 18}
                     ],
                     value=9,
+                ),
+                html.Label(
+                    children=["marker symbol"],
+                    htmlFor=prefix + "marker-symbol",
+                    style={'marginTop': '0.3rem'}
+
+                ),
+                dcc.Dropdown(
+                    prefix + "marker-symbol",
+                    className='color-drop',
+                    value=marker_symbol,
+                    options=MARKER_SYMBOLS,
                 )
+
             ]
         )
     ]

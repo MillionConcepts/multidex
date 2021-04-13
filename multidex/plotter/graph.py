@@ -283,6 +283,8 @@ def make_marker_properties(
     else:
         marker_line = {}
 
+    # set marker symbol
+    marker_symbol = re_get(settings, "-marker-symbol.value")
 
     return {
         "marker": {
@@ -291,6 +293,7 @@ def make_marker_properties(
             "colorbar": colorbar,
             "size": marker_size,
             "opacity": opacity,
+            "symbol": marker_symbol
         },
         "line": marker_line,
     }
