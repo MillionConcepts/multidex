@@ -51,7 +51,8 @@ from plotter.graph import (
     handle_main_highlight_save,
     export_graph_csv,
     toggle_panel_visibility,
-    trigger_search_update, toggle_color_drop_visibility,
+    trigger_search_update,
+    toggle_color_drop_visibility,
 )
 
 # initialize the app itself. HTML / react objects must be described in this
@@ -205,7 +206,8 @@ marker_inputs = [
     Input("main-color-solid", "value"),
     Input("main-highlight-toggle", "value"),
     Input("main-marker-outline-radio", "value"),
-    Input("main-marker-base-size", 'value')
+    Input("main-marker-base-size", "value"),
+    Input("main-marker-symbol", "value"),
 ]
 
 graph_display_inputs = [
@@ -398,7 +400,7 @@ app.callback(
         Input("main-highlight-save", "n_clicks"),
     ],
     [State({"type": "highlight-trigger", "index": 0}, "value")],
-    prevent_initial_call = True
+    prevent_initial_call=True,
 )(handle_main_highlight_save)
 
 app.callback(
@@ -417,11 +419,8 @@ app.callback(
 )(toggle_panel_visibility)
 
 app.callback(
-    [
-        Output('main-color-scale', 'style'),
-        Output('main-color-solid', 'style')
-    ],
-    [Input('main-coloring-type', 'value')]
+    [Output("main-color-scale", "style"), Output("main-color-solid", "style")],
+    [Input("main-coloring-type", "value")],
 )(toggle_color_drop_visibility)
 
 
@@ -614,7 +613,7 @@ app.callback(
     Output("fake-output-for-callback-with-only-side-effects-1", "children"),
     [Input("main-export-csv", "n_clicks")],
     [State("main-graph", "selectedData")],
-    prevent_initial_call = True
+    prevent_initial_call=True,
 )(export_graph_csv)
 
 
