@@ -255,7 +255,7 @@ def make_marker_properties(
     opacity = 1
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
-            32 if spectrum in highlight_id_list else 9 for spectrum in id_list
+            38 if spectrum in highlight_id_list else 9 for spectrum in id_list
         ]
         opacity = 0.5
     elif re_get(settings, "-outline-radio.value") != "off":

@@ -4,14 +4,13 @@ of database models in plotter.models
 """
 
 from ast import literal_eval
+from itertools import chain
 from typing import Optional, Sequence
 
-import PIL
-import fs
 from django.db import models
-from marslab.compatibility import polish_xcam_spectrum, DERIVED_CAM_DICT
 from toolz import keyfilter
 
+from marslab.compatibility import polish_xcam_spectrum, DERIVED_CAM_DICT
 from plotter_utils import modeldict
 
 # these groupings may not be important, but are harmless at present
@@ -19,65 +18,43 @@ from plotter_utils import modeldict
 # fields that notionally have to do with "observation-" level metadata,
 # however that is defined wrt mission-level divisions
 
+# default settings for SQL fields -- just a shorthand
+B_N_I = {"blank": True, "null": True, "db_index": True}
 XCAM_SHARED_OBSERVATION_FIELDS = {
     # target name, specifically, but conventionally just this
     "name": models.CharField("Name", max_length=100, db_index=True),
     "sol": models.IntegerField("Sol", db_index=True),
     # in MCAM, this is ltst for first frame of sequence
     # (usually left eye 'clear')
-    "ltst": models.TimeField(
-        "Local True Solar Time", blank=True, null=True, db_index=True
-    ),
+    "ltst": models.TimeField("Local True Solar Time", **B_N_I),
     # not sure what this actually is. format is of sequence
     # number in PDS header, but _value_ corresponds to request id in the PDS
     # header
-    "seq_id": models.CharField(
-        "sequence id, e.g. 'mcam00001'", max_length=20, db_index=True
-    ),
-    "rover_elevation": models.FloatField(
-        "Rover Elevation", blank=True, null=True, db_index=True
-    ),
+    "seq_id": models.CharField("sequence id", max_length=20, db_index=True),
+    "rover_elevation": models.FloatField("Rover Elevation", **B_N_I),
     "target_elevation": models.FloatField(
         "Target Elevation", null=True, db_index=True
     ),
-    "tau": models.FloatField("Tau", blank=True, null=True, db_index=True),
-    "focal_distance": models.FloatField(
-        "Focal Distance", blank=True, null=True, db_index=True
-    ),
-    "incidence_angle": models.FloatField(
-        "Incidence Angle", blank=True, null=True, db_index=True
-    ),
-    "emission_angle": models.FloatField(
-        "Emission Angle", blank=True, null=True, db_index=True
-    ),
-    "phase_angle": models.FloatField(
-        "Phase Angle", blank=True, null=True, db_index=True
-    ),
-    "l_s": models.FloatField(
-        "Solar Longitude", blank=True, null=True, db_index=True
-    ),
+    "tau": models.FloatField("Tau", **B_N_I),
+    "focal_distance": models.FloatField("Focal Distance", **B_N_I),
+    "incidence_angle": models.FloatField("Incidence Angle", **B_N_I),
+    "emission_angle": models.FloatField("Emission Angle", **B_N_I),
+    "phase_angle": models.FloatField("Phase Angle", **B_N_I),
+    "l_s": models.FloatField("Solar Longitude", **B_N_I),
     # arbitrary number for the site. part of the ROVER_NAV_FRAME
     # coordinate system
-    "site": models.IntegerField("Site", blank=True, null=True, db_index=True),
+    "site": models.IntegerField("Site", **B_N_I),
     # similar
-    "drive": models.IntegerField(
-        "Drive", blank=True, null=True, db_index=True
-    ),
+    "drive": models.IntegerField("Drive", **B_N_I),
     # planetographic lat/lon -- for MCAM, not in the image labels in PDS;
     # derived from localization team products?
-    "lat": models.FloatField("Latitude", blank=True, null=True, db_index=True),
-    "lon": models.FloatField(
-        "Longitude", blank=True, null=True, db_index=True
-    ),
-    "odometry": models.FloatField(
-        "Odometry", blank=True, null=True, db_index=True
-    ),
+    "lat": models.FloatField("Latitude", **B_N_I),
+    "lon": models.FloatField("Longitude", **B_N_I),
+    "odometry": models.FloatField("Odometry", **B_N_I),
     "filename": models.CharField(
-        "Archive CSV File", max_length=30, db_index=True
+        "Source CSV Filename", max_length=30, db_index=True
     ),
-    "sclk": models.IntegerField(
-        "Spacecraft Clock", blank=True, null=True, db_index=True
-    ),
+    "sclk": models.IntegerField("Spacecraft Clock", **B_N_I),
 }
 
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
@@ -87,95 +64,69 @@ XCAM_SINGLE_SPECTRUM_FIELDS = {
     "color": models.CharField(
         "ROI Color", blank=True, max_length=20, db_index=True
     ),
-    "feature": models.CharField(
-        "feature category",
-        blank=True,
-        null=True,
-        db_index=True,
-        max_length=45,
-    ),
+    "feature": models.CharField("feature category", **B_N_I, max_length=45),
     # ############################################
     # ## lithological information -- relevant only to rocks ###
     # #########################################################
-    "float": models.BooleanField(
-        "floating vs. in-place", blank=True, null=True, db_index=True
-    ),
+    "float": models.BooleanField("floating vs. in-place", **B_N_I),
     # large-to-small taxonomic categories for rock clusters
-    "formation": models.CharField(
-        "Formation", blank=True, null=True, max_length=50, db_index=True
-    ),
-    "member": models.CharField(
-        "Member", blank=True, null=True, max_length=50, db_index=True
-    ),
+    "formation": models.CharField("Formation", **B_N_I, max_length=50),
+    "member": models.CharField("Member", **B_N_I, max_length=50),
     "filename": models.CharField(
         "Name of archive CSV file", max_length=50, db_index=True
     ),
     # ## end lithological ###
-    "notes": models.CharField(
-        "Notes", blank=True, null=True, max_length=100, db_index=True
-    ),
+    "notes": models.CharField("Notes", **B_N_I, max_length=100),
     # stringified dict of images associated with the spectrum
-    "images": models.TextField(blank=True, null=True, db_index=True),
+    "images": models.TextField(**B_N_I, default="{}"),
 }
 
-# dictionary defining generalized interface properties
+# dictionaries defining generalized interface properties
 # for spectrum operation functions (band depth, etc.)
+SPECTRUM_OP_BASE_PROPERTIES = {
+    "type": "method",
+    "value_type": "quant",
+}
 SPECTRUM_OP_INTERFACE_PROPERTIES = (
-    {
-        "label": "band value",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "ref",
-        "type": "method",
         "arity": 1,
-        "value_type": "quant",
     },
-    {
-        "label": "band slope",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "slope",
-        "type": "method",
         "arity": 2,
-        "value_type": "quant",
     },
-    {
-        "label": "band average",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "band_avg",
-        "type": "method",
         "arity": 2,
-        "value_type": "quant",
     },
-    {
-        "label": "band maximum",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "band_max",
-        "type": "method",
         "arity": 2,
-        "value_type": "quant",
     },
-    {
-        "label": "band minimum",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "band_min",
-        "type": "method",
         "arity": 2,
-        "value_type": "quant",
     },
-    {
-        "label": "ratio",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "ratio",
-        "type": "method",
         "arity": 2,
-        "value_type": "quant",
     },
-    {
-        "label": "band depth (middle)",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "band_depth_custom",
-        "type": "method",
         "arity": 3,
-        "value_type": "quant",
     },
-    {
-        "label": "band depth (minimum)",
+    SPECTRUM_OP_BASE_PROPERTIES
+    | {
         "value": "band_depth_min",
-        "type": "method",
         "arity": 2,
-        "value_type": "quant",
     },
 )
 
@@ -183,117 +134,88 @@ SPECTRUM_OP_INTERFACE_PROPERTIES = (
 # for various XCAM fields
 XCAM_FIELD_INTERFACE_PROPERTIES = (
     {
-        "label": "target_elevation",
         "value": "target_elevation",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "ltst",
         "value": "ltst",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "sclk",
         "value": "sclk",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "zoom",
         "value": "zoom",
-        "type": "attribute",
         "value_type": "qual",
     },
     {
-        "label": "formation",
         "value": "formation",
-        "type": "attribute",
         "value_type": "qual",
     },
     {
-        "label": "member",
         "value": "member",
-        "type": "attribute",
         "value_type": "qual",
     },
     {
-        "label": "sol",
         "value": "sol",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "feature",
         "value": "feature",
-        "type": "attribute",
         "value_type": "qual",
     },
     {
-        "label": "color",
         "value": "color",
-        "type": "attribute",
         "value_type": "qual",
     },
     {
-        "label": "name",
         "value": "name",
-        "type": "attribute",
         "value_type": "qual",
     },
     {
-        "label": "seq_id",
         "value": "seq_id",
-        "type": "attribute",
         "value_type": "qual",
     },
     {
-        "label": "tau",
         "value": "tau",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "lat",
         "value": "lat",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "lon",
         "value": "lon",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "focal_distance",
         "value": "focal_distance",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "emission_angle",
         "value": "emission_angle",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "incidence_angle",
         "value": "incidence_angle",
-        "type": "attribute",
         "value_type": "quant",
     },
     {
-        "label": "phase_angle",
         "value": "phase_angle",
-        "type": "attribute",
         "value_type": "quant",
     },
 )
+for prop in chain.from_iterable(
+    [XCAM_FIELD_INTERFACE_PROPERTIES, SPECTRUM_OP_INTERFACE_PROPERTIES]
+):
+    if "label" not in prop.keys():
+        prop["label"] = prop["value"]
+    if "type" not in prop.keys():
+        prop["type"] = "attribute"
 
 
-# actual prototype classes
+# ############### actual prototype classes #######################
 
 
 class XSpec(models.Model):
@@ -301,13 +223,11 @@ class XSpec(models.Model):
     abstract model representing an individual ROI from an XCAM-family
     instrument
     """
-
     # actual four-letter instrument designation: PCAM, MCAM, ZCAM
     instrument = None
     # brief and full instrument names
     instrument_brief_name = None
     instrument_full_name = None
-
     accessible_properties = (
         XCAM_FIELD_INTERFACE_PROPERTIES + SPECTRUM_OP_INTERFACE_PROPERTIES
     )
@@ -352,13 +272,16 @@ class XSpec(models.Model):
             average_filters=average_filters,
         )
 
+    def all_filter_waves(self):
+        return self.filters | self.virtual_filters
+
     def metadata_dict(self) -> dict:
         """
         metadata-summarizing function. could be made more efficient.
         """
         return keyfilter(
             lambda x: x
-            in [prop["value"] for prop in self.accessible_properties],
+            in [acc_prop["value"] for acc_prop in self.accessible_properties],
             modeldict(self),
         )
 
@@ -381,10 +304,6 @@ def filter_fields_factory(filter_name):
     spectral filter -- one for mean measurement value and one for
     variance / stdev / etc
     """
-    mean = models.FloatField(
-        filter_name.lower() + " mean", blank=True, null=True, db_index=True
-    )
-    err = models.FloatField(
-        filter_name.lower() + " error", blank=True, null=True, db_index=True
-    )
+    mean = models.FloatField(filter_name.lower() + " mean", **B_N_I)
+    err = models.FloatField(filter_name.lower() + " error", **B_N_I)
     return mean, err
