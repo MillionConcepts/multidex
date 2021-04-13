@@ -14,7 +14,7 @@ from copy import deepcopy
 from functools import reduce
 from itertools import chain, cycle
 from operator import or_
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple
 
 import dash
 import dash_html_components as html
@@ -200,7 +200,8 @@ def make_axis(
         ]
     return value_series, None, axis_option
 
-
+# TODO: this is sloppy but cleanup would be better after everything's implemented...
+# probably...
 def make_marker_properties(
     settings,
     id_list,
@@ -220,7 +221,6 @@ def make_marker_properties(
     # but is difficult because you have to instantiate the colorbar somewhere
     # it would also be better to style with CSS but it seems like plotly
     # really wants to put element-level style declarations on graph ticks!
-    colorbar_dict = COLORBAR_SETTINGS.copy()
     if props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
@@ -230,28 +230,36 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    colorbar_dict |= {"title_text": title}
-    if props["value_type"] == "qual":
-        string_hash, color_indices = arbitrarily_hash_strings(
-            none_to_quote_unquote_none(property_list)
-        )
-        colorbar_dict |= {
-            "tickvals": list(string_hash.values()),
-            "ticktext": list(string_hash.keys()),
-        }
+
+    if re_get(settings, '-coloring-type.value') == "fixed":
+        color = re_get(settings, "-color-solid.value")
+        colormap = None
+        colorbar = None
     else:
-        if len(property_list) > 0:
-            if isinstance(property_list[0], dt.time):
-                property_list = list(
-                    map(seconds_since_beginning_of_day, property_list)
-                )
-        color_indices = property_list
-    colormap = re_get(settings, "-color_scale.value")
+        colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
+        colormap = re_get(settings, "-color-scale.value")
+        if props["value_type"] == "qual":
+            string_hash, color = arbitrarily_hash_strings(
+                none_to_quote_unquote_none(property_list)
+            )
+            colorbar_dict |= {
+                "tickvals": list(string_hash.values()),
+                "ticktext": list(string_hash.keys()),
+            }
+        else:
+            if len(property_list) > 0:
+                if isinstance(property_list[0], dt.time):
+                    property_list = list(
+                        map(seconds_since_beginning_of_day, property_list)
+                    )
+            color = property_list
+        colorbar = go.scatter.marker.ColorBar(**colorbar_dict)
 
     # define marker size settings
     # note that you have to define individual marker sizes
     # in order to be able to set marker outlines -- it causes them to be
-    # drawn in some different (and more expensive) way
+    # drawn in some different (and more expensive) way -- hence this dumb
+    # logic tree
     opacity = 1
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
@@ -272,11 +280,12 @@ def make_marker_properties(
     else:
         marker_line = {}
 
+
     return {
         "marker": {
-            "color": color_indices,
+            "color": color,
             "colorscale": colormap,
-            "colorbar": go.scatter.marker.ColorBar(**colorbar_dict),
+            "colorbar": colorbar,
             "size": marker_size,
             "opacity": opacity,
         },
@@ -486,6 +495,16 @@ def toggle_panel_visibility(_click, panel_style, arrow_style, text_style):
     )
     text_style = style_toggle(text_style, states=("inline-block", "none"))
     return panel_style, arrow_style, text_style
+
+
+def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
+    """
+    just show or hide scale/solid color dropdowns per coloring type radio
+    button selection. very unsophisticated for now.
+    """
+    if type_selection == 'fixed':
+        return {'display': 'none'}, {'display': 'block'}
+    return {'display': 'block'}, {'display': 'none'}
 
 
 def toggle_averaged_filters(
