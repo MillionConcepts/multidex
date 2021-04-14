@@ -80,7 +80,7 @@ def scale_controls_container(
     scale_value=None,
     r_star_value=None,
     average_value=None,
-    error_value=None,
+    error_value="none",
 ):
     # TODO: this is a messy way to handle weird cases in loading.
     # this should be cleaned up.
@@ -113,12 +113,15 @@ def scale_controls_container(
             ],
             value=[r_star_value],
         ),
-        dcc.Checklist(
+        html.Label(children=["show error"], htmlFor=id_prefix + "-error"),
+        dcc.Dropdown(
             id=id_prefix + "-error",
             options=[
-                {"label": "show error", "value": "error"},
+                {"label": "none", "value": "none"},
+                {"label": "ROI", "value": "error"},
+                {"label": "instrumental", "value": "instrumental"}
             ],
-            value=[error_value],
+            value=error_value,
         ),
     ]
     return scale_container
@@ -206,8 +209,8 @@ def main_graph_scatter(
     customdata: list,
     label_ids: list[int],
     zoom: Optional[tuple[list[float, float]]] = None,
-    x_errors: Optional[list[float]] = None,
-    y_errors: Optional[list[float]] = None,
+    x_errors: Optional[dict] = None,
+    y_errors: Optional[dict] = None,
     x_title: str = None,
     y_title: str = None,
 ) -> go.Figure:
@@ -255,16 +258,15 @@ def main_graph_scatter(
     fig.update_yaxes(axis_display_dict | {"title_text": y_title})
     fig.update_traces(**marker_property_dict)
 
-    for error, name in [(x_errors, "x"), (y_errors, "y")]:
-        if error is None:
+    for error_dict, name in [(x_errors, "x"), (y_errors, "y")]:
+        if error_dict is None:
             fig.update_traces({"error_" + name: {"visible": False}})
         else:
             fig.update_traces(
                 {
                     "error_"
-                    + name: {
+                    + name: error_dict | {
                         "visible": True,
-                        "array": error,
                         "color": "rgba(0,0,0,0.3)",
                     }
                 }

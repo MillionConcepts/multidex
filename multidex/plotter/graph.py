@@ -150,14 +150,29 @@ def perform_spectrum_op(
     spectrum_op = getattr(spectrum_ops, props["value"])
     title = props["value"] + " " + str(" ".join(filt_args))
     try:
+        if get_errors == 'instrumental':
+            vals, errors = spectrum_ops.compute_minmax_spec_error(
+                queryset_df, spec_model, spectrum_op, *filt_args
+            )
+            return (
+                list(np.array(vals)),
+                {
+                    'symmetric': False,
+                    'arrayminus': list(np.abs(np.array(errors[0]))),
+                    'array': list(np.abs(np.array(errors[1])))
+                },
+                title
+            )
         vals, errors = spectrum_op(
             queryset_df, spec_model, *filt_args, get_errors
         )
         if get_errors:
             return (
                 list(np.array(vals)),
-                list(np.array(errors)),
-                title,
+                {
+                    'array': list(np.array(errors))
+                },
+                title
             )
         return list(vals.values), None, title
     except ValueError:  # usually representing intermediate input states
@@ -375,7 +390,9 @@ def recalculate_main_graph(
     filter_df = cget("main_graph_filter_df")
     metadata_df = cget("metadata_df")
     if "error" in ctx.inputs["main-graph-error.value"]:
-        get_errors = True
+        get_errors = 'roi'
+    elif 'instrumental' in ctx.inputs["main-graph-error.value"]:
+        get_errors = 'instrumental'
     else:
         get_errors = False
     truncated_ids = truncate_id_list_for_missing_properties(
