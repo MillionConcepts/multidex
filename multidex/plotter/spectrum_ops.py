@@ -1,10 +1,12 @@
 import math
+from itertools import product
 from typing import Union
 
 import numpy as np
 from numpy.linalg import norm
 import pandas as pd
 
+from marslab.compatibility import INSTRUMENT_UNCERTAINTIES
 from plotter_utils import qlist
 
 
@@ -20,6 +22,41 @@ def r2d(
 ) -> Union[float, np.ndarray, pd.Series]:
     """radians to degrees"""
     return 180 * radians / math.pi
+
+
+def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
+    """
+    crude bounds for the hull of the range of possible measurements
+    for a given spectrum operation with a given instrument / filter df
+    serves as a wrapper function for others in this module
+    """
+    # cartesian product of these sets gives all possible sign combos for
+    # error high, error low, i.e.,
+    unc = INSTRUMENT_UNCERTAINTIES[spec_model.instrument]
+    corners = product(*[[1, -1] for _ in filters])
+    bounds_df_list = []
+    # apply these signs to uncertainty values, getting a list of dataframes
+    # giving values of all measurements in set at the upper / lower bound
+    # combinations for uncertainties associated with each relevant filter.
+    for corner in corners:
+        corner_series_list = []
+        for filt_ix, sign in enumerate(corner):
+            filt = filters[filt_ix]
+            corner_series_list.append(
+                filter_df[filt]
+                + filter_df[filt] * corner[filt_ix] * unc[filt] / 100
+            )
+        corner_df = pd.concat(corner_series_list, axis=1)
+        # record the value of the spectrum op for each of these bounding
+        # dataframes.
+        bounds_df_list.append(spec_op(corner_df, spec_model, *filters)[0])
+    # compute the nominal value and compare it to values at these bounds
+    possible_values = pd.concat(bounds_df_list, axis=1)
+    nominal_value = spec_op(filter_df, spec_model, *filters)[0]
+    offsets = possible_values.sub(nominal_value, axis=0)
+    # then min / max of each of these gives us an error estimate for each
+    # spectrum
+    return nominal_value, (offsets.min(axis=1), offsets.max(axis=1))
 
 
 def filter_df_from_queryset(
@@ -49,9 +86,7 @@ def filter_df_from_queryset(
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #  it's preferable to have rules for this on models.
     if r_star:
-        theta_i = np.cos(
-            d2r(pd.Series(qlist(queryset, "incidence_angle")))
-        )
+        theta_i = np.cos(d2r(pd.Series(qlist(queryset, "incidence_angle"))))
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
     filter_df.index = id_list
