@@ -628,7 +628,7 @@ app.callback(
 )(export_graph_csv)
 
 
-app.run_server(
-    debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
-)
-# app.run_server(dev_tools_silence_routes_logging=True, port=8050)
+# app.run_server(
+#     debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
+# )
+app.run_server(dev_tools_silence_routes_logging=True, port=8050)
