@@ -48,12 +48,16 @@ GRAPH_CONFIG_SETTINGS = {
     "displaylogo": False,
 }
 ANNOTATION_SETTINGS = {
-    'font': {'family': 'Fira Mono', 'size': 14, 'color': css_variables["clean-parchment"]},
-    'bgcolor': 'rgba(0,0,0,0.8)',
-    'arrowwidth': 3,
-    'xshift': -8,
-    'yshift': 8,
-    'captureevents': False
+    "font": {
+        "family": "Fira Mono",
+        "size": 14,
+        "color": css_variables["clean-parchment"],
+    },
+    "bgcolor": "rgba(0,0,0,0.8)",
+    "arrowwidth": 3,
+    "xshift": -8,
+    "yshift": 8,
+    "captureevents": False,
 }
 
 # note that style properties are camelCased rather than hyphenated
@@ -119,7 +123,7 @@ def scale_controls_container(
             options=[
                 {"label": "none", "value": "none"},
                 {"label": "ROI", "value": "error"},
-                {"label": "instrumental", "value": "instrumental"}
+                {"label": "instrumental", "value": "instrumental"},
             ],
             value=error_value,
         ),
@@ -230,13 +234,12 @@ def main_graph_scatter(
     # requires redraws to show the text, and fails to do so every other time
     # for ... reasons ... so it looks like it
     # does nothing every other time unless you pan or whatever
-    for database_id, string, xpos, ypos in zip(customdata, text, x_axis, y_axis):
+    for database_id, string, xpos, ypos in zip(
+        customdata, text, x_axis, y_axis
+    ):
         if database_id in label_ids:
             fig.add_annotation(
-                x=xpos,
-                y=ypos,
-                text=string,
-                **ANNOTATION_SETTINGS
+                x=xpos, y=ypos, text=string, **ANNOTATION_SETTINGS
             )
 
     fig.add_trace(
@@ -264,8 +267,8 @@ def main_graph_scatter(
         else:
             fig.update_traces(
                 {
-                    "error_"
-                    + name: error_dict | {
+                    "error_" + name: error_dict
+                    | {
                         "visible": True,
                         "color": "rgba(0,0,0,0.3)",
                     }
@@ -404,7 +407,10 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
         for option in spec_model.graphable_properties
     ]
     if not value:
-        value = "ratio"
+        if "marker" in element_id:
+            value = "feature"
+        else:
+            value = "ratio"
     return html.Div(
         className="info-text",
         id=element_id + "-container",
@@ -761,15 +767,15 @@ def axis_controls_container(axis, prefix, spec_model, get_r, filter_options):
 
 
 def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
-    coloring_type = get_r(prefix + 'coloring-type')
+    coloring_type = get_r(prefix + "coloring-type")
     if coloring_type is None:
-        coloring_type = 'scale'
-    solid_color = get_r(prefix + 'color-solid')
+        coloring_type = "scale"
+    solid_color = get_r(prefix + "color-solid")
     if solid_color is None:
-        solid_color = 'black'
-    marker_symbol = get_r(prefix + 'marker-symbol')
+        solid_color = "black"
+    marker_symbol = get_r(prefix + "marker-symbol")
     if marker_symbol is None:
-        marker_symbol = 'circle'
+        marker_symbol = "circle"
     children = [
         html.Div(
             className="axis-controls-container",
@@ -783,33 +789,33 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
             style={
                 "display": "flex",
                 "flexDirection": "column",
-                "marginRight": "0.6rem"
+                "marginRight": "0.6rem",
             },
             children=[
                 dcc.RadioItems(
-                    id=prefix + 'coloring-type',
-                    options = [
+                    id=prefix + "coloring-type",
+                    options=[
                         {"label": "color scale", "value": "scale"},
                         {"label": "solid", "value": "solid"},
                     ],
-                    value=coloring_type
+                    value=coloring_type,
                 ),
                 color_scale_drop(
                     prefix + "color-scale",
                     value=get_r(prefix + "color-scale.value"),
-                    ),
+                ),
                 dcc.Dropdown(
                     prefix + "color-solid",
-                    className='color-drop',
-                    value = solid_color,
-                    options = SOLID_MARKER_COLORS
+                    className="color-drop",
+                    value=solid_color,
+                    options=SOLID_MARKER_COLORS,
                 ),
                 html.Label(
                     children=["marker outlines"],
-                    htmlFor= prefix + "marker-outline-radio",
+                    htmlFor=prefix + "marker-outline-radio",
                 ),
                 dcc.RadioItems(
-                    id= prefix + "marker-outline-radio",
+                    id=prefix + "marker-outline-radio",
                     options=[
                         {
                             "label": "off",
@@ -820,14 +826,13 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
                     ],
                     value="off",
                 ),
-
             ],
         ),
         html.Div(
             style={
                 "display": "flex",
                 "flexDirection": "column",
-                "marginRight": "0.3rem"
+                "marginRight": "0.3rem",
             },
             children=[
                 html.Label(
@@ -839,25 +844,23 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
                     options=[
                         {"label": "small", "value": 4},
                         {"label": "medium", "value": 9},
-                        {"label": "large", "value": 18}
+                        {"label": "large", "value": 18},
                     ],
                     value=9,
                 ),
                 html.Label(
                     children=["marker symbol"],
                     htmlFor=prefix + "marker-symbol",
-                    style={'marginTop': '0.3rem'}
-
+                    style={"marginTop": "0.3rem"},
                 ),
                 dcc.Dropdown(
                     prefix + "marker-symbol",
-                    className='color-drop',
+                    className="color-drop",
                     value=marker_symbol,
                     options=MARKER_SYMBOLS,
-                )
-
-            ]
-        )
+                ),
+            ],
+        ),
     ]
     return html.Div(
         style={"display": "flex", "flexDirection": "row"},
