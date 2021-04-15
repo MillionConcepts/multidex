@@ -1334,6 +1334,7 @@ def export_graph_csv(_clicks, selected, *, cget):
     metadata_df.columns = [column.upper() for column in metadata_df.columns]
     metadata_df = metadata_df.reindex(
         columns=[
+            "NAME",
             "SOL",
             "SEQ_ID",
             "INSTRUMENT",
