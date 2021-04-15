@@ -106,7 +106,7 @@ app = dash.Dash(__name__)
 # I'm getting some bad spookiness I don't currently understand,
 # so presently switching back to filesystem with a tmpfs.
 # (with root:)
-# mount -o size=1024M -t tmpfs mastspeccache .cache
+# mount -o size=1024M -t tmpfs multidex_cache .cache
 
 cache_type = "filesystem"
 
@@ -131,6 +131,7 @@ cget = cache_get(cache)
 
 spec_model = MSpec
 cset("spec_model_name", "Mastcam")
+
 
 # main_graph is a factory function for a locally-defined dash component.
 # dash apps use dash components to automagically generate HTML and
@@ -267,7 +268,7 @@ settings = {
     "base_size": 20,
     "static_image_url": static_image_url,
     # file containing saved searches
-    "search_file": "./saves/saved_searches.csv",
+    "search_file": "./saves/" + cget('spec_model_name') + '_searches.csv'
 }
 functions_requiring_settings = [
     control_tabs,
@@ -595,6 +596,7 @@ app.callback(
     [
         Input({"type": "view-graph", "index": MATCH}, "hoverData"),
         Input("main-spec-scale", "value"),
+        Input("main-spec-r-star", "value"),
         Input("main-spec-average", "value"),
         Input("main-spec-error", "value"),
     ],
