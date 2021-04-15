@@ -122,7 +122,7 @@ def scale_controls_container(
             id=id_prefix + "-error",
             options=[
                 {"label": "none", "value": "none"},
-                {"label": "ROI", "value": "error"},
+                {"label": "ROI", "value": "roi"},
                 {"label": "instrumental", "value": "instrumental"},
             ],
             value=error_value,

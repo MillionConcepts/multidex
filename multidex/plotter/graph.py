@@ -47,7 +47,8 @@ from plotter_utils import (
     field_values,
     fetch_css_variables,
     df_multiple_field_search,
-    re_get, ctxdict,
+    re_get,
+    ctxdict,
 )
 
 from plotter.models import MSpec, ZSpec
@@ -149,19 +150,21 @@ def perform_spectrum_op(
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
     title = props["value"] + " " + str(" ".join(filt_args))
+    if get_errors == "none":
+        get_errors = False
     try:
-        if get_errors == 'instrumental':
+        if get_errors == "instrumental":
             vals, errors = spectrum_ops.compute_minmax_spec_error(
                 queryset_df, spec_model, spectrum_op, *filt_args
             )
             return (
                 list(np.array(vals)),
                 {
-                    'symmetric': False,
-                    'arrayminus': list(np.abs(np.array(errors[0]))),
-                    'array': list(np.abs(np.array(errors[1])))
+                    "symmetric": False,
+                    "arrayminus": list(np.abs(np.array(errors[0]))),
+                    "array": list(np.abs(np.array(errors[1]))),
                 },
-                title
+                title,
             )
         vals, errors = spectrum_op(
             queryset_df, spec_model, *filt_args, get_errors
@@ -169,10 +172,8 @@ def perform_spectrum_op(
         if get_errors:
             return (
                 list(np.array(vals)),
-                {
-                    'array': list(np.array(errors))
-                },
-                title
+                {"array": list(np.array(errors))},
+                title,
             )
         return list(vals.values), None, title
     except ValueError:  # usually representing intermediate input states
@@ -246,7 +247,7 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    if re_get(settings, '-coloring-type.value') == "solid":
+    if re_get(settings, "-coloring-type.value") == "solid":
         color = re_get(settings, "-color-solid.value")
         colormap = None
         colorbar = None
@@ -276,11 +277,10 @@ def make_marker_properties(
     # markers to be drawn in some different (and more expensive) way -- hence
     # this dumb logic tree
     opacity = 1
-    base_size = re_get(settings, '-marker-base-size.value')
+    base_size = re_get(settings, "-marker-base-size.value")
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
-            32 + base_size if spectrum in highlight_id_list
-            else base_size
+            32 + base_size if spectrum in highlight_id_list else base_size
             for spectrum in id_list
         ]
         opacity = 0.5
@@ -308,7 +308,7 @@ def make_marker_properties(
             "colorbar": colorbar,
             "size": marker_size,
             "opacity": opacity,
-            "symbol": marker_symbol
+            "symbol": marker_symbol,
         },
         "line": marker_line,
     }
@@ -367,14 +367,14 @@ def recalculate_main_graph(
         return graph
 
     # handle label addition / removal
-    label_ids = cget('main_label_ids')
-    if ctx.triggered[0]['prop_id'] == 'main-graph.clickData':
-        clicked_id = ctx.triggered[0]["value"]["points"][0]['customdata']
+    label_ids = cget("main_label_ids")
+    if ctx.triggered[0]["prop_id"] == "main-graph.clickData":
+        clicked_id = ctx.triggered[0]["value"]["points"][0]["customdata"]
         if clicked_id in label_ids:
             label_ids.remove(clicked_id)
         else:
             label_ids.append(clicked_id)
-        cset('main_label_ids', label_ids)
+        cset("main_label_ids", label_ids)
     # TODO: performance increase is possible here by just returning the graph
 
     x_settings = pickctx(ctx, x_inputs)
@@ -389,12 +389,7 @@ def recalculate_main_graph(
     highlight_ids = cget("main_highlight_ids")
     filter_df = cget("main_graph_filter_df")
     metadata_df = cget("metadata_df")
-    if "error" in ctx.inputs["main-graph-error.value"]:
-        get_errors = 'roi'
-    elif 'instrumental' in ctx.inputs["main-graph-error.value"]:
-        get_errors = 'instrumental'
-    else:
-        get_errors = False
+    get_errors = ctx.inputs["main-graph-error.value"]
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
@@ -432,9 +427,22 @@ def recalculate_main_graph(
     graph_display_dict, axis_display_dict = make_graph_display_settings(
         graph_display_settings
     )
-    # for functions that (perhaps asynchronously) fetch the state of the graph.
+
+    graph_layout = ctx.states["main-graph.figure"]["layout"]
+
+    # automatically reset graph zoom only if we're loading the page or
+    # changing options and therefore scales
+    if (
+        ctx.triggered[0]["prop_id"]
+        in ["main-graph-option-y.value", "main-graph-option-x.value", "."]
+    ) or (len(ctx.triggered) > 1):
+        zoom = None
+    else:
+        zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
+
+    # for functions that (perhaps asynchronously) fetch the state of the
+    # graph.
     # this is another perhaps ugly flow control thing!
-    # TODO (maybe): add graph display settings to recorded settings
     if record_settings:
         for parameter in (
             "x_settings",
@@ -446,39 +454,36 @@ def recalculate_main_graph(
             "text",
             "customdata",
             "graph_function",
+            "graph_display_dict",
+            "axis_display_dict",
+            "zoom",
+            "x_errors",
+            "y_errors",
+            "x_title",
+            "y_title",
+            "get_errors"
         ):
             cset(parameter, locals()[parameter])
-    graph_layout = ctx.states["main-graph.figure"]["layout"]
 
-    # automatically reset graph zoom only if we're loading the page or
-    # changing options and therefore scales
-    if (
-        ctx.triggered[0]["prop_id"]
-        in [
-            "main-graph-option-y.value",
-            "main-graph-option-x.value",
-            '.'
-        ]
-    ) or (len(ctx.triggered) > 1):
-        zoom = None
-    else:
-        zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
     # TODO: refactor (too many arguments)
-    return (graph_function(
-        x_axis,
-        y_axis,
-        marker_properties,
-        graph_display_dict,
-        axis_display_dict,
-        text,
-        customdata,
-        label_ids,
-        zoom,
-        x_errors,
-        y_errors,
-        x_title,
-        y_title,
-    ), {})
+    return (
+        graph_function(
+            x_axis,
+            y_axis,
+            marker_properties,
+            graph_display_dict,
+            axis_display_dict,
+            text,
+            customdata,
+            label_ids,
+            zoom,
+            x_errors,
+            y_errors,
+            x_title,
+            y_title,
+        ),
+        {},
+    )
 
 
 def toggle_search_input_visibility(field, *, spec_model):
@@ -538,9 +543,9 @@ def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
     just show or hide scale/solid color dropdowns per coloring type radio
     button selection. very unsophisticated for now.
     """
-    if type_selection == 'solid':
-        return {'display': 'none'}, {'display': 'block'}
-    return {'display': 'block'}, {'display': 'none'}
+    if type_selection == "solid":
+        return {"display": "none"}, {"display": "block"}
+    return {"display": "block"}, {"display": "none"}
 
 
 def toggle_averaged_filters(
@@ -714,6 +719,7 @@ def update_filter_df(
         scale_to_string = scale_to
     cset("scale_to", scale_to_string)
     cset("average_filters", average_filters)
+    cset("r_star", r_star)
     if not scale_trigger_count:
         return 1
     return scale_trigger_count + 1
@@ -1024,8 +1030,16 @@ class SPlot:
             self.x_axis,
             self.y_axis,
             self.marker_properties,
+            self.graph_display_dict,
+            self.axis_display_dict,
             self.text,
             self.customdata,
+            self.main_label_ids,
+            self.zoom,
+            self.x_errors,
+            self.y_errors,
+            self.x_title,
+            self.y_title,
         )
 
     def settings(self):
@@ -1052,6 +1066,14 @@ class SPlot:
         "main_highlight_ids",
         "scale_to",
         "average_filters",
+        "graph_display_dict",
+        "axis_display_dict",
+        "main_label_ids",
+        "zoom",
+        "x_errors",
+        "y_errors",
+        "x_title",
+        "y_title",
     )
 
     setting_parameters = (
@@ -1060,6 +1082,8 @@ class SPlot:
         "x_settings",
         "y_settings",
         "marker_settings",
+        "graph_display_dict",
+        "axis_display_dict",
     )
 
 
@@ -1125,16 +1149,14 @@ def close_viewer_tab(index, tabs, cget, cset):
 
 
 def save_search_tab_state(
-    _n_clicks,
-    save_name,
-    trigger_value,
-    cget,
-    filename="saves/saved_searches.csv",
+    _n_clicks, save_name, trigger_value, cget, filename=None
 ):
     """
     fairly permissive right now. this saves current search-tab state to a
     file as csv, which can then be reloaded by make_loaded_search_tab.
     """
+    if filename is None:
+        filename = "saves/" + cget("spec_model_name") + "_searches.csv"
     try:
         state_variable_names = [
             *cget("x_settings").keys(),
@@ -1144,6 +1166,8 @@ def save_search_tab_state(
             "main_highlight_parameters",
             "scale_to",
             "average_filters",
+            "r_star",
+            "errors"
         ]
 
         state_variable_values = [
@@ -1154,6 +1178,9 @@ def save_search_tab_state(
             str(cget("main_highlight_parameters")),
             str(cget("scale_to")),
             cget("average_filters"),
+            cget("r_star"),
+            cget("errors"),
+
         ]
     except AttributeError as error:
         print(error)
@@ -1225,7 +1252,6 @@ def control_tabs(
 ):
     """
     control loading, opening, and closing viewer tabs.
-
     TODO, maybe: add ability to just open selectedData from main-graph
     """
     ctx = dash.callback_context
@@ -1292,8 +1318,9 @@ def handle_main_highlight_save(
         # main highlight parameters are currently restored
         # in make_loaded_search_tab()
         metadata_df = cget("metadata_df")
-        params = literal_eval(cget("main_highlight_parameters"))
-        if params:
+        params = cget("main_highlight_parameters")
+        if params is not None:
+            params = literal_eval(params)
             cset(
                 "main_highlight_ids",
                 handle_graph_search(metadata_df, params, spec_model),
