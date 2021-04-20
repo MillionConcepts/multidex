@@ -165,26 +165,28 @@ def perform_spectrum_op(
             vals, errors = spectrum_ops.compute_minmax_spec_error(
                 queryset_df, spec_model, spectrum_op, *filt_args
             )
-            return (
-                list(deframe(vals).values),
-                {
-                    "symmetric": False,
-                    "arrayminus": list(np.abs(np.array(deframe(errors[0])))),
-                    "array": list(np.abs(np.array(deframe(errors[1])))),
-                },
-                title,
-            )
+            if errors is not None:
+                return (
+                    list(deframe(vals).values),
+                    {
+                        "symmetric": False,
+                        "arrayminus": list(np.abs(np.array(deframe(errors[0])))),
+                        "array": list(np.abs(np.array(deframe(errors[1])))),
+                    },
+                    title,
+                )
+            return list(deframe(vals).values), None, title
         vals, errors = spectrum_op(
             queryset_df, spec_model, *filt_args, get_errors
         )
-        if get_errors:
+        if get_errors and errors is not None:
             return (
                 list(deframe(vals).values),
                 {"array": list(deframe(errors).values)},
                 title,
             )
         return list(deframe(vals).values), None, title
-    except ValueError:  # usually representing intermediate input states
+    except ValueError as e:  # usually representing intermediate input states
         raise PreventUpdate
 
 

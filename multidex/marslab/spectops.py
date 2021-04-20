@@ -12,9 +12,9 @@ import pandas as pd
 # order of reflectance is: left, right, center
 # or unordered for things like average
 
-# TODO: is it better to just aggressively convert everything
-#  to an ndarray and then convert back at the end rather than handling
-#  various type cases with different behavior? not sure. assess
+# Note: everything must be passed in 'last index fastest' / 'row-primary'
+# orientation. this means that a lot of pandas dataframes will need to be
+# transposed to get meaningful results.
 
 
 def preprocess_input(reflectance, errors=None, wavelengths=None):
@@ -29,7 +29,7 @@ def preprocess_input(reflectance, errors=None, wavelengths=None):
             assert len(reflectance) == len(errors)
     if wavelengths is not None:
         if isinstance(reflectance, (np.ndarray, pd.DataFrame, pd.Series)):
-            assert reflectance.shape[-1] == len(wavelengths)
+            assert reflectance.shape[0] == len(wavelengths)
         else:
             assert len(reflectance) == len(wavelengths)
     return [np.asarray(thing) for thing in (reflectance, errors, wavelengths)]
@@ -39,7 +39,7 @@ def reindex_if_pandas(*object_pairs):
     returning = []
     for pair in object_pairs:
         if isinstance(pair[1], (pd.DataFrame, pd.Series)):
-            returning.append(pd.DataFrame(pair[0], index=pair[1].index))
+            returning.append(pd.Series(pair[0], index=pair[1].columns))
         else:
             returning.append(pair[0])
     return returning
@@ -54,7 +54,7 @@ def addition_in_quadrature(errors):
     """
     if None in errors:
         return None
-    return norm(errors, axis=-1)
+    return norm(errors, axis=0)
 
 
 def ratio(
@@ -64,16 +64,16 @@ def ratio(
 ):
     """
     just a ratio function. notionally, ratio of reflectance
-    values between two filters. looks at the first two column
+    values between two filters. looks at the first two 'rows'
     or elements of what it's passed...if you pass it more,
     it ignores them. ignores wavelength values.
     """
     reflectance_array, error_array, _wavelength_array = preprocess_input(
         reflectance, errors, _wavelengths
     )
-    ratio_value = reflectance_array[...,0] / reflectance_array[...,1]
+    ratio_value = reflectance_array[0] / reflectance_array[1]
     if None not in error_array:
-        error_array = error_array[...,0:1]
+        error_array = error_array[0:1]
     error_values = addition_in_quadrature(error_array)
     return reindex_if_pandas(
         (ratio_value, reflectance), (error_values, errors)
@@ -110,12 +110,12 @@ def slope(
     """
     just a slope function. notionally, slope in reflectance-
     wavelength space between two filters. only looks at the first
-    two 'column' you pass it, should you pass it more.
+    two 'rows' you pass it, should you pass it more.
     """
     reflectance_array, error_array, wavelength_array = preprocess_input(
         reflectance, errors, wavelengths
     )
-    difference = reflectance_array[...,1] - reflectance_array[...,0]
+    difference = reflectance_array[1] - reflectance_array[0]
     distance = wavelength_array[1] - wavelength_array[0]
     slope_value = difference / distance
     error_values = addition_in_quadrature(error_array)
@@ -151,10 +151,10 @@ def band_depth(
         )
     distance = wave_middle - wave_left
     slope_value = slope(
-        reflectance_array[..., 0:2], None, np.array([wave_left, wave_right])
+        reflectance_array[ 0:2], None, np.array([wave_left, wave_right])
     )[0]
-    continuum_ref = reflectance_array[...,0] + slope_value * distance
-    band_depth_value = 1 - reflectance_array[...,2] / continuum_ref
+    continuum_ref = reflectance_array[0] + slope_value * distance
+    band_depth_value = 1 - reflectance_array[2] / continuum_ref
     error_values = addition_in_quadrature(error_array)
     if error_values is not None:
         error_values /= continuum_ref
@@ -182,7 +182,7 @@ def band_min(
         (
             np.array([
                 wavelength_array[ix]
-                for ix in np.argmin(reflectance_array, axis=-1)
+                for ix in np.argmin(reflectance_array, axis=0)
             ]),
             reflectance,
         ),
@@ -202,7 +202,7 @@ def band_max(
         (
             np.array([
                 wavelength_array[ix]
-                for ix in np.argmax(reflectance_array, axis=-1)
+                for ix in np.argmax(reflectance_array, axis=0)
             ]),
             reflectance,
         ),
