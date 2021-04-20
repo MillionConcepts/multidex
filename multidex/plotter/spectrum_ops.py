@@ -37,6 +37,8 @@ def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     """
     # cartesian product of these sets gives all possible sign combos for
     # error high, error low, i.e.,
+    if spec_op.__name__ in ['band_min', 'band_max']:
+        return spec_op(filter_df, spec_model, *filters)[0], None
     unc = INSTRUMENT_UNCERTAINTIES[spec_model.instrument]
     corners = product(*[[1, -1] for _ in filters])
     bounds_df_list = []
@@ -188,50 +190,52 @@ def band_avg(filter_df, spec_model, filt_1, filt_2, errors=False):
         filter_waves[filt_2],
         errors=errors,
     )
-    return spectops.band_avg(band_df, error_df, None)
+    if error_df is not None:
+        error_df = error_df.T
+    return spectops.band_avg(band_df.T, error_df, None)
 
 
-def band_max(filter_df, spec_model, filt_1, filt_2, _):
+def band_max(filter_df, spec_model, filt_1, filt_2, _errors=False):
     """
     max reflectance value between filt_1 and filt_2 (inclusive)
     note that error values aren't meaningful here so the request
     is ignored
     """
     filter_waves = spec_model().all_filter_waves()
-    band_df, error_df = band(
+    band_df, _error_df = band(
         filter_df,
         spec_model,
         filter_waves[filt_1],
         filter_waves[filt_2],
         False,
     )
-    return spectops.band_max(band_df, error_df, band_df.columns)
+    return spectops.band_max(band_df.T, None, band_df.columns)
 
 
-def band_min(filter_df, spec_model, filt_1, filt_2, _):
+def band_min(filter_df, spec_model, filt_1, filt_2, _errors=False):
     """
     min reflectance value between filt_1 and filt_2 (inclusive)
     note that error values aren't meaningful here so the request
     is ignored
     """
     filter_waves = spec_model().all_filter_waves()
-    band_df, error_df = band(
+    band_df, _error_df = band(
         filter_df,
         spec_model,
         filter_waves[filt_1],
         filter_waves[filt_2],
         False,
     )
-    return spectops.band_min(band_df, error_df, band_df.columns)
+    return spectops.band_min(band_df.T, None, band_df.columns)
 
 
 def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):
     """
     ratio of reflectance values at filt_1 & filt_2
     """
-    band_df = filter_df[[filt_1, filt_2]]
+    band_df = filter_df[[filt_1, filt_2]].T
     if errors:
-        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]]
+        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]].T
     else:
         error_df = None
     return spectops.ratio(band_df, error_df, None)
@@ -242,9 +246,9 @@ def slope(filter_df, spec_model, filt_1, filt_2, errors=False):
     slope of line drawn between reflectance values at these two filters.
     do we allow 'backwards' lines? for now yes
     """
-    band_df = filter_df[[filt_1, filt_2]]
+    band_df = filter_df[[filt_1, filt_2]].T
     if errors:
-        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]]
+        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]].T
     else:
         error_df = None
     filter_waves = spec_model().all_filter_waves()
@@ -270,11 +274,11 @@ def band_depth(
     do we allow 'backwards' lines? for now yes (so 'left' and 'right'
     are misnomers)
     """
-    band_df = filter_df[[filt_left, filt_right, filt_middle]]
+    band_df = filter_df[[filt_left, filt_right, filt_middle]].T
     if errors:
         error_df = filter_df[
             [filt_left + "_err", filt_right + "_err", filt_middle + "_err"]
-        ]
+        ].T
     else:
         error_df = None
     filter_waves = spec_model().all_filter_waves()
