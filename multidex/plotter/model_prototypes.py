@@ -10,7 +10,7 @@ from typing import Optional, Sequence
 from django.db import models
 from toolz import keyfilter
 
-from marslab.compatibility import polish_xcam_spectrum, DERIVED_CAM_DICT
+from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
 from plotter_utils import modeldict
 
 # these groupings may not be important, but are harmless at present
@@ -120,14 +120,14 @@ SPECTRUM_OP_INTERFACE_PROPERTIES = (
     },
     SPECTRUM_OP_BASE_PROPERTIES
     | {
-        "value": "band_depth_custom",
+        "value": "band_depth",
         "arity": 3,
     },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_depth_min",
-        "arity": 2,
-    },
+    # SPECTRUM_OP_BASE_PROPERTIES
+    # | {
+    #     "value": "band_depth_min",
+    #     "arity": 2,
+    # },
 )
 
 # dictionary defining generalized interface properties

@@ -7,6 +7,7 @@ decorators in order to generate flow control within a dash app.
 """
 
 import datetime as dt
+import os
 import re
 from ast import literal_eval
 from collections import Iterable
@@ -132,6 +133,13 @@ def truncate_id_list_for_missing_properties(
     return list(reduce(pd.Index.intersection, indices))
 
 
+def deframe(df_or_series):
+    if isinstance(df_or_series, pd.DataFrame):
+        assert len(df_or_series.columns == 1)
+        return df_or_series.iloc[:, 0]
+    return df_or_series
+
+
 def perform_spectrum_op(
     id_list,
     spec_model,
@@ -158,11 +166,11 @@ def perform_spectrum_op(
                 queryset_df, spec_model, spectrum_op, *filt_args
             )
             return (
-                list(np.array(vals)),
+                list(deframe(vals).values),
                 {
                     "symmetric": False,
-                    "arrayminus": list(np.abs(np.array(errors[0]))),
-                    "array": list(np.abs(np.array(errors[1]))),
+                    "arrayminus": list(np.abs(np.array(deframe(errors[0])))),
+                    "array": list(np.abs(np.array(deframe(errors[1])))),
                 },
                 title,
             )
@@ -171,11 +179,11 @@ def perform_spectrum_op(
         )
         if get_errors:
             return (
-                list(np.array(vals)),
-                {"array": list(np.array(errors))},
+                list(deframe(vals).values),
+                {"array": list(deframe(errors).values)},
                 title,
             )
-        return list(vals.values), None, title
+        return list(deframe(vals).values), None, title
     except ValueError:  # usually representing intermediate input states
         raise PreventUpdate
 
@@ -280,7 +288,7 @@ def make_marker_properties(
     base_size = re_get(settings, "-marker-base-size.value")
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
-            32 + base_size if spectrum in highlight_id_list else base_size
+            base_size*1.9 if spectrum in highlight_id_list else base_size
             for spectrum in id_list
         ]
         opacity = 0.5
@@ -1202,6 +1210,7 @@ def save_search_tab_state(
         save_name = dt.datetime.now().strftime("%D %H:%M:%S")
     state_line["name"] = save_name
     appended_df = pd.concat([saved_searches, state_line], axis=0)
+    os.makedirs('saves', exists_ok=True)
     appended_df.to_csv(filename, index=False)
     return trigger_value + 1
 
@@ -1409,5 +1418,6 @@ def export_graph_csv(_clicks, selected, *, cget):
     if selected is not None:
         filename += "_custom_selection"
     filename += ".csv"
+    os.makedirs('exports', exists_ok=True)
     output_df.to_csv("exports/" + filename, index=None)
     return 1

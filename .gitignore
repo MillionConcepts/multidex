@@ -3,9 +3,9 @@
 **/.ipynb_checkpoints
 *.log
 **idea/
-/multidex/cache
-/multidex/exports/
-/multidex/saves/
+/multidex/cache/*
+/multidex/exports/*
+/multidex/saves/*
 /multidex/scratch_app.py
 /multidex/scratch_calc.ipynb
 /multidex/app.ipynb

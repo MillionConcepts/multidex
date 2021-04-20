@@ -2,8 +2,8 @@ import PIL
 import fs
 from django.db import models
 
-from marslab.compatibility import (
-    DERIVED_CAM_DICT,
+from marslab.compat.xcam import DERIVED_CAM_DICT
+from marslab.compat.mertools import (
     MERSPECT_MSL_COLOR_MAPPINGS,
     MERSPECT_M20_COLOR_MAPPINGS,
 )
