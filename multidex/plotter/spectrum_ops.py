@@ -1,12 +1,17 @@
+"""
+functions for calculations on spectral features.
+includes preprocessing and wrapping for marslab.spectops
+"""
+
 import math
 from itertools import product
 from typing import Union
 
 import numpy as np
-from numpy.linalg import norm
 import pandas as pd
 
-from marslab.compatibility import INSTRUMENT_UNCERTAINTIES
+from marslab.compat.xcam import INSTRUMENT_UNCERTAINTIES
+from marslab import spectops
 from plotter_utils import qlist
 
 
@@ -151,7 +156,7 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
         error_df.columns = [
             spec_model().all_filter_waves()[column]
-            for column in band_df.columns
+            for column in band_df.cols
         ]
     else:
         error_df = None
@@ -183,9 +188,7 @@ def band_avg(filter_df, spec_model, filt_1, filt_2, errors=False):
         filter_waves[filt_2],
         errors=errors,
     )
-    if errors:
-        return band_df.mean(axis=1), norm(error_df, axis=1)
-    return band_df.mean(axis=1), None
+    return spectops.band_avg(band_df, error_df, None)
 
 
 def band_max(filter_df, spec_model, filt_1, filt_2, _):
@@ -202,7 +205,7 @@ def band_max(filter_df, spec_model, filt_1, filt_2, _):
         filter_waves[filt_2],
         False,
     )
-    return band_df.idxmax(axis=1), None
+    return spectops.band_max(band_df, error_df, band_df.columns)
 
 
 def band_min(filter_df, spec_model, filt_1, filt_2, _):
@@ -219,29 +222,19 @@ def band_min(filter_df, spec_model, filt_1, filt_2, _):
         filter_waves[filt_2],
         False,
     )
-    return band_df.idxmin(axis=1), None
+    return spectops.band_min(band_df, error_df, band_df.columns)
 
 
 def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):
     """
     ratio of reflectance values at filt_1 & filt_2
     """
-    ratio_value = filter_df[filt_1] / filter_df[filt_2]
-    # TODO: this is a weak approximation
+    band_df = filter_df[[filt_1, filt_2]]
     if errors:
-        errs = filter_df[filt_1 + "_err"], filter_df[filt_2 + "_err"]
-        return (
-            ratio_value,
-            (
-                errs[0] * errs[1]
-                + errs[0] ** 2
-                + errs[1]
-                + errs[0]
-                + errs[1] ** 2
-            )
-            ** 0.5,
-        )
-    return ratio_value, None
+        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]]
+    else:
+        error_df = None
+    return spectops.ratio(band_df, error_df, None)
 
 
 def slope(filter_df, spec_model, filt_1, filt_2, errors=False):
@@ -249,17 +242,17 @@ def slope(filter_df, spec_model, filt_1, filt_2, errors=False):
     slope of line drawn between reflectance values at these two filters.
     do we allow 'backwards' lines? for now yes
     """
-    filter_waves = spec_model().all_filter_waves()
-    difference = filter_df[filt_2] - filter_df[filt_1]
-    distance = filter_waves[filt_2] - filter_waves[filt_1]
-    slope_value = difference / distance
+    band_df = filter_df[[filt_1, filt_2]]
     if errors:
-        errs = filter_df[[filt_1 + "_err", filt_2 + "_err"]]
-        return slope_value, norm(errs, axis=1) / distance
-    return slope_value, None
+        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]]
+    else:
+        error_df = None
+    filter_waves = spec_model().all_filter_waves()
+    wavelengths = (filter_waves[filt_1], filter_waves[filt_2])
+    return spectops.slope(band_df, error_df, wavelengths)
 
 
-def band_depth_custom(
+def band_depth(
     filter_df,
     spec_model,
     filt_left: str,
@@ -277,66 +270,58 @@ def band_depth_custom(
     do we allow 'backwards' lines? for now yes (so 'left' and 'right'
     are misnomers)
     """
-    if len({filt_left, filt_middle, filt_right}) != 3:
-        raise ValueError(
-            "band depth between a wavelength and itself is undefined"
-        )
-    filter_waves = spec_model().all_filter_waves()
-    wave_left = filter_waves[filt_left]
-    wave_right = filter_waves[filt_right]
-    wave_middle = filter_waves[filt_middle]
-    if not (
-        max(wave_left, wave_right) > wave_middle > min(wave_left, wave_right)
-    ):
-        raise ValueError(
-            "band depth can only be calculated at a band within the "
-            "chosen range."
-        )
-    distance = wave_middle - wave_left
-    slope_series = slope(filter_df, spec_model, filt_left, filt_right)[0]
-    continuum_ref = filter_df[filt_left] + slope_series * distance
+    band_df = filter_df[[filt_left, filt_right, filt_middle]]
     if errors:
-        errs = filter_df[
-            [filt + "_err" for filt in [filt_left, filt_right, filt_middle]]
+        error_df = filter_df[
+            [filt_left + "_err", filt_right + "_err", filt_middle + "_err"]
         ]
-        return (
-            1 - filter_df[filt_middle] / continuum_ref,
-            norm(errs, axis=1) / continuum_ref,
-        )
-    return 1 - filter_df[filt_middle] / continuum_ref, None
-
-
-def band_depth_min(filter_df, spec_model, filt_1, filt_2, errors=False):
-    """
-    simple band depth at local minimum --
-    local minimum reflectance / reflectance of 'continuum'
-    (straight line between filt_1 and filt_2) at that wavelength.
-    band depth between adjacent points is defined as 1.
-    passing filt_1 == filt_2 returns an error.
-
-    do we allow 'backwards' lines? for now yes
-    """
-    if filt_1 == filt_2:
-        raise ValueError(
-            "band depth between a wavelength and itself is undefined"
-        )
-    filter_waves = spec_model().all_filter_waves()
-    wave_1 = filter_waves[filt_1]
-    wave_2 = filter_waves[filt_2]
-
-    intervening_df, _ = intervening(filter_df, spec_model, wave_1, wave_2)
-
-    min_ref = intervening_df.min(axis=1)
-    min_wave = intervening_df.idxmin(axis=1)
-
-    distance_series = min_wave - wave_1
-    slope_series, _ = slope(filter_df, spec_model, filt_1, filt_2)
-    continuum_ref = filter_df[filt_1] + slope_series * distance_series
-    if errors:
-        return (
-            1 - min_ref / continuum_ref,
-            norm(filter_df[[filt_1 + "_err", filt_2 + "_err"]], axis=1)
-            / continuum_ref,
-        )
     else:
-        return 1 - min_ref / continuum_ref, None
+        error_df = None
+    filter_waves = spec_model().all_filter_waves()
+    wavelengths = (
+        filter_waves[filt_left],
+        filter_waves[filt_right],
+        filter_waves[filt_middle]
+    )
+    return spectops.band_depth(band_df, error_df, wavelengths)
+
+# currently deprecated
+
+# def band_depth_min(filter_df, spec_model, filt_1, filt_2, errors=False):
+#     """
+#     simple band depth at local minimum --
+#     local minimum reflectance / reflectance of 'continuum'
+#     (straight line between filt_1 and filt_2) at that wavelength.
+#     band depth between adjacent points is defined as 1.
+#     passing filt_1 == filt_2 returns an error.
+#
+#     do we allow 'backwards' lines? for now yes
+#     """
+#     if filt_1 == filt_2:
+#         raise ValueError(
+#             "band depth between a wavelength and itself is undefined"
+#         )
+#     filter_waves = spec_model().all_filter_waves()
+#     wave_1 = filter_waves[filt_1]
+#     wave_2 = filter_waves[filt_2]
+#
+#     intervening_df, _ = intervening(filter_df, spec_model, wave_1, wave_2)
+#
+#     min_ref = intervening_df.min(axis=1)
+#     min_wave = intervening_df.idxmin(axis=1)
+#
+#     distance_series = min_wave - wave_1
+#     slope_series, _ = slope(filter_df, spec_model, filt_1, filt_2)
+#     continuum_ref = filter_df[filt_1] + slope_series * distance_series
+#     band_depth = 1 - min_ref / continuum_ref
+#     if errors:
+#         # TODO: this is hugely cheating -- adding in quadrature with
+#         #  gaussian assumptions and ignoring the contribution of the
+#         #  center filter
+#         return (
+#             band_depth,
+#             norm(filter_df[[filt_1 + "_err", filt_2 + "_err"]], axis=1)
+#             / continuum_ref,
+#         )
+#     else:
+#         return band_depth, None
