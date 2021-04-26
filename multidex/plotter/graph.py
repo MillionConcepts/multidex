@@ -1212,7 +1212,7 @@ def save_search_tab_state(
         save_name = dt.datetime.now().strftime("%D %H:%M:%S")
     state_line["name"] = save_name
     appended_df = pd.concat([saved_searches, state_line], axis=0)
-    os.makedirs('saves', exists_ok=True)
+    os.makedirs('saves')
     appended_df.to_csv(filename, index=False)
     return trigger_value + 1
 
@@ -1420,6 +1420,6 @@ def export_graph_csv(_clicks, selected, *, cget):
     if selected is not None:
         filename += "_custom_selection"
     filename += ".csv"
-    os.makedirs('exports', exists_ok=True)
+    os.makedirs('exports')
     output_df.to_csv("exports/" + filename, index=None)
     return 1

@@ -73,7 +73,7 @@ def ratio(
     )
     ratio_value = reflectance_array[0] / reflectance_array[1]
     if None not in error_array:
-        error_array = error_array[0:1]
+        error_array = error_array[0:2]
     error_values = addition_in_quadrature(error_array)
     return reindex_if_pandas(
         (ratio_value, reflectance), (error_values, errors)
@@ -105,13 +105,14 @@ def band_avg(
 def slope(
     reflectance: Union[pd.DataFrame, pd.Series, Sequence, np.ndarray],
     errors: Union[pd.DataFrame, pd.Series, Sequence, np.ndarray, None] = None,
-    wavelengths: Optional[Sequence] = None,
+    wavelengths: Union[Sequence] = None,
 ):
     """
     just a slope function. notionally, slope in reflectance-
     wavelength space between two filters. only looks at the first
     two 'rows' you pass it, should you pass it more.
     """
+    assert not None in wavelengths, 'wavelengths must be passed to slope()'
     reflectance_array, error_array, wavelength_array = preprocess_input(
         reflectance, errors, wavelengths
     )
@@ -129,11 +130,14 @@ def slope(
 def band_depth(
     reflectance: Union[pd.DataFrame, pd.Series, Sequence, np.ndarray],
     errors: Union[pd.DataFrame, pd.Series, Sequence, np.ndarray, None] = None,
-    wavelengths: Optional[Sequence] = None,
+    wavelengths: Union[Sequence] = None,
 ):
+    assert not None in wavelengths, 'wavelengths must be passed to band_depth()'
     reflectance_array, error_array, wavelength_array = preprocess_input(
         reflectance, errors, wavelengths
     )
+    #assert np.shape(reflectance_array)[1]==3, 'band depth requires exactly 3 bands'
+    #assert np.shape(wavelength_array)[1]==3, 'band depth requires exactly 3 bands'
     # just for clarity
     wave_left = wavelength_array[0]
     wave_right = wavelength_array[1]
@@ -175,19 +179,18 @@ def band_min(
     _errors: Union[pd.DataFrame, pd.Series, Sequence, np.ndarray, None] = None,
     wavelengths: Optional[Sequence] = None,
 ):
+    assert not None in wavelengths, 'wavelengths must be passed to band_min()'
     reflectance_array, _error_array, wavelength_array = preprocess_input(
         reflectance, None, wavelengths
     )
     return reindex_if_pandas(
         (
-            np.array([
-                wavelength_array[ix]
-                for ix in np.argmin(reflectance_array, axis=0)
-            ]),
+            wavelength_array[np.argmin(reflectance_array, axis=0)],
             reflectance,
         ),
         (None, None),
     )
+
 
 
 def band_max(
@@ -195,16 +198,16 @@ def band_max(
     _errors: Union[pd.DataFrame, pd.Series, Sequence, np.ndarray, None] = None,
     wavelengths: Optional[Sequence] = None,
 ):
+    assert not None in wavelengths, 'wavelengths must be passed to band_min()'
     reflectance_array, _error_array, wavelength_array = preprocess_input(
         reflectance, None, wavelengths
     )
     return reindex_if_pandas(
         (
-            np.array([
-                wavelength_array[ix]
-                for ix in np.argmax(reflectance_array, axis=0)
-            ]),
+            wavelength_array[np.argmax(reflectance_array, axis=0)],
             reflectance,
         ),
         (None, None),
     )
+
+
