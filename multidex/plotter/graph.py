@@ -507,7 +507,7 @@ def toggle_search_input_visibility(field, *, spec_model):
         raise PreventUpdate
 
     if (
-        keygrab(spec_model.searchable_fields, "label", field)["value_type"]
+        keygrab(spec_model.searchable_fields(), "label", field)["value_type"]
         == "quant"
     ):
         return [{"display": "none"}, {}]
@@ -614,7 +614,7 @@ def update_search_options(
     is_loading = (
         "search-load-trigger" in dash.callback_context.triggered[0]["prop_id"]
     )
-    props = keygrab(spec_model.searchable_fields, "label", field)
+    props = keygrab(spec_model.searchable_fields(), "label", field)
     metadata_df = cget("metadata_df")
     # if it's a field we do number interval searches on, reset term
     # interface and show number ranges in the range display. but don't reset
@@ -681,7 +681,7 @@ def handle_graph_search(metadata_df, parameters, spec_model):
     for parameter in parameters:
         field = parameter.get("field")
         if field:
-            props = keygrab(spec_model.searchable_fields, "label", field)
+            props = keygrab(spec_model.searchable_fields(), "label", field)
             parameter["value_type"] = props["value_type"]
     # toss out blank strings, etc. -- they do not restrict the search
     parameters = non_blank_search_parameters(parameters)
@@ -708,7 +708,7 @@ def update_filter_df(
         average_filters = True
     else:
         average_filters = False
-    if scale_to != "None":
+    if scale_to not in ["None", None]:
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     if "r-star" in r_star:
         r_star = True
@@ -799,7 +799,7 @@ def add_dropdown(children, spec_model, cget, cset):
     else:
         index = index + 1
 
-    searchable_fields = spec_model.searchable_fields
+    searchable_fields = spec_model.searchable_fields()
     children.append(search_parameter_div(index, searchable_fields, None))
     cset("search_parameter_index", index)
     return children
@@ -824,7 +824,7 @@ def remove_dropdown(index, children, _cget, _cset):
 
 def clear_search(cset, spec_model):
     cset("search_parameter_index", 0)
-    searchable_fields = spec_model.searchable_fields
+    searchable_fields = spec_model.searchable_fields()
     return [search_parameter_div(0, searchable_fields, None)]
 
 
@@ -910,7 +910,6 @@ def update_spectrum_graph(
     if scale_to != "None":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     average_filters = True if average_input_value == ["average"] else False
-    show_error = True if error_bar_value == ["error"] else False
     if not event_data:
         raise PreventUpdate
     spectrum = spectrum_from_graph_event(event_data, spec_model)
@@ -919,7 +918,7 @@ def update_spectrum_graph(
         scale_to=scale_to,
         average_filters=average_filters,
         r_star=r_star,
-        show_error=show_error,
+        show_error=error_bar_value,
     )
 
 

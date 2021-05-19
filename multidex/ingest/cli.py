@@ -71,7 +71,7 @@ ZCAM_BOOL_FIELDS = [
 
 def process_context_files(context_files, nailpipe, make_thumbnails=True):
     context_df = pd.DataFrame(context_files, columns=["path"])
-    context_df["stem"] = context_df["path"].str.extract(r"(SITE.*\d).*context")
+    context_df["stem"] = context_df["path"].str.extract(r"(SITE.*).context")
     context_df["eye"] = context_df["path"].str.extract(r"(left|right)")
     if make_thumbnails:
         print("making thumbnails")
@@ -83,7 +83,7 @@ def process_context_files(context_files, nailpipe, make_thumbnails=True):
 def match_obs_images(marslab_file, context_df):
     file_stem = fs.path.split(marslab_file)[-1].replace("-marslab.csv", "")
     context_matches = context_df.loc[
-        context_df["path"].str.find(file_stem) != -1
+        context_df["stem"] == str(file_stem)
     ]
     context_df.loc[context_matches.index, "save"] = True
     obs_images = {}
@@ -154,3 +154,4 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
             except Exception as ex:
                 print("failed on " + row["color"] + ": " + str(ex))
         print("successfully ingested " + ", ".join(colors))
+    save_relevant_thumbs(context_df)
