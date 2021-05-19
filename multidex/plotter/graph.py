@@ -106,7 +106,7 @@ def truncate_id_list_for_missing_properties(
     for suffix in input_suffixes:
         axis_option = re_get(settings, "-graph-option-" + suffix)
         model_property = keygrab(
-            spec_model.graphable_properties, "value", axis_option
+            spec_model.graphable_properties(), "value", axis_option
         )
         if model_property["type"] == "method":
             # we assume here that 'methods' all take a spectrum's filter names
@@ -208,7 +208,7 @@ def make_axis(
     # what is requested function or property?
     axis_option = re_get(settings, "-graph-option-")
     # what are the characteristics of that function or property?
-    props = keygrab(spec_model.graphable_properties, "value", axis_option)
+    props = keygrab(spec_model.graphable_properties(), "value", axis_option)
     if props["type"] == "method":
         return perform_spectrum_op(
             id_list,
@@ -243,7 +243,7 @@ def make_marker_properties(
     been processed by truncate_id_list_for_missing_properties
     """
     marker_option = re_get(settings, "-graph-option-")
-    props = keygrab(spec_model.graphable_properties, "value", marker_option)
+    props = keygrab(spec_model.graphable_properties(), "value", marker_option)
     # it would really be better to do this in components
     # but is difficult because you have to instantiate the colorbar somewhere
     # it would also be better to style with CSS but it seems like plotly
@@ -648,7 +648,7 @@ def change_calc_input_visibility(calc_type, *, spec_model):
     on and off in response to changes in arity / type of
     requested calc
     """
-    props = keygrab(spec_model.graphable_properties, "value", calc_type)
+    props = keygrab(spec_model.graphable_properties(), "value", calc_type)
     # 'methods' are specifically those methods of spec_model
     # that take its filters as arguments
     if props["type"] == "method":
@@ -971,10 +971,10 @@ def make_zspec_browse_image_components(
     """
     file_info = zspec.overlay_browse_file_info(image_directory)
     image_div_children = []
-    for image_type in ["rgb", "enhanced"]:
+    for eye in ["left", "right"]:
         try:
             # size = file_info[eye + "_size"]
-            filename = static_image_url + file_info[image_type + "_file"]
+            filename = static_image_url + file_info[eye + "_file"]
         except KeyError:
             # size = (480, 480)
             filename = static_image_url + "missing.jpg"
@@ -985,7 +985,7 @@ def make_zspec_browse_image_components(
             html.Img(
                 src=filename,
                 style={"width": "50%", "height": "50%"},
-                id="spec-image-" + image_type,
+                id="spec-image-" + eye,
             )
         )
         component = html.Div(
