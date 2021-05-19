@@ -8,12 +8,21 @@ dependencies:
   - pillow
   - dash
   - toolz
+  - cytoolz
   - jupyter
   - django-extensions
+  - more-itertools
   - pandas
   - plotly
   - numpy
   - fs
   - matplotlib
   - flask-caching
+  - werkzeug==1.0.1
+  - clize
+
+
+
+# TODO: find some way to deal with the posixemulation deprecation in werkzeug -- PR to flask-caching, vendoring?
+
 
