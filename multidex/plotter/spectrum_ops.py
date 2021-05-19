@@ -10,7 +10,7 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from marslab.compat.xcam import INSTRUMENT_UNCERTAINTIES
+from marslab.compat.xcam import INSTRUMENT_UNCERTAINTIES, DERIVED_CAM_DICT
 from marslab import spectops
 from plotter_utils import qlist
 
@@ -29,6 +29,11 @@ def r2d(
     return 180 * radians / math.pi
 
 
+def uncertainty(spec_model, filter):
+    unc = INSTRUMENT_UNCERTAINTIES[spec_model.instrument]
+    return unc
+    # spec_model.virtual_filter_mapping
+
 def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     """
     crude bounds for the hull of the range of possible measurements
@@ -39,7 +44,7 @@ def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     # error high, error low, i.e.,
     if spec_op.__name__ in ['band_min', 'band_max']:
         return spec_op(filter_df, spec_model, *filters)[0], None
-    unc = INSTRUMENT_UNCERTAINTIES[spec_model.instrument]
+    unc = uncertainty(spec_model.instrument)
     corners = product(*[[1, -1] for _ in filters])
     bounds_df_list = []
     # apply these signs to uncertainty values, getting a list of dataframes

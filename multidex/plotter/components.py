@@ -287,11 +287,11 @@ def main_graph_scatter(
 
 
 def mspec_graph_line(
-        spectrum: "MSpec",
-        scale_to=("l1", "r1"),
-        average_filters=True,
-        show_error=True,
-        r_star=True,
+    spectrum: "MSpec",
+    scale_to=("l1", "r1"),
+    average_filters=True,
+    show_error=True,
+    r_star=True,
 ) -> go.Figure:
     """
     placeholder line graph for individual mastcam spectra.
@@ -299,8 +299,7 @@ def mspec_graph_line(
     roi_color.
     """
     spectrum_data = spectrum.filter_values(
-        scale_to=scale_to,
-        average_filters=average_filters,
+        scale_to=scale_to, average_filters=average_filters
     )
     x_axis = [filt_value["wave"] for filt_value in spectrum_data.values()]
     y_axis = [filt_value["mean"] for filt_value in spectrum_data.values()]
@@ -316,6 +315,7 @@ def mspec_graph_line(
         for filt in spectrum_data
     ]
     fig = go.Figure()
+    show_error=True
     fig.add_trace(
         go.Scatter(
             x=x_axis,
