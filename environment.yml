@@ -4,22 +4,23 @@ channels:
   - defaults
 dependencies:
   - python=3.9
+  - conda-build
+  - fs
+  - clize
   - django
   - pillow
   - dash
   - toolz
   - cytoolz
   - jupyter
+  - flask-caching
   - django-extensions
   - more-itertools
+  - numpy
   - pandas
   - plotly
-  - numpy
-  - fs
   - matplotlib
-  - flask-caching
   - werkzeug==1.0.1
-  - clize
 
 
 
