@@ -676,8 +676,12 @@ def handle_graph_search(metadata_df, parameters, spec_model):
     fills fields from model definition and feeds resultant list to a general-
     purpose search function.
     """
+    # nothing here? great
+    if not parameters:
+        return list(metadata_df.index)
     # add value_type and type information to dictionaries (based on
     # search properties defined in the model)
+
     for parameter in parameters:
         field = parameter.get("field")
         if field:
@@ -1211,7 +1215,7 @@ def save_search_tab_state(
         save_name = dt.datetime.now().strftime("%D %H:%M:%S")
     state_line["name"] = save_name
     appended_df = pd.concat([saved_searches, state_line], axis=0)
-    os.makedirs('saves')
+    os.makedirs('saves', exist_ok=True)
     appended_df.to_csv(filename, index=False)
     return trigger_value + 1
 
@@ -1419,6 +1423,6 @@ def export_graph_csv(_clicks, selected, *, cget):
     if selected is not None:
         filename += "_custom_selection"
     filename += ".csv"
-    os.makedirs('exports')
+    os.makedirs('exports', exist_ok=True)
     output_df.to_csv("exports/" + filename, index=None)
     return 1
