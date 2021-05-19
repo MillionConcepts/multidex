@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)

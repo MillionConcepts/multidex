@@ -6,8 +6,15 @@ import re
 from functools import partial, reduce
 from inspect import signature
 from operator import and_, gt, ge, lt, le, or_, contains
-from typing import Callable, Iterable, Any, TYPE_CHECKING, Mapping, Union, \
-    Optional
+from typing import (
+    Callable,
+    Iterable,
+    Any,
+    TYPE_CHECKING,
+    Mapping,
+    Union,
+    Optional,
+)
 
 import dash
 import dash_html_components as html
@@ -35,8 +42,8 @@ def re_get(mapping, pattern):
 
 def seconds_since_beginning_of_day(time: dt.time) -> float:
     return (
-            dt.datetime.combine(dt.date(1, 1, 1), time)
-            - dt.datetime(1, 1, 1, 0, 0, 0)
+        dt.datetime.combine(dt.date(1, 1, 1), time)
+        - dt.datetime(1, 1, 1, 0, 0, 0)
     ).total_seconds()
 
 
@@ -56,7 +63,7 @@ def not_blank(obj: Any) -> bool:
 
 
 def none_to_quote_unquote_none(
-        list_containing_none: Iterable[Any],
+    list_containing_none: Iterable[Any],
 ) -> list[Any]:
     de_noned_list = []
     for element in list_containing_none:
@@ -83,7 +90,7 @@ def qlist(queryset: "QuerySet", attribute: str) -> list:
 
 
 def filter_null_attributes(
-        queryset: "QuerySet", attribute_list: Iterable[str], check_related=None
+    queryset: "QuerySet", attribute_list: Iterable[str], check_related=None
 ) -> "QuerySet":
     if check_related is not None:
         attribute_list = [
@@ -114,11 +121,11 @@ def field_values(metadata_df, field=None):
 
 
 def djget(
-        model: "Model",
-        value: Any,
-        field: str = "name",
-        method_name: str = "filter",
-        querytype: str = "iexact",
+    model: "Model",
+    value: Any,
+    field: str = "name",
+    method_name: str = "filter",
+    querytype: str = "iexact",
 ) -> Union["QuerySet", "Model"]:
     """flexible interface to queryset methods"""
     # get the requested method of model.objects
@@ -127,6 +134,11 @@ def djget(
     # most of these, like 'filter', return other querysets;
     # some, like 'get', return individual model instances
     return method(**{field + "__" + querytype: value})
+
+
+def field_names(django_model_object: "Model") -> list[str]:
+    """tries to construct a dictionary from arbitrary django model instance"""
+    return [field.name for field in django_model_object._meta.get_fields()]
 
 
 def modeldict(django_model_object: "Model") -> dict:
@@ -152,6 +164,7 @@ def columns(dataframe: pd.DataFrame) -> list[np.ndarray]:
 
 # dash-y dictionary utilities
 
+
 def dict_to_paragraphs(dictionary, style=None, ordering=None):
     """
     parses dictionary to list of dash <p> components
@@ -160,9 +173,7 @@ def dict_to_paragraphs(dictionary, style=None, ordering=None):
         style = {"margin": 0, "fontSize": 14}
 
     def make_paragraph(key, value):
-        return html.P(
-            str(key) + " " + str(value), style=style
-        )
+        return html.P(str(key) + " " + str(value), style=style)
 
     if ordering is None:
         ordering = []
@@ -172,14 +183,15 @@ def dict_to_paragraphs(dictionary, style=None, ordering=None):
         if key in dictionary.keys()
     ]
     unordered_grafs = [
-        make_paragraph(key, value) for key, value in dictionary.items()
+        make_paragraph(key, value)
+        for key, value in dictionary.items()
         if key not in ordering
     ]
     return ordered_grafs + unordered_grafs
 
 
 def pickitems(dictionary: Mapping, some_list: Iterable) -> dict:
-    """items of dict where key is in some_list """
+    """items of dict where key is in some_list"""
     return keyfilter(in_me(some_list), dictionary)
 
 
@@ -200,8 +212,8 @@ def comps_to_strings(component_list: Iterable["Component"]) -> list[str]:
 
 
 def pickctx(
-        ctx: dash._callback_context.CallbackContext,
-        component_list: Iterable["Component"],
+    ctx: dash._callback_context.CallbackContext,
+    component_list: Iterable["Component"],
 ) -> dict:
     """states and inputs of dash callback context if component is in
     component_list"""
@@ -264,7 +276,7 @@ def dump_it(data, loud=True):
 
 
 def make_printer(
-        element, prop, app, print_target="print", process_function=dump_it
+    element, prop, app, print_target="print", process_function=dump_it
 ):
     """
     utility callback factory. impure! inserts the callback into the tree
@@ -309,7 +321,7 @@ def get_parameters(func: Callable) -> list[str]:
 
 
 def partially_evaluate_from_parameters(
-        func: Callable, parameters: Mapping
+    func: Callable, parameters: Mapping
 ) -> Callable:
     """
     return a copy of the input function partially evaluated from any value
@@ -353,7 +365,7 @@ def none_to_empty(thing: Any) -> Any:
 
 
 def flexible_query(
-        queryset: "QuerySet", field: "str", value: Any
+    queryset: "QuerySet", field: "str", value: Any
 ) -> "QuerySet":
     """
     little search function that checks exact and loose phrases.
@@ -371,7 +383,7 @@ def flexible_query(
 
 
 def inflexible_query(
-        queryset: "QuerySet", field: "str", value: Any
+    queryset: "QuerySet", field: "str", value: Any
 ) -> "QuerySet":
     """little search function that checks only exact phrases"""
     query = field + "__iexact"
@@ -379,7 +391,7 @@ def inflexible_query(
 
 
 def term_search(
-        queryset: "QuerySet", field: "str", value: Any, inflexible=False
+    queryset: "QuerySet", field: "str", value: Any, inflexible=False
 ) -> "QuerySet":
     """
     model, string, string or number or whatever -> queryset
@@ -396,7 +408,7 @@ def term_search(
 
 
 def value_fetch_search(
-        queryset: "QuerySet", field: "str", value_list: Iterable
+    queryset: "QuerySet", field: "str", value_list: Iterable
 ) -> "QuerySet":
     """
     queryset, field of underlying model, list of values -> queryset
@@ -413,11 +425,11 @@ def value_fetch_search(
 
 
 def interval_search(
-        queryset: "QuerySet",
-        field: str,
-        interval_begin: Any = None,
-        interval_end: Any = None,
-        strictly: bool = False,
+    queryset: "QuerySet",
+    field: str,
+    interval_begin: Any = None,
+    interval_end: Any = None,
+    strictly: bool = False,
 ) -> "QuerySet":
     """
     interval_begin and interval_end must be of types for which
@@ -464,7 +476,7 @@ def interval_search(
 
 
 def multiple_field_search(
-        queryset: "QuerySet", parameters: Iterable
+    queryset: "QuerySet", parameters: Iterable
 ) -> "QuerySet":
     """
     dispatcher that handles multiple search parameters and returns a queryset.
@@ -506,7 +518,7 @@ def multiple_field_search(
 
 
 def df_flexible_query(
-        metadata_df: pd.DataFrame, field: "str", value: Any
+    metadata_df: pd.DataFrame, field: "str", value: Any
 ) -> pd.DataFrame.index:
     """
     little search function that checks exact and loose phrases.
@@ -521,14 +533,14 @@ def df_flexible_query(
 
 
 def df_inflexible_query(
-        metadata_df: pd.DataFrame, field: "str", value: Any
+    metadata_df: pd.DataFrame, field: "str", value: Any
 ) -> pd.DataFrame.index:
     """little search function that checks only exact phrases"""
     return metadata_df.loc[metadata_df[field] == value].index
 
 
 def df_term_search(
-        metadata_df: pd.DataFrame, field: "str", value: Any, inflexible=False
+    metadata_df: pd.DataFrame, field: "str", value: Any, inflexible=False
 ) -> pd.DataFrame.index:
     """
     model, string, string or number or whatever -> queryset
@@ -545,11 +557,11 @@ def df_term_search(
 
 
 def df_interval_search(
-        metadata_df: pd.DataFrame,
-        field: str,
-        interval_begin: Any = None,
-        interval_end: Any = None,
-        strictly: bool = False,
+    metadata_df: pd.DataFrame,
+    field: str,
+    interval_begin: Any = None,
+    interval_end: Any = None,
+    strictly: bool = False,
 ) -> pd.DataFrame.index:
     """
     interval_begin and interval_end must be of types for which
@@ -569,12 +581,16 @@ def df_interval_search(
         greater_than = ge
 
     # these variables are queries defined by the ordering on this attribute.
-    greater_than_begin = metadata_df[field].loc[
-        greater_than(metadata_df[field], interval_begin)
-    ].index
-    less_than_end = metadata_df[field].loc[
-        less_than(metadata_df[field], interval_end)
-    ].index
+    greater_than_begin = (
+        metadata_df[field]
+        .loc[greater_than(metadata_df[field], interval_begin)]
+        .index
+    )
+    less_than_end = (
+        metadata_df[field]
+        .loc[less_than(metadata_df[field], interval_end)]
+        .index
+    )
 
     # select only entries with attribute greater than interval_begin (if
     # defined)
@@ -588,13 +604,13 @@ def df_interval_search(
 
 
 def df_value_fetch_search(
-        metadata_df: pd.DataFrame, field: "str", value_list: Iterable
+    metadata_df: pd.DataFrame, field: "str", value_list: Iterable
 ) -> pd.DataFrame.index:
     return metadata_df[field].isin(value_list).index
 
 
 def df_multiple_field_search(
-        metadata_df: pd.DataFrame, parameters: Iterable
+    metadata_df: pd.DataFrame, parameters: Iterable
 ) -> list:
     """
     dispatcher that handles multiple search parameters and returns a queryset.
@@ -649,9 +665,11 @@ def fetch_css_variables(css_file: str = "assets/main.css") -> dict[str, str]:
     return css_variable_dictionary
 
 
-def model_metadata_df(model: Any, relation_names: Optional[list[str]] = None) -> pd.DataFrame:
+def model_metadata_df(
+    model: Any, relation_names: Optional[list[str]] = None
+) -> pd.DataFrame:
     try:
-        dict_function = getattr(model, 'metadata_dict')
+        dict_function = getattr(model, "metadata_dict")
     except AttributeError:
         dict_function = modeldict
     if relation_names is None:

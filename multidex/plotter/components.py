@@ -404,7 +404,7 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
     """
     options = [
         {"label": option["label"], "value": option["value"]}
-        for option in spec_model.graphable_properties
+        for option in spec_model.graphable_properties()
     ]
     if not value:
         if "marker" in element_id:
@@ -952,7 +952,7 @@ def search_tab(
                         },
                         children=[
                             search_container_div(
-                                spec_model.searchable_fields,
+                                spec_model.searchable_fields(),
                                 get_r("search_parameters"),
                             ),
                             html.Div(

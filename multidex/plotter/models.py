@@ -1,22 +1,31 @@
 import PIL
 import fs
 from django.db import models
+from marslab.compat.mertools import (
+    MERSPECT_M20_COLOR_MAPPINGS,
+    MERSPECT_MSL_COLOR_MAPPINGS,
+)
 
 from marslab.compat.xcam import DERIVED_CAM_DICT
-from marslab.compat.mertools import (
-    MERSPECT_MSL_COLOR_MAPPINGS,
-    MERSPECT_M20_COLOR_MAPPINGS,
-)
-from plotter.model_prototypes import (
-    XSpec,
-    filter_fields_factory,
-)
+from plotter.model_prototypes import XSpec, filter_fields_factory, B_N_I
 
 
 class ZSpec(XSpec):
-    zoom = models.CharField(
-        "Zoom Code", blank=True, null=True, max_length=10, db_index=True
-    )
+    zoom = models.CharField("Zoom Code", max_length=10, **B_N_I)
+    # shared target identifier with other instruments, usually null
+    target = models.CharField("Target", max_length=60, **B_N_I)
+    # rover motion counter for the mast -- for repointed stereo
+    # observations, this is the first RMS in the sequence
+    rms = models.IntegerField("RMS", **B_N_I)
+    # timestamp of file if automatically produced by asdf
+    file_timestamp = models.CharField(max_length=30, null=True)
+    #
+    compression = models.CharField("Compression", max_length=40, **B_N_I)
+    morphology = models.CharField("Morphology", max_length=20, **B_N_I)
+    distance = models.CharField("Distance", max_length=20, **B_N_I)
+    location = models.CharField("Location", max_length=60, **B_N_I)
+    workspace = models.CharField("Workspace", max_length=40, **B_N_I)
+    scam = models.BooleanField("SCAM", **B_N_I)
     instrument = "ZCAM"
 
     def roi_hex_code(self) -> str:
@@ -36,6 +45,11 @@ class ZSpec(XSpec):
 
 
 class MSpec(XSpec):
+    # large-to-small taxonomic categories for rock clusters
+    formation = (models.CharField("Formation", **B_N_I, max_length=50),)
+    member = (models.CharField("Member", **B_N_I, max_length=50),)
+    notes = (models.CharField("Notes", **B_N_I, max_length=100),)
+
     instrument = "MCAM"
 
     def roi_hex_code(self) -> str:
