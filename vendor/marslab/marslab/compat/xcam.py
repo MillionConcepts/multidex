@@ -107,7 +107,7 @@ def make_xcam_filter_pairs(abbreviation):
     filter_dict = make_xcam_filter_dict(abbreviation)
     return tuple(
         [
-            (filter_1, filter_2)
+            sorted((filter_1, filter_2))
             for filter_1, filter_2 in combinations(filter_dict, 2)
             if abs(filter_dict[filter_1] - filter_dict[filter_2]) <= 5
         ]
@@ -199,7 +199,7 @@ def polish_xcam_spectrum(
                     (
                         spectrum[comps[0]] * lefteye_scale,
                         spectrum[comps[1]] * righteye_scale,
-                    ),
+                    ), 
                 ),
             }
             if all([comp + "_ERR" in spectrum.keys() for comp in comps]):
@@ -212,7 +212,7 @@ def polish_xcam_spectrum(
         mean_value = spectrum.get(real_filter)
         if mean_value is None:
             continue
-        if real_filter.startswith("r"):
+        if real_filter.lower().startswith("r"):
             eye_scale = righteye_scale
         else:
             eye_scale = lefteye_scale
