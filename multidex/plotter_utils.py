@@ -664,7 +664,7 @@ def fetch_css_variables(css_file: str = "assets/main.css") -> dict[str, str]:
         css_variable_dictionary[key] = value
     return css_variable_dictionary
 
-
+# TODO: this can be made more efficient using idiomatic django cursor calls
 def model_metadata_df(
     model: Any, relation_names: Optional[list[str]] = None
 ) -> pd.DataFrame:

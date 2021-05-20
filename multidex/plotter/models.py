@@ -47,9 +47,9 @@ class ZSpec(XSpec):
 
 class MSpec(XSpec):
     # large-to-small taxonomic categories for rock clusters
-    formation = (models.CharField("Formation", **B_N_I, max_length=50),)
-    member = (models.CharField("Member", **B_N_I, max_length=50),)
-    notes = (models.CharField("Notes", **B_N_I, max_length=100),)
+    formation = models.CharField("Formation", **B_N_I, max_length=50)
+    member = models.CharField("Member", **B_N_I, max_length=50)
+    notes = models.CharField("Notes", **B_N_I, max_length=100)
 
     instrument = "MCAM"
 
