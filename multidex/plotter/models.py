@@ -25,7 +25,9 @@ class ZSpec(XSpec):
     location = models.CharField("Location", max_length=60, **B_N_I)
     workspace = models.CharField("Workspace", max_length=40, **B_N_I)
     scam = models.BooleanField("SCAM", **B_N_I)
-    roi_set_name = models.CharField("ROI set name", max_length=30, **B_N_I)
+    analysis_name = models.CharField(
+        "analysis / ROI set name", max_length=30, **B_N_I
+    )
     instrument = "ZCAM"
 
     def roi_hex_code(self) -> str:

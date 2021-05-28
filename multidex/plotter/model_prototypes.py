@@ -151,6 +151,8 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "location", "value_type": "qual"},
     {"value": "workspace", "value_type": "qual"},
     {"value": "scam", "value_type": "qual"},
+    {"value": "analysis_name", "value_type": "qual"},
+
 )
 for prop in chain.from_iterable(
     [XCAM_FIELD_INTERFACE_PROPERTIES, SPECTRUM_OP_INTERFACE_PROPERTIES]
@@ -193,7 +195,9 @@ class XSpec(models.Model):
         return [
             ap
             for ap in cls.accessible_properties()
-            if prop["value"] not in ("color", "seq_id", "name")
+            if prop["value"] not in (
+                "color", "seq_id", "name", "analysis_name"
+            )
         ]
 
     @classmethod
