@@ -1,8 +1,9 @@
+import datetime as dt
 import os
+from operator import attrgetter
 from pathlib import Path
 
 import django.db.models
-import fs
 import numpy as np
 from fs.osfs import OSFS
 import pandas as pd
@@ -71,7 +72,13 @@ ZCAM_BOOL_FIELDS = [
 
 def process_context_files(context_files, nailpipe, make_thumbnails=True):
     context_df = pd.DataFrame(context_files, columns=["path"])
-    context_df["stem"] = context_df["path"].str.extract(r"(SITE.*).context")
+    context_df["stem"] = (
+        context_df["path"]
+        .map(attrgetter('name'))
+        .str.replace(r" context.*", "", regex=True)
+    )
+    context_df["path"] = context_df["path"].astype(str)
+
     context_df["eye"] = context_df["path"].str.extract(r"(left|right)")
     if make_thumbnails:
         print("making thumbnails")
@@ -81,10 +88,8 @@ def process_context_files(context_files, nailpipe, make_thumbnails=True):
 
 
 def match_obs_images(marslab_file, context_df):
-    file_stem = fs.path.split(marslab_file)[-1].replace("-marslab.csv", "")
-    context_matches = context_df.loc[
-        context_df["stem"] == str(file_stem)
-    ]
+    file_stem = marslab_file.name.replace("-marslab.csv", "")
+    context_matches = context_df.loc[context_df["stem"] == str(file_stem)]
     context_df.loc[context_matches.index, "save"] = True
     obs_images = {}
     for record in context_matches[["stem", "eye"]].to_dict(orient="records"):
@@ -122,7 +127,7 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
     marslab_files, context_files = find_ingest_files(path, recursive)
     context_df = process_context_files(context_files, default_thumbnailer())
     for marslab_file in marslab_files:
-        print("ingesting spectra from " + marslab_file)
+        print("ingesting spectra from " + marslab_file.name)
         obs_images = str(match_obs_images(marslab_file, context_df))
         if obs_images != "{}":
             print("found matching images: " + obs_images)
@@ -141,14 +146,15 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
             for filt in set(ZSpec.filters).intersection(row.index):
                 row[filt] = float(row[filt])
             metadata = dict(row) | {
-                "filename": fs.path.split(marslab_file)[-1],
+                "filename": Path(marslab_file).name,
                 "images": obs_images,
+                "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z"
             }
             try:
                 spectrum = ZSpec(**metadata)
                 spectrum.clean()
                 spectrum.save()
-                colors.append(row["color"] + " " + row.get("feature"))
+                colors.append(row["color"] + " " + str(row.get("feature")))
             except KeyboardInterrupt:
                 raise
             except Exception as ex:

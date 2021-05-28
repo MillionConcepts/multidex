@@ -19,7 +19,6 @@ class ZSpec(XSpec):
     rms = models.IntegerField("RMS", **B_N_I)
     # timestamp of file if automatically produced by asdf
     file_timestamp = models.CharField(max_length=30, null=True)
-    #
     compression = models.CharField("Compression", max_length=40, **B_N_I)
     morphology = models.CharField("Morphology", max_length=20, **B_N_I)
     distance = models.CharField("Distance", max_length=20, **B_N_I)
