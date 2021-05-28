@@ -50,6 +50,7 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
         "Source CSV Filename", max_length=100, db_index=True
     ),
     "sclk": models.IntegerField("Spacecraft Clock", **B_N_I),
+    "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I)
 }
 
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
