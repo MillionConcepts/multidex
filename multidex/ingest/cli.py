@@ -51,11 +51,11 @@ def find_ingest_files(path, recursive=False):
             tree.getsyspath, filter(looks_like_context, tree.walk.files())
         )
     elif path.is_dir():
-        marslab_files = filter(looks_like_marslab, path.iterdir())
-        context_files = filter(looks_like_context, path.iterdir())
+        marslab_files = map(str, filter(looks_like_marslab, path.iterdir()))
+        context_files = map(str, filter(looks_like_context, path.iterdir()))
     else:
-        marslab_files = [path]
-        context_files = filter(looks_like_context, path.iterdir())
+        marslab_files = [str(path)]
+        context_files = map(str, filter(looks_like_context, path.iterdir()))
     return marslab_files, context_files
 
 
@@ -72,13 +72,12 @@ ZCAM_BOOL_FIELDS = [
 
 def process_context_files(context_files, nailpipe, make_thumbnails=True):
     context_df = pd.DataFrame(context_files, columns=["path"])
-    context_df["stem"] = (
-        context_df["path"]
-        .map(attrgetter('name'))
-        .str.replace(r" context.*", "", regex=True)
-    )
-    context_df["path"] = context_df["path"].astype(str)
-
+    context_df["stem"] = [
+        Path(path).name
+        for path in context_df["path"].str.replace(
+            r"[ -]context.*", "", regex=True
+        )
+    ]
     context_df["eye"] = context_df["path"].str.extract(r"(left|right)")
     if make_thumbnails:
         print("making thumbnails")
@@ -88,7 +87,7 @@ def process_context_files(context_files, nailpipe, make_thumbnails=True):
 
 
 def match_obs_images(marslab_file, context_df):
-    file_stem = marslab_file.name.replace("-marslab.csv", "")
+    file_stem = Path(marslab_file).name.replace("-marslab.csv", "")
     context_matches = context_df.loc[context_df["stem"] == str(file_stem)]
     context_df.loc[context_matches.index, "save"] = True
     obs_images = {}
@@ -127,7 +126,7 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
     marslab_files, context_files = find_ingest_files(path, recursive)
     context_df = process_context_files(context_files, default_thumbnailer())
     for marslab_file in marslab_files:
-        print("ingesting spectra from " + marslab_file.name)
+        print("ingesting spectra from " + Path(marslab_file).name)
         obs_images = str(match_obs_images(marslab_file, context_df))
         if obs_images != "{}":
             print("found matching images: " + obs_images)
@@ -148,7 +147,7 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
             metadata = dict(row) | {
                 "filename": Path(marslab_file).name,
                 "images": obs_images,
-                "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z"
+                "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
             }
             try:
                 spectrum = ZSpec(**metadata)
