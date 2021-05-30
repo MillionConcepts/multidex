@@ -7,7 +7,7 @@ from collections.abc import Mapping, Collection, Sequence
 from itertools import chain
 from typing import Optional, Union
 
-# note: ignore complaints from static analyzers about this import. dill
+# note: ignore complaints from assets analyzers about this import. dill
 # performs pickling magick at import.
 from cytoolz.dicttoolz import merge, valfilter
 import dill

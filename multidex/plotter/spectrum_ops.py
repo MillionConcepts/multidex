@@ -12,7 +12,7 @@ import pandas as pd
 
 from marslab.compat.xcam import INSTRUMENT_UNCERTAINTIES, DERIVED_CAM_DICT
 from marslab import spectops
-from plotter_utils import qlist
+from multidex_utils import qlist
 
 
 def d2r(
