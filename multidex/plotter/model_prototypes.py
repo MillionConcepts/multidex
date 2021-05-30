@@ -50,7 +50,7 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
         "Source CSV Filename", max_length=100, db_index=True
     ),
     "sclk": models.IntegerField("Spacecraft Clock", **B_N_I),
-    "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I)
+    "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I),
 }
 
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
@@ -80,47 +80,36 @@ XCAM_SINGLE_SPECTRUM_FIELDS = {
 
 # dictionaries defining generalized interface properties
 # for spectrum operation functions (band depth, etc.)
-SPECTRUM_OP_BASE_PROPERTIES = {
-    "type": "method",
-    "value_type": "quant",
-}
+SPECTRUM_OP_BASE_PROPERTIES = {"type": "method", "value_type": "quant"}
 SPECTRUM_OP_INTERFACE_PROPERTIES = (
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "ref",
-        "arity": 1,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "slope",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_avg",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_max",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_min",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "ratio",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_depth",
-        "arity": 3,
-    },
+    {"value": "ref", "arity": 1},
+    {"value": "slope", "arity": 2},
+    {"value": "band_avg", "arity": 2},
+    {"value": "band_max", "arity": 2},
+    {"value": "band_min", "arity": 2},
+    {"value": "ratio", "arity": 2},
+    {"value": "band_depth", "arity": 3},
+    {"value": "pca", "arity": None},
 )
+
+for op in SPECTRUM_OP_INTERFACE_PROPERTIES:
+    op |= SPECTRUM_OP_BASE_PROPERTIES
+
+REDUCTION_OP_BASE_PROPERTIES = {
+        "value_type": "quant",
+        "arity": None,
+        "type": "decomposition",
+    }
+
+
+# TODO: figure out how to implement decomposition parameter
+#  controls; maybe this doesn't go here, it's a separate interface,
+#  something like that
+REDUCTION_OP_INTERFACE_PROPERTIES = [
+    {"value": "pca_" + str(ix + 1)} | SPECTRUM_OP_BASE_PROPERTIES
+    for ix in range(3)
+]
+
 
 # dictionary defining generalized interface properties
 # for various XCAM fields
@@ -152,10 +141,13 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "workspace", "value_type": "qual"},
     {"value": "scam", "value_type": "qual"},
     {"value": "analysis_name", "value_type": "qual"},
-
 )
 for prop in chain.from_iterable(
-    [XCAM_FIELD_INTERFACE_PROPERTIES, SPECTRUM_OP_INTERFACE_PROPERTIES]
+    [
+        XCAM_FIELD_INTERFACE_PROPERTIES,
+        SPECTRUM_OP_INTERFACE_PROPERTIES,
+        REDUCTION_OP_INTERFACE_PROPERTIES
+    ]
 ):
     if "label" not in prop.keys():
         prop["label"] = prop["value"]
@@ -195,9 +187,8 @@ class XSpec(models.Model):
         return [
             ap
             for ap in cls.accessible_properties()
-            if prop["value"] not in (
-                "color", "seq_id", "name", "analysis_name"
-            )
+            if prop["value"]
+            not in ("color", "seq_id", "name", "analysis_name")
         ]
 
     @classmethod

@@ -108,6 +108,9 @@ def truncate_id_list_for_missing_properties(
         model_property = keygrab(
             spec_model.graphable_properties(), "value", axis_option
         )
+        if model_property["type"] == 'decomposition':
+            # assuming here for now all decompositions require all filters
+            filt_args.append(list(spec_model.filters.keys()))
         if model_property["type"] == "method":
             # we assume here that 'methods' all take a spectrum's filter names
             # as arguments, and have arguments in an order corresponding to the
