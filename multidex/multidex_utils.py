@@ -88,6 +88,7 @@ def arbitrarily_hash_strings(strings: Iterable[str]) -> tuple[dict, list[int]]:
 
 
 def qlist(queryset: "QuerySet", attribute: str) -> list:
+    """note: does not preserve order!"""
     return list(queryset.values_list(attribute, flat=True))
 
 
