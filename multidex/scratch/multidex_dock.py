@@ -12,7 +12,7 @@ from flask_caching import Cache
 
 from plotter.debug import debug_check_cache
 from plotter.spectrum_ops import filter_df_from_queryset
-from plotter_utils import partially_evaluate_from_parameters, qlist, \
+from multidex_utils import partially_evaluate_from_parameters, qlist, \
     model_metadata_df
 
 # note: ignore any PEP 8-based linter / IDE complaints about import order: the
@@ -209,7 +209,7 @@ static_image_url = "/images/browse/"
 # host-side directory containing those images.
 # note this is just ROI browse images for now
 # TODO: add a link
-image_directory = "./static_in_pro/our_static/img/roi_browse/"
+image_directory = "./static_in_pro/our_static/browse/roi_browse/"
 
 # insert 'settings' / 'global' values for this app into callback functions.
 # in Dash, callback functions encapsulate I/O behavior for components and
@@ -271,7 +271,7 @@ for function in functions_requiring_settings:
     )
 
 
-# serve static images using a flask 'route.'
+# serve assets images using a flask 'route.'
 # does defining this function here violate my conventions a little bit? not
 # sure.
 @app.server.route(static_image_url + "<path:path>")

@@ -33,7 +33,7 @@ from plotter.components import (
     search_tab,
 )
 from plotter.spectrum_ops import filter_df_from_queryset
-from plotter_utils import (
+from multidex_utils import (
     djget,
     dict_to_paragraphs,
     rows,
@@ -932,7 +932,7 @@ def make_mspec_browse_image_components(
     """
     MSpec object, size factor (viewport units), image directory ->
     pair of dash html.Img components containing the spectrum-reduced
-    images associated with that object, pathed to the static image
+    images associated with that object, pathed to the assets image
     route defined in the live app instance
     """
     file_info = mspec.overlay_browse_file_info(image_directory)
@@ -969,7 +969,7 @@ def make_zspec_browse_image_components(
     """
     ZSpec object, size factor (viewport units), image directory ->
     pair of dash html.Img components containing the rgb and enhanced
-    images associated with that object, pathed to the static image
+    images associated with that object, pathed to the assets image
     route defined in the live app instance -- silly hack rn
     """
     file_info = zspec.overlay_browse_file_info(image_directory)

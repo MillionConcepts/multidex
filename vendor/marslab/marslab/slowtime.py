@@ -12,7 +12,7 @@ references:
     3. Allison, M., and M. McEwen 2000. A post-Pathfinder evaluation of
     aerocentric solar coordinates with improved
     timing recipes for Mars seasonal/diurnal climate studies. Planet. Space
-    Sci., 48, 215-235. (see /static/docs/Allison_2000.pdf)
+    Sci., 48, 215-235. (see /assets/references/Allison_2000.pdf)
 """
 import datetime as dt
 from typing import Union

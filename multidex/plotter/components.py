@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 
 from plotter.proffered_markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
 from plotter.spectrum_ops import d2r
-from plotter_utils import get_if, none_to_empty, fetch_css_variables
+from multidex_utils import get_if, none_to_empty, fetch_css_variables
 
 if TYPE_CHECKING:
     from plotter.models import MSpec, Spectrum
@@ -198,7 +198,7 @@ def spec_graph(name: str, index: int) -> dcc.Graph:
 
 
 def image_holder(index: int = 0) -> dcc.Graph:
-    """dash component factory for zoomable static images. maybe. placeholder"""
+    """dash component factory for zoomable assets images. maybe. placeholder"""
     return dcc.Graph(
         id="image-" + str(index),
     )
