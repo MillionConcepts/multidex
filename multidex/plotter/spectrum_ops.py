@@ -298,7 +298,7 @@ def band_depth(
     return spectops.band_depth(band_df, error_df, wavelengths)
 
 
-def pca_means(filter_df, n_components=3):
+def pca_means(filter_df, n_components=4):
     if filter_df.isna().any():
         raise ValueError("do not use pca_means on arrays containing NaN")
     pca = PCA(n_components=n_components)

@@ -107,7 +107,7 @@ REDUCTION_OP_BASE_PROPERTIES = {
 #  something like that
 REDUCTION_OP_INTERFACE_PROPERTIES = [
     {"value": "pca_" + str(ix + 1)} | SPECTRUM_OP_BASE_PROPERTIES
-    for ix in range(3)
+    for ix in range(4)
 ]
 
 

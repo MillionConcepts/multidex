@@ -16,13 +16,14 @@ from typing import (
     Optional,
 )
 
+from cytoolz import keyfilter
 import dash
 import dash_html_components as html
 import numpy as np
 import pandas as pd
 from dash.dependencies import Input, Output
 from django.db.models import Q
-from toolz import keyfilter, merge, isiterable
+from toolz import merge, isiterable
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component
@@ -666,6 +667,7 @@ def fetch_css_variables(css_file: str = DEFAULT_CSS_PATH) -> dict[str, str]:
         value = re.sub(r"[ \n;]", "", value)
         css_variable_dictionary[key] = value
     return css_variable_dictionary
+
 
 # TODO: this can be made more efficient using idiomatic django cursor calls
 def model_metadata_df(
