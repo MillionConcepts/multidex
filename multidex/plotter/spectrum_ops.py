@@ -98,7 +98,9 @@ def filter_df_from_queryset(
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #  it's preferable to have rules for this on models.
     if r_star:
-        theta_i = np.cos(d2r(pd.Series(qlist(queryset, "incidence_angle"))))
+        theta_i = np.cos(
+            d2r(pd.Series([spec.incidence_angle for spec in queryset]))
+        )
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
     filter_df.index = id_list
