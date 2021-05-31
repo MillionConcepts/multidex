@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import MappingProxyType
 
 import PIL
 from django.db import models
@@ -103,3 +104,13 @@ for spec_model in [ZSpec, MSpec]:
         mean_field, err_field = filter_fields_factory(filt)
         mean_field.contribute_to_class(spec_model, filt.lower())
         err_field.contribute_to_class(spec_model, filt.lower() + "_err")
+
+    # add fields to each model
+    setattr(
+        spec_model,
+        "field_names",
+        [field.name for field in spec_model._meta.fields],
+    )
+
+# for automated model selection
+INSTRUMENT_MODEL_MAPPING = MappingProxyType({"ZCAM": ZSpec, "MCAM": MSpec})

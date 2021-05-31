@@ -8,13 +8,15 @@ from collections.abc import (
 )
 from functools import reduce
 from itertools import repeat
+from typing import Union
 
-import PIL.Image
-import matplotlib.cm as cm
 import matplotlib as mpl
+import matplotlib.cm as cm
 import matplotlib.figure
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
+from numpy.typing import ArrayLike
 
 from marslab.imgops.debayer import make_bayer, debayer_upsample
 from marslab.imgops.imgutils import (
@@ -24,13 +26,12 @@ from marslab.imgops.imgutils import (
 )
 from marslab.imgops.pltutils import (
     set_colorbar_font,
-    remove_ticks,
-    get_mpl_image,
+    get_mpl_image, attach_axis, strip_axes,
 )
 
 
 def decorrelation_stretch(
-    channels,
+    channels: Sequence[ArrayLike],
     *,
     contrast_stretch=None,
     special_constants=None,
@@ -41,7 +42,7 @@ def decorrelation_stretch(
     Gillespie et al. 1986, etc., etc.
 
     This is partly an adaptation of the MATLAB DCS implementation.
-    Work towards this adaptation is partly due to lbrabec
+    Work towards this adaptation is partly due to Lukáš Brabec
     (github.com/lbrabec/decorrstretch) and Christian Tate (unreleased).
     """
     working_array = np.dstack(channels)
@@ -100,8 +101,8 @@ def render_overlay(
     overlay_image,
     base_image,
     *,
-    overlay_cmap="viridis",
-    base_cmap="Greys_r",
+    overlay_cmap=cm.get_cmap("viridis"),
+    base_cmap=cm.get_cmap("Greys_r"),
     overlay_opacity=0.5,
     mpl_settings=None,
 ):
@@ -113,16 +114,12 @@ def render_overlay(
       stored separately, which is ugly and circuitous. so maybe no intermediate
       possibility, or at least intent
     """
+    if mpl_settings is None:
+        mpl_settings = {}
     norm = plt.Normalize(vmin=overlay_image.min(), vmax=overlay_image.max())
     fig = plt.figure()
     ax = fig.add_subplot()
-    colorbar = plt.colorbar(
-        cm.ScalarMappable(norm=norm, cmap=overlay_cmap),
-        ax=ax,
-        fraction=0.03,
-        pad=0.04,
-        alpha=overlay_opacity,
-    )
+
     base_image = normalize_range(base_image, (0, 1), 1)
     if isinstance(base_cmap, str):
         base_cmap = cm.get_cmap(base_cmap)
@@ -132,10 +129,15 @@ def render_overlay(
         base_cmap(base_image) * (1 - overlay_opacity)
         + overlay_cmap(norm(overlay_image)) * overlay_opacity
     )
-    remove_ticks(ax)
-    if mpl_settings is not None:
-        if mpl_settings.get("colorbar_fp"):
-            set_colorbar_font(colorbar, mpl_settings["colorbar_fp"])
+    strip_axes(ax)
+    cax = attach_axis(ax, size="3%", pad="0.5%")
+    colorbar = plt.colorbar(
+        cm.ScalarMappable(norm=norm, cmap=overlay_cmap),
+        alpha=overlay_opacity,
+        cax=cax
+    )
+    if mpl_settings.get("colorbar_fp"):
+        set_colorbar_font(colorbar, mpl_settings["colorbar_fp"])
     return fig
 
 
@@ -233,7 +235,7 @@ def make_thumbnail(
         thumbnail_array = get_mpl_image(image_array).convert("RGB")
     elif isinstance(image_array, np.ndarray):
         image_array = eightbit(image_array)
-        thumbnail_array = PIL.Image.fromarray(image_array).convert("RGB")
+        thumbnail_array = Image.fromarray(image_array).convert("RGB")
     else:
         thumbnail_array = image_array
     thumbnail_array.thumbnail(thumbnail_size)
@@ -264,29 +266,22 @@ def colormapped_plot(
     ax = fig.add_subplot()
     ax.imshow(array)
     if render_colorbar:
+        cax = attach_axis(ax, size="3%", pad="0.5%")
         colorbar = plt.colorbar(
-            cm.ScalarMappable(norm=norm, cmap=cmap),
-            ax=ax,
-            fraction=0.03,
-            pad=0.04,
+            cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax,
         )
         if colorbar_fp:
             set_colorbar_font(colorbar, colorbar_fp)
     if no_ticks:
-        remove_ticks(ax)
+        strip_axes(ax)
     return fig
 
 
-def simple_mpl_figure(
-    image,
-):
+def simple_figure(image: Union[ArrayLike, Image.Image]) -> mpl.figure.Figure:
     """
-    wrap an image up in a matplotlib subplot and not much else
+    wrap an array up in a matplotlib subplot and not much else
     """
-    fig = plt.figure()
-    plt.tight_layout()
-    ax = fig.add_subplot()
+    fig, ax = plt.subplots()
     ax.imshow(image)
-    ax.set_xticks([])
-    ax.set_yticks([])
+    strip_axes(ax)
     return fig

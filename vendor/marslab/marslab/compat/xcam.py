@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from more_itertools import windowed
 
+
 WAVELENGTH_TO_FILTER = {
     "ZCAM": {
         "L": {
@@ -107,7 +108,7 @@ def make_xcam_filter_pairs(abbreviation):
     filter_dict = make_xcam_filter_dict(abbreviation)
     return tuple(
         [
-            sorted((filter_1, filter_2))
+            (filter_1, filter_2)
             for filter_1, filter_2 in combinations(filter_dict, 2)
             if abs(filter_dict[filter_1] - filter_dict[filter_2]) <= 5
         ]
@@ -199,7 +200,7 @@ def polish_xcam_spectrum(
                     (
                         spectrum[comps[0]] * lefteye_scale,
                         spectrum[comps[1]] * righteye_scale,
-                    ), 
+                    ),
                 ),
             }
             if all([comp + "_ERR" in spectrum.keys() for comp in comps]):
@@ -326,7 +327,7 @@ def piecewise_interpolate_focal_length(zmc):
         )
 
 
-NARROWBAND_TO_BAYER = {
+BAND_TO_BAYER = {
     "ZCAM": {
         "L1": "red",
         "L2": "red",
@@ -351,8 +352,11 @@ NARROWBAND_TO_BAYER = {
 
 
 def count_rois_on_xcam_images(
-    roi_hdulist, xcam_image_dict, instrument,
-    pixel_map_dict=None, bayer_pixel_dict =None,
+    roi_hdulist,
+    xcam_image_dict,
+    instrument,
+    pixel_map_dict=None,
+    bayer_pixel_dict=None,
 ):
     """
     takes an roi hdulist, a dict of xcam images, and returns a marslab data
@@ -362,10 +366,10 @@ def count_rois_on_xcam_images(
     control flow that we've chosen to structure it differently from the
     quick imaging functions. perhaps this is wrong, though.
 
-    TODO: too messy.
+    TODO: way too huge and messy.
     """
     from marslab.imgops.debayer import RGGB_PATTERN, make_bayer
-    from marslab.imgops.regions import count_rois_on_image
+    from marslab.imgops.regions import count_rois_on_image, roi_stats
 
     roi_listing = []
     # unrolling for easier iteration
@@ -381,7 +385,7 @@ def count_rois_on_xcam_images(
     right_hdu_arrays = [hdu.data for hdu in right_hdus]
     right_hdu_names = [hdu.header["NAME"] for hdu in right_hdus]
     if bayer_pixel_dict is None:
-        bayer_pixel_dict = NARROWBAND_TO_BAYER[instrument]
+        bayer_pixel_dict = BAND_TO_BAYER[instrument]
     if not all([pixel is None for pixel in bayer_pixel_dict.values()]):
         bayer_masks = make_bayer(
             list(xcam_image_dict.values())[0].shape, RGGB_PATTERN
@@ -402,13 +406,17 @@ def count_rois_on_xcam_images(
                 detector_mask[bayer_coords] = True
         else:
             detector_mask = np.full(image.shape, True)
-        # TODO: pixel maps can be added here, this is a sketch --
-        #  maybe will need more complicated logic for individual filters / eyes
-        if pixel_map_dict is not None:
-            if filter_name in pixel_map_dict.keys():
-                detector_mask = np.logical_and(
-                    detector_mask, pixel_map_dict[filter_name]
-                )
+        # forbidding saturated and otherwise bad pixels
+        if pixel_map_dict:
+            if filter_name[1] == "0":
+                base_pixel_map = pixel_map_dict.get(filter_name[0:2])
+            else:
+                base_pixel_map = pixel_map_dict.get(filter_name)
+            if base_pixel_map is not None:
+                # masking bad, no-signal, and saturated pixels
+                flag_mask = np.full(image.shape, True)
+                flag_mask[np.where(np.isin(base_pixel_map, [1, 2, 4]))] = False
+                detector_mask = np.logical_and(detector_mask, flag_mask)
         if filter_name.upper().startswith("L"):
             roi_arrays = left_hdu_arrays
             roi_names = left_hdu_names
@@ -426,10 +434,52 @@ def count_rois_on_xcam_images(
                     "COLOR": roi_name,
                     filter_name: counts["mean"],
                     filter_name + "_ERR": counts["err"],
+                    filter_name + "_MODE": counts["mode"][0],
+                }
+                | {
+                    filter_name + "_" + stat.upper(): counts[stat]
+                    for stat in counts.keys()
                 }
             )
+    roi_frame = pd.DataFrame(roi_listing, dtype=np.float32)
+    cubestat_frame = roi_frame.copy()
+    cubestats = []
+    for eye in ("LEFT", "RIGHT"):
+        eye_values = cubestat_frame[
+            [
+                c
+                for c in cubestat_frame.columns
+                if "VALUES" in c and c.startswith(eye[0].upper())
+            ]
+        ]
+        if len(eye_values.columns) == 0:
+            continue
+        eye_values.index = cubestat_frame["COLOR"]
+        melted = pd.melt(eye_values, ignore_index=False).dropna()
+        for roi_name in cubestat_frame["COLOR"].unique():
+            cube_counts = roi_stats(
+                np.hstack(melted.loc[roi_name]["value"].values)
+            )
+            cubestats.append(
+                {
+                    "COLOR": roi_name,
+                    eye: cube_counts["mean"],
+                    eye + "_ERR": cube_counts["err"],
+                    eye + "_MODE": cube_counts["mode"][0],
+                }
+                | {
+                    eye + "_" + stat.upper(): cube_counts[stat]
+                    for stat in cube_counts.keys()
+                }
+            )
+    # note pivoting automatically destroys any columns with arraylikes
     return (
-        pd.DataFrame(roi_listing, dtype=np.float32)
+        pd.concat(
+            [
+                pd.DataFrame(cubestats, dtype=np.float32),
+                pd.DataFrame(roi_listing, dtype=np.float32),
+            ]
+        )
         .pivot_table(columns=["COLOR"])
         .T.reset_index()
     )

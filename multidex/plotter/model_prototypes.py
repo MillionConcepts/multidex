@@ -170,16 +170,15 @@ class XSpec(models.Model):
     instrument_brief_name = None
     instrument_full_name = None
 
-    @classmethod
-    def field_names(cls):
-        return [field.name for field in cls._meta.get_fields()]
+    # this property is populated in models.py
+    field_names = None
 
     @classmethod
     def accessible_properties(cls):
         return list(SPECTRUM_OP_INTERFACE_PROPERTIES) + [
             fip
             for fip in XCAM_FIELD_INTERFACE_PROPERTIES
-            if fip["value"] in cls.field_names()
+            if fip["value"] in cls.field_names
         ]
 
     @classmethod
@@ -207,7 +206,7 @@ class XSpec(models.Model):
 
     def filter_values(
         self,
-        scale_to: Optional[Sequence] = None,
+        scale_to: Optional[Sequence[str]] = None,
         average_filters: bool = False,
     ) -> dict[str, dict]:
         """
