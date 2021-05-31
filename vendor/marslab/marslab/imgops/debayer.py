@@ -50,8 +50,8 @@ def make_pattern_masks(
 
 
 def make_bayer(
-    array_shape: tuple[int, int],
-    bayer_pattern: Mapping[str, tuple[int]],
+    array_shape: Sequence[int, int],
+    bayer_pattern: Mapping[str, Sequence[int]],
 ) -> dict[str, tuple]:
     """
     alias to make_pattern_masks
@@ -102,3 +102,31 @@ def debayer_upsample(
         return upsampled_images[0]
     return np.mean(np.dstack(upsampled_images), axis=-1)
 
+
+# TODO: extract methods, clean up
+def mask_bayer_pixels(
+    image: np.ndarray,
+    pixel: Union[str, Sequence[str]],
+    pattern: Mapping[str, tuple] = None,
+    masks: Mapping[str, tuple] = None,
+    default = 0,
+    **_kwargs  # TODO: hacky!
+) -> np.ndarray:
+    """
+    return a version of an image with non-matching bayer pixels set to default
+    """
+    assert not (pattern is None and masks is None), (
+        "debayer_blank() must be passed either a bayer pattern or "
+        "precalculated bayer masks."
+    )
+    masked = image.copy()
+    if isinstance(pixel, str):
+        pixel = [pixel]
+    if masks is None:
+        masks = make_bayer(image.shape, pattern)
+    for pix in masks.keys():
+        if pix in pixel:
+            continue
+        mask = masks[pix]
+        masked[mask] = default
+    return masked

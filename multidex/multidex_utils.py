@@ -147,6 +147,11 @@ def field_names(django_model_object: "Model") -> list[str]:
 
 def modeldict(django_model_object: "Model") -> dict:
     """tries to construct a dictionary from arbitrary django model instance"""
+    if 'field_names' in dir(django_model_object):
+        return {
+            field_name: getattr(django_model_object, field_name)
+            for field_name in django_model_object.field_names
+        }
     return {
         field.name: getattr(django_model_object, field.name)
         for field in django_model_object._meta.get_fields()

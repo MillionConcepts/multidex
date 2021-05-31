@@ -70,22 +70,22 @@ def scale_to_drop(model, element_id, value=None):
     return dcc.Dropdown(
         id=element_id,
         options=[{"label": "None", "value": "None"}]
-                + [
-                    {"label": filt + " " + str(wave) + "nm", "value": filt}
-                    for filt, wave in model.virtual_filters.items()
-                ],
+        + [
+            {"label": filt + " " + str(wave) + "nm", "value": filt}
+            for filt, wave in model.virtual_filters.items()
+        ],
         value=value,
         style={"maxWidth": "10rem"},
     )
 
 
 def scale_controls_container(
-        spec_model,
-        id_prefix,
-        scale_value=None,
-        r_star_value=None,
-        average_value=None,
-        error_value="none",
+    spec_model,
+    id_prefix,
+    scale_value=None,
+    r_star_value=None,
+    average_value=None,
+    error_value="none",
 ):
     # TODO: this is a messy way to handle weird cases in loading.
     # this should be cleaned up.
@@ -133,7 +133,7 @@ def scale_controls_container(
 
 
 def dynamic_spec_div(
-        print_name: str, graph_name: str, image_name: str, index: int
+    print_name: str, graph_name: str, image_name: str, index: int
 ) -> html.Div:
     return html.Div(
         children=[
@@ -172,9 +172,8 @@ def dynamic_spec_div(
 # TODO: determine if the following two component factories are necessary at all
 def main_graph() -> dcc.Graph:
     """dash component factory for main graph"""
-    fig = go.Figure()
+    fig = go.Figure(layout={**GRAPH_DISPLAY_DEFAULTS})
     # noinspection PyTypeChecker
-    fig.update_layout(GRAPH_DISPLAY_DEFAULTS)
     return dcc.Graph(
         id="main-graph",
         figure=fig,
@@ -186,9 +185,8 @@ def main_graph() -> dcc.Graph:
 
 def spec_graph(name: str, index: int) -> dcc.Graph:
     """dash component factory for reflectance graphs"""
-    fig = go.Figure()
+    fig = go.Figure(layout={**GRAPH_DISPLAY_DEFAULTS})
     # noinspection PyTypeChecker
-    fig.update_layout(GRAPH_DISPLAY_DEFAULTS)
     return dcc.Graph(
         id={"type": name, "index": index},
         figure=fig,
@@ -205,19 +203,19 @@ def image_holder(index: int = 0) -> dcc.Graph:
 
 
 def main_graph_scatter(
-        x_axis: list[float],
-        y_axis: list[float],
-        marker_property_dict: Mapping,
-        graph_display_settings: Mapping,
-        axis_display_settings: Mapping,
-        text: list,
-        customdata: list,
-        label_ids: list[int],
-        zoom: Optional[tuple[list[float, float]]] = None,
-        x_errors: Optional[dict] = None,
-        y_errors: Optional[dict] = None,
-        x_title: str = None,
-        y_title: str = None,
+    x_axis: list[float],
+    y_axis: list[float],
+    marker_property_dict: Mapping,
+    graph_display_settings: Mapping,
+    axis_display_settings: Mapping,
+    text: list,
+    customdata: list,
+    label_ids: list[int],
+    zoom: Optional[tuple[list[float, float]]] = None,
+    x_errors: Optional[dict] = None,
+    y_errors: Optional[dict] = None,
+    x_title: str = None,
+    y_title: str = None,
 ) -> go.Figure:
     """
     partial placeholder scatter function for main graph.
@@ -236,7 +234,7 @@ def main_graph_scatter(
     # for ... reasons ... so it looks like it
     # does nothing every other time unless you pan or whatever
     for database_id, string, xpos, ypos in zip(
-            customdata, text, x_axis, y_axis
+        customdata, text, x_axis, y_axis
     ):
         if database_id in label_ids:
             fig.add_annotation(
@@ -255,7 +253,8 @@ def main_graph_scatter(
     )
     display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
     axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
-
+    # TODO: refactor to build layout dictionary first rather than using the
+    #  update_layout pattern
     # noinspection PyTypeChecker
     fig.update_layout(display_dict)
     fig.update_xaxes(axis_display_dict | {"title_text": x_title})
@@ -269,10 +268,10 @@ def main_graph_scatter(
             fig.update_traces(
                 {
                     "error_" + name: error_dict
-                                     | {
-                                         "visible": True,
-                                         "color": "rgba(0,0,0,0.3)",
-                                     }
+                    | {
+                        "visible": True,
+                        "color": "rgba(0,0,0,0.3)",
+                    }
                 }
             )
 
@@ -314,23 +313,28 @@ def mspec_graph_line(
         filt + ", " + str(spectrum_data[filt]["wave"])
         for filt in spectrum_data
     ]
-    fig = go.Figure()
-    show_error=True
-    fig.add_trace(
-        go.Scatter(
-            x=x_axis,
-            y=y_axis,
-            mode="lines+markers",
-            text=text,
-            line={"color": spectrum.roi_hex_code()},
-            error_y={"array": y_error, "visible": show_error},
-        )
+    fig = go.Figure(
+        layout={
+            **GRAPH_DISPLAY_DEFAULTS,
+            "xaxis": AXIS_DISPLAY_DEFAULTS | {"title_text": "wavelength"},
+            "yaxis": AXIS_DISPLAY_DEFAULTS
+            | {
+                "title_text": "reflectance",
+                "range": [0, min(y_axis) + max(y_axis)],
+            },
+        }
     )
-    # noinspection PyTypeChecker
-    fig.update_layout(GRAPH_DISPLAY_DEFAULTS)
-    fig.update_xaxes(AXIS_DISPLAY_DEFAULTS | {"title_text": "wavelength"})
-    fig.update_yaxes(AXIS_DISPLAY_DEFAULTS | {"title_text": "reflectance"})
-    fig.update_layout({"yaxis": {"range": [0, min(y_axis) + max(y_axis)]}})
+    # TODO: clean input to make this togglable again
+    show_error = True
+    scatter = go.Scatter(
+        x=x_axis,
+        y=y_axis,
+        mode="lines+markers",
+        text=text,
+        line={"color": spectrum.roi_hex_code()},
+        error_y={"array": y_error, "visible": show_error},
+    )
+    fig.add_trace(scatter)
     return fig
 
 
@@ -474,7 +478,7 @@ def field_drop(fields, element_id, index, value=None):
 
 
 def model_options_drop(
-        element_id: str, index: int, value: Optional[str] = None
+    element_id: str, index: int, value: Optional[str] = None
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
@@ -489,10 +493,10 @@ def model_options_drop(
 
 
 def model_range_entry(
-        element_id: str,
-        index: int,
-        begin: Optional[float] = None,
-        end: Optional[float] = None,
+    element_id: str,
+    index: int,
+    begin: Optional[float] = None,
+    end: Optional[float] = None,
 ) -> list[dcc.Input]:
     """
     pair of entry fields for selecting a range of values for a
@@ -560,7 +564,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
     if value_dict is None:
         text = ""
     elif ("value_list" in value_dict.keys()) and (
-            ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
+        ("begin" in value_dict.keys()) or ("end" in value_dict.keys())
     ):
         raise ValueError(
             "Entering both an explicit value list and a value range is "
@@ -576,7 +580,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
 
 
 def model_range_entry_2(
-        element_id: str, index: int, value_dict: Optional[Mapping] = None
+    element_id: str, index: int, value_dict: Optional[Mapping] = None
 ) -> dcc.Input:
     """
     entry field for selecting a range of values for a
@@ -599,7 +603,7 @@ def model_range_display(element_id: str, index: int) -> html.P:
 
 
 def search_parameter_div(
-        index: int, searchable_fields: Iterable[str], preset_parameter=None
+    index: int, searchable_fields: Iterable[str], preset_parameter=None
 ) -> html.Div:
     get_r = partial(get_if, preset_parameter is not None, preset_parameter)
     children = [
@@ -874,7 +878,7 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
 #  the level of abstraction currently in use, and it needs to be further
 #  refactored -- maybe into a flat list of some kind?
 def search_tab(
-        spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
+    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
 ):
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
