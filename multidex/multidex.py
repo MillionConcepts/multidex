@@ -177,7 +177,7 @@ cset("average_filters", False)
 # repetition in app structure definition and function calls.
 # it's possible these should actually be in plotter.components.
 
-filter_dropdowns = [
+calc_option_dropdowns = [
     "main-filter-1-marker",
     "main-filter-2-marker",
     "main-filter-3-marker",
@@ -187,23 +187,26 @@ filter_dropdowns = [
     "main-filter-1-x",
     "main-filter-2-x",
     "main-filter-3-x",
+    "main-component-x",
+    "main-component-y",
+    "main-component-marker"
 ]
 
 x_inputs = [
     Input(dropdown, "value")
-    for dropdown in filter_dropdowns
+    for dropdown in calc_option_dropdowns
     if dropdown.endswith("-x")
 ] + [Input("main-graph-option-x", "value")]
 
 y_inputs = [
     Input(dropdown, "value")
-    for dropdown in filter_dropdowns
+    for dropdown in calc_option_dropdowns
     if dropdown.endswith("-y")
 ] + [Input("main-graph-option-y", "value")]
 
 marker_inputs = [
     Input(dropdown, "value")
-    for dropdown in filter_dropdowns
+    for dropdown in calc_option_dropdowns
     if dropdown.endswith("-marker")
 ] + [
     Input("main-graph-option-marker", "value"),
@@ -222,8 +225,8 @@ graph_display_inputs = [
 ]
 
 filter_dropdown_outputs = [
-    Output(dropdown, "options") for dropdown in filter_dropdowns
-] + [Output(dropdown, "value") for dropdown in filter_dropdowns]
+    Output(dropdown, "options") for dropdown in calc_option_dropdowns
+] + [Output(dropdown, "value") for dropdown in calc_option_dropdowns]
 
 
 # client-side url for serving images to the user.
@@ -262,7 +265,7 @@ settings = {
     # a way to generate separate function 'namespaces'
     # in the possible case of, say, wanting to mix mastcam / z data
     # within a single app instance.
-    "spec_model": MSpec,
+    "spec_model": spec_model,
     "image_directory": image_directory,
     # scale factor, in viewport units, for spectrum images
     "base_size": 20,
@@ -364,6 +367,7 @@ for value_class in ["x", "y", "marker"]:
             Output("main-filter-1-" + value_class + "-container", "style"),
             Output("main-filter-2-" + value_class + "-container", "style"),
             Output("main-filter-3-" + value_class + "-container", "style"),
+            Output("main-component-" + value_class + "-container", "style"),
         ],
         [Input("main-graph-option-" + value_class, "value")],
     )(change_calc_input_visibility)
