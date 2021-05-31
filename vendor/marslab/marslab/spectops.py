@@ -96,8 +96,7 @@ def band_avg(
     reflectance_array, error_array, _wavelength_array = preprocess_input(
         reflectance, errors, _wavelengths
     )
-
-    average_of_reflectance = np.mean(reflectance_array, axis=-1)
+    average_of_reflectance = np.mean(reflectance_array, axis=0)
     error_values = addition_in_quadrature(error_array)
     return reindex_if_pandas(
         (average_of_reflectance, reflectance), (error_values, errors)

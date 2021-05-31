@@ -89,27 +89,29 @@ SPECTRUM_OP_INTERFACE_PROPERTIES = (
     {"value": "band_min", "arity": 2},
     {"value": "ratio", "arity": 2},
     {"value": "band_depth", "arity": 3},
-    {"value": "pca", "arity": None},
 )
 
 for op in SPECTRUM_OP_INTERFACE_PROPERTIES:
     op |= SPECTRUM_OP_BASE_PROPERTIES
 
 REDUCTION_OP_BASE_PROPERTIES = {
-        "value_type": "quant",
-        "arity": None,
-        "type": "decomposition",
-    }
+    "value_type": "quant",
+    "type": "decomposition",
+}
+
+PCA_INTERFACE_PROPERTIES = [{"function": "PCA", "value": "PCA"}]
+#
+# ICA_INTERFACE_PROPERTIES = [
+#     {"component_ix"}
+# ]
 
 
 # TODO: figure out how to implement decomposition parameter
 #  controls; maybe this doesn't go here, it's a separate interface,
 #  something like that
-REDUCTION_OP_INTERFACE_PROPERTIES = [
-    {"value": "pca_" + str(ix + 1)} | SPECTRUM_OP_BASE_PROPERTIES
-    for ix in range(4)
-]
-
+REDUCTION_OP_INTERFACE_PROPERTIES = PCA_INTERFACE_PROPERTIES
+for op in REDUCTION_OP_INTERFACE_PROPERTIES:
+    op |= REDUCTION_OP_BASE_PROPERTIES
 
 # dictionary defining generalized interface properties
 # for various XCAM fields
@@ -146,7 +148,7 @@ for prop in chain.from_iterable(
     [
         XCAM_FIELD_INTERFACE_PROPERTIES,
         SPECTRUM_OP_INTERFACE_PROPERTIES,
-        REDUCTION_OP_INTERFACE_PROPERTIES
+        REDUCTION_OP_INTERFACE_PROPERTIES,
     ]
 ):
     if "label" not in prop.keys():
@@ -175,11 +177,15 @@ class XSpec(models.Model):
 
     @classmethod
     def accessible_properties(cls):
-        return list(SPECTRUM_OP_INTERFACE_PROPERTIES) + [
-            fip
-            for fip in XCAM_FIELD_INTERFACE_PROPERTIES
-            if fip["value"] in cls.field_names
-        ]
+        return (
+            list(SPECTRUM_OP_INTERFACE_PROPERTIES)
+            + list(REDUCTION_OP_INTERFACE_PROPERTIES)
+            + [
+                fip
+                for fip in XCAM_FIELD_INTERFACE_PROPERTIES
+                if fip["value"] in cls.field_names
+            ]
+        )
 
     @classmethod
     def graphable_properties(cls):
@@ -195,7 +201,8 @@ class XSpec(models.Model):
         return [
             ap
             for ap in cls.accessible_properties()
-            if (ap["type"] != "method") and ap["value"] not in "ltst"
+            if (ap["type"] not in ("method", "decomposition"))
+            and (ap["value"] not in "ltst")
         ]
 
     def image_files(self):

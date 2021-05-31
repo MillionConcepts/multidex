@@ -32,6 +32,10 @@ from plotter.components import (
     viewer_tab,
     search_tab,
 )
+from plotter.reduction import (
+    default_multidex_pipeline,
+    transform_and_explain_variance,
+)
 from plotter.spectrum_ops import filter_df_from_queryset
 from multidex_utils import (
     djget,
@@ -108,10 +112,10 @@ def truncate_id_list_for_missing_properties(
         model_property = keygrab(
             spec_model.graphable_properties(), "value", axis_option
         )
-        if model_property["type"] == 'decomposition':
+        if model_property["type"] == "decomposition":
             # assuming here for now all decompositions require all filters
             filt_args.append(list(spec_model.filters.keys()))
-        if model_property["type"] == "method":
+        elif model_property["type"] == "method":
             # we assume here that 'methods' all take a spectrum's filter names
             # as arguments, and have arguments in an order corresponding to the
             # inputs.
@@ -143,13 +147,40 @@ def deframe(df_or_series):
     return df_or_series
 
 
+def perform_decomposition(id_list, filter_df, settings, props):
+    # TODO: this is fairly inefficient and recomputes the decomposition
+    #  every time any axis is changed. it might be better to cache this.
+    #  at the moment, the performance concerns probably don't really matter
+    #  at this point; PCA on these sets is < 250ms per and generally much less.
+    queryset_df = filter_df.loc[id_list]
+
+    # TODO: temporary hack -- don't do PCA on tiny sets
+    if len(queryset_df.index) < 8:
+        raise PreventUpdate
+
+    # drop errors
+    queryset_df = queryset_df[
+        [c for c in queryset_df.columns if "err" not in c]
+    ]
+    component_ix = re_get(settings, "component")
+    # TODO, maybe: placeholder for other decomposition methods
+    # method = props["method"]
+    pipeline = default_multidex_pipeline()
+    transform, explained_variances = transform_and_explain_variance(
+        queryset_df, pipeline
+    )
+    component = list(transform.iloc[:, component_ix].values)
+    explained_variance = explained_variances.iloc[component_ix]
+    title = "{}{} {}%".format(
+        props["value"],
+        str(component_ix + 1),
+        str(round(explained_variance * 100, 2)),
+    )
+    return component, None, title
+
+
 def perform_spectrum_op(
-    id_list,
-    spec_model,
-    filter_df,
-    settings,
-    props,
-    get_errors=False,
+    id_list, spec_model, filter_df, settings, props, get_errors=False
 ):
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
@@ -173,7 +204,9 @@ def perform_spectrum_op(
                     list(deframe(vals).values),
                     {
                         "symmetric": False,
-                        "arrayminus": list(np.abs(np.array(deframe(errors[0])))),
+                        "arrayminus": list(
+                            np.abs(np.array(deframe(errors[0])))
+                        ),
                         "array": list(np.abs(np.array(deframe(errors[1])))),
                     },
                     title,
@@ -212,6 +245,10 @@ def make_axis(
     axis_option = re_get(settings, "-graph-option-")
     # what are the characteristics of that function or property?
     props = keygrab(spec_model.graphable_properties(), "value", axis_option)
+
+    if props["type"] == "decomposition":
+        return perform_decomposition(id_list, filter_df, settings, props)
+
     if props["type"] == "method":
         return perform_spectrum_op(
             id_list,
@@ -230,8 +267,8 @@ def make_axis(
     return value_series, None, axis_option
 
 
-# TODO: this is sloppy but cleanup would be better after everything's implemented...
-#  probably...
+# TODO: this is sloppy but cleanup would be better after everything's
+#  implemented...probably...
 def make_marker_properties(
     settings,
     id_list,
@@ -251,7 +288,13 @@ def make_marker_properties(
     # but is difficult because you have to instantiate the colorbar somewhere
     # it would also be better to style with CSS but it seems like plotly
     # really wants to put element-level style declarations on graph ticks!
-    if props["type"] == "method":
+
+    if props["type"] == "decomposition":
+        property_list, _, title = perform_decomposition(
+            id_list, filter_df, settings, props
+        )
+
+    elif props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
         )
@@ -293,7 +336,7 @@ def make_marker_properties(
     base_size = re_get(settings, "-marker-base-size.value")
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
-            base_size*1.9 if spectrum in highlight_id_list else base_size
+            base_size * 1.9 if spectrum in highlight_id_list else base_size
             for spectrum in id_list
         ]
         opacity = 0.5
@@ -474,7 +517,7 @@ def recalculate_main_graph(
             "y_errors",
             "x_title",
             "y_title",
-            "get_errors"
+            "get_errors",
         ):
             cset(parameter, locals()[parameter])
 
@@ -647,9 +690,8 @@ def trigger_search_update(_load_trigger, search_triggers):
 
 def change_calc_input_visibility(calc_type, *, spec_model):
     """
-    turn visibility of filter dropdowns (and later other inputs)
-    on and off in response to changes in arity / type of
-    requested calc
+    turn visibility of filter + component dropdowns on and off in response to
+    changes in arity / type of requested calc
     """
     props = keygrab(spec_model.graphable_properties(), "value", calc_type)
     # 'methods' are specifically those methods of spec_model
@@ -660,8 +702,12 @@ def change_calc_input_visibility(calc_type, *, spec_model):
             if x < props["arity"]
             else {"display": "none"}
             for x in range(3)
+        ] + [{"display": "none"}]
+    elif props["type"] == "decomposition":
+        return [{"display": "none"} for _ in range(3)] + [
+            {"display": "flex", "flexDirection": "column"}
         ]
-    return [{"display": "none"} for _ in range(3)]
+    return [{"display": "none"} for _ in range(4)]
 
 
 def non_blank_search_parameters(parameters):
@@ -1183,7 +1229,7 @@ def save_search_tab_state(
             "scale_to",
             "average_filters",
             "r_star",
-            "errors"
+            "errors",
         ]
 
         state_variable_values = [
@@ -1196,7 +1242,6 @@ def save_search_tab_state(
             cget("average_filters"),
             cget("r_star"),
             cget("errors"),
-
         ]
     except AttributeError as error:
         print(error)
@@ -1218,7 +1263,7 @@ def save_search_tab_state(
         save_name = dt.datetime.now().strftime("%D %H:%M:%S")
     state_line["name"] = save_name
     appended_df = pd.concat([saved_searches, state_line], axis=0)
-    os.makedirs('saves', exist_ok=True)
+    os.makedirs("saves", exist_ok=True)
     appended_df.to_csv(filename, index=False)
     return trigger_value + 1
 
@@ -1364,9 +1409,7 @@ def print_selected(selected):
     return 0
 
 
-# TODO: This should be reading from something in mcam_spect_data_conversion probably
-
-
+# TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget):
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("main_graph_filter_df").copy()
@@ -1411,7 +1454,7 @@ def export_graph_csv(_clicks, selected, *, cget):
     filename = (
         cget("spec_model_name")
         + "_"
-        + dt.datetime.now().strftime("%Y%M%dT%H%M%S")
+        + dt.datetime.now().strftime("%Y%m%dT%H%M%S")
         + "_"
         + re.sub(
             "[-;,:. ]+",
@@ -1426,6 +1469,6 @@ def export_graph_csv(_clicks, selected, *, cget):
     if selected is not None:
         filename += "_custom_selection"
     filename += ".csv"
-    os.makedirs('exports', exist_ok=True)
+    os.makedirs("exports", exist_ok=True)
     output_df.to_csv("exports/" + filename, index=None)
     return 1

@@ -61,8 +61,8 @@ ANNOTATION_SETTINGS = {
 }
 
 
-# note that style properties are camelCased rather than hyphenated
-# b/c React
+# note that style properties are camelCased rather than hyphenated in
+# compliance with conventions for React virtual DOM
 
 
 def scale_to_drop(model, element_id, value=None):
@@ -88,7 +88,7 @@ def scale_controls_container(
     error_value="none",
 ):
     # TODO: this is a messy way to handle weird cases in loading.
-    # this should be cleaned up.
+    #  it should be cleaned up.
     if scale_value is None:
         scale_value = "None"
     if r_star_value is None:
@@ -465,6 +465,32 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
     )
 
 
+def component_drop(element_id, value, label_content=None, options=None):
+    if options is None:
+        options = [
+            {"label": str(component_ix + 1), "value": component_ix}
+            for component_ix in range(8)
+        ]
+    if not value:
+        value = 0
+    if label_content is None:
+        label_content = "component #"
+    return html.Div(
+        className="info-text",
+        id=element_id + "-container",
+        style={"display": "flex", "flexDirection": "column"},
+        children=[
+            html.Label(children=[label_content], htmlFor=element_id),
+            dcc.Dropdown(
+                id=element_id,
+                options=options,
+                value=value,
+                className="dash-dropdown filter-drop",
+                clearable=False
+            ),
+        ]
+    )
+
 def field_drop(fields, element_id, index, value=None):
     """dropdown for field selection -- no special logic atm"""
     return dcc.Dropdown(
@@ -764,6 +790,11 @@ def axis_controls_container(axis, prefix, spec_model, get_r, filter_options):
                     value=get_r(prefix + "filter-2-" + axis + ".value"),
                     label_content="right",
                     options=filter_options,
+                ),
+                component_drop(
+                    prefix + "component-" + axis,
+                    value=get_r(prefix + "component-" + axis + ".value"),
+                    label_content="component #",
                 ),
             ],
         ),
