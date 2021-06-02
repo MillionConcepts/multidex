@@ -300,6 +300,12 @@ def make_marker_properties(
             id_list, filter_df, settings, props
         )
 
+    if props["type"] == "computed":
+        property_list, title = (
+            filter_df.loc[id_list, props["value"]].values,
+            props["value"],
+        )
+
     elif props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
@@ -831,9 +837,7 @@ def update_search_ids(
     search_df = pd.concat(
         [cget("metadata_df"), cget("main_graph_filter_df")], axis=1
     )
-    search = handle_graph_search(
-        search_df, deepcopy(search_list), spec_model
-    )
+    search = handle_graph_search(search_df, deepcopy(search_list), spec_model)
     ctx = dash.callback_context
     if (
         set(search) != set(cget("main_search_ids"))
