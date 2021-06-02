@@ -99,6 +99,13 @@ def filter_df_from_queryset(
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
     filter_df.index = id_list
+    filter_df["filter_avg"] = np.round(filter_df[
+        [c for c in filter_df.columns if "err" not in c]
+    ].mean(axis=1))
+    filter_df["err_avg"] = np.round(filter_df[
+        [c for c in filter_df.columns if "err" in c]
+    ].mean(axis=1), 3)
+
     return filter_df
 
 

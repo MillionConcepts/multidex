@@ -124,6 +124,8 @@ def truncate_id_list_for_missing_properties(
                     for ix in range(1, model_property["arity"] + 1)
                 ]
             )
+        elif model_property["type"] == "computed":
+            filt_args.append([axis_option])
         else:
             metadata_args.append(axis_option)
     if filt_args:
@@ -183,8 +185,10 @@ def perform_spectrum_op(
 ):
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
-    # the inputs.
-    queryset_df = filter_df.loc[id_list]
+    # the inputs. also drop precalculated perperties -- a bit kludgey.
+    queryset_df = (
+        filter_df.loc[id_list].drop(["filter_avg", "err_avg"], axis=1).copy()
+    )
     filt_args = [
         re_get(settings, "-filter-" + str(ix))
         for ix in range(1, props["arity"] + 1)
@@ -247,6 +251,9 @@ def make_axis(
 
     if props["type"] == "decomposition":
         return perform_decomposition(id_list, filter_df, settings, props)
+
+    if props["type"] == "computed":
+        return filter_df.loc[id_list, props["value"]], None, axis_option
 
     if props["type"] == "method":
         return perform_spectrum_op(
@@ -660,7 +667,7 @@ def update_search_options(
         "search-load-trigger" in dash.callback_context.triggered[0]["prop_id"]
     )
     props = keygrab(spec_model.searchable_fields(), "label", field)
-    metadata_df = cget("metadata_df")
+    search_df = pd.concat([cget("main_graph_filter_df"), cget("metadata_df")])
     # if it's a field we do number interval searches on, reset term
     # interface and show number ranges in the range display. but don't reset
     # the number entries if we're in the middle of a load!
@@ -671,8 +678,7 @@ def update_search_options(
             search_text = ""
         return [
             [{"label": "any", "value": "any"}],
-            "minimum/maximum: "
-            + str(spectrum_values_range(metadata_df, field))
+            "minimum/maximum: " + str(spectrum_values_range(search_df, field))
             # TODO: this should be a hover-over tooltip eventually
             + """ e.g., '100--200' or '100, 105, 110'""",
             search_text,
@@ -680,7 +686,7 @@ def update_search_options(
 
     # otherwise, populate the term interface and reset the range display and
     # searches
-    return [field_values(metadata_df, field), "", ""]
+    return [field_values(search_df, field), "", ""]
 
 
 def trigger_search_update(_load_trigger, search_triggers):
@@ -718,7 +724,7 @@ def non_blank_search_parameters(parameters):
     ]
 
 
-def handle_graph_search(metadata_df, parameters, spec_model):
+def handle_graph_search(search_df, parameters, spec_model):
     """
     dispatcher / manager for user-issued searches within the graph interface.
     fills fields from model definition and feeds resultant list to a general-
@@ -726,7 +732,7 @@ def handle_graph_search(metadata_df, parameters, spec_model):
     """
     # nothing here? great
     if not parameters:
-        return list(metadata_df.index)
+        return list(search_df.index)
     # add value_type and type information to dictionaries (based on
     # search properties defined in the model)
 
@@ -739,9 +745,9 @@ def handle_graph_search(metadata_df, parameters, spec_model):
     parameters = non_blank_search_parameters(parameters)
     # do we have any actual constraints? if not, return the entire data set
     if not parameters:
-        return list(metadata_df.index)
+        return list(search_df.index)
     # otherwise, actually perform a search
-    return df_multiple_field_search(metadata_df, parameters)
+    return df_multiple_field_search(search_df, parameters)
 
 
 def update_filter_df(
@@ -822,9 +828,11 @@ def update_search_ids(
     # avoid passing doubly-ingested input back after the check although on
     # the other hand it should be memoized -- but still but yes seriously it
     # should be memoized
-    metadata_df = cget("metadata_df")
+    search_df = pd.concat(
+        [cget("metadata_df"), cget("main_graph_filter_df")], axis=1
+    )
     search = handle_graph_search(
-        metadata_df, deepcopy(search_list), spec_model
+        search_df, deepcopy(search_list), spec_model
     )
     ctx = dash.callback_context
     if (
@@ -1379,12 +1387,14 @@ def handle_main_highlight_save(
         # main highlight parameters are currently restored
         # in make_loaded_search_tab()
         metadata_df = cget("metadata_df")
+        filter_df = cget("main-graph-filter-df")
         params = cget("main_highlight_parameters")
         if params is not None:
             params = literal_eval(params)
+            search_df = pd.concat([metadata_df, filter_df], axis=1)
             cset(
                 "main_highlight_ids",
-                handle_graph_search(metadata_df, params, spec_model),
+                handle_graph_search(search_df, params, spec_model),
             )
         else:
             cset("main_highlight_ids", metadata_df.index)

@@ -143,12 +143,21 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "workspace", "value_type": "qual"},
     {"value": "scam", "value_type": "qual"},
     {"value": "analysis_name", "value_type": "qual"},
+
+)
+
+XCAM_CALCULATED_PROPERTIES = (
+# slightly special cases: these are computed at runtime
+{"value": "filter_avg", "value_type": "quant", "type": "computed"},
+{"value": "err_avg", "value_type": "quant", "type": "computed"},
+
 )
 for prop in chain.from_iterable(
     [
         XCAM_FIELD_INTERFACE_PROPERTIES,
         SPECTRUM_OP_INTERFACE_PROPERTIES,
         REDUCTION_OP_INTERFACE_PROPERTIES,
+        XCAM_CALCULATED_PROPERTIES
     ]
 ):
     if "label" not in prop.keys():
@@ -180,6 +189,7 @@ class XSpec(models.Model):
         return (
             list(SPECTRUM_OP_INTERFACE_PROPERTIES)
             + list(REDUCTION_OP_INTERFACE_PROPERTIES)
+            + list(XCAM_CALCULATED_PROPERTIES)
             + [
                 fip
                 for fip in XCAM_FIELD_INTERFACE_PROPERTIES
