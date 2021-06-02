@@ -11,7 +11,7 @@ from django.db import models
 from toolz import keyfilter
 
 from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
-from plotter_utils import modeldict
+from multidex_utils import modeldict
 
 # these groupings may not be important, but are harmless at present
 
@@ -50,7 +50,7 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
         "Source CSV Filename", max_length=100, db_index=True
     ),
     "sclk": models.IntegerField("Spacecraft Clock", **B_N_I),
-    "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I)
+    "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I),
 }
 
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
@@ -80,47 +80,38 @@ XCAM_SINGLE_SPECTRUM_FIELDS = {
 
 # dictionaries defining generalized interface properties
 # for spectrum operation functions (band depth, etc.)
-SPECTRUM_OP_BASE_PROPERTIES = {
-    "type": "method",
-    "value_type": "quant",
-}
+SPECTRUM_OP_BASE_PROPERTIES = {"type": "method", "value_type": "quant"}
 SPECTRUM_OP_INTERFACE_PROPERTIES = (
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "ref",
-        "arity": 1,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "slope",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_avg",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_max",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_min",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "ratio",
-        "arity": 2,
-    },
-    SPECTRUM_OP_BASE_PROPERTIES
-    | {
-        "value": "band_depth",
-        "arity": 3,
-    },
+    {"value": "ref", "arity": 1},
+    {"value": "slope", "arity": 2},
+    {"value": "band_avg", "arity": 2},
+    {"value": "band_max", "arity": 2},
+    {"value": "band_min", "arity": 2},
+    {"value": "ratio", "arity": 2},
+    {"value": "band_depth", "arity": 3},
 )
+
+for op in SPECTRUM_OP_INTERFACE_PROPERTIES:
+    op |= SPECTRUM_OP_BASE_PROPERTIES
+
+REDUCTION_OP_BASE_PROPERTIES = {
+    "value_type": "quant",
+    "type": "decomposition",
+}
+
+PCA_INTERFACE_PROPERTIES = [{"function": "PCA", "value": "PCA"}]
+#
+# ICA_INTERFACE_PROPERTIES = [
+#     {"component_ix"}
+# ]
+
+
+# TODO: figure out how to implement decomposition parameter
+#  controls; maybe this doesn't go here, it's a separate interface,
+#  something like that
+REDUCTION_OP_INTERFACE_PROPERTIES = PCA_INTERFACE_PROPERTIES
+for op in REDUCTION_OP_INTERFACE_PROPERTIES:
+    op |= REDUCTION_OP_BASE_PROPERTIES
 
 # dictionary defining generalized interface properties
 # for various XCAM fields
@@ -154,8 +145,20 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "analysis_name", "value_type": "qual"},
 
 )
+
+XCAM_CALCULATED_PROPERTIES = (
+# slightly special cases: these are computed at runtime
+{"value": "filter_avg", "value_type": "quant", "type": "computed"},
+{"value": "err_avg", "value_type": "quant", "type": "computed"},
+
+)
 for prop in chain.from_iterable(
-    [XCAM_FIELD_INTERFACE_PROPERTIES, SPECTRUM_OP_INTERFACE_PROPERTIES]
+    [
+        XCAM_FIELD_INTERFACE_PROPERTIES,
+        SPECTRUM_OP_INTERFACE_PROPERTIES,
+        REDUCTION_OP_INTERFACE_PROPERTIES,
+        XCAM_CALCULATED_PROPERTIES
+    ]
 ):
     if "label" not in prop.keys():
         prop["label"] = prop["value"]
@@ -178,26 +181,29 @@ class XSpec(models.Model):
     instrument_brief_name = None
     instrument_full_name = None
 
-    @classmethod
-    def field_names(cls):
-        return [field.name for field in cls._meta.get_fields()]
+    # this property is populated in models.py
+    field_names = None
 
     @classmethod
     def accessible_properties(cls):
-        return list(SPECTRUM_OP_INTERFACE_PROPERTIES) + [
-            fip
-            for fip in XCAM_FIELD_INTERFACE_PROPERTIES
-            if fip["value"] in cls.field_names()
-        ]
+        return (
+            list(SPECTRUM_OP_INTERFACE_PROPERTIES)
+            + list(REDUCTION_OP_INTERFACE_PROPERTIES)
+            + list(XCAM_CALCULATED_PROPERTIES)
+            + [
+                fip
+                for fip in XCAM_FIELD_INTERFACE_PROPERTIES
+                if fip["value"] in cls.field_names
+            ]
+        )
 
     @classmethod
     def graphable_properties(cls):
         return [
             ap
             for ap in cls.accessible_properties()
-            if prop["value"] not in (
-                "color", "seq_id", "name", "analysis_name"
-            )
+            if prop["value"]
+            not in ("color", "seq_id", "name", "analysis_name")
         ]
 
     @classmethod
@@ -205,7 +211,8 @@ class XSpec(models.Model):
         return [
             ap
             for ap in cls.accessible_properties()
-            if (ap["type"] != "method") and ap["value"] not in "ltst"
+            if (ap["type"] not in ("method", "decomposition"))
+            and (ap["value"] not in "ltst")
         ]
 
     def image_files(self):
@@ -216,7 +223,7 @@ class XSpec(models.Model):
 
     def filter_values(
         self,
-        scale_to: Optional[Sequence] = None,
+        scale_to: Optional[Sequence[str]] = None,
         average_filters: bool = False,
     ) -> dict[str, dict]:
         """

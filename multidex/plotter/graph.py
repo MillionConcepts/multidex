@@ -32,8 +32,12 @@ from plotter.components import (
     viewer_tab,
     search_tab,
 )
+from plotter.reduction import (
+    default_multidex_pipeline,
+    transform_and_explain_variance,
+)
 from plotter.spectrum_ops import filter_df_from_queryset
-from plotter_utils import (
+from multidex_utils import (
     djget,
     dict_to_paragraphs,
     rows,
@@ -49,7 +53,6 @@ from plotter_utils import (
     fetch_css_variables,
     df_multiple_field_search,
     re_get,
-    ctxdict,
 )
 
 from plotter.models import MSpec, ZSpec
@@ -108,7 +111,10 @@ def truncate_id_list_for_missing_properties(
         model_property = keygrab(
             spec_model.graphable_properties(), "value", axis_option
         )
-        if model_property["type"] == "method":
+        if model_property["type"] == "decomposition":
+            # assuming here for now all decompositions require all filters
+            filt_args.append(list(spec_model.filters.keys()))
+        elif model_property["type"] == "method":
             # we assume here that 'methods' all take a spectrum's filter names
             # as arguments, and have arguments in an order corresponding to the
             # inputs.
@@ -118,6 +124,8 @@ def truncate_id_list_for_missing_properties(
                     for ix in range(1, model_property["arity"] + 1)
                 ]
             )
+        elif model_property["type"] == "computed":
+            filt_args.append([axis_option])
         else:
             metadata_args.append(axis_option)
     if filt_args:
@@ -140,18 +148,47 @@ def deframe(df_or_series):
     return df_or_series
 
 
+def perform_decomposition(id_list, filter_df, settings, props):
+    # TODO: this is fairly inefficient and recomputes the decomposition
+    #  every time any axis is changed. it might be better to cache this.
+    #  at the moment, the performance concerns probably don't really matter
+    #  at this point; PCA on these sets is < 250ms per and generally much less.
+    queryset_df = filter_df.loc[id_list]
+
+    # TODO: temporary hack -- don't do PCA on tiny sets
+    if len(queryset_df.index) < 8:
+        raise PreventUpdate
+
+    # drop errors
+    queryset_df = queryset_df[
+        [c for c in queryset_df.columns if "err" not in c]
+    ]
+    component_ix = re_get(settings, "component")
+    # TODO, maybe: placeholder for other decomposition methods
+    # method = props["method"]
+    pipeline = default_multidex_pipeline()
+    transform, explained_variances = transform_and_explain_variance(
+        queryset_df, pipeline
+    )
+    component = list(transform.iloc[:, component_ix].values)
+    explained_variance = explained_variances.iloc[component_ix]
+    title = "{}{} {}%".format(
+        props["value"],
+        str(component_ix + 1),
+        str(round(explained_variance * 100, 2)),
+    )
+    return component, None, title
+
+
 def perform_spectrum_op(
-    id_list,
-    spec_model,
-    filter_df,
-    settings,
-    props,
-    get_errors=False,
+    id_list, spec_model, filter_df, settings, props, get_errors=False
 ):
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
-    # the inputs.
-    queryset_df = filter_df.loc[id_list]
+    # the inputs. also drop precalculated perperties -- a bit kludgey.
+    queryset_df = (
+        filter_df.loc[id_list].drop(["filter_avg", "err_avg"], axis=1).copy()
+    )
     filt_args = [
         re_get(settings, "-filter-" + str(ix))
         for ix in range(1, props["arity"] + 1)
@@ -170,7 +207,9 @@ def perform_spectrum_op(
                     list(deframe(vals).values),
                     {
                         "symmetric": False,
-                        "arrayminus": list(np.abs(np.array(deframe(errors[0])))),
+                        "arrayminus": list(
+                            np.abs(np.array(deframe(errors[0])))
+                        ),
                         "array": list(np.abs(np.array(deframe(errors[1])))),
                     },
                     title,
@@ -209,6 +248,13 @@ def make_axis(
     axis_option = re_get(settings, "-graph-option-")
     # what are the characteristics of that function or property?
     props = keygrab(spec_model.graphable_properties(), "value", axis_option)
+
+    if props["type"] == "decomposition":
+        return perform_decomposition(id_list, filter_df, settings, props)
+
+    if props["type"] == "computed":
+        return filter_df.loc[id_list, props["value"]], None, axis_option
+
     if props["type"] == "method":
         return perform_spectrum_op(
             id_list,
@@ -227,8 +273,8 @@ def make_axis(
     return value_series, None, axis_option
 
 
-# TODO: this is sloppy but cleanup would be better after everything's implemented...
-#  probably...
+# TODO: this is sloppy but cleanup would be better after everything's
+#  implemented...probably...
 def make_marker_properties(
     settings,
     id_list,
@@ -248,7 +294,13 @@ def make_marker_properties(
     # but is difficult because you have to instantiate the colorbar somewhere
     # it would also be better to style with CSS but it seems like plotly
     # really wants to put element-level style declarations on graph ticks!
-    if props["type"] == "method":
+
+    if props["type"] == "decomposition":
+        property_list, _, title = perform_decomposition(
+            id_list, filter_df, settings, props
+        )
+
+    elif props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
         )
@@ -290,7 +342,7 @@ def make_marker_properties(
     base_size = re_get(settings, "-marker-base-size.value")
     if re_get(settings, "-highlight-toggle.value") == "on":
         marker_size = [
-            base_size*1.9 if spectrum in highlight_id_list else base_size
+            base_size * 1.9 if spectrum in highlight_id_list else base_size
             for spectrum in id_list
         ]
         opacity = 0.5
@@ -471,7 +523,7 @@ def recalculate_main_graph(
             "y_errors",
             "x_title",
             "y_title",
-            "get_errors"
+            "get_errors",
         ):
             cset(parameter, locals()[parameter])
 
@@ -615,7 +667,7 @@ def update_search_options(
         "search-load-trigger" in dash.callback_context.triggered[0]["prop_id"]
     )
     props = keygrab(spec_model.searchable_fields(), "label", field)
-    metadata_df = cget("metadata_df")
+    search_df = pd.concat([cget("main_graph_filter_df"), cget("metadata_df")])
     # if it's a field we do number interval searches on, reset term
     # interface and show number ranges in the range display. but don't reset
     # the number entries if we're in the middle of a load!
@@ -626,8 +678,7 @@ def update_search_options(
             search_text = ""
         return [
             [{"label": "any", "value": "any"}],
-            "minimum/maximum: "
-            + str(spectrum_values_range(metadata_df, field))
+            "minimum/maximum: " + str(spectrum_values_range(search_df, field))
             # TODO: this should be a hover-over tooltip eventually
             + """ e.g., '100--200' or '100, 105, 110'""",
             search_text,
@@ -635,7 +686,7 @@ def update_search_options(
 
     # otherwise, populate the term interface and reset the range display and
     # searches
-    return [field_values(metadata_df, field), "", ""]
+    return [field_values(search_df, field), "", ""]
 
 
 def trigger_search_update(_load_trigger, search_triggers):
@@ -644,9 +695,8 @@ def trigger_search_update(_load_trigger, search_triggers):
 
 def change_calc_input_visibility(calc_type, *, spec_model):
     """
-    turn visibility of filter dropdowns (and later other inputs)
-    on and off in response to changes in arity / type of
-    requested calc
+    turn visibility of filter + component dropdowns on and off in response to
+    changes in arity / type of requested calc
     """
     props = keygrab(spec_model.graphable_properties(), "value", calc_type)
     # 'methods' are specifically those methods of spec_model
@@ -657,8 +707,12 @@ def change_calc_input_visibility(calc_type, *, spec_model):
             if x < props["arity"]
             else {"display": "none"}
             for x in range(3)
+        ] + [{"display": "none"}]
+    elif props["type"] == "decomposition":
+        return [{"display": "none"} for _ in range(3)] + [
+            {"display": "flex", "flexDirection": "column"}
         ]
-    return [{"display": "none"} for _ in range(3)]
+    return [{"display": "none"} for _ in range(4)]
 
 
 def non_blank_search_parameters(parameters):
@@ -670,7 +724,7 @@ def non_blank_search_parameters(parameters):
     ]
 
 
-def handle_graph_search(metadata_df, parameters, spec_model):
+def handle_graph_search(search_df, parameters, spec_model):
     """
     dispatcher / manager for user-issued searches within the graph interface.
     fills fields from model definition and feeds resultant list to a general-
@@ -678,7 +732,7 @@ def handle_graph_search(metadata_df, parameters, spec_model):
     """
     # nothing here? great
     if not parameters:
-        return list(metadata_df.index)
+        return list(search_df.index)
     # add value_type and type information to dictionaries (based on
     # search properties defined in the model)
 
@@ -691,9 +745,9 @@ def handle_graph_search(metadata_df, parameters, spec_model):
     parameters = non_blank_search_parameters(parameters)
     # do we have any actual constraints? if not, return the entire data set
     if not parameters:
-        return list(metadata_df.index)
+        return list(search_df.index)
     # otherwise, actually perform a search
-    return df_multiple_field_search(metadata_df, parameters)
+    return df_multiple_field_search(search_df, parameters)
 
 
 def update_filter_df(
@@ -774,9 +828,11 @@ def update_search_ids(
     # avoid passing doubly-ingested input back after the check although on
     # the other hand it should be memoized -- but still but yes seriously it
     # should be memoized
-    metadata_df = cget("metadata_df")
+    search_df = pd.concat(
+        [cget("metadata_df"), cget("main_graph_filter_df")], axis=1
+    )
     search = handle_graph_search(
-        metadata_df, deepcopy(search_list), spec_model
+        search_df, deepcopy(search_list), spec_model
     )
     ctx = dash.callback_context
     if (
@@ -932,7 +988,7 @@ def make_mspec_browse_image_components(
     """
     MSpec object, size factor (viewport units), image directory ->
     pair of dash html.Img components containing the spectrum-reduced
-    images associated with that object, pathed to the static image
+    images associated with that object, pathed to the assets image
     route defined in the live app instance
     """
     file_info = mspec.overlay_browse_file_info(image_directory)
@@ -969,7 +1025,7 @@ def make_zspec_browse_image_components(
     """
     ZSpec object, size factor (viewport units), image directory ->
     pair of dash html.Img components containing the rgb and enhanced
-    images associated with that object, pathed to the static image
+    images associated with that object, pathed to the assets image
     route defined in the live app instance -- silly hack rn
     """
     file_info = zspec.overlay_browse_file_info(image_directory)
@@ -1180,7 +1236,7 @@ def save_search_tab_state(
             "scale_to",
             "average_filters",
             "r_star",
-            "errors"
+            "errors",
         ]
 
         state_variable_values = [
@@ -1193,7 +1249,6 @@ def save_search_tab_state(
             cget("average_filters"),
             cget("r_star"),
             cget("errors"),
-
         ]
     except AttributeError as error:
         print(error)
@@ -1215,7 +1270,7 @@ def save_search_tab_state(
         save_name = dt.datetime.now().strftime("%D %H:%M:%S")
     state_line["name"] = save_name
     appended_df = pd.concat([saved_searches, state_line], axis=0)
-    os.makedirs('saves', exist_ok=True)
+    os.makedirs("saves", exist_ok=True)
     appended_df.to_csv(filename, index=False)
     return trigger_value + 1
 
@@ -1332,12 +1387,14 @@ def handle_main_highlight_save(
         # main highlight parameters are currently restored
         # in make_loaded_search_tab()
         metadata_df = cget("metadata_df")
+        filter_df = cget("main-graph-filter-df")
         params = cget("main_highlight_parameters")
         if params is not None:
             params = literal_eval(params)
+            search_df = pd.concat([metadata_df, filter_df], axis=1)
             cset(
                 "main_highlight_ids",
-                handle_graph_search(metadata_df, params, spec_model),
+                handle_graph_search(search_df, params, spec_model),
             )
         else:
             cset("main_highlight_ids", metadata_df.index)
@@ -1361,9 +1418,7 @@ def print_selected(selected):
     return 0
 
 
-# TODO: This should be reading from something in mcam_spect_data_conversion probably
-
-
+# TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget):
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("main_graph_filter_df").copy()
@@ -1408,7 +1463,7 @@ def export_graph_csv(_clicks, selected, *, cget):
     filename = (
         cget("spec_model_name")
         + "_"
-        + dt.datetime.now().strftime("%Y%M%dT%H%M%S")
+        + dt.datetime.now().strftime("%Y%m%dT%H%M%S")
         + "_"
         + re.sub(
             "[-;,:. ]+",
@@ -1423,6 +1478,6 @@ def export_graph_csv(_clicks, selected, *, cget):
     if selected is not None:
         filename += "_custom_selection"
     filename += ".csv"
-    os.makedirs('exports', exist_ok=True)
+    os.makedirs("exports", exist_ok=True)
     output_df.to_csv("exports/" + filename, index=None)
     return 1

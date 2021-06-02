@@ -19,7 +19,7 @@ from plotter.models import ZSpec
 
 
 # TODO: do this better
-THUMB_PATH = "static_in_pro/our_static/img/roi_browse/"
+THUMB_PATH = "assets/browse/zcam/"
 
 
 def looks_like_marslab(fn):
@@ -126,13 +126,16 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
     marslab_files, context_files = find_ingest_files(path, recursive)
     context_df = process_context_files(context_files, default_thumbnailer())
     for marslab_file in marslab_files:
+        frame = pd.read_csv(marslab_file)
+        if frame['INSTRUMENT'].iloc[0] != 'ZCAM':
+            print("skipping non-ZCAM file: " + marslab_file)
+            continue
         print("ingesting spectra from " + Path(marslab_file).name)
         obs_images = str(match_obs_images(marslab_file, context_df))
         if obs_images != "{}":
             print("found matching images: " + obs_images)
         else:
             print("no matching images found")
-        frame = pd.read_csv(marslab_file)
         y_to_bool(frame, ZCAM_BOOL_FIELDS)
         frame = frame.replace(["-", "", " "], np.nan)
         frame.columns = [col.lower() for col in frame.columns]
