@@ -15,4 +15,4 @@
 *scratch.py
 /multidex/scratch_space/
 /multidex/plotter/cruft_holder/
-/multidex/data/
+/multidex/data/*.sqlite3
