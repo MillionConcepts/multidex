@@ -6,14 +6,14 @@ from sklearn.pipeline import Pipeline
 
 
 def transform_df(df, skl_pipeline):
-    vectors = df.T.to_dict("list")
-    vectarray = np.array(tuple(vectors.values()))
-    transform = skl_pipeline.fit_transform(vectarray)
+    transform = skl_pipeline.fit_transform(df)
     transform = pd.DataFrame(transform)
-
-    transform.columns = [
-        "PC" + str(column + 1) for column in transform.columns
-    ]
+    if "reduce" in skl_pipeline.named_steps.keys():
+        transform.columns = [
+            "PC" + str(column + 1) for column in transform.columns
+        ]
+    else:
+        transform.columns = df.columns
     return transform
 
 
