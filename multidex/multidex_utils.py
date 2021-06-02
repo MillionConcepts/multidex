@@ -619,7 +619,7 @@ def df_value_fetch_search(
 
 
 def df_multiple_field_search(
-    metadata_df: pd.DataFrame, parameters: Iterable
+    search_df: pd.DataFrame, parameters: Iterable
 ) -> list:
     """
     dispatcher that handles multiple search parameters and returns a queryset.
@@ -632,11 +632,11 @@ def df_multiple_field_search(
         if parameter.get("value_type") == "quant":
             if "value_list" in parameter.keys():
                 search_result = df_value_fetch_search(
-                    metadata_df, parameter["field"], parameter["value_list"]
+                    search_df, parameter["field"], parameter["value_list"]
                 )
             else:
                 search_result = df_interval_search(
-                    metadata_df,
+                    search_df,
                     parameter["field"],
                     # begin and end and strictly are optional
                     parameter.get("begin"),
@@ -650,7 +650,7 @@ def df_multiple_field_search(
             param_results = []
             for term in parameter["term"]:
                 param_result = df_term_search(
-                    metadata_df,
+                    search_df,
                     parameter["field"],
                     term,
                     parameter.get("flexible"),
