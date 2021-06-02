@@ -12,7 +12,7 @@ from flask_caching import Cache
 
 from plotter.debug import debug_check_cache
 from plotter.spectrum_ops import filter_df_from_queryset
-from plotter_utils import (
+from multidex_utils import (
     partially_evaluate_from_parameters,
     qlist,
     model_metadata_df,
@@ -156,10 +156,7 @@ cset(
     qlist(spec_model.objects.all(), "id"),
 )
 
-cset(
-    'main_label_ids',
-    []
-)
+cset("main_label_ids", [])
 
 cset("main_graph_filter_df", filter_df_from_queryset(spec_model.objects.all()))
 
@@ -177,7 +174,7 @@ cset("average_filters", False)
 # repetition in app structure definition and function calls.
 # it's possible these should actually be in plotter.components.
 
-filter_dropdowns = [
+calc_option_dropdowns = [
     "main-filter-1-marker",
     "main-filter-2-marker",
     "main-filter-3-marker",
@@ -187,23 +184,26 @@ filter_dropdowns = [
     "main-filter-1-x",
     "main-filter-2-x",
     "main-filter-3-x",
+    "main-component-x",
+    "main-component-y",
+    "main-component-marker",
 ]
 
 x_inputs = [
     Input(dropdown, "value")
-    for dropdown in filter_dropdowns
+    for dropdown in calc_option_dropdowns
     if dropdown.endswith("-x")
 ] + [Input("main-graph-option-x", "value")]
 
 y_inputs = [
     Input(dropdown, "value")
-    for dropdown in filter_dropdowns
+    for dropdown in calc_option_dropdowns
     if dropdown.endswith("-y")
 ] + [Input("main-graph-option-y", "value")]
 
 marker_inputs = [
     Input(dropdown, "value")
-    for dropdown in filter_dropdowns
+    for dropdown in calc_option_dropdowns
     if dropdown.endswith("-marker")
 ] + [
     Input("main-graph-option-marker", "value"),
@@ -221,9 +221,16 @@ graph_display_inputs = [
     Input("main-graph-gridlines-radio", "value"),
 ]
 
+# TODO: ugly
 filter_dropdown_outputs = [
-    Output(dropdown, "options") for dropdown in filter_dropdowns
-] + [Output(dropdown, "value") for dropdown in filter_dropdowns]
+    Output(dropdown, "options")
+    for dropdown in calc_option_dropdowns
+    if "filter" in dropdown
+] + [
+    Output(dropdown, "value")
+    for dropdown in calc_option_dropdowns
+    if "filter" in dropdown
+]
 
 
 # client-side url for serving images to the user.
@@ -232,7 +239,7 @@ static_image_url = "/images/browse/"
 # host-side directory containing those images.
 # note this is just ROI browse images for now
 # TODO: add a link
-image_directory = "./static_in_pro/our_static/img/roi_browse/"
+image_directory = "assets/browse/zcam/"
 
 # insert 'settings' / 'global' values for this app into callback functions.
 # in Dash, callback functions encapsulate I/O behavior for components and
@@ -262,13 +269,13 @@ settings = {
     # a way to generate separate function 'namespaces'
     # in the possible case of, say, wanting to mix mastcam / z data
     # within a single app instance.
-    "spec_model": ZSpec,
+    "spec_model": spec_model,
     "image_directory": image_directory,
     # scale factor, in viewport units, for spectrum images
     "base_size": 20,
     "static_image_url": static_image_url,
     # file containing saved searches
-    "search_file": "./saves/" + cget('spec_model_name') + '_searches.csv'
+    "search_file": "./saves/" + cget("spec_model_name") + "_searches.csv",
 }
 functions_requiring_settings = [
     control_tabs,
@@ -295,7 +302,7 @@ for function in functions_requiring_settings:
     )
 
 
-# serve static images using a flask 'route.'
+# serve assets images using a flask 'route.'
 # does defining this function here violate my conventions a little bit? not
 # sure.
 @app.server.route(static_image_url + "<path:path>")
@@ -364,6 +371,7 @@ for value_class in ["x", "y", "marker"]:
             Output("main-filter-1-" + value_class + "-container", "style"),
             Output("main-filter-2-" + value_class + "-container", "style"),
             Output("main-filter-3-" + value_class + "-container", "style"),
+            Output("main-component-" + value_class + "-container", "style"),
         ],
         [Input("main-graph-option-" + value_class, "value")],
     )(change_calc_input_visibility)
@@ -371,10 +379,7 @@ for value_class in ["x", "y", "marker"]:
 # trigger redraw of main graph
 # on new search, axis calculation change, etc
 app.callback(
-    [
-        Output("main-graph", "figure"),
-        Output("main-graph", "clickData")
-    ],
+    [Output("main-graph", "figure"), Output("main-graph", "clickData")],
     # maybe later add an explicit recalculate button?
     [
         *x_inputs,
@@ -628,7 +633,7 @@ app.callback(
 )(export_graph_csv)
 
 
-# app.run_server(
-#     debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
-# )
-app.run_server(dev_tools_silence_routes_logging=True, port=8050)
+app.run_server(
+    debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
+)
+# app.run_server(dev_tools_silence_routes_logging=True, port=8050)

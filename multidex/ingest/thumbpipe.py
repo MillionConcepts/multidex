@@ -1,7 +1,7 @@
 import io
 
 from PIL import Image
-from marslab.pipeline import Pipeline
+from marslab.composition import Composition
 
 
 # make consistently-sized thumbnails out of the asdf context images. we
@@ -46,4 +46,4 @@ def default_thumbnailer():
         "thumb": thumber,
         "write": jpeg_buffer,
     }
-    return Pipeline(steps=steps, parameters=params)
+    return Composition(steps=steps, parameters=params)

@@ -5,12 +5,9 @@ import fs.path
 from PIL import Image
 
 working_directory = os.path.dirname(os.path.abspath(__file__))
-image_fs = OSFS(
-    os.path.join(working_directory, "static_in_pro/our_static/img/roi_full")
-)
-browse_fs = OSFS(
-    os.path.join(working_directory, "static_in_pro/our_static/img/roi_browse")
-)
+
+image_fs = OSFS(os.path.join(working_directory, "image_hopper"))
+browse_fs = OSFS(os.path.join(working_directory, "assets/browse/mcam/"))
 image_type = "jpg"
 size = 480, 480
 

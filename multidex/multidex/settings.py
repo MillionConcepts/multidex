@@ -9,22 +9,19 @@ https://docs.djangoproject.com/en/3.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
+from pathlib import Path
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 import os
 
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
+# NOTE: don't deploy this as a web application. it's designed to run
+# locally only, and preferably sandboxed.. These settings are very insecure
+# for an internet-facing application.
 SECRET_KEY = "r6x1g8gc8)mw32jd5j(eplf(0*f4z#2mzfmi^)b$2lfwstp49-"
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -73,20 +70,22 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "multidex.wsgi.application"
 
-
-# Database
-# https://docs.djangoproject.com/en/3.0/ref/settings/#databases
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+        "NAME": Path(BASE_DIR, "data", "backend.sqlite3")
+    },
+    "MCAM": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(BASE_DIR, "data", "MCAM.sqlite3"),
+    },
+    "ZCAM": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(BASE_DIR, "data", "ZCAM.sqlite3"),
     }
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
+DATABASE_ROUTERS = ['routers.InstrumentRouter']
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -121,4 +120,4 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
-STATIC_URL = "/static/"
+STATIC_URL = "/assets/"

@@ -9,10 +9,10 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import PCA
 
-from marslab.compat.xcam import INSTRUMENT_UNCERTAINTIES, DERIVED_CAM_DICT
 from marslab import spectops
-from plotter_utils import qlist
+from marslab.compat.xcam import INSTRUMENT_UNCERTAINTIES
 
 
 def d2r(
@@ -29,11 +29,6 @@ def r2d(
     return 180 * radians / math.pi
 
 
-def uncertainty(spec_model, filter):
-    unc = INSTRUMENT_UNCERTAINTIES[spec_model.instrument]
-    return unc
-    # spec_model.virtual_filter_mapping
-
 def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     """
     crude bounds for the hull of the range of possible measurements
@@ -42,9 +37,9 @@ def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     """
     # cartesian product of these sets gives all possible sign combos for
     # error high, error low, i.e.,
-    if spec_op.__name__ in ['band_min', 'band_max']:
+    if spec_op.__name__ in ["band_min", "band_max"]:
         return spec_op(filter_df, spec_model, *filters)[0], None
-    unc = uncertainty(spec_model.instrument)
+    unc = INSTRUMENT_UNCERTAINTIES[spec_model.instrument]
     corners = product(*[[1, -1] for _ in filters])
     bounds_df_list = []
     # apply these signs to uncertainty values, getting a list of dataframes
@@ -104,6 +99,13 @@ def filter_df_from_queryset(
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
     filter_df.index = id_list
+    filter_df["filter_avg"] = np.round(filter_df[
+        [c for c in filter_df.columns if "err" not in c]
+    ].mean(axis=1))
+    filter_df["err_avg"] = np.round(filter_df[
+        [c for c in filter_df.columns if "err" in c]
+    ].mean(axis=1), 3)
+
     return filter_df
 
 
@@ -164,8 +166,7 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
     if errors:
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
         error_df.columns = [
-            spec_model().all_filter_waves()[column]
-            for column in band_df.cols
+            spec_model().all_filter_waves()[column] for column in band_df.cols
         ]
     else:
         error_df = None
@@ -242,7 +243,7 @@ def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):
     """
     band_df = filter_df[[filt_1, filt_2]].T
     if errors:
-        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]].T
+        error_df = filter_df[[filt_1 + "_err", filt_2 + "_err"]].T
     else:
         error_df = None
     return spectops.ratio(band_df, error_df, None)
@@ -255,7 +256,7 @@ def slope(filter_df, spec_model, filt_1, filt_2, errors=False):
     """
     band_df = filter_df[[filt_1, filt_2]].T
     if errors:
-        error_df = filter_df[[filt_1+"_err", filt_2+"_err"]].T
+        error_df = filter_df[[filt_1 + "_err", filt_2 + "_err"]].T
     else:
         error_df = None
     filter_waves = spec_model().all_filter_waves()
@@ -292,47 +293,20 @@ def band_depth(
     wavelengths = (
         filter_waves[filt_left],
         filter_waves[filt_right],
-        filter_waves[filt_middle]
+        filter_waves[filt_middle],
     )
     return spectops.band_depth(band_df, error_df, wavelengths)
 
-# currently deprecated
 
-# def band_depth_min(filter_df, spec_model, filt_1, filt_2, errors=False):
-#     """
-#     simple band depth at local minimum --
-#     local minimum reflectance / reflectance of 'continuum'
-#     (straight line between filt_1 and filt_2) at that wavelength.
-#     band depth between adjacent points is defined as 1.
-#     passing filt_1 == filt_2 returns an error.
-#
-#     do we allow 'backwards' lines? for now yes
-#     """
-#     if filt_1 == filt_2:
-#         raise ValueError(
-#             "band depth between a wavelength and itself is undefined"
-#         )
-#     filter_waves = spec_model().all_filter_waves()
-#     wave_1 = filter_waves[filt_1]
-#     wave_2 = filter_waves[filt_2]
-#
-#     intervening_df, _ = intervening(filter_df, spec_model, wave_1, wave_2)
-#
-#     min_ref = intervening_df.min(axis=1)
-#     min_wave = intervening_df.idxmin(axis=1)
-#
-#     distance_series = min_wave - wave_1
-#     slope_series, _ = slope(filter_df, spec_model, filt_1, filt_2)
-#     continuum_ref = filter_df[filt_1] + slope_series * distance_series
-#     band_depth = 1 - min_ref / continuum_ref
-#     if errors:
-#         # TODO: this is hugely cheating -- adding in quadrature with
-#         #  gaussian assumptions and ignoring the contribution of the
-#         #  center filter
-#         return (
-#             band_depth,
-#             norm(filter_df[[filt_1 + "_err", filt_2 + "_err"]], axis=1)
-#             / continuum_ref,
-#         )
-#     else:
-#         return band_depth, None
+def pca_means(filter_df, n_components=4):
+    if filter_df.isna().any():
+        raise ValueError("do not use pca_means on arrays containing NaN")
+    pca = PCA(n_components=n_components)
+    vectors = filter_df.T.to_dict("list")
+    vectarray = np.array(tuple(vectors.values()))
+    return pca.fit_transform(vectarray)
+
+
+# TODO: can this be cached? this might not be practical b/c of scaling, or at
+#  least might have to be reset whenever scales change. it's pretty fast,
+#  anyway.

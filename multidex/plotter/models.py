@@ -1,5 +1,7 @@
+from pathlib import Path
+from types import MappingProxyType
+
 import PIL
-import fs
 from django.db import models
 from marslab.compat.mertools import (
     MERSPECT_M20_COLOR_MAPPINGS,
@@ -33,15 +35,12 @@ class ZSpec(XSpec):
     def roi_hex_code(self) -> str:
         return MERSPECT_M20_COLOR_MAPPINGS[self.color]
 
-    # TODO: placeholder pending asdf
     def overlay_browse_file_info(self, image_directory: str) -> dict:
         files = self.image_files()
         images = {}
         for image_type, filename in files.items():
             images[image_type + "_file"] = filename
-            with PIL.Image.open(
-                fs.path.join(image_directory, filename)
-            ) as image:
+            with PIL.Image.open(Path(image_directory, filename)) as image:
                 images[image_type + "_size"] = image.size
         return images
 
@@ -64,10 +63,10 @@ class MSpec(XSpec):
         for image_type, filename in files.items():
             if "roi" not in filename.lower():
                 continue
-            browse_filename = fs.path.splitext(filename)[0] + "_browse.jpg"
+            browse_filename = Path(filename).stem + "_browse.jpg"
             images[image_type + "_file"] = browse_filename
             with PIL.Image.open(
-                fs.path.join(image_directory, browse_filename)
+                Path(image_directory, browse_filename)
             ) as image:
                 images[image_type + "_size"] = image.size
         return images
@@ -105,3 +104,13 @@ for spec_model in [ZSpec, MSpec]:
         mean_field, err_field = filter_fields_factory(filt)
         mean_field.contribute_to_class(spec_model, filt.lower())
         err_field.contribute_to_class(spec_model, filt.lower() + "_err")
+
+    # add fields to each model
+    setattr(
+        spec_model,
+        "field_names",
+        [field.name for field in spec_model._meta.fields],
+    )
+
+# for automated model selection
+INSTRUMENT_MODEL_MAPPING = MappingProxyType({"ZCAM": ZSpec, "MCAM": MSpec})
