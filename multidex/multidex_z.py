@@ -156,10 +156,7 @@ cset(
     qlist(spec_model.objects.all(), "id"),
 )
 
-cset(
-    'main_label_ids',
-    []
-)
+cset("main_label_ids", [])
 
 cset("main_graph_filter_df", filter_df_from_queryset(spec_model.objects.all()))
 
@@ -189,7 +186,7 @@ calc_option_dropdowns = [
     "main-filter-3-x",
     "main-component-x",
     "main-component-y",
-    "main-component-marker"
+    "main-component-marker",
 ]
 
 x_inputs = [
@@ -224,9 +221,16 @@ graph_display_inputs = [
     Input("main-graph-gridlines-radio", "value"),
 ]
 
+# TODO: ugly
 filter_dropdown_outputs = [
-    Output(dropdown, "options") for dropdown in calc_option_dropdowns
-] + [Output(dropdown, "value") for dropdown in calc_option_dropdowns]
+    Output(dropdown, "options")
+    for dropdown in calc_option_dropdowns
+    if "filter" in dropdown
+] + [
+    Output(dropdown, "value")
+    for dropdown in calc_option_dropdowns
+    if "filter" in dropdown
+]
 
 
 # client-side url for serving images to the user.
@@ -271,7 +275,7 @@ settings = {
     "base_size": 20,
     "static_image_url": static_image_url,
     # file containing saved searches
-    "search_file": "./saves/" + cget('spec_model_name') + '_searches.csv'
+    "search_file": "./saves/" + cget("spec_model_name") + "_searches.csv",
 }
 functions_requiring_settings = [
     control_tabs,
@@ -375,10 +379,7 @@ for value_class in ["x", "y", "marker"]:
 # trigger redraw of main graph
 # on new search, axis calculation change, etc
 app.callback(
-    [
-        Output("main-graph", "figure"),
-        Output("main-graph", "clickData")
-    ],
+    [Output("main-graph", "figure"), Output("main-graph", "clickData")],
     # maybe later add an explicit recalculate button?
     [
         *x_inputs,
@@ -632,7 +633,7 @@ app.callback(
 )(export_graph_csv)
 
 
-# app.run_server(
-#     debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
-# )
-app.run_server(dev_tools_silence_routes_logging=True, port=8050)
+app.run_server(
+    debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
+)
+# app.run_server(dev_tools_silence_routes_logging=True, port=8050)
