@@ -224,9 +224,16 @@ graph_display_inputs = [
     Input("main-graph-gridlines-radio", "value"),
 ]
 
+# TODO: ugly
 filter_dropdown_outputs = [
-    Output(dropdown, "options") for dropdown in calc_option_dropdowns
-] + [Output(dropdown, "value") for dropdown in calc_option_dropdowns]
+    Output(dropdown, "options")
+    for dropdown in calc_option_dropdowns
+    if "filter" in dropdown
+] + [
+    Output(dropdown, "value")
+    for dropdown in calc_option_dropdowns
+    if "filter" in dropdown
+]
 
 
 # client-side url for serving images to the user.

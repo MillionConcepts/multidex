@@ -13,3 +13,6 @@
 /multidex/ingest_hopper/
 *BAK
 *scratch.py
+/multidex/scratch_space/
+/multidex/plotter/cruft_holder/
+/multidex/data/

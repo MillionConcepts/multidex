@@ -764,7 +764,7 @@ def axis_controls_container(axis, prefix, spec_model, get_r, filter_options):
         axis_value_drop(
             spec_model,
             prefix + "graph-option-" + axis,
-            value=get_r("graph-option-" + axis),
+            value=get_r(prefix + "graph-option-" + axis + '.value'),
             label_content=axis + " axis",
         ),
         html.Div(
