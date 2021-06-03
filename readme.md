@@ -1,4 +1,4 @@
-M/ZCAM multispectral plotter tool. Late alpha, not for distribution.
+M/ZCAM multispectral plotter tool. Beta status.
 
 ### dependencies
 See the ```conda``` [environment.yml](environment.yml) file. ```conda env create -f environment.yml``` should 
