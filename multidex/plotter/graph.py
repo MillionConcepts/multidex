@@ -29,8 +29,7 @@ from plotter import spectrum_ops
 from plotter.components import (
     parse_model_quant_entry,
     search_parameter_div,
-    viewer_tab,
-    search_tab,
+    search_div,
 )
 from plotter.reduction import (
     default_multidex_pipeline,
@@ -1173,55 +1172,7 @@ def describe_current_graph(cget):
     }
 
 
-def open_viewer_tab(tabs, cget, cset):
-    graph_params = describe_current_graph(cget)
-    # don't open a tab on page load or if the graph is deformed
-    if not graph_params["x_axis"]:
-        raise PreventUpdate
-    splot = SPlot(describe_current_graph(cget))
-    # what viewers are open? check cache.
-    graph_viewers = cget("open_graph_viewers")
-    if graph_viewers:
-        index = max(graph_viewers) + 1
-        graph_viewers.append(index)
-    else:
-        index = 1
-        graph_viewers = [1]
-    # make a new tab at the first available index with the current graph
-    new_tab = viewer_tab(index, splot)
-
-    new_tabs = deepcopy(tabs)
-    new_tabs.append(new_tab)
-    # let cache know you opened a new viewer.
-    graph_viewers.append(index)
-    cset("open_graph_viewers", graph_viewers)
-    return new_tabs, "viewer_tab_" + str(index)
-
-
-def close_viewer_tab(index, tabs, cget, cset):
-    # parse the frankly unfortunate dash input structure for the index of
-    # the tab whose button this is
-    tab_to_close = None
-    for tab in tabs:
-        if not isinstance(tab["props"]["id"], dict):
-            continue
-        if tab["props"]["id"]["type"] != "viewer-tab":
-            continue
-        if tab["props"]["id"]["index"] == index:
-            tab_to_close = tab
-    if not tab_to_close:
-        raise ValueError("Got the wrong tab-to-close index from somewhere.")
-
-    new_tabs = deepcopy(tabs)
-    new_tabs.remove(tab_to_close)
-    # let cache know you closed this in case anyone asks
-    graph_viewers = cget("open_graph_viewers")
-    graph_viewers.remove(index)
-    cset("open_graph_viewers", graph_viewers)
-    return new_tabs, "main_search_tab"
-
-
-def save_search_tab_state(
+def save_search_state(
     _n_clicks, save_name, trigger_value, cget, filename=None
 ):
     """
@@ -1290,55 +1241,29 @@ def populate_saved_search_drop(*_triggers, search_file):
     return options
 
 
-def make_loaded_search_tab(row, spec_model, search_file, cset):
+def load_values_into_search_div(row, spec_model, search_file, cset):
     """makes a search tab with preset values from a saved search."""
     saved_searches = pd.read_csv(search_file)
     row_dict = rows(saved_searches)[row].to_dict()
     # TODO: doing this here might mean something is wrong in control flow
     cset("main_highlight_parameters", row_dict["main_highlight_parameters"])
-    return search_tab(spec_model, row_dict)
+    return search_div(spec_model, row_dict)
 
 
-def load_saved_search(tabs, row, spec_model, search_file, cset):
-    """loads a search tab and replaces existing search tab with it"""
-    new_tab = make_loaded_search_tab(row, spec_model, search_file, cset)
-    if len(tabs) > 1:
-        old_tabs = deepcopy(tabs[1:])
-        new_tabs = [new_tab] + old_tabs
-    else:
-        new_tabs = [new_tab]
-    return new_tabs, "main_search_tab"
-
-
-def control_tabs(
-    _n_clicks_open,
-    _n_clicks_close,
+def handle_load(
     _n_clicks_load,
-    tabs,
     load_row,
     load_trigger_index,
     *,
     spec_model,
     search_file,
-    cget,
     cset,
 ):
     """
-    control loading, opening, and closing viewer tabs.
-    TODO, maybe: add ability to just open selectedData from main-graph
+    top-level handler for saved search loading process.
     """
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
-    if "viewer-open-button" in trigger:
-        return *open_viewer_tab(tabs, cget, cset), load_trigger_index
-    if "tab-close-button" in trigger:
-        index = trigger_index(ctx)
-        new_tabs, active_tab_value = close_viewer_tab(index, tabs, cget, cset)
-        return (
-            new_tabs,
-            active_tab_value,
-            load_trigger_index,
-        )
     if "load-search-load-button" in trigger:
         # don't try anything if nothing in the saved search dropdown is
         # selected
@@ -1348,14 +1273,14 @@ def control_tabs(
         if not load_trigger_index:
             load_trigger_index = 0
         load_trigger_index = load_trigger_index + 1
-        new_tabs, active_tab_value = load_saved_search(
-            tabs, load_row, spec_model, search_file, cset
+        loaded_div = load_values_into_search_div(
+            load_row, spec_model, search_file, cset
         )
         # this cache parameter is for semi-asynchronous flow control of the
         # load process without having to literally
         # have one dispatch callback function for the entire app
         cset("load_state", {"update_search_options": True})
-        return new_tabs, active_tab_value, load_trigger_index
+        return loaded_div, load_trigger_index
 
 
 def pretty_print_search_params(search_parameters):

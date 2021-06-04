@@ -685,38 +685,6 @@ def search_container_div(searchable_fields, preset_parameters):
     return search_container
 
 
-def viewer_tab(index, splot):
-    return dcc.Tab(
-        children=[
-            html.Div(
-                children=[
-                    dcc.Graph(
-                        id={"type": "view-graph", "index": index},
-                        style={"height": "80vh"},
-                        figure=splot.graph(),
-                        config=GRAPH_CONFIG_SETTINGS,
-                    )
-                ],
-                id={"type": "view-graph-container", "index": index},
-            ),
-            dynamic_spec_div(
-                "view-spec-print", "view-spec-graph", "view-spec-image", index
-            ),
-            html.Div(
-                children=[str(splot.settings())],
-                id={"type": "view-settings", "index": index},
-            ),
-            html.Button(
-                id={"type": "tab-close-button", "index": index},
-                children="close this tab",
-            ),
-        ],
-        label="GRAPH VIEWER " + str(index),
-        value="viewer_tab_" + str(index),
-        id={"type": "viewer-tab", "index": index},
-    )
-
-
 def trigger_div(prefix, number_of_triggers):
     """hidden div for semi-asynchronous callback triggers"""
     return html.Div(
@@ -908,7 +876,7 @@ def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
 # TODO: it is getting very obnoxious to keep track of indentation, even with
 #  the level of abstraction currently in use, and it needs to be further
 #  refactored -- maybe into a flat list of some kind?
-def search_tab(
+def search_div(
     spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
 ):
     # are we restoring from saved settings? if so, this function gets them;
@@ -921,7 +889,7 @@ def search_tab(
         ]
     else:
         filts = None
-    tab_children = [
+    search_children = [
         html.Div(
             className="graph-controls-container",
             children=[
@@ -1013,10 +981,6 @@ def search_tab(
                                             "index": 0,
                                         },
                                         children="Update graph",
-                                    ),
-                                    html.Button(
-                                        id="viewer-open-button",
-                                        children="open viewer",
                                     ),
                                 ],
                             ),
@@ -1170,12 +1134,8 @@ def search_tab(
         ),
         html.Div(id="search-load-progress-flag"),
     ]
-    return dcc.Tab(
-        children=tab_children,
-        # display title
-        label="SEARCH",
-        # used only by dcc.Tabs, apparently
-        value="main_search_tab",
+    return html.Div(
+        children=search_children,
         # as opposed to regular DOM id
-        id="main-search-tab",
+        id="search-div",
     )

@@ -28,7 +28,7 @@ from plotter.components import (
     main_graph,
     main_graph_scatter,
     mspec_graph_line,
-    search_tab,
+    search_div,
 )
 from plotter.models import MSpec
 from plotter.graph import (
@@ -36,7 +36,7 @@ from plotter.graph import (
     cache_get,
     update_spectrum_images,
     update_spectrum_graph,
-    control_tabs,
+    handle_load,
     control_search_dropdowns,
     recalculate_main_graph,
     update_search_options,
@@ -45,7 +45,7 @@ from plotter.graph import (
     toggle_search_input_visibility,
     graph_point_to_metadata,
     populate_saved_search_drop,
-    save_search_tab_state,
+    save_search_state,
     toggle_averaged_filters,
     update_filter_df,
     handle_main_highlight_save,
@@ -167,7 +167,6 @@ cset("metadata_df", model_metadata_df(spec_model))
 
 # this variable is a list of open graph-view tabs;
 # these are separate from the 'main' / 'search' tab.
-cset("open_graph_viewers", [])
 cset("scale_to", "None")
 cset("average_filters", False)
 
@@ -281,7 +280,7 @@ settings = {
     "search_file": "./saves/" + cget('spec_model_name') + '_searches.csv'
 }
 functions_requiring_settings = [
-    control_tabs,
+    handle_load,
     control_search_dropdowns,
     update_filter_df,
     recalculate_main_graph,
@@ -293,7 +292,7 @@ functions_requiring_settings = [
     graph_point_to_metadata,
     update_spectrum_images,
     populate_saved_search_drop,
-    save_search_tab_state,
+    save_search_state,
     toggle_averaged_filters,
     debug_check_cache,
     handle_main_highlight_save,
@@ -329,14 +328,12 @@ def static_image_link(path):
 # noinspection PyTypeChecker
 app.layout = html.Div(
     children=[
-        dcc.Tabs(
-            children=[search_tab(spec_model)],
-            value="main_search_tab",
-            id="tabs",
-        ),
-        dcc.Interval(id="interval1", interval=1000, n_intervals=0),
-    ]
+        search_div(spec_model),
+        dcc.Interval(id="interval1", interval=1000, n_intervals=0)
+    ],
+    id="multidex",
 )
+
 
 # callback creation section: register functions from plotter.graph with app i/o
 
@@ -529,45 +526,26 @@ app.callback(
     prevent_initial_call=True,
 )(control_search_dropdowns)
 
-# make graph viewer tabs
 app.callback(
     [
-        Output("tabs", "children"),
-        Output("tabs", "value"),
+        Output("search-div", "children"),
         Output({"type": "load-trigger", "index": 0}, "value"),
     ],
     [
-        Input("viewer-open-button", "n_clicks"),
-        Input({"type": "tab-close-button", "index": ALL}, "n_clicks"),
         Input("load-search-load-button", "n_clicks"),
     ],
     [
-        State("tabs", "children"),
         State("load-search-drop", "value"),
         State({"type": "load-trigger", "index": 0}, "value"),
     ],
     prevent_initial_call=True,
-)(control_tabs)
+)(handle_load)
 
 # debug printer
 # app.callback(
 #     Output('fake-output-for-callback-with-only-side-effects-1', 'children'),
 #     [Input('load-search-drop', 'value')]
 # )(print_callback)
-
-
-# point-hover functions.
-# right now main and view graph hover functions are basically duplicates,
-# but i'm reserving the possibility that they'll have different behaviors later
-# app.callback(
-#     Output({'type': 'main-spec-image-left', 'index': 0}, "children"),
-#     [Input('main-graph', "hoverData")]
-# )(update_spectrum_images)
-#
-# app.callback(
-#     Output({'type': 'main-spec-image-right', 'index': 0}, "children"),
-#     [Input('main-graph', "hoverData")]
-# )(update_spectrum_images)
 
 app.callback(
     Output({"type": "main-spec-image", "index": 0}, "children"),
@@ -621,7 +599,7 @@ app.callback(
         State({"type": "save-trigger", "index": 0}, "value"),
     ],
     prevent_initial_call=True,
-)(save_search_tab_state)
+)(save_search_state)
 
 app.callback(
     Output("load-search-drop", "options"),
@@ -642,4 +620,8 @@ app.callback(
 # app.run_server(
 #     debug=True, use_reloader=False, dev_tools_silence_routes_logging=True
 # )
+
+import flask.cli
+flask.cli.show_server_banner = lambda *_: None
+
 app.run_server(dev_tools_silence_routes_logging=True, port=8051)
