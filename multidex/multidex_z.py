@@ -28,7 +28,7 @@ from plotter.components import (
     main_graph,
     main_graph_scatter,
     mspec_graph_line,
-    search_tab,
+    search_div,
 )
 from plotter.models import ZSpec
 from plotter.graph import (
@@ -36,7 +36,7 @@ from plotter.graph import (
     cache_get,
     update_spectrum_images,
     update_spectrum_graph,
-    control_tabs,
+    handle_load,
     control_search_dropdowns,
     recalculate_main_graph,
     update_search_options,
@@ -45,7 +45,7 @@ from plotter.graph import (
     toggle_search_input_visibility,
     graph_point_to_metadata,
     populate_saved_search_drop,
-    save_search_tab_state,
+    save_search_state,
     toggle_averaged_filters,
     update_filter_df,
     handle_main_highlight_save,
@@ -278,7 +278,7 @@ settings = {
     "search_file": "./saves/" + cget("spec_model_name") + "_searches.csv",
 }
 functions_requiring_settings = [
-    control_tabs,
+    handle_load,
     control_search_dropdowns,
     update_filter_df,
     recalculate_main_graph,
@@ -290,7 +290,7 @@ functions_requiring_settings = [
     graph_point_to_metadata,
     update_spectrum_images,
     populate_saved_search_drop,
-    save_search_tab_state,
+    save_search_state,
     toggle_averaged_filters,
     debug_check_cache,
     handle_main_highlight_save,
@@ -327,7 +327,7 @@ def static_image_link(path):
 app.layout = html.Div(
     children=[
         dcc.Tabs(
-            children=[search_tab(spec_model)],
+            children=[search_div(spec_model)],
             value="main_search_tab",
             id="tabs",
         ),
@@ -541,7 +541,7 @@ app.callback(
         State({"type": "load-trigger", "index": 0}, "value"),
     ],
     prevent_initial_call=True,
-)(control_tabs)
+)(handle_load)
 
 # debug printer
 # app.callback(
@@ -615,7 +615,7 @@ app.callback(
         State({"type": "save-trigger", "index": 0}, "value"),
     ],
     prevent_initial_call=True,
-)(save_search_tab_state)
+)(save_search_state)
 
 app.callback(
     Output("load-search-drop", "options"),
