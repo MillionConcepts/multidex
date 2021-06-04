@@ -166,7 +166,7 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
     if errors:
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
         error_df.columns = [
-            spec_model().all_filter_waves()[column] for column in band_df.cols
+            spec_model().all_filter_waves()[column] for column in band_df.columns
         ]
     else:
         error_df = None
