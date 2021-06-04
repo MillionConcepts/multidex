@@ -432,7 +432,7 @@ def recalculate_main_graph(
                 },
             }
         )
-        return graph
+        return graph, {}
 
     # handle label addition / removal
     label_ids = cget("main_label_ids")
