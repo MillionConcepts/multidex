@@ -171,11 +171,10 @@ for prop in chain.from_iterable(
 
 class XSpec(models.Model):
     """
-    abstract model representing an individual ROI from an XCAM-family
-    instrument
+    abstract class representing an ROI from an XCAM-familyinstrument
     """
 
-    # actual four-letter instrument designation: PCAM, MCAM, ZCAM
+    # four-letter instrument designation: PCAM, MCAM, ZCAM
     instrument = None
     # brief and full instrument names
     instrument_brief_name = None

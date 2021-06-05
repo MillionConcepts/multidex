@@ -2,13 +2,16 @@
 import random
 from ast import literal_eval
 from functools import partial
+from itertools import cycle
 from typing import TYPE_CHECKING, Mapping, Optional, Iterable
 
+import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from dash.exceptions import PreventUpdate
 
 from plotter.proffered_markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
 from plotter.spectrum_ops import d2r
@@ -202,7 +205,7 @@ def image_holder(index: int = 0) -> dcc.Graph:
     )
 
 
-def main_graph_scatter(
+def main_scatter_graph(
     x_axis: list[float],
     y_axis: list[float],
     marker_property_dict: Mapping,
@@ -285,7 +288,7 @@ def main_graph_scatter(
     return fig
 
 
-def mspec_graph_line(
+def spectrum_line_graph(
     spectrum: "MSpec",
     scale_to=("l1", "r1"),
     average_filters=True,
@@ -1139,3 +1142,46 @@ def search_div(
         # as opposed to regular DOM id
         id="search-div",
     )
+
+
+def multidex_body(spec_model):
+    """top-level body tab of application"""
+    # noinspection PyTypeChecker
+    return html.Div(
+        children=[
+            search_div(spec_model),
+            dcc.Interval(id="interval1", interval=1000, n_intervals=0),
+        ],
+        id="multidex",
+    )
+
+
+def toggle_averaged_filters(
+    do_average,
+    # n_intervals,
+    *,
+    spec_model,
+):
+    if dash.callback_context.triggered[0]["prop_id"] == ".":
+        raise PreventUpdate
+    if "average" in do_average:
+        options = [
+            {"label": filt, "value": filt}
+            for filt in spec_model.canonical_averaged_filters
+        ]
+    else:
+        options = [
+            {"label": filt, "value": filt} for filt in spec_model.filters
+        ]
+    ctx = dash.callback_context
+    number_of_outputs = int(len(ctx.outputs_list) / 2)
+    # from random import choice
+    # TODO: nonsense debug option
+    # return [
+    #            options for _ in range(number_of_outputs)
+    #        ] + [options[choice(range(len(options)))]['value']
+    #        for _ in range(number_of_outputs)]
+    cycler = cycle([0, 1, 2, 3])
+    return [options for _ in range(number_of_outputs)] + [
+        options[next(cycler)]["value"] for _ in range(number_of_outputs)
+    ]

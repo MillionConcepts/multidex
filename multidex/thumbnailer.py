@@ -7,7 +7,8 @@ from PIL import Image
 working_directory = os.path.dirname(os.path.abspath(__file__))
 
 image_fs = OSFS(os.path.join(working_directory, "image_hopper"))
-browse_fs = OSFS(os.path.join(working_directory, "assets/browse/mcam/"))
+browse_fs = OSFS(os.path.join(working_directory,
+                              "plotter/application/assets/browse/mcam/"))
 image_type = "jpg"
 size = 480, 480
 
