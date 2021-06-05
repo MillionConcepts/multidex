@@ -31,6 +31,7 @@ class ZSpec(XSpec):
         "analysis / ROI set name", max_length=30, **B_N_I
     )
     instrument = "ZCAM"
+    instrument_brief_name = "Mastcam-Z"
 
     def roi_hex_code(self) -> str:
         return MERSPECT_M20_COLOR_MAPPINGS[self.color]
@@ -52,6 +53,7 @@ class MSpec(XSpec):
     notes = models.CharField("Notes", **B_N_I, max_length=100)
 
     instrument = "MCAM"
+    instrument_brief_name = "Mastcam"
 
     def roi_hex_code(self) -> str:
         return MERSPECT_MSL_COLOR_MAPPINGS[self.color]

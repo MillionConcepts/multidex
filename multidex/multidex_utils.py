@@ -6,6 +6,7 @@ import re
 from functools import partial, reduce
 from inspect import signature
 from operator import and_, gt, ge, lt, le, or_, contains
+from pathlib import Path
 from typing import (
     Callable,
     Iterable,
@@ -31,7 +32,9 @@ if TYPE_CHECKING:
     from django.db.models import Model
 
 
-DEFAULT_CSS_PATH = "assets/css/main.css"
+DEFAULT_CSS_PATH = str(
+    Path(Path(__file__).parent, "plotter/application/assets/css/main.css")
+)
 
 # generic
 
@@ -147,7 +150,7 @@ def field_names(django_model_object: "Model") -> list[str]:
 
 def modeldict(django_model_object: "Model") -> dict:
     """tries to construct a dictionary from arbitrary django model instance"""
-    if 'field_names' in dir(django_model_object):
+    if "field_names" in dir(django_model_object):
         return {
             field_name: getattr(django_model_object, field_name)
             for field_name in django_model_object.field_names
