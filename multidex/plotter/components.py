@@ -2,16 +2,13 @@
 import random
 from ast import literal_eval
 from functools import partial
-from itertools import cycle
 from typing import TYPE_CHECKING, Mapping, Optional, Iterable
 
-import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from dash.exceptions import PreventUpdate
 
 from plotter.proffered_markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
 from plotter.spectrum_ops import d2r
@@ -1145,7 +1142,7 @@ def search_div(
 
 
 def multidex_body(spec_model):
-    """top-level body tab of application"""
+    """top-level "body" div of application"""
     # noinspection PyTypeChecker
     return html.Div(
         children=[
@@ -1156,32 +1153,3 @@ def multidex_body(spec_model):
     )
 
 
-def toggle_averaged_filters(
-    do_average,
-    # n_intervals,
-    *,
-    spec_model,
-):
-    if dash.callback_context.triggered[0]["prop_id"] == ".":
-        raise PreventUpdate
-    if "average" in do_average:
-        options = [
-            {"label": filt, "value": filt}
-            for filt in spec_model.canonical_averaged_filters
-        ]
-    else:
-        options = [
-            {"label": filt, "value": filt} for filt in spec_model.filters
-        ]
-    ctx = dash.callback_context
-    number_of_outputs = int(len(ctx.outputs_list) / 2)
-    # from random import choice
-    # TODO: nonsense debug option
-    # return [
-    #            options for _ in range(number_of_outputs)
-    #        ] + [options[choice(range(len(options)))]['value']
-    #        for _ in range(number_of_outputs)]
-    cycler = cycle([0, 1, 2, 3])
-    return [options for _ in range(number_of_outputs)] + [
-        options[next(cycler)]["value"] for _ in range(number_of_outputs)
-    ]
