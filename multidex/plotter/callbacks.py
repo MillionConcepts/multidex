@@ -8,6 +8,7 @@ import re
 
 from ast import literal_eval
 from copy import deepcopy
+from itertools import cycle
 from typing import Tuple
 
 import dash
@@ -614,3 +615,34 @@ def export_graph_csv(_clicks, selected, *, cget):
     os.makedirs("exports", exist_ok=True)
     output_df.to_csv("exports/" + filename, index=None)
     return 1
+
+
+def toggle_averaged_filters(
+    do_average,
+    # n_intervals,
+    *,
+    spec_model,
+):
+    if dash.callback_context.triggered[0]["prop_id"] == ".":
+        raise PreventUpdate
+    if "average" in do_average:
+        options = [
+            {"label": filt, "value": filt}
+            for filt in spec_model.canonical_averaged_filters
+        ]
+    else:
+        options = [
+            {"label": filt, "value": filt} for filt in spec_model.filters
+        ]
+    ctx = dash.callback_context
+    number_of_outputs = int(len(ctx.outputs_list) / 2)
+    # from random import choice
+    # TODO: nonsense debug option
+    # return [
+    #            options for _ in range(number_of_outputs)
+    #        ] + [options[choice(range(len(options)))]['value']
+    #        for _ in range(number_of_outputs)]
+    cycler = cycle([0, 1, 2, 3])
+    return [options for _ in range(number_of_outputs)] + [
+        options[next(cycler)]["value"] for _ in range(number_of_outputs)
+    ]

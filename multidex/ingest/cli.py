@@ -19,7 +19,7 @@ from plotter.models import ZSpec
 
 
 # TODO: do this better
-THUMB_PATH = "assets/browse/zcam/"
+THUMB_PATH = "plotter/application/assets/browse/zcam/"
 
 
 def looks_like_marslab(fn):
