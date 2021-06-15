@@ -345,7 +345,9 @@ def update_search_options(
         "search-load-trigger" in dash.callback_context.triggered[0]["prop_id"]
     )
     props = keygrab(spec_model.searchable_fields(), "label", field)
-    search_df = pd.concat([cget("main_graph_filter_df"), cget("metadata_df")])
+    search_df = pd.concat(
+        [cget("main_graph_filter_df"), cget("metadata_df")], axis=1
+    )
     # if it's a field we do number interval searches on, reset term
     # interface and show number ranges in the range display. but don't reset
     # the number entries if we're in the middle of a load!
