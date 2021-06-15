@@ -324,7 +324,7 @@ def spectrum_line_graph(
             },
         }
     )
-    # TODO: clean input to make this togglable again
+    # TODO: clean input to make this toggleable again
     show_error = True
     scatter = go.Scatter(
         x=x_axis,
