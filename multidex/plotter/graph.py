@@ -39,7 +39,8 @@ from multidex_utils import (
     none_to_quote_unquote_none,
     fetch_css_variables,
     df_multiple_field_search,
-    re_get, djget,
+    re_get,
+    djget,
 )
 
 if TYPE_CHECKING:
@@ -87,7 +88,7 @@ def truncate_id_list_for_missing_properties(
     filter_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
     spec_model,
-    filters_are_averaged: bool
+    filters_are_averaged: bool,
 ):
     metadata_args = []
     filt_args = []
@@ -227,6 +228,7 @@ def make_axis(
     metadata_df: pd.DataFrame,
     get_errors: bool,
     _highlight,
+    filters_are_averaged,
 ) -> tuple[list[float], Optional[list[float]], str]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
@@ -240,7 +242,13 @@ def make_axis(
     props = keygrab(spec_model.graphable_properties(), "value", axis_option)
 
     if props["type"] == "decomposition":
-        return perform_decomposition(id_list, filter_df, settings, props)
+        if filters_are_averaged is True:
+            decomp_df = filter_df[
+                list(spec_model.canonical_averaged_filters.keys())
+            ]
+        else:
+            decomp_df = filter_df[list(spec_model.filters.keys())]
+        return perform_decomposition(id_list, decomp_df, settings, props)
 
     if props["type"] == "computed":
         return filter_df.loc[id_list, props["value"]], None, axis_option
@@ -273,6 +281,7 @@ def make_marker_properties(
     metadata_df,
     _get_errors,
     highlight_id_list,
+    _filters_are_averaged,
 ):
     """
     this expects an id list that has already
@@ -501,8 +510,6 @@ def clear_search(cset, spec_model):
     cset("search_parameter_index", 0)
     searchable_fields = spec_model.searchable_fields()
     return [search_parameter_div(0, searchable_fields, None)]
-
-
 
 
 # TODO: inefficient -- but this may be irrelevant?

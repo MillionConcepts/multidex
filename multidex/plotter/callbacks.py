@@ -251,6 +251,7 @@ def update_main_graph(
         metadata_df,
         get_errors,
         highlight_ids,
+        filters_are_averaged
     ]
     x_axis, x_errors, x_title = make_axis(x_settings, *graph_content)
     y_axis, y_errors, y_title = make_axis(y_settings, *graph_content)
