@@ -234,6 +234,7 @@ def update_main_graph(
     filter_df = cget("main_graph_filter_df")
     metadata_df = cget("metadata_df")
     get_errors = ctx.inputs["main-graph-error.value"]
+    filters_are_averaged = 'average' in ctx.states['main-graph-average.value']
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
@@ -241,6 +242,7 @@ def update_main_graph(
         filter_df,
         metadata_df,
         spec_model,
+        filters_are_averaged
     )
     graph_content = [
         truncated_ids,

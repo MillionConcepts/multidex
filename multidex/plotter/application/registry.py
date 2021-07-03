@@ -54,7 +54,7 @@ def register_update_main_graph(app, configured_function):
             Input("main-graph", "clickData")
             # Input({'type': 'load-trigger', 'index': 0}, 'value')
         ],
-        [State("main-graph", "figure")],
+        [State("main-graph", "figure"), State("main-graph-average", "value")],
     )(configured_function)
 
 

@@ -87,6 +87,7 @@ def truncate_id_list_for_missing_properties(
     filter_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
     spec_model,
+    filters_are_averaged: bool
 ):
     metadata_args = []
     filt_args = []
@@ -98,7 +99,11 @@ def truncate_id_list_for_missing_properties(
         )
         if model_property["type"] == "decomposition":
             # assuming here for now all decompositions require all filters
-            filt_args.append(list(spec_model.filters.keys()))
+            if filters_are_averaged is True:
+                filters = list(spec_model.canonical_averaged_filters.keys())
+            else:
+                filters = list(spec_model.filters.keys())
+            filt_args.append(filters)
         elif model_property["type"] == "method":
             # we assume here that 'methods' all take a spectrum's filter names
             # as arguments, and have arguments in an order corresponding to the
