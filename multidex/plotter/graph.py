@@ -22,7 +22,7 @@ from dash.exceptions import PreventUpdate
 from toolz import keyfilter
 
 from plotter import spectrum_ops
-from plotter.components import (
+from plotter.ui_components import (
     search_parameter_div,
     search_div,
 )
@@ -345,7 +345,6 @@ def make_marker_properties(
             base_size * 1.9 if spectrum in highlight_id_list else base_size
             for spectrum in id_list
         ]
-        opacity = 0.5
     elif re_get(settings, "-outline-radio.value") != "off":
         marker_size = [base_size for _ in id_list]
     else:
@@ -783,3 +782,21 @@ def spectrum_from_graph_event(event_data: dict, spec_model: "Model") -> Any:
     return djget(
         spec_model, event_data["points"][0]["customdata"], "id", "get"
     )
+
+
+def make_scatter_annotations(metadata_df, truncated_ids):
+    truncated_metadata = metadata_df.loc[truncated_ids]
+    feature_color = truncated_metadata["feature"].copy()
+    no_feature_ix = feature_color.loc[feature_color.isna()].index
+    feature_color.loc[no_feature_ix] = truncated_metadata["color"].loc[
+        no_feature_ix
+    ]
+    text = (
+            "sol"
+            + truncated_metadata["sol"].astype(str)
+            + " "
+            + truncated_metadata["name"]
+            + " "
+            + feature_color
+    ).values
+    return text

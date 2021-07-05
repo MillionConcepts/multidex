@@ -16,14 +16,36 @@ import pandas as pd
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
 
-from multidex_utils import triggered_by, trigger_index, dict_to_paragraphs, pickctx, keygrab, field_values, not_blank, rows
-from plotter.components import parse_model_quant_entry
-from plotter.graph import load_values_into_search_div, add_dropdown, \
-    remove_dropdown, clear_search, truncate_id_list_for_missing_properties, \
-    make_axis, make_marker_properties, make_graph_display_settings, \
-    spectrum_values_range, handle_graph_search, \
-    make_zspec_browse_image_components, make_mspec_browse_image_components, \
-    pretty_print_search_params, spectrum_from_graph_event, style_toggle
+from multidex_utils import (
+    triggered_by,
+    trigger_index,
+    dict_to_paragraphs,
+    pickctx,
+    keygrab,
+    field_values,
+    not_blank,
+    rows,
+)
+from plotter.ui_components import parse_model_quant_entry
+from plotter.graph_components import main_scatter_graph, spectrum_line_graph
+from plotter.graph import (
+    load_values_into_search_div,
+    add_dropdown,
+    remove_dropdown,
+    clear_search,
+    truncate_id_list_for_missing_properties,
+    make_axis,
+    make_marker_properties,
+    make_graph_display_settings,
+    spectrum_values_range,
+    handle_graph_search,
+    make_zspec_browse_image_components,
+    make_mspec_browse_image_components,
+    pretty_print_search_params,
+    spectrum_from_graph_event,
+    style_toggle,
+    make_scatter_annotations,
+)
 from plotter.spectrum_ops import filter_df_from_queryset
 
 
@@ -117,7 +139,6 @@ def update_spectrum_graph(
     error_bar_value,
     *,
     spec_model,
-    spec_graph_function,
 ):
     if scale_to != "None":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
@@ -125,7 +146,7 @@ def update_spectrum_graph(
     if not event_data:
         raise PreventUpdate
     spectrum = spectrum_from_graph_event(event_data, spec_model)
-    return spec_graph_function(
+    return spectrum_line_graph(
         spectrum,
         scale_to=scale_to,
         average_filters=average_filters,
@@ -183,7 +204,6 @@ def update_main_graph(
     y_inputs,
     marker_inputs,
     graph_display_inputs,
-    graph_function,
     cget,
     cset,
     spec_model,
@@ -234,7 +254,7 @@ def update_main_graph(
     filter_df = cget("main_graph_filter_df")
     metadata_df = cget("metadata_df")
     get_errors = ctx.inputs["main-graph-error.value"]
-    filters_are_averaged = 'average' in ctx.states['main-graph-average.value']
+    filters_are_averaged = "average" in ctx.states["main-graph-average.value"]
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
@@ -242,7 +262,7 @@ def update_main_graph(
         filter_df,
         metadata_df,
         spec_model,
-        filters_are_averaged
+        filters_are_averaged,
     )
     graph_content = [
         truncated_ids,
@@ -251,26 +271,18 @@ def update_main_graph(
         metadata_df,
         get_errors,
         highlight_ids,
-        filters_are_averaged
+        filters_are_averaged,
     ]
-    x_axis, x_errors, x_title = make_axis(x_settings, *graph_content)
-    y_axis, y_errors, y_title = make_axis(y_settings, *graph_content)
+    graph_df = pd.DataFrame({"customdata": truncated_ids})
+    # storing these separately because the API for error bars is annoying
+    errors = {}
+    graph_df["x"], errors["x"], x_title = make_axis(x_settings, *graph_content)
+    graph_df["y"], errors["y"], y_title = make_axis(y_settings, *graph_content)
+    # similarly for marker properties
     marker_properties = make_marker_properties(marker_settings, *graph_content)
-    truncated_metadata = metadata_df.loc[truncated_ids]
-    feature_color = truncated_metadata["feature"].copy()
-    no_feature_ix = feature_color.loc[feature_color.isna()].index
-    feature_color.loc[no_feature_ix] = truncated_metadata["color"].loc[
-        no_feature_ix
-    ]
-    text = (
-        "sol"
-        + truncated_metadata["sol"].astype(str)
-        + " "
-        + truncated_metadata["name"]
-        + " "
-        + feature_color
-    )
-    customdata = truncated_ids
+    # storing this to set draw order for highlights
+    graph_df["size"] = marker_properties["marker"]["size"]
+    graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
     graph_display_dict, axis_display_dict = make_graph_display_settings(
         graph_display_settings
     )
@@ -288,44 +300,31 @@ def update_main_graph(
         zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
 
     # for functions that (perhaps asynchronously) fetch the state of the
-    # graph.
-    # this is another perhaps ugly flow control thing!
+    # graph. this is another perhaps ugly flow control thing!
     if record_settings:
         for parameter in (
             "x_settings",
             "y_settings",
             "marker_settings",
-            "x_axis",
-            "y_axis",
             "marker_properties",
-            "text",
-            "customdata",
-            "graph_function",
             "graph_display_dict",
             "axis_display_dict",
             "zoom",
-            "x_errors",
-            "y_errors",
             "x_title",
             "y_title",
             "get_errors",
         ):
             cset(parameter, locals()[parameter])
 
-    # TODO: refactor (too many arguments)
     return (
-        graph_function(
-            x_axis,
-            y_axis,
+        main_scatter_graph(
+            graph_df,
+            errors,
             marker_properties,
             graph_display_dict,
             axis_display_dict,
-            text,
-            customdata,
             label_ids,
             zoom,
-            x_errors,
-            y_errors,
             x_title,
             y_title,
         ),

@@ -1,4 +1,4 @@
-"""factory functions for dash components."""
+"""factory functions for UI dash components"""
 import random
 from ast import literal_eval
 from functools import partial
@@ -6,16 +6,14 @@ from typing import TYPE_CHECKING, Mapping, Optional, Iterable
 
 import dash_core_components as dcc
 import dash_html_components as html
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
 from plotter.proffered_markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
-from plotter.spectrum_ops import d2r
 from multidex_utils import get_if, none_to_empty, fetch_css_variables
 
 if TYPE_CHECKING:
-    from plotter.models import MSpec, Spectrum
+    from plotter.models import Spectrum
 
 # TODO: is this a terrible placeholder?
 css_variables = fetch_css_variables()
@@ -202,142 +200,6 @@ def image_holder(index: int = 0) -> dcc.Graph:
     )
 
 
-def main_scatter_graph(
-    x_axis: list[float],
-    y_axis: list[float],
-    marker_property_dict: Mapping,
-    graph_display_settings: Mapping,
-    axis_display_settings: Mapping,
-    text: list,
-    customdata: list,
-    label_ids: list[int],
-    zoom: Optional[tuple[list[float, float]]] = None,
-    x_errors: Optional[dict] = None,
-    y_errors: Optional[dict] = None,
-    x_title: str = None,
-    y_title: str = None,
-) -> go.Figure:
-    """
-    partial placeholder scatter function for main graph.
-    this function just creates the Plotly figure; data is read from db
-    and formatted in make_axis.
-    """
-    fig = go.Figure()
-    # TODO: go.Scattergl (WebGL) is noticeably worse-looking than
-    # go.Scatter (SVG), but go.Scatter may be inadequately performant with
-    # all the points
-    # in the data set. can we optimize a bit? hard with plotly...
-
-    # add floating labels from clicked points
-    # doing it this way instead of with 'text' because plotly
-    # requires redraws to show the text, and fails to do so every other time
-    # for ... reasons ... so it looks like it
-    # does nothing every other time unless you pan or whatever
-    for database_id, string, xpos, ypos in zip(
-        customdata, text, x_axis, y_axis
-    ):
-        if database_id in label_ids:
-            fig.add_annotation(
-                x=xpos, y=ypos, text=string, **ANNOTATION_SETTINGS
-            )
-
-    fig.add_trace(
-        go.Scatter(
-            x=x_axis,
-            y=y_axis,
-            hovertext=text,
-            customdata=customdata,
-            mode="markers + text",
-            marker={"color": "black", "size": 8},
-        )
-    )
-    display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
-    axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
-    # TODO: refactor to build layout dictionary first rather than using the
-    #  update_layout pattern
-    # noinspection PyTypeChecker
-    fig.update_layout(display_dict)
-    fig.update_xaxes(axis_display_dict | {"title_text": x_title})
-    fig.update_yaxes(axis_display_dict | {"title_text": y_title})
-    fig.update_traces(**marker_property_dict)
-
-    for error_dict, name in [(x_errors, "x"), (y_errors, "y")]:
-        if error_dict is None:
-            fig.update_traces({"error_" + name: {"visible": False}})
-        else:
-            fig.update_traces(
-                {
-                    "error_" + name: error_dict
-                    | {
-                        "visible": True,
-                        "color": "rgba(0,0,0,0.3)",
-                    }
-                }
-            )
-
-    if zoom is not None:
-        fig.update_layout(
-            {
-                "xaxis": {"range": [zoom[0][0], zoom[0][1]]},
-                "yaxis": {"range": [zoom[1][0], zoom[1][1]]},
-            }
-        )
-    return fig
-
-
-def spectrum_line_graph(
-    spectrum: "MSpec",
-    scale_to=("l1", "r1"),
-    average_filters=True,
-    show_error=True,
-    r_star=True,
-) -> go.Figure:
-    """
-    placeholder line graph for individual mastcam spectra.
-    creates a plotly figure from the mspec's filter values and
-    roi_color.
-    """
-    spectrum_data = spectrum.filter_values(
-        scale_to=scale_to, average_filters=average_filters
-    )
-    x_axis = [filt_value["wave"] for filt_value in spectrum_data.values()]
-    y_axis = [filt_value["mean"] for filt_value in spectrum_data.values()]
-    y_error = [filt_value["err"] for filt_value in spectrum_data.values()]
-    # TODO: this definitely shouldn't be happening here
-    if r_star:
-        if spectrum.incidence_angle:
-            cos_theta_i = np.cos(d2r(spectrum.incidence_angle))
-            y_axis = [mean / cos_theta_i for mean in y_axis]
-            y_error = [err / cos_theta_i for err in y_error]
-    text = [
-        filt + ", " + str(spectrum_data[filt]["wave"])
-        for filt in spectrum_data
-    ]
-    fig = go.Figure(
-        layout={
-            **GRAPH_DISPLAY_DEFAULTS,
-            "xaxis": AXIS_DISPLAY_DEFAULTS | {"title_text": "wavelength"},
-            "yaxis": AXIS_DISPLAY_DEFAULTS
-            | {
-                "title_text": "reflectance",
-                "range": [0, min(y_axis) + max(y_axis)],
-            },
-        }
-    )
-    # TODO: clean input to make this toggleable again
-    show_error = True
-    scatter = go.Scatter(
-        x=x_axis,
-        y=y_axis,
-        mode="lines+markers",
-        text=text,
-        line={"color": spectrum.roi_hex_code()},
-        error_y={"array": y_error, "visible": show_error},
-    )
-    fig.add_trace(scatter)
-    return fig
-
-
 def color_scale_drop(element_id: str, value: str = None) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
@@ -486,10 +348,11 @@ def component_drop(element_id, value, label_content=None, options=None):
                 options=options,
                 value=value,
                 className="dash-dropdown filter-drop",
-                clearable=False
+                clearable=False,
             ),
-        ]
+        ],
     )
+
 
 def field_drop(fields, element_id, index, value=None):
     """dropdown for field selection -- no special logic atm"""
@@ -732,7 +595,7 @@ def axis_controls_container(axis, prefix, spec_model, get_r, filter_options):
         axis_value_drop(
             spec_model,
             prefix + "graph-option-" + axis,
-            value=get_r(prefix + "graph-option-" + axis + '.value'),
+            value=get_r(prefix + "graph-option-" + axis + ".value"),
             label_content=axis + " axis",
         ),
         html.Div(
@@ -1151,5 +1014,3 @@ def multidex_body(spec_model):
         ],
         id="multidex",
     )
-
-

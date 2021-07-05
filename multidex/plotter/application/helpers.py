@@ -1,5 +1,4 @@
 from inspect import getmembers, isfunction, getmodule
-from pathlib import Path
 
 import plotter.application.registry
 import plotter.callbacks
@@ -11,7 +10,7 @@ from plotter.application.structure import (
     GRAPH_DISPLAY_INPUTS,
     STATIC_IMAGE_URL,
 )
-from plotter.components import main_scatter_graph, spectrum_line_graph
+from plotter.graph_components import spectrum_line_graph
 
 
 def configure_cache(cache_subdirectory):
@@ -58,9 +57,6 @@ def configure_callbacks(cget, cset, spec_model):
         "graph_display_inputs": GRAPH_DISPLAY_INPUTS,
         "cget": cget,
         "cset": cset,
-        # factory functions for plotly figures
-        "graph_function": main_scatter_graph,
-        "spec_graph_function": spectrum_line_graph,
         # django model containing our spectra.
         "spec_model": spec_model,
         # host-side directory containing context images

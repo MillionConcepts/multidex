@@ -17,7 +17,7 @@ from plotter.application.helpers import (
 from plotter.application.structure import STATIC_IMAGE_URL
 from plotter.spectrum_ops import filter_df_from_queryset
 
-from plotter.components import multidex_body
+from plotter.ui_components import multidex_body
 from plotter.graph import cache_set, cache_get
 from plotter.models import INSTRUMENT_MODEL_MAPPING
 
