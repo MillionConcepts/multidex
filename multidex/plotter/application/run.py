@@ -1,11 +1,10 @@
-import os
 import random
 import shutil
 from pathlib import Path
 
-import django
 import flask
 import flask.cli
+import pandas as pd
 from dash import dash
 from flask_caching import Cache
 
@@ -31,25 +30,14 @@ def run_multidex(instrument_code, debug=False):
     cache_subdirectory = str(random.randint(1000000, 9999999))
     cache = Cache()
     cache.init_app(app.server, config=configure_cache(cache_subdirectory))
+    spec_model = INSTRUMENT_MODEL_MAPPING[instrument_code]
+    # active queryset is explicitly stored in global cache, as are
+    # many other app runtime values
     # setter and getter functions for a flask_caching.Cache object. in the
     # context of this app initialization, they basically define a namespace.
     cset = cache_set(cache)
     cget = cache_get(cache)
-    spec_model = INSTRUMENT_MODEL_MAPPING[instrument_code]
-    cset("spec_model_name", spec_model.instrument_brief_name)
-
-    # active queryset is explicitly stored in global cache, as are
-    # many other app runtime values
-    cset("search_ids", qlist(spec_model.objects.all(), "id"))
-    cset("highlight_ids", qlist(spec_model.objects.all(), "id"))
-    cset("main_label_ids", [])
-    cset(
-        "main_graph_filter_df",
-        filter_df_from_queryset(spec_model.objects.all()),
-    )
-    cset("metadata_df", model_metadata_df(spec_model))
-    cset("scale_to", "None")
-    cset("average_filters", False)
+    initialize_cache_values(cset, spec_model)
     # configure callback functions
     configured_callbacks = configure_callbacks(cget, cset, spec_model)
     # initialize app layout -- later changes are all performed by callbacks
@@ -87,3 +75,26 @@ def run_multidex(instrument_code, debug=False):
             port += 1
 
     shutil.rmtree(".cache/" + cache_subdirectory)
+
+
+def initialize_cache_values(cset, spec_model):
+    cset("spec_model_name", spec_model.instrument_brief_name)
+
+    cset("search_ids", qlist(spec_model.objects.all(), "id"))
+    cset("highlight_ids", qlist(spec_model.objects.all(), "id"))
+    cset("main_label_ids", [])
+    cset(
+        "main_graph_filter_df",
+        filter_df_from_queryset(spec_model.objects.all()),
+    )
+    metadata_df = model_metadata_df(spec_model)
+    # TODO: this is a hack in place of adding formatted time parsing at
+    #  various places within the application
+    if "ltst" in metadata_df.columns:
+        metadata_df.loc[pd.notna(metadata_df["ltst"]), "ltst"] = [
+            instant.hour * 3600 + instant.minute * 60 + instant.second
+            for instant in metadata_df["ltst"].dropna()
+        ]
+    cset("metadata_df", metadata_df)
+    cset("scale_to", "None")
+    cset("average_filters", False)
