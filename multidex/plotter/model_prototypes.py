@@ -211,7 +211,6 @@ class XSpec(models.Model):
             ap
             for ap in cls.accessible_properties()
             if (ap["type"] not in ("method", "decomposition"))
-            and (ap["value"] not in "ltst")
         ]
 
     def image_files(self):

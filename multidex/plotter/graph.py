@@ -263,11 +263,6 @@ def make_axis(
             get_errors,
         )
     value_series = metadata_df.loc[id_list][props["value"]]
-    if props["value"] == "ltst":
-        value_series = [
-            instant.hour * 3600 + instant.minute * 60 + instant.second
-            for instant in value_series
-        ]
     return value_series, None, axis_option
 
 
@@ -426,8 +421,6 @@ def spectrum_values_range(metadata_df, field):
     for cueing or aiding searches.
     """
     values = metadata_df[field]
-    if field == "ltst":
-        values = [0 for _ in values]
     return values.min(), values.max()
 
 
