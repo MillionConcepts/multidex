@@ -1,6 +1,5 @@
 import datetime as dt
 import os
-from operator import attrgetter
 from pathlib import Path
 
 import django.db.models
