@@ -251,7 +251,7 @@ def make_axis(
         return perform_decomposition(id_list, decomp_df, settings, props)
 
     if props["type"] == "computed":
-        return filter_df.loc[id_list, props["value"]], None, axis_option
+        return filter_df.loc[id_list, props["value"]].values, None, axis_option
 
     if props["type"] == "method":
         return perform_spectrum_op(
@@ -263,7 +263,7 @@ def make_axis(
             get_errors,
         )
     value_series = metadata_df.loc[id_list][props["value"]]
-    return value_series, None, axis_option
+    return value_series.values, None, axis_option
 
 
 # TODO: this is sloppy but cleanup would be better after everything's
