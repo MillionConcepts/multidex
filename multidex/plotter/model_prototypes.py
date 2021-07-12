@@ -64,7 +64,6 @@ XCAM_SINGLE_SPECTRUM_FIELDS = {
     # ############################################
     # ## lithological information -- relevant only to rocks ###
     # #########################################################
-    "float": models.BooleanField("floating vs. in-place", **B_N_I),
     # large-to-small taxonomic categories for rock clusters
     "filename": models.CharField(
         "Name of archive CSV file", max_length=50, db_index=True
@@ -113,6 +112,9 @@ REDUCTION_OP_INTERFACE_PROPERTIES = PCA_INTERFACE_PROPERTIES
 for op in REDUCTION_OP_INTERFACE_PROPERTIES:
     op |= REDUCTION_OP_BASE_PROPERTIES
 
+
+# TODO: this is ugly as sin, flatten / concatenate this somehow
+
 # dictionary defining generalized interface properties
 # for various XCAM fields
 XCAM_FIELD_INTERFACE_PROPERTIES = (
@@ -141,8 +143,25 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "distance", "value_type": "qual"},
     {"value": "location", "value_type": "qual"},
     {"value": "workspace", "value_type": "qual"},
-    {"value": "scam", "value_type": "qual"},
+    {"value": "compression_quality", "value_type": "quant"},
+    {"value": "scam_libs", "value_type": "qual"},
+    {"value": "scam_raman", "value_type": "qual"},
+    {"value": "scam_rmi", "value_type": "qual"},
+    {"value": "scam_visir", "value_type": "qual"},
+    {"value": "scam_libs", "value_type": "qual"},
+    {"value": "sherloc", "value_type": "qual"},
+    {"value": "watson", "value_type": "qual"},
+    {"value": "min_count", "value_type": "quant"},
     {"value": "analysis_name", "value_type": "qual"},
+    {"value": "scam_libs", "value_type": "qual"},
+    {"value": "scam_visir", "value_type": "qual"},
+    {"value": "scam_raman", "value_type": "qual"},
+    {"value": "float", "value_type": "qual"},
+    {"value": "rock_surface", "value_type": "qual"},
+    {"value": "grain_size", "value_type": "qual"},
+    {"value": "soil_location", "value_type": "qual"},
+    {"value": "soil_color", "value_type": "qual"},
+    {"value": "landform_type", "value_type": "qual"},
 
 )
 
