@@ -22,14 +22,22 @@ class ZSpec(XSpec):
     # timestamp of file if automatically produced by asdf
     file_timestamp = models.CharField(max_length=30, null=True)
     compression = models.CharField("Compression", max_length=40, **B_N_I)
-    morphology = models.CharField("Morphology", max_length=20, **B_N_I)
+    compression_quality = models.IntegerField("Compression Quality", **B_N_I)
+    float = models.CharField("Rock Float Status", max_length=20, **B_N_I)
+    rock_surface = models.CharField("Rock Surface", max_length=50, **B_N_I)
+    grain_size = models.CharField("Grain Size", max_length=20, **B_N_I)
+    soil_location = models.CharField("Soil Location", max_length=50, **B_N_I)
+    soil_color = models.CharField("Soil Color", max_length=25, **B_N_I)
+    morphology = models.CharField("Morphology", max_length=25, **B_N_I)
     distance = models.CharField("Distance", max_length=20, **B_N_I)
     location = models.CharField("Location", max_length=60, **B_N_I)
+    landform_type = models.CharField("Landform Type", max_length=25, **B_N_I)
     workspace = models.CharField("Workspace", max_length=40, **B_N_I)
-    scam = models.BooleanField("SCAM", **B_N_I)
     analysis_name = models.CharField(
         "analysis / ROI set name", max_length=30, **B_N_I
     )
+    min_count = models.IntegerField("Minimum Pixel Count", **B_N_I)
+
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 
@@ -51,7 +59,7 @@ class MSpec(XSpec):
     formation = models.CharField("Formation", **B_N_I, max_length=50)
     member = models.CharField("Member", **B_N_I, max_length=50)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
-
+    float = models.BooleanField("floating vs. in-place", **B_N_I)
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
 
@@ -73,6 +81,21 @@ class MSpec(XSpec):
                 images[image_type + "_size"] = image.size
         return images
 
+
+ZCAM_COREGISTERED_INSTRUMENTS = (
+    "SCAM LIBS",
+    "SCAM VISIR",
+    "SCAM RMI",
+    "SCAM Raman",
+    "PIXL",
+    "SHERLOC",
+    "WATSON",
+)
+for instrument in ZCAM_COREGISTERED_INSTRUMENTS:
+    coreg_field = models.BooleanField(instrument, **B_N_I)
+    coreg_field.contribute_to_class(
+        ZSpec, "_".join(instrument.lower().split(" "))
+    )
 
 # bulk setup for each XCAM instrument
 for spec_model in [ZSpec, MSpec]:

@@ -1,5 +1,6 @@
 import datetime as dt
 import os
+from operator import attrgetter
 from pathlib import Path
 
 import django.db.models
@@ -29,9 +30,11 @@ def looks_like_marslab(fn):
 
 def looks_like_context(fn):
     name = Path(fn).name
-    if name.endswith(".png") and ("context" in name):
-        return True
-    return False
+    return (
+        name.endswith(".png")
+        and ("context" in name)
+        and ("pixmap" not in name)
+    )
 
 
 def directory_of(path):
@@ -96,7 +99,7 @@ def match_obs_images(marslab_file, context_df):
     return obs_images
 
 
-USELESS_COLUMNS = ["instrument", "solar_elevation", "roi_source"]
+ZSPEC_FIELD_NAMES = list(map(attrgetter("name"), ZSpec._meta.fields))
 
 
 def save_relevant_thumbs(context_df):
@@ -126,7 +129,7 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
     context_df = process_context_files(context_files, default_thumbnailer())
     for marslab_file in marslab_files:
         frame = pd.read_csv(marslab_file)
-        if frame['INSTRUMENT'].iloc[0] != 'ZCAM':
+        if frame["INSTRUMENT"].iloc[0] != "ZCAM":
             print("skipping non-ZCAM file: " + marslab_file)
             continue
         print("ingesting spectra from " + Path(marslab_file).name)
@@ -135,21 +138,34 @@ def ingest_multidex(path_or_file, *, recursive: "r" = False):
             print("found matching images: " + obs_images)
         else:
             print("no matching images found")
-        y_to_bool(frame, ZCAM_BOOL_FIELDS)
-        frame = frame.replace(["-", "", " "], np.nan)
-        frame.columns = [col.lower() for col in frame.columns]
-        frame = frame[
-            [col for col in frame.columns if col not in USELESS_COLUMNS]
-        ]
+        # regularize various ways people may have rendered metadata fields
+        try:
+            frame.columns = [
+                col.upper().replace(" ", "_") for col in frame.columns
+            ]
+            y_to_bool(frame, ZCAM_BOOL_FIELDS)
+            frame = frame.replace(["-", "", " "], np.nan)
+            frame.columns = [col.lower() for col in frame.columns]
+        except KeyboardInterrupt:
+            raise
+        except Exception as ex:
+            print("failed on " + marslab_file + " reformat: " + str(ex))
+            continue
         colors = []
         for _, row in frame.iterrows():
             row = row.dropna()
+            relevant_indices = [
+                ix for ix in row.index if ix in ZSPEC_FIELD_NAMES
+            ]
             for filt in set(ZSpec.filters).intersection(row.index):
                 row[filt] = float(row[filt])
-            metadata = dict(row) | {
+            metadata = dict(row[relevant_indices]) | {
                 "filename": Path(marslab_file).name,
                 "images": obs_images,
                 "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
+                "min_count": row[
+                    row.index.str.contains("count")
+                ].astype(float).min(),
             }
             try:
                 spectrum = ZSpec(**metadata)

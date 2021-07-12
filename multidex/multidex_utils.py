@@ -410,7 +410,7 @@ def term_search(
     search for strings or whatever within a field of a model.
     """
     # toss out "any" searches
-    if value.lower() == "any":
+    if str(value).lower() == "any":
         return queryset
     # allow inexact phrase matching?
     search_function = flexible_query
@@ -559,7 +559,7 @@ def df_term_search(
     search for strings or whatever within a field of a model.
     """
     # toss out "any" searches
-    if value.lower() == "any":
+    if str(value).lower() == "any":
         return metadata_df.index
     # allow inexact phrase matching?
     search_function = df_flexible_query
