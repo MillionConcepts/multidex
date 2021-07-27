@@ -6,7 +6,6 @@ functions used by interface functions in callbacks.py
 """
 
 import datetime as dt
-import os
 from collections import Iterable
 from copy import deepcopy
 from functools import reduce
@@ -672,61 +671,6 @@ def describe_current_graph(cget):
     return {
         parameter: cget(parameter) for parameter in SPlot.canonical_parameters
     }
-
-
-def save_search_state(_n_clicks, save_name, trigger_value, cget):
-    """
-    fairly permissive right now. this saves current search-tab state to a
-    file as csv, which can then be reloaded by make_loaded_search_tab.
-    """
-    filename = "saves/" + cget("spec_model_name") + "_searches.csv"
-    try:
-        state_variable_names = [
-            *cget("x_settings").keys(),
-            *cget("y_settings").keys(),
-            *cget("marker_settings").keys(),
-            "search_parameters",
-            "main_highlight_parameters",
-            "scale_to",
-            "average_filters",
-            "r_star",
-            "errors",
-        ]
-
-        state_variable_values = [
-            *cget("x_settings").values(),
-            *cget("y_settings").values(),
-            *cget("marker_settings").values(),
-            str(cget("search_parameters")),
-            str(cget("main_highlight_parameters")),
-            str(cget("scale_to")),
-            cget("average_filters"),
-            cget("r_star"),
-            cget("errors"),
-        ]
-    except AttributeError as error:
-        print(error)
-        raise PreventUpdate
-    try:
-        saved_searches = pd.read_csv(filename)
-    except FileNotFoundError:
-        saved_searches = pd.DataFrame(columns=state_variable_names + ["name"])
-    state_line = pd.DataFrame(
-        {
-            parameter: value
-            for parameter, value in zip(
-                state_variable_names, state_variable_values
-            )
-        },
-        index=[0],
-    )
-    if save_name is None:
-        save_name = dt.datetime.now().strftime("%D %H:%M:%S")
-    state_line["name"] = save_name
-    appended_df = pd.concat([saved_searches, state_line], axis=0)
-    os.makedirs("saves", exist_ok=True)
-    appended_df.to_csv(filename, index=False)
-    return trigger_value + 1
 
 
 def load_values_into_search_div(row, spec_model, search_file, cset):
