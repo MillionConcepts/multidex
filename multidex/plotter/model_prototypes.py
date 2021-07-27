@@ -119,6 +119,7 @@ for op in REDUCTION_OP_INTERFACE_PROPERTIES:
 # for various XCAM fields
 XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "target_elevation", "value_type": "quant"},
+    {"value": "rover_elevation", "value_type": "quant"},
     {"value": "ltst", "value_type": "quant"},
     {"value": "sclk", "value_type": "quant"},
     {"value": "zoom", "value_type": "qual"},
