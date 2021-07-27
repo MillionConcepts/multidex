@@ -59,7 +59,7 @@ class MSpec(XSpec):
     formation = models.CharField("Formation", **B_N_I, max_length=50)
     member = models.CharField("Member", **B_N_I, max_length=50)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
-    float = models.BooleanField("floating vs. in-place", **B_N_I)
+    float = models.CharField("floating vs. in-place", **B_N_I, max_length=15)
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
 
