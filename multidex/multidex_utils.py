@@ -618,7 +618,7 @@ def df_interval_search(
 def df_value_fetch_search(
     metadata_df: pd.DataFrame, field: "str", value_list: Iterable
 ) -> pd.DataFrame.index:
-    return metadata_df[field].isin(value_list).index
+    return metadata_df.loc[metadata_df[field].isin(value_list)].index
 
 
 def df_multiple_field_search(

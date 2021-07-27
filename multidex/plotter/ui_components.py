@@ -435,9 +435,7 @@ def parse_model_quant_entry(string: str) -> dict:
             raise ValueError(
                 "Either a beginning or end numerical value must be entered."
             )
-    elif string == "":
-        pass
-    else:
+    elif string != "":
         list_list = string.split(",")
         # do not allow ducks and rutabagas and such to be entered into the list
         try:
