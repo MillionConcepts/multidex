@@ -5,6 +5,9 @@ channels:
 dependencies:
   - python=3.9
   - conda-build
+  - rasterio
+  - python-levenshtein
+  - gdal
   - fs
   - clize
   - django
