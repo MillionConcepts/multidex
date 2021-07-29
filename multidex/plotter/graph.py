@@ -696,12 +696,15 @@ def pretty_print_search_params(search_parameters):
                 + str(param["end"])
             )
         else:
-            term_list = param["term"]
+            if param.get('term'):
+                term_list = param["term"]
+            else:
+                term_list = param['value_list']
             if len(term_list) > 1:
                 term_string = ", ".join(term_list)
             else:
                 term_string = term_list[0]
-            string_list.append(param["field"] + ": " + term_string)
+            string_list.append(f"{param['field']}: {term_string}")
     if len(string_list) > 1:
         return "; ".join(string_list)
     return string_list[0]
