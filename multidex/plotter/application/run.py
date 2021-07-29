@@ -87,6 +87,9 @@ def initialize_cache_values(cset, spec_model):
         "main_graph_filter_df",
         filter_df_from_queryset(spec_model.objects.all()),
     )
+    # TODO: this is a hack that should be initialized from some property of
+    #  the model
+    cset("r_star", True)
     metadata_df = model_metadata_df(spec_model)
     # TODO: this is a hack in place of adding formatted time parsing at
     #  various places within the application
