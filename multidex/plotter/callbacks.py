@@ -615,6 +615,10 @@ def export_graph_csv(_clicks, selected, *, cget):
         filename += "_near_filters_averaged"
     if selected is not None:
         filename += "_custom_selection"
+    if cget("r_star") is True:
+        filename += "_r_star"
+    else:
+        filename += "_iof"
     filename += ".csv"
     os.makedirs("exports", exist_ok=True)
     output_df.to_csv("exports/" + filename, index=None)

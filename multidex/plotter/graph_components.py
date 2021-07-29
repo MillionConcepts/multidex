@@ -164,6 +164,9 @@ def sort_by_marker_size(errors, graph_df, marker_property_dict):
     for key in ("color", "size"):
         if marker_property_dict["marker"].get(key) is None:
             continue
+        # solid colors
+        if isinstance(marker_property_dict["marker"].get(key), str):
+            continue
         marker_property_dict["marker"][key] = np.array(
             marker_property_dict["marker"][key]
         )[sort_indices]
