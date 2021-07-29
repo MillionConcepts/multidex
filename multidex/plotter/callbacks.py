@@ -566,30 +566,11 @@ def export_graph_csv(_clicks, selected, *, cget):
         search_ids = cget("search_ids")
     filter_df.columns = [column.upper() for column in filter_df.columns]
     metadata_df.columns = [column.upper() for column in metadata_df.columns]
-    metadata_df = metadata_df.reindex(
-        columns=[
-            "NAME",
-            "SOL",
-            "SEQ_ID",
-            "INSTRUMENT",
-            "COLOR",
-            "FEATURE",
-            "FORMATION",
-            "MEMBER",
-            "FLOAT",
-            "LTST",
-            "ROVER_ELEVATION",
-            "TARGET_ELEVATION",
-            "INCIDENCE_ANGLE",
-            "PHASE_ANGLE",
-            "EMISSION_ANGLE",
-            "TAU",
-            "FOCAL_DISTANCE",
-            "LAT",
-            "LON",
-            "ODOMETRY",
-        ],
-    )
+    # TODO: dumb hack, make this end-to-end smoother
+    if "SOIL_LOCATION" in metadata_df.columns:
+        metadata_df = metadata_df.rename(
+            columns={"SOIL_LOCATION": "SOIL LOCATION"}
+        )
     output_df = (
         pd.concat(
             [metadata_df, filter_df],
