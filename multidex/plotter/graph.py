@@ -696,14 +696,18 @@ def pretty_print_search_params(search_parameters):
                 + str(param["end"])
             )
         else:
-            if param.get('term'):
+            if param.get("term"):
                 term_list = param["term"]
             else:
-                term_list = param['value_list']
+                term_list = param["value_list"]
+            term_list = [
+                str(term) if not str(term).endswith(".0") else str(term)[:-2]
+                for term in term_list
+            ]
             if len(term_list) > 1:
-                term_string = ", ".join(term_list)
+                term_string = ", ".join([str(term) for term in term_list])
             else:
-                term_string = term_list[0]
+                term_string = str(term_list[0])
             string_list.append(f"{param['field']}: {term_string}")
     if len(string_list) > 1:
         return "; ".join(string_list)
@@ -739,11 +743,11 @@ def make_scatter_annotations(metadata_df, truncated_ids):
         no_feature_ix
     ]
     text = (
-            "sol"
-            + truncated_metadata["sol"].astype(str)
-            + " "
-            + truncated_metadata["name"]
-            + " "
-            + feature_color
+        "sol"
+        + truncated_metadata["sol"].astype(str)
+        + " "
+        + truncated_metadata["name"]
+        + " "
+        + feature_color
     ).values
     return text

@@ -585,7 +585,7 @@ def export_graph_csv(_clicks, selected, *, cget):
         + dt.datetime.now().strftime("%Y%m%dT%H%M%S")
         + "_"
         + re.sub(
-            "[-;,:. ]+",
+            "[-;,:/\. ]+",
             "_",
             pretty_print_search_params(cget("search_parameters")),
         )

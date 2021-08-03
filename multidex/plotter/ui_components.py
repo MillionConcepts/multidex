@@ -44,6 +44,12 @@ GRAPH_CONFIG_SETTINGS = {
         "hoverCompareCartesian",
     ],
     "displaylogo": False,
+    "toImageButtonOptions": {
+        'format': 'png',
+        'height': 1440,
+        'width': 1440,
+        'scale': 3
+    }
 }
 ANNOTATION_SETTINGS = {
     "font": {
