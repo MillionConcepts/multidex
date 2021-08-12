@@ -109,6 +109,8 @@ class CSpec(XSpec):
     atmospheric_opacity = models.FloatField("Atmospheric Opacity", **B_N_I)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
 
+    instrument = "CCAM"
+    instrument_brief_name = "ChemCam"
 
 ZCAM_COREGISTERED_INSTRUMENTS = (
     "SCAM LIBS",
