@@ -14,7 +14,6 @@ from typing import Tuple
 import dash
 import pandas as pd
 from dash.exceptions import PreventUpdate
-from plotly import graph_objects as go
 
 from multidex_utils import (
     triggered_by,
@@ -27,7 +26,8 @@ from multidex_utils import (
     rows,
 )
 from plotter.ui_components import parse_model_quant_entry
-from plotter.graph_components import main_scatter_graph, spectrum_line_graph
+from plotter.graph_components import main_scatter_graph, spectrum_line_graph, \
+    failed_scatter_graph
 from plotter.graph import (
     load_values_into_search_div,
     add_dropdown,
@@ -36,7 +36,7 @@ from plotter.graph import (
     truncate_id_list_for_missing_properties,
     make_axis,
     make_marker_properties,
-    make_graph_display_settings,
+    format_display_settings,
     spectrum_values_range,
     handle_graph_search,
     make_zspec_browse_image_components,
@@ -44,9 +44,11 @@ from plotter.graph import (
     pretty_print_search_params,
     spectrum_from_graph_event,
     style_toggle,
-    make_scatter_annotations,
+    make_scatter_annotations, retrieve_graph_data,
+    halt_for_ineffective_highlight_toggle, add_or_remove_label,
+    explicitly_set_graph_bounds, parse_main_graph_bounds_string,
 )
-from plotter.spectrum_ops import filter_df_from_queryset
+from plotter.spectrum_ops import data_df_from_queryset
 
 
 def handle_load(
@@ -155,7 +157,7 @@ def update_spectrum_graph(
     )
 
 
-def update_filter_df(
+def update_data_df(
     _load_trigger,
     scale_to,
     average_filters,
@@ -178,8 +180,8 @@ def update_filter_df(
     else:
         r_star = False
     cset(
-        "main_graph_filter_df",
-        filter_df_from_queryset(
+        "data_df",
+        data_df_from_queryset(
             spec_model.objects.all(),
             average_filters=average_filters,
             scale_to=scale_to,
@@ -212,62 +214,46 @@ def update_main_graph(
     ctx = dash.callback_context
     # handle explicit bounds changes
     if ctx.triggered[0]["prop_id"] == "main-graph-bounds.value":
-        zoom_string = ctx.triggered[0]["value"].split()
-        if len(zoom_string) != 4:
-            raise PreventUpdate
-        graph = go.Figure(ctx.states["main-graph.figure"])
-        graph.update_layout(
-            {
-                "xaxis": {
-                    "range": [zoom_string[0], zoom_string[1]],
-                    "autorange": False,
-                },
-                "yaxis": {
-                    "range": [zoom_string[2], zoom_string[3]],
-                    "autorange": False,
-                },
-            }
-        )
-        return graph, {}
+        return explicitly_set_graph_bounds(ctx)
+
+    bounds_string = parse_main_graph_bounds_string(ctx)
 
     # handle label addition / removal
     label_ids = cget("main_label_ids")
-    if ctx.triggered[0]["prop_id"] == "main-graph.clickData":
-        clicked_id = ctx.triggered[0]["value"]["points"][0]["customdata"]
-        if clicked_id in label_ids:
-            label_ids.remove(clicked_id)
-        else:
-            label_ids.append(clicked_id)
-        cset("main_label_ids", label_ids)
     # TODO: performance increase is possible here by just returning the graph
+    if ctx.triggered[0]["prop_id"] == "main-graph.clickData":
+        add_or_remove_label(cset, ctx, label_ids)
 
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
-    graph_display_settings = pickctx(ctx, graph_display_inputs)
-    if isinstance(ctx.triggered[0]["prop_id"], dict):
-        if ctx.triggered[0]["prop_id"]["type"] == "highlight-trigger":
-            if marker_settings["main-highlight-toggle.value"] == "off":
-                raise PreventUpdate
-    search_ids = cget("search_ids")
-    highlight_ids = cget("highlight_ids")
-    filter_df = cget("main_graph_filter_df")
-    metadata_df = cget("metadata_df")
+    halt_for_ineffective_highlight_toggle(ctx, marker_settings)
+
+    graph_display_dict, axis_display_dict = format_display_settings(
+        pickctx(ctx, graph_display_inputs)
+    )
+
+    data_df, metadata_df, highlight_ids, search_ids = retrieve_graph_data(cget)
+    if not search_ids:
+        return failed_scatter_graph(
+            "no spectra match search parameters", graph_display_dict
+        ), {}
+
     get_errors = ctx.inputs["main-graph-error.value"]
     filters_are_averaged = "average" in ctx.states["main-graph-average.value"]
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
         ["x.value", "y.value", "marker.value"],
-        filter_df,
+        data_df,
         metadata_df,
         spec_model,
         filters_are_averaged,
-    )
+        )
     graph_content = [
         truncated_ids,
         spec_model,
-        filter_df,
+        data_df,
         metadata_df,
         get_errors,
         highlight_ids,
@@ -283,36 +269,32 @@ def update_main_graph(
     # storing this to set draw order for highlights
     graph_df["size"] = marker_properties["marker"]["size"]
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
-    graph_display_dict, axis_display_dict = make_graph_display_settings(
-        graph_display_settings
-    )
 
-    graph_layout = ctx.states["main-graph.figure"]["layout"]
 
-    # automatically reset graph zoom only if we're loading the page or
+    # DEPRECATED: automatically reset graph zoom only if loading the page or
     # changing options and therefore scales
-    if (
-        ctx.triggered[0]["prop_id"]
-        in ["main-graph-option-y.value", "main-graph-option-x.value", "."]
-    ) or (len(ctx.triggered) > 1):
-        zoom = None
-    else:
-        zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
-
+    # TODO: reset even explicitly-set bounds for now...change back if needed
+    # if (
+    #         ctx.triggered[0]["prop_id"]
+    #         in ["main-graph-option-y.value", "main-graph-option-x.value", "."]
+    # ) or (len(ctx.triggered) > 1):
+    #     zoom = None
+    # else:
+    #     zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
     # for functions that (perhaps asynchronously) fetch the state of the
     # graph. this is another perhaps ugly flow control thing!
     if record_settings:
         for parameter in (
-            "x_settings",
-            "y_settings",
-            "marker_settings",
-            "marker_properties",
-            "graph_display_dict",
-            "axis_display_dict",
-            "zoom",
-            "x_title",
-            "y_title",
-            "get_errors",
+                "x_settings",
+                "y_settings",
+                "marker_settings",
+                "marker_properties",
+                "graph_display_dict",
+                "axis_display_dict",
+                "x_title",
+                "y_title",
+                "get_errors",
+                "bounds_string"
         ):
             cset(parameter, locals()[parameter])
 
@@ -324,9 +306,9 @@ def update_main_graph(
             graph_display_dict,
             axis_display_dict,
             label_ids,
-            zoom,
             x_title,
             y_title,
+            # bounds_string, # TODO: are we passing this ever or no?
         ),
         {},
     )
@@ -348,7 +330,7 @@ def update_search_options(
     )
     props = keygrab(spec_model.searchable_fields(), "label", field)
     search_df = pd.concat(
-        [cget("main_graph_filter_df"), cget("metadata_df")], axis=1
+        [cget("data_df"), cget("metadata_df")], axis=1
     )
     # if it's a field we do number interval searches on, reset term
     # interface and show number ranges in the range display. but don't reset
@@ -360,7 +342,7 @@ def update_search_options(
             search_text = ""
         return [
             [{"label": "any", "value": "any"}],
-            "minimum/maximum: " + str(spectrum_values_range(search_df, field))
+            "min/max: " + str(spectrum_values_range(search_df, field))
             # TODO: this should be a hover-over tooltip eventually
             + """ e.g., '100--200' or '100, 105, 110'""",
             search_text,
@@ -407,19 +389,20 @@ def update_search_ids(
     # the other hand it should be memoized -- but still but yes seriously it
     # should be memoized
     search_df = pd.concat(
-        [cget("metadata_df"), cget("main_graph_filter_df")], axis=1
+        [cget("metadata_df"), cget("data_df")], axis=1
     )
     search = handle_graph_search(search_df, deepcopy(search_list), spec_model)
-    ctx = dash.callback_context
-    if (
-        set(search) != set(cget("search_ids"))
-        or "load-trigger" in ctx.triggered[0]["prop_id"]
-    ):
-        cset("search_ids", search)
-        # save search parameters for graph description
-        cset("search_parameters", search_list)
-        return search_trigger_dummy_value + 1
-    raise PreventUpdate
+    # TODO: remove this cruft if in fact it remains so
+    # ctx = dash.callback_context
+    # if (
+    #     set(search) != set(cget("search_ids"))
+    #     or "load-trigger" in ctx.triggered[0]["prop_id"]
+    # ):
+    cset("search_ids", search)
+    # save search parameters for graph description
+    cset("search_parameters", search_list)
+    return search_trigger_dummy_value + 1
+    # raise PreventUpdate
 
 
 def change_calc_input_visibility(calc_type, *, spec_model):
@@ -559,7 +542,7 @@ def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
 # TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget):
     metadata_df = cget("metadata_df").copy()
-    filter_df = cget("main_graph_filter_df").copy()
+    filter_df = cget("data_df").copy()
     if selected is not None:
         search_ids = [point["customdata"] for point in selected["points"]]
     else:

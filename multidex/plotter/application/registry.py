@@ -164,7 +164,7 @@ def register_toggle_averaged_filters(app, configured_function):
     )(configured_function)
 
 
-def register_update_filter_df(app, configured_function):
+def register_update_data_df(app, configured_function):
     app.callback(
         Output({"type": "main-graph-scale-trigger", "index": 0}, "value"),
         [

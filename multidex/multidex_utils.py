@@ -353,6 +353,7 @@ def partially_evaluate_from_parameters(
 
 
 def listify(thing: Any) -> list:
+    # TODO: replace this with the dustgoggles version
     """Always a list, for things that want lists"""
     if isiterable(thing):
         return list(thing)

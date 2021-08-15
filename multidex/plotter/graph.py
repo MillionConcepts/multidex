@@ -6,7 +6,7 @@ functions used by interface functions in callbacks.py
 """
 
 import datetime as dt
-from collections import Iterable
+from collections.abc import Iterable
 from copy import deepcopy
 from functools import reduce
 from itertools import chain, cycle
@@ -16,19 +16,10 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 import dash_html_components as html
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from dash.exceptions import PreventUpdate
+from plotly import graph_objects as go
 from toolz import keyfilter
 
-from plotter import spectrum_ops
-from plotter.ui_components import (
-    search_parameter_div,
-    search_div,
-)
-from plotter.reduction import (
-    default_multidex_pipeline,
-    transform_and_explain_variance,
-)
 from multidex_utils import (
     rows,
     keygrab,
@@ -36,24 +27,24 @@ from multidex_utils import (
     seconds_since_beginning_of_day,
     arbitrarily_hash_strings,
     none_to_quote_unquote_none,
-    fetch_css_variables,
     df_multiple_field_search,
     re_get,
     djget,
+)
+from plotter import spectrum_ops
+from plotter.reduction import (
+    default_multidex_pipeline,
+    transform_and_explain_variance,
+)
+from plotter.styles.components import COLORBAR_SETTINGS
+from plotter.ui_components import (
+    search_parameter_div,
+    search_div,
 )
 
 if TYPE_CHECKING:
     from plotter.models import ZSpec, MSpec
     import flask_caching
-
-css_variables = fetch_css_variables()
-COLORBAR_SETTINGS = {
-    "tickfont": {
-        "family": "Fira Mono",
-        "color": css_variables["midnight-ochre"],
-    },
-    "titlefont": {"family": "Fira Mono"},
-}
 
 
 # ### cache functions ###
@@ -110,7 +101,7 @@ def truncate_id_list_for_missing_properties(
             # inputs.
             filt_args.append(
                 [
-                    re_get(settings, "-filter-" + str(ix) + "-" + suffix)
+                    re_get(settings, f"-filter-{ix}-{suffix}")
                     for ix in range(1, model_property["arity"] + 1)
                 ]
             )
@@ -361,20 +352,22 @@ def make_marker_properties(
     # set marker symbol
     marker_symbol = re_get(settings, "-marker-symbol.value")
 
-    return {
+    marker_property_dict = {
         "marker": {
             "color": color,
             "colorscale": colormap,
-            "colorbar": colorbar,
             "size": marker_size,
             "opacity": opacity,
             "symbol": marker_symbol,
         },
         "line": marker_line,
     }
+    # setting a "None" colorbar causes plotly to draw fake ticks
+    if colorbar is not None:
+        marker_property_dict["marker"]["colorbar"] = colorbar
+    return marker_property_dict
 
-
-def make_graph_display_settings(settings):
+def format_display_settings(settings):
     settings_dict = {}
     axis_settings_dict = {}
     if re_get(settings, "-graph-bg"):
@@ -545,7 +538,8 @@ def make_mspec_browse_image_components(
     return component
 
 
-# TODO: assess whether this hack remains in
+# TODO: assess whether this hack remains in, assess goodness of display in
+#  new layout
 def make_zspec_browse_image_components(
     zspec: "ZSpec", image_directory, static_image_url
 ):
@@ -556,28 +550,20 @@ def make_zspec_browse_image_components(
     route defined in the live app instance -- silly hack rn
     """
     file_info = zspec.overlay_browse_file_info(image_directory)
-    image_div_children = []
+    filename = None
     for eye in ["left", "right"]:
         try:
-            # size = file_info[eye + "_size"]
             filename = static_image_url + file_info[eye + "_file"]
         except KeyError:
-            # size = (480, 480)
-            filename = static_image_url + "missing.jpg"
-        # aspect_ratio = size[0] / size[1]
-        # width = base_size * aspect_ratio
-        # height = base_size / aspect_ratio
-        image_div_children.append(
-            html.Img(
-                src=filename,
-                style={"width": "50%", "height": "50%"},
-                id="spec-image-" + eye,
-            )
+            continue
+    if filename is None:
+        filename = static_image_url + "missing.jpg"
+    return html.Img(
+            src=filename,
+            style={"maxWidth": "100%", "maxHeight": "100%"},
+            id="spec-image-" + eye,
         )
-        component = html.Div(
-            children=image_div_children,
-        )
-    return component
+
 
 
 class SPlot:
@@ -689,11 +675,7 @@ def pretty_print_search_params(search_parameters):
     for param in search_parameters:
         if "begin" in param.keys() or "end" in param.keys():
             string_list.append(
-                param["field"]
-                + ": "
-                + str(param["begin"])
-                + " -- "
-                + str(param["end"])
+                f"{param['field']}: {param['begin']} -- {param['end']}"
             )
         else:
             if param.get("term"):
@@ -751,3 +733,69 @@ def make_scatter_annotations(metadata_df, truncated_ids):
         + feature_color
     ).values
     return text
+
+
+def retrieve_graph_data(cget):
+    search_ids = cget("search_ids")
+    highlight_ids = cget("highlight_ids")
+    data_df = cget("data_df")
+    metadata_df = cget("metadata_df")
+    return data_df, metadata_df, highlight_ids, search_ids
+
+
+def halt_for_ineffective_highlight_toggle(ctx, marker_settings):
+    if isinstance(ctx.triggered[0]["prop_id"], dict):
+        if ctx.triggered[0]["prop_id"]["type"] == "highlight-trigger":
+            if marker_settings["main-highlight-toggle.value"] == "off":
+                raise PreventUpdate
+
+
+def add_or_remove_label(cset, ctx, label_ids):
+    """
+    label point based on click. this adds the point id to the set of labels;
+    it does not perform label rendering.
+    """
+    clicked_id = ctx.triggered[0]["value"]["points"][0]["customdata"]
+    if clicked_id in label_ids:
+        label_ids.remove(clicked_id)
+    else:
+        label_ids.append(clicked_id)
+    cset("main_label_ids", label_ids)
+
+
+def parse_main_graph_bounds_string(ctx):
+    bounds_string = ctx.inputs["main-graph-bounds.value"]
+    if bounds_string is None:
+        return None
+    bounds_string = [
+        float(bound) for bound in filter(None, bounds_string.split(" "))
+    ]
+    if len(bounds_string) != 4:
+        return None
+    return bounds_string
+
+
+def update_zoom_from_bounds_string(graph, bounds_string):
+    graph.update_layout(
+        {
+            "xaxis": {
+                "range": [bounds_string[0], bounds_string[1]],
+                "autorange": False,
+            },
+            "yaxis": {
+                "range": [bounds_string[2], bounds_string[3]],
+                "autorange": False,
+            },
+        }
+    )
+    return graph
+
+
+def explicitly_set_graph_bounds(ctx):
+    """change graph bounds based on input to the 'set bounds' field"""
+    bounds_string = parse_main_graph_bounds_string(ctx)
+    if bounds_string is None:
+        raise PreventUpdate
+    graph = go.Figure(ctx.states["main-graph.figure"])
+    update_zoom_from_bounds_string(graph, bounds_string)
+    return graph, {}

@@ -2,67 +2,26 @@
 import random
 from ast import literal_eval
 from functools import partial
-from typing import TYPE_CHECKING, Mapping, Optional, Iterable
+from typing import TYPE_CHECKING, Mapping, Optional, Iterable, Callable
 
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
 import plotly.graph_objects as go
+from dash_html_components import Div
 
-from plotter.proffered_markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
-from multidex_utils import get_if, none_to_empty, fetch_css_variables
+from plotter.styles.components import (
+    GRAPH_DISPLAY_DEFAULTS,
+    GRAPH_CONFIG_SETTINGS,
+    css_variables,
+)
+from plotter.styles.markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
+from multidex_utils import get_if, none_to_empty
 
 if TYPE_CHECKING:
     from plotter.models import Spectrum
 
 # TODO: is this a terrible placeholder?
-css_variables = fetch_css_variables()
-GRAPH_DISPLAY_DEFAULTS = {
-    "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
-    "plot_bgcolor": css_variables["dark-tint-0"],
-    "paper_bgcolor": css_variables["clean-parchment"],
-}
-AXIS_DISPLAY_DEFAULTS = {
-    "showline": True,
-    "showgrid": True,
-    "mirror": True,
-    "linewidth": 2,
-    "gridcolor": css_variables["dark-tint-0"],
-    "linecolor": css_variables["dark-tint-1"],
-    "zerolinecolor": css_variables["dark-tint-1"],
-    "spikecolor": css_variables["dark-tint-1"],
-    "tickcolor": css_variables["midnight-ochre"],
-    "tickfont": {"family": "Fira Mono"},
-    "titlefont": {"family": "Fira Mono"},
-    "title_text": None,
-}
-GRAPH_CONFIG_SETTINGS = {
-    "modeBarButtonsToRemove": [
-        "hoverCompareCartesian",
-        "resetScale2d",
-        "hoverClosestCartesian",
-        "hoverCompareCartesian",
-    ],
-    "displaylogo": False,
-    "toImageButtonOptions": {
-        'format': 'png',
-        'height': 1440,
-        'width': 1440,
-        'scale': 3
-    }
-}
-ANNOTATION_SETTINGS = {
-    "font": {
-        "family": "Fira Mono",
-        "size": 14,
-        "color": css_variables["clean-parchment"],
-    },
-    "bgcolor": "rgba(0,0,0,0.8)",
-    "arrowwidth": 3,
-    "xshift": -8,
-    "yshift": 8,
-    "captureevents": False,
-}
 
 
 # note that style properties are camelCased rather than hyphenated in
@@ -73,13 +32,14 @@ def scale_to_drop(model, element_id, value=None):
     """dropdown for selecting a virtual filter to scale to"""
     return dcc.Dropdown(
         id=element_id,
+        className="medium-drop",
         options=[{"label": "None", "value": "None"}]
         + [
             {"label": filt + " " + str(wave) + "nm", "value": filt}
             for filt, wave in model.virtual_filters.items()
         ],
         value=value,
-        style={"maxWidth": "10rem"},
+        style={"maxWidth": "8rem"},
     )
 
 
@@ -104,84 +64,141 @@ def scale_controls_container(
     scale_container = html.Div(
         id=id_prefix + "-scale-controls-container-div",
         className="scale-controls-container",
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "marginRight": "0.3rem",
+        },
     )
     scale_container.children = [
-        html.Label(children=["scale to:"], htmlFor=id_prefix + "-scale"),
-        scale_to_drop(spec_model, id_prefix + "-scale", scale_value),
-        dcc.Checklist(
-            id=id_prefix + "-average",
-            options=[
-                {"label": "average nearby", "value": "average"},
+        html.Div(
+            style={
+                "display": "flex",
+                "flexDirection": "column",
+                "marginRight": "0.3rem",
+            },
+            children=[
+                dcc.Checklist(
+                    id=id_prefix + "-average",
+                    className="info-text",
+                    options=[
+                        {"label": "merge", "value": "average"},
+                    ],
+                    value=[average_value],
+                ),
+                html.Label(
+                    className="info-text",
+                    children=["scale to:"],
+                    htmlFor=id_prefix + "-scale",
+                ),
+                scale_to_drop(spec_model, id_prefix + "-scale", scale_value),
             ],
-            value=[average_value],
         ),
-        dcc.Checklist(
-            id=id_prefix + "-r-star",
-            options=[
-                {"label": "R*", "value": "r-star"},
+        html.Div(
+            style={"display": "flex", "flexDirection": "column"},
+            children=[
+                dcc.Checklist(
+                    id=id_prefix + "-r-star",
+                    className="info-text",
+
+                    options=[
+                        {"label": "R*", "value": "r-star"},
+                    ],
+                    value=[r_star_value],
+                ),
+                html.Label(
+                    children=["show error"],
+                    className=["info-text"],
+                    htmlFor=id_prefix + "-error",
+                ),
+                dcc.Dropdown(
+                    id=id_prefix + "-error",
+                    className="medium-drop",
+                    options=[
+                        {"label": "none", "value": "none"},
+                        {"label": "ROI", "value": "roi"},
+                        {"label": "inst.", "value": "instrumental"},
+                    ],
+                    value=error_value,
+                ),
             ],
-            value=[r_star_value],
-        ),
-        html.Label(children=["show error"], htmlFor=id_prefix + "-error"),
-        dcc.Dropdown(
-            id=id_prefix + "-error",
-            options=[
-                {"label": "none", "value": "none"},
-                {"label": "ROI", "value": "roi"},
-                {"label": "instrumental", "value": "instrumental"},
-            ],
-            value=error_value,
         ),
     ]
     return scale_container
 
 
-def dynamic_spec_div(
-    print_name: str, graph_name: str, image_name: str, index: int
-) -> html.Div:
+def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
     return html.Div(
+        id={"type": "spec-container", "index": index},
+        style={"display": "flex", "flexDirection": "column", "height": "100%", "width": "33%"},
         children=[
-            html.Pre(
-                children=[],
-                id={"type": print_name, "index": index},
-                style={
-                    "marginLeft": "5vw",
-                    "width": "15vw",
-                    "display": "inline-block",
-                    "verticalAlign": "top",
-                },
-            ),
             html.Div(
                 children=[spec_graph(graph_name, index)],
                 id={"type": graph_name + "-container", "index": index},
                 style={
                     "display": "inline-block",
+                    "width": "100%",
+                    "height": "50%"
                 },
             ),
             html.Div(
                 id={"type": image_name, "index": index},
                 style={
                     "display": "inline-block",
-                    "maxHeight": "20vw",
+                    "height": "50%",
                     "paddingTop": "1.5rem",
-                    "width": "30vw",
+                    "width": "100%",
                 },
             ),
         ],
-        id={"type": "spec-container", "index": index},
-        style={"display": "flex"},
     )
 
 
-# TODO: determine if the following two component factories are necessary at all
-def main_graph() -> dcc.Graph:
+# def dynamic_spec_div(
+#     print_name: str, graph_name: str, image_name: str, index: int
+# ) -> html.Div:
+#     return html.Div(
+#         children=[
+#             html.Pre(
+#                 children=[],
+#                 id={"type": print_name, "index": index},
+#                 style={
+#                     "marginLeft": "5vw",
+#                     "width": "15vw",
+#                     "display": "inline-block",
+#                     "verticalAlign": "top",
+#                 },
+#             ),
+#             html.Div(
+#                 children=[spec_graph(graph_name, index)],
+#                 id={"type": graph_name + "-container", "index": index},
+#                 style={
+#                     "display": "inline-block",
+#                 },
+#             ),
+#             html.Div(
+#                 id={"type": image_name, "index": index},
+#                 style={
+#                     "display": "inline-block",
+#                     "maxHeight": "20vw",
+#                     "paddingTop": "1.5rem",
+#                     "width": "30vw",
+#                 },
+#             ),
+#         ],
+#         id={"type": "spec-container", "index": index},
+#         style={"display": "flex"},
+#     )
+
+
+def main_graph(style) -> dcc.Graph:
     """dash component factory for main graph"""
     fig = go.Figure(layout={**GRAPH_DISPLAY_DEFAULTS})
     # noinspection PyTypeChecker
     return dcc.Graph(
         id="main-graph",
         figure=fig,
-        style={"height": "65vh"},
+        style=style,
         className="graph",
         config=GRAPH_CONFIG_SETTINGS,
     )
@@ -194,7 +211,7 @@ def spec_graph(name: str, index: int) -> dcc.Graph:
     return dcc.Graph(
         id={"type": name, "index": index},
         figure=fig,
-        style={"height": "20vw", "width": "45vw"},
+        # style={"height": "40%", "width": "25%"},
         config=GRAPH_CONFIG_SETTINGS,
     )
 
@@ -218,7 +235,7 @@ def color_scale_drop(element_id: str, value: str = None) -> dcc.Dropdown:
         value = "haline"
     return dcc.Dropdown(
         id=element_id,
-        className="color-drop",
+        className="filter-drop medium-drop",
         options=options,
         value=value,
         clearable=False,
@@ -265,6 +282,7 @@ def collapse(collapse_id, title, component=html.Div(), off=False):
                 "type": "collapsible-panel",
                 "index": collapse_id,
             },
+            className="collapsible-panel",
             style=style_dict,
             children=[component],
         ),
@@ -285,18 +303,17 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
         else:
             value = "ratio"
     return html.Div(
-        className="info-text",
+        className="axis-title-text",
         id=element_id + "-container",
         style={
             "display": "flex",
             "flexDirection": "column",
-            "fontSize": "1rem",
         },
         children=[
             html.Label(children=[label_content], htmlFor=element_id),
             dcc.Dropdown(
                 id=element_id,
-                className="axis-value-drop",
+                className="axis-value-drop medium-drop",
                 options=options,
                 value=value,
                 clearable=False,
@@ -314,6 +331,10 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
         ]
     if not value:
         value = random.choice(options)["value"]
+
+    classnames = ["dash-dropdown", "filter-drop", "medium-drop"]
+    if label_content == "right":
+        classnames.append("right-filter-drop")
     return html.Div(
         className="info-text",
         id=element_id + "-container",
@@ -324,7 +345,7 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
                 id=element_id,
                 options=options,
                 value=value,
-                className="dash-dropdown filter-drop",
+                className=" ".join(classnames),
                 clearable=False
                 # style={"width": "6rem", "display": "inline-block"},
                 # style={"display":"inline-block"}
@@ -364,6 +385,7 @@ def field_drop(fields, element_id, index, value=None):
     """dropdown for field selection -- no special logic atm"""
     return dcc.Dropdown(
         id={"type": element_id, "index": index},
+        className="medium-drop",
         options=[
             {"label": field["label"], "value": field["label"]}
             for field in fields
@@ -373,7 +395,10 @@ def field_drop(fields, element_id, index, value=None):
 
 
 def model_options_drop(
-    element_id: str, index: int, value: Optional[str] = None
+    element_id: str,
+    index: int,
+    value: Optional[str] = None,
+    className="medium-drop",
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
@@ -382,33 +407,10 @@ def model_options_drop(
     return dcc.Dropdown(
         id={"type": element_id, "index": index},
         options=[{"label": "any", "value": "any"}],
+        className=className,
         multi=True,
         value=none_to_empty(value),
     )
-
-
-def model_range_entry(
-    element_id: str,
-    index: int,
-    begin: Optional[float] = None,
-    end: Optional[float] = None,
-) -> list[dcc.Input]:
-    """
-    pair of entry fields for selecting a range of values for a
-    quantitatively-valued field.
-    """
-    return [
-        dcc.Input(
-            id={"type": element_id + "-begin", "index": index},
-            type="text",
-            value=none_to_empty(begin),
-        ),
-        dcc.Input(
-            id={"type": element_id + "-end", "index": index},
-            type="text",
-            value=none_to_empty(end),
-        ),
-    ]
 
 
 def parse_model_quant_entry(string: str) -> dict:
@@ -472,7 +474,7 @@ def unparse_model_quant_entry(value_dict: Mapping) -> str:
     return text
 
 
-def model_range_entry_2(
+def model_range_entry(
     element_id: str, index: int, value_dict: Optional[Mapping] = None
 ) -> dcc.Input:
     """
@@ -489,8 +491,8 @@ def model_range_entry_2(
 
 def model_range_display(element_id: str, index: int) -> html.P:
     """placeholder area for displaying range for number field searches"""
-    return html.P(
-        className="info-text",
+    return html.Span(
+        className="tooltiptext",
         id={"type": element_id, "index": index},
     )
 
@@ -500,11 +502,21 @@ def search_parameter_div(
 ) -> html.Div:
     get_r = partial(get_if, preset_parameter is not None, preset_parameter)
     children = [
-        html.Label(children=["search field"]),
+        html.Label(children=["search field"], className="axis-title-text"),
         field_drop(searchable_fields, "field-search", index, get_r("field")),
-        model_options_drop("term-search", index, get_r("term")),
-        model_range_display("number-range-display", index),
-        model_range_entry_2("number-search", index, preset_parameter),
+        model_options_drop(
+            "term-search",
+            index,
+            get_r("term"),
+            className="medium-drop term-search",
+        ),
+        html.Div(
+            className="tooltipped",
+            children=[
+                model_range_entry("number-search", index, preset_parameter),
+                model_range_display("number-range-display", index),
+            ],
+        ),
         html.Div(
             children=[
                 dcc.Input(
@@ -571,7 +583,7 @@ def load_search_drop(element_id):
         className="load-button-container",
         children=[
             html.Label(children=["search name"], htmlFor=element_id + "-drop"),
-            dcc.Dropdown(id=element_id + "-drop"),
+            dcc.Dropdown(id=element_id + "-drop", className="medium-drop"),
             html.Button(
                 id=element_id + "-load-button",
                 children="load",
@@ -594,7 +606,9 @@ def save_search_input(element_id):
     )
 
 
-def axis_controls_container(axis, prefix, spec_model, get_r, filter_options):
+def axis_controls_container(
+    axis: str, prefix: str, spec_model, get_r: Callable, filter_options
+) -> Div:
     children = [
         axis_value_drop(
             spec_model,
@@ -637,105 +651,259 @@ def axis_controls_container(axis, prefix, spec_model, get_r, filter_options):
     return html.Div(className="axis-controls-container", children=children)
 
 
-def marker_controls_container(axis, prefix, spec_model, get_r, filter_options):
+def marker_coloring_type_div(prefix: str, coloring_type: str) -> Div:
+    return html.Div(
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+        },
+        children=[
+            html.Label(
+                className="info-text",
+                children=["color: "],
+                htmlFor=prefix + "marker-outline-radio",
+            ),
+            dcc.RadioItems(
+                id=prefix + "coloring-type",
+                className="radio-items",
+                options=[
+                    {"label": "scale", "value": "scale"},
+                    {"label": "solid", "value": "solid"},
+                ],
+                value=coloring_type,
+            ),
+        ],
+    )
+
+
+def marker_size_div(prefix: str) -> Div:
+    return html.Div(
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+        },
+        children=[
+            html.Label(
+                children=["size: "],
+                className="info-text",
+                htmlFor=prefix + "marker-base-size",
+            ),
+            dcc.RadioItems(
+                id=prefix + "marker-base-size",
+                className="radio-items",
+                options=[
+                    {"label": "s", "value": 4},
+                    {"label": "m", "value": 9},
+                    {"label": "l", "value": 18},
+                ],
+                value=9,
+            ),
+        ],
+    )
+
+
+def marker_outline_div(prefix: str) -> Div:
+    return html.Div(
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "marginTop": "1.7rem",
+        },
+        children=[
+            html.Label(
+                className="info-text",
+                children=["outline: "],
+                htmlFor=prefix + "marker-outline-radio",
+            ),
+            dcc.RadioItems(
+                id=prefix + "marker-outline-radio",
+                className="radio-items",
+                options=[
+                    {
+                        "label": "off",
+                        "value": "off",
+                    },
+                    {"label": "b", "value": "rgba(0,0,0,1)"},
+                    {
+                        "label": "w",
+                        "value": "rgba(255,255,255,1)",
+                    },
+                ],
+                value="off",
+            ),
+        ],
+    )
+
+
+def marker_options_div(prefix: str, get_r: Callable) -> Div:
     coloring_type = get_r(prefix + "coloring-type")
     if coloring_type is None:
         coloring_type = "scale"
-    solid_color = get_r(prefix + "color-solid")
-    if solid_color is None:
-        solid_color = "black"
+    return html.Div(
+        id=prefix + "marker-options-div",
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "marginRight": "0.3rem",
+        },
+        children=[
+            marker_outline_div(prefix),
+            marker_size_div(prefix),
+            marker_coloring_type_div(prefix, coloring_type),
+        ],
+    )
+
+
+def marker_color_symbol_div(prefix, get_r):
     marker_symbol = get_r(prefix + "marker-symbol")
     if marker_symbol is None:
         marker_symbol = "circle"
-    children = [
-        html.Div(
-            className="axis-controls-container",
-            children=[
-                axis_controls_container(
-                    axis, prefix, spec_model, get_r, filter_options
-                )
-            ],
-        ),
-        html.Div(
-            style={
-                "display": "flex",
-                "flexDirection": "column",
-                "marginRight": "0.6rem",
-            },
-            children=[
-                dcc.RadioItems(
-                    id=prefix + "coloring-type",
-                    options=[
-                        {"label": "color scale", "value": "scale"},
-                        {"label": "solid", "value": "solid"},
-                    ],
-                    value=coloring_type,
-                ),
-                color_scale_drop(
-                    prefix + "color-scale",
-                    value=get_r(prefix + "color-scale.value"),
-                ),
-                dcc.Dropdown(
-                    prefix + "color-solid",
-                    className="color-drop",
-                    value=solid_color,
-                    options=SOLID_MARKER_COLORS,
-                ),
-                html.Label(
-                    children=["marker outlines"],
-                    htmlFor=prefix + "marker-outline-radio",
-                ),
-                dcc.RadioItems(
-                    id=prefix + "marker-outline-radio",
-                    options=[
-                        {
-                            "label": "off",
-                            "value": "off",
-                        },
-                        {"label": "black", "value": "rgba(0,0,0,1)"},
-                        {"label": "white", "value": "rgba(255,255,255,1)"},
-                    ],
-                    value="off",
-                ),
-            ],
-        ),
-        html.Div(
-            style={
-                "display": "flex",
-                "flexDirection": "column",
-                "marginRight": "0.3rem",
-            },
-            children=[
-                html.Label(
-                    children=["marker base size"],
-                    htmlFor=prefix + "marker-base-size",
-                ),
-                dcc.RadioItems(
-                    id=prefix + "marker-base-size",
-                    options=[
-                        {"label": "small", "value": 4},
-                        {"label": "medium", "value": 9},
-                        {"label": "large", "value": 18},
-                    ],
-                    value=9,
-                ),
-                html.Label(
-                    children=["marker symbol"],
-                    htmlFor=prefix + "marker-symbol",
-                    style={"marginTop": "0.3rem"},
-                ),
-                dcc.Dropdown(
-                    prefix + "marker-symbol",
-                    className="color-drop",
-                    value=marker_symbol,
-                    options=MARKER_SYMBOLS,
-                ),
-            ],
-        ),
-    ]
+    solid_color = get_r(prefix + "color-solid")
+    if solid_color is None:
+        solid_color = "black"
     return html.Div(
-        style={"display": "flex", "flexDirection": "row"},
-        children=children,
+        id=prefix + "marker-color-symbol-container",
+        style={"display": "flex", "flexDirection": "column", "width": "8rem"},
+        className="axis-controls-container",
+        children=[
+            html.Label(
+                children=["color"],
+                htmlFor=prefix + "color-scale",
+                className="info-text",
+            ),
+            color_scale_drop(
+                prefix + "color-scale",
+                value=get_r(prefix + "color-scale.value"),
+            ),
+            dcc.Dropdown(
+                prefix + "color-solid",
+                className="filter-drop medium-drop",
+                value=solid_color,
+                options=SOLID_MARKER_COLORS,
+            ),
+            html.Label(
+                children=["marker symbol"],
+                htmlFor=prefix + "marker-symbol",
+                className="info-text",
+            ),
+            dcc.Dropdown(
+                prefix + "marker-symbol",
+                className="medium-drop filter-drop",
+                value=marker_symbol,
+                options=MARKER_SYMBOLS,
+            ),
+        ],
+    )
+
+
+def search_controls_div(spec_model, get_r: Callable) -> html.Div:
+    return html.Div(
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+        },
+        children=[
+            search_container_div(
+                spec_model.searchable_fields(),
+                get_r("search_parameters"),
+            ),
+            html.Div(
+                className="search-button-container",
+                children=[
+                    # hidden trigger for queryset
+                    # update on dropdown removal
+                    html.Button(
+                        id={
+                            "type": "submit-search",
+                            "index": 1,
+                        },
+                        style={"display": "none"},
+                    ),
+                    html.Button(
+                        "clear search",
+                        id="clear-search",
+                    ),
+                    html.Button(
+                        id={
+                            "type": "submit-search",
+                            "index": 0,
+                        },
+                        children="Update graph",
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+def highlight_controls_div():
+    return html.Div(
+        className="axis-controls-container",
+        children=[
+            html.Button(
+                "set highlight",
+                id="main-highlight-save",
+                style={"marginTop": "1rem"},
+            ),
+            dcc.RadioItems(
+                id="main-highlight-toggle",
+                options=[
+                    {
+                        "label": "highlight on",
+                        "value": "on",
+                    },
+                    {"label": "off", "value": "off"},
+                ],
+                value="off",
+            ),
+            html.P(
+                id="main-highlight-description",
+                style={
+                    "maxWidth": "12rem",
+                },
+            ),
+        ],
+    )
+
+
+def bound_scale_control_div(spec_model, get_r: Callable) -> html.Div:
+    return html.Div(
+        children=[
+            html.Div(
+                className="graph-bounds-axis-container",
+                children=[
+                    html.Label(
+                        children=["set bounds"],
+                        className="axis-title-text",
+                        htmlFor="main-graph-bounds",
+                    ),
+                    dcc.Input(
+                        type="text",
+                        id="main-graph-bounds",
+                        style={
+                            "height": "1.8rem",
+                            "width": "10rem",
+                        },
+                        placeholder="xmin xmax ymin ymax",
+                    ),
+                ],
+                style={
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "marginRight": "0.3rem",
+                    "marginLeft": "0.3rem",
+                },
+            ),
+            scale_controls_container(
+                spec_model,
+                "main-graph",
+                scale_value=get_r("scale_to"),
+                average_value=get_r("average_filters"),
+                # TODO: fix init issue, need extra layer
+                #  somewhere
+                r_star_value="r-star",
+            ),
+        ]
     )
 
 
@@ -776,130 +944,57 @@ def search_div(
                 ),
                 *collapse(
                     "main-graph-control-container-marker",
-                    "markers",
-                    marker_controls_container(
+                    "m axis",
+                    axis_controls_container(
                         "marker", "main-", spec_model, get_r, filts
                     ),
                 ),
                 *collapse(
+                    "color-controls",
+                    "m style",
+                    marker_color_symbol_div("main-", get_r),
+                    off=True,
+                ),
+                *collapse(
+                    "marker-options",
+                    "m options",
+                    marker_options_div("main-", get_r),
+                    off=True,
+                ),
+                *collapse(
                     "highlight-controls",
                     "highlight",
-                    html.Div(
-                        className="axis-controls-container",
-                        children=[
-                            html.Button(
-                                "set highlight",
-                                id="main-highlight-save",
-                                style={"marginTop": "1rem"},
-                            ),
-                            dcc.RadioItems(
-                                id="main-highlight-toggle",
-                                options=[
-                                    {
-                                        "label": "highlight on",
-                                        "value": "on",
-                                    },
-                                    {"label": "off", "value": "off"},
-                                ],
-                                value="off",
-                            ),
-                            html.P(
-                                id="main-highlight-description",
-                                style={
-                                    "maxWidth": "12rem",
-                                },
-                            ),
-                        ],
-                    ),
-                    True,
+                    highlight_controls_div(),
+                    off=True,
                 ),
                 *collapse(
                     "search-controls",
                     "search",
-                    html.Div(
-                        style={
-                            "display": "flex",
-                            "flexDirection": "row",
-                        },
-                        children=[
-                            search_container_div(
-                                spec_model.searchable_fields(),
-                                get_r("search_parameters"),
-                            ),
-                            html.Div(
-                                className="search-button-container",
-                                children=[
-                                    # hidden trigger for queryset
-                                    # update on dropdown removal
-                                    html.Button(
-                                        id={
-                                            "type": "submit-search",
-                                            "index": 1,
-                                        },
-                                        style={"display": "none"},
-                                    ),
-                                    html.Button(
-                                        "clear search",
-                                        id="clear-search",
-                                    ),
-                                    html.Button(
-                                        id={
-                                            "type": "submit-search",
-                                            "index": 0,
-                                        },
-                                        children="Update graph",
-                                    ),
-                                ],
-                            ),
-                        ],
-                    ),
+                    search_controls_div(spec_model, get_r),
                 ),
                 *collapse(
                     "numeric-controls",
                     "scaling",
-                    html.Div(
-                        children=[
-                            html.Div(
-                                className="graph-bounds-axis-container",
-                                children=[
-                                    html.Label(
-                                        children=["set bounds"],
-                                        htmlFor="main-graph-bounds",
-                                    ),
-                                    dcc.Input(
-                                        type="text",
-                                        id="main-graph-bounds",
-                                        style={
-                                            "height": "1.8rem",
-                                            "width": "10rem",
-                                        },
-                                        placeholder="xmin xmax ymin ymax",
-                                    ),
-                                ],
-                                style={
-                                    "display": "flex",
-                                    "flexDirection": "column",
-                                    "marginRight": "0.3rem",
-                                    "marginLeft": "0.3rem",
-                                },
-                            ),
-                            scale_controls_container(
-                                spec_model,
-                                "main-graph",
-                                scale_value=get_r("scale_to"),
-                                average_value=get_r("average_filters"),
-                                # TODO: fix init issue, need extra layer
-                                #  somewhere
-                                r_star_value="r-star",
-                            ),
-                        ]
-                    ),
+                    bound_scale_control_div(spec_model, get_r),
                     off=True,
+                ),
+                *collapse(
+                    "spec-controls",
+                    "spectrum",
+                    scale_controls_container(
+                        spec_model,
+                        "main-spec",
+                        "L1_R1",
+                        "r-star",
+                        "average",
+                        "error",
+                    ),
+                    off=True
                 ),
                 *collapse(
                     "load-panel",
                     "load",
-                    html.Div(load_search_drop("load-search")),
+                    load_search_drop("load-search"),
                     off=True,
                 ),
                 *collapse(
@@ -928,6 +1023,7 @@ def search_div(
                             ),
                             dcc.RadioItems(
                                 id="main-graph-bg-radio",
+                                className="radio-items",
                                 options=[
                                     {
                                         "label": "white",
@@ -950,6 +1046,7 @@ def search_div(
                             ),
                             dcc.RadioItems(
                                 id="main-graph-gridlines-radio",
+                                className="radio-items",
                                 options=[
                                     {"label": "off", "value": "off"},
                                     {
@@ -965,24 +1062,20 @@ def search_div(
                 ),
             ],
         ),
-        html.Div(children=[main_graph()], id="main-container"),
-        dynamic_spec_div(
-            "main-spec-print",
-            "main-spec-graph",
-            "main-spec-image",
-            0,
-        ),
         html.Div(
+            style={"display": "flex", "flexDirection": "row", "height": "80vh"},
             children=[
-                scale_controls_container(
-                    spec_model,
-                    "main-spec",
-                    "L1_R1",
-                    "r-star",
-                    "average",
-                    "error",
+                main_graph(
+                    style={"height": "100%", "width": "66%", "flexShrink": 0}
                 ),
-            ]
+                dynamic_spec_div(
+                    # "main-spec-print",
+                    "main-spec-graph",
+                    "main-spec-image",
+                    0,
+                ),
+            ],
+            id="main-container",
         ),
         # hidden divs for async triggers, dummy outputs, etc
         trigger_div("main-graph-scale", 1),
@@ -1014,7 +1107,7 @@ def multidex_body(spec_model):
     return html.Div(
         children=[
             search_div(spec_model),
-            dcc.Interval(id="interval1", interval=1000, n_intervals=0),
+            # dcc.Interval(id="interval1", interval=1000, n_intervals=0),
         ],
         id="multidex",
     )
