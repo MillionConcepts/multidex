@@ -10,6 +10,7 @@
 
 html {
     background: var(--clean-parchment);
+    font-size: 1rem
 }
 
 html, button, .Select {
@@ -17,22 +18,87 @@ html, button, .Select {
     color: var(--midnight-ochre);
 }
 
+button, .Select {
+    font-size: 0.9rem
+}
+
 button {
     background: var(--dark-tint-1);
     border: 1px solid var(--dark-tint-2);
     max-height: 2rem;
-    font-size: 1rem;
     margin-top: 0.2rem;
 }
 
 .axis-value-drop {
-    min-width: 12rem
+    min-width: 10rem;
 }
+
+.axis-value-drop .Select-value {
+}
+
+.medium-drop .Select-control .Select-value {
+    font-size: 0.89rem;
+    padding-left: 5px;
+    padding-right: 0;
+    line-height: 2rem
+}
+
+
+
+.medium-drop .Select-control {
+    height:2rem;
+    display:block
+}
+
+.medium-drop.term-search .Select-control .Select-value {
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: 0;
+    line-height: 1rem;
+}
+
+.medium-drop .Select-control .Select-placeholder {
+    display: none
+}
+
+.medium-drop.term-search .Select-control {
+    height: fit-content;
+    min-height: 2rem;
+    max-height: 8rem;
+    overflow-y: auto;
+}
+
+.medium-drop.term-search .Select-control .Select-value-label {
+    padding: 2px 2px;
+    font-size: .8rem
+}
+
+
+.medium-drop.term-search .Select-control .Select-input {
+    padding: 2px 2px;
+    font-size: .8rem;
+    height: 1rem;
+    display: flex;
+}
+
+.medium-drop.term-search .Select-clear {
+    display: none
+}
+
 
 .filter-drop {
     display: block;
     min-width: 6rem;
     margin-right: 1rem
+}
+
+.filter-drop .Select-value {
+    padding-right: 0;
+    font-size: 0.82rem;
+}
+
+.filter-drop.right-filter-drop {
+    margin-right:0
 }
 
 .color-drop {
@@ -41,14 +107,41 @@ button {
     margin-bottom: 0.5rem
 }
 
+.color-drop .Select-value {
+}
+
 .Select-control, .tab-container, .tab {
     background: var(--invisible-pearl);
     background-color: var(--invisible-pearl) !important;
 }
 
-.graph-controls-container, .search-controls-container {
+
+.graph-controls-container {
     display: flex;
-    flex-wrap: wrap
+    max-height: 12rem
+}
+
+/*.graph-controls-container::-webkit-scrollbar {*/
+/*      display: block;*/
+/*      width: 10em;*/
+/*      overflow: auto;*/
+/*      height: 2em;*/
+/*}*/
+
+/*.Select-menu-outer {*/
+/*    background: blue;*/
+    /*z-index: 999 !important;*/
+    /*overflow: visible !important;*/
+    /*position: -webkit-sticky;*/
+/*}*/
+
+.search-controls-container {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.radio-items {
+    font-size: 0.85rem
 }
 
 .scale-controls-container {
@@ -59,7 +152,23 @@ button {
     width: 12rem;
     margin-left:0.3rem;
     margin-right:0.3rem;
-    margin-top: 0.2rem
+    margin-top: 0.2rem;
+}
+
+.search-parameter-container .Select-value {
+}
+
+.Select-arrow {
+    display: none
+}
+
+.input[type="radio"] {
+    padding: 0
+}
+
+.Select-value .Select-input {
+    /*padding-right: 0;*/
+    /*font-size: 0.4rem;*/
 }
 
 .search-button-container {
@@ -73,7 +182,7 @@ button {
 .axis-controls-container {
     margin-left:0.3rem;
     margin-right:0.3rem;
-    margin-top: 0.2rem
+    margin-top: 0.2rem;
 }
 
 .filter-container {
@@ -95,11 +204,30 @@ button {
     font-size: 0.7rem
 }
 
+.axis-title-text{
+    font-size:0.92rem;
+}
+
 .collapse-div {
     min-width: 2rem;
     display: flex;
     flex-direction: column;
     align-items: center
+}
+
+.tooltiptext {
+    visibility: hidden;
+    color: #000;
+    background: aliceblue;
+    position: absolute;
+    top: 1rem;
+    z-index: 1;
+    font-size: 0.75rem;
+    max-width: 9.5rem;
+}
+
+.tooltipped:hover .tooltiptext {
+  visibility: visible;
 }
 
 .arrow {
@@ -115,9 +243,14 @@ button {
 .collapse-text {
     writing-mode: tb;
     -webkit-writing-mode: tb;
-    display: none
+    display: none;
+    font-size: 0.8rem
 }
 
+
+.collapsible-panel {
+    flex-shrink: 0
+}
 
 @font-face {
     font-family: "Fira Mono";

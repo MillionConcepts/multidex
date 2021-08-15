@@ -15,7 +15,7 @@ from plotter.application.helpers import (
     configure_callbacks,
 )
 from plotter.application.structure import STATIC_IMAGE_URL
-from plotter.spectrum_ops import filter_df_from_queryset
+from plotter.spectrum_ops import data_df_from_queryset
 
 from plotter.ui_components import multidex_body
 from plotter.graph import cache_set, cache_get
@@ -84,8 +84,8 @@ def initialize_cache_values(cset, spec_model):
     cset("highlight_ids", qlist(spec_model.objects.all(), "id"))
     cset("main_label_ids", [])
     cset(
-        "main_graph_filter_df",
-        filter_df_from_queryset(spec_model.objects.all()),
+        "data_df",
+        data_df_from_queryset(spec_model.objects.all()),
     )
     # TODO: this is a hack that should be initialized from some property of
     #  the model
