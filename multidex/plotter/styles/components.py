@@ -61,8 +61,9 @@ COLORBAR_SETTINGS = {
         "family": "Fira Mono",
         "color": css_variables["midnight-ochre"],
     },
-    "titlefont": {"family": "Fira Mono"},
-    "tickangle": 15
+    "titlefont": {"family": "Fira Mono", "size": 14},
+    "tickangle": 15,
+    "title": {"side": "right"}
     # "x": -0.18,
     # "ticklabelposition": "outside top"
 }

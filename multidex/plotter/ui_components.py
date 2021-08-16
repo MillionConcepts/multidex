@@ -684,7 +684,7 @@ def marker_coloring_type_div(coloring_type: str) -> Div:
     )
 
 
-def marker_size_div() -> Div:
+def marker_size_div(marker_size) -> Div:
     return html.Div(
         style={
             "display": "flex",
@@ -704,13 +704,13 @@ def marker_size_div() -> Div:
                     {"label": "m", "value": 9},
                     {"label": "l", "value": 18},
                 ],
-                value=9,
+                value=marker_size,
             ),
         ],
     )
 
 
-def marker_outline_div() -> Div:
+def marker_outline_div(outline_color) -> Div:
     return html.Div(
         style={
             "display": "flex",
@@ -737,16 +737,22 @@ def marker_outline_div() -> Div:
                         "value": "rgba(255,255,255,1)",
                     },
                 ],
-                value="off",
+                value=outline_color,
             ),
         ],
     )
 
 
 def marker_options_div(get_r: Callable) -> Div:
-    coloring_type = get_r("coloring-type")
+    coloring_type = get_r("coloring-type.value")
     if coloring_type is None:
         coloring_type = "scale"
+    outline_color = get_r("marker-outline-radio.value")
+    if outline_color is None:
+        outline_color = "off"
+    marker_size = get_r("marker-base-size.value")
+    if marker_size is None:
+        marker_size = 9
     return html.Div(
         id="marker-options-div",
         style={
@@ -755,18 +761,18 @@ def marker_options_div(get_r: Callable) -> Div:
             "marginRight": "0.3rem",
         },
         children=[
-            marker_outline_div(),
-            marker_size_div(),
+            marker_outline_div(outline_color),
+            marker_size_div(marker_size),
             marker_coloring_type_div(coloring_type),
         ],
     )
 
 
 def marker_color_symbol_div(get_r):
-    marker_symbol = get_r("marker-symbol")
+    marker_symbol = get_r("marker-symbol.value")
     if marker_symbol is None:
         marker_symbol = "circle"
-    solid_color = get_r("color-solid")
+    solid_color = get_r("color-solid.value")
     if solid_color is None:
         solid_color = "black"
     return html.Div(
@@ -844,8 +850,66 @@ def search_controls_div(spec_model, get_r: Callable) -> html.Div:
     )
 
 
+def display_controls_div(get_r: Callable) -> html.Div:
+    if get_r("plot_bgcolor") is None:
+        bg_color = css_variables["dark-tint-0"]
+    else:
+        bg_color = get_r("plot_bgcolor")
+    if get_r("showgrid") is None:
+        gridlines_color = "light"
+    else:
+        gridlines_color = get_r("showgrid")
+    return html.Div(
+        children=[
+            html.Label(
+                children=["graph background"],
+                className="info-text",
+                htmlFor="main-graph-bg-color",
+            ),
+            dcc.RadioItems(
+                id="main-graph-bg-radio",
+                className="radio-items",
+                options=[
+                    {
+                        "label": "white",
+                        "value": "rgba(255,255,255,1)",
+                    },
+                    {
+                        "label": "light",
+                        "value": css_variables["dark-tint-0"],
+                    },
+                    {
+                        "label": "dark",
+                        "value": css_variables["dark-tint-1"],
+                    },
+                ],
+                value=bg_color,
+            ),
+            html.Label(
+                children=["gridlines"],
+                className="info-text",
+                htmlFor="main-graph-gridlines-radio",
+            ),
+            dcc.RadioItems(
+                id="main-graph-gridlines-radio",
+                className="radio-items",
+                options=[
+                    {"label": "off", "value": "off"},
+                    {"label": "light", "value": "light"},
+                    {"label": "dark", "value": "dark"},
+                ],
+                value=gridlines_color,
+            ),
+            html.Button("clear labels", id="clear-labels"),
+        ]
+    )
 
-def highlight_controls_div():
+
+def highlight_controls_div(get_r: Callable) -> html.Div:
+    if get_r("highlight-toggle.value") is None:
+        highlight = "off"
+    else:
+        highlight = get_r("highlight-toggle.value")
     return html.Div(
         className="axis-controls-container",
         children=[
@@ -864,7 +928,7 @@ def highlight_controls_div():
                     },
                     {"label": "off", "value": "off"},
                 ],
-                value="off",
+                value=highlight,
             ),
             html.P(
                 id="highlight-description",
@@ -877,7 +941,7 @@ def highlight_controls_div():
     )
 
 
-def bound_scale_control_div(spec_model, get_r: Callable) -> html.Div:
+def scale_control_div(spec_model, get_r: Callable) -> html.Div:
     return html.Div(
         children=[
             html.Div(
@@ -927,6 +991,7 @@ def search_div(
 ):
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
+    # TODO: refactor this horror to load from an external set of defaults
     get_r = partial(get_if, restore_dictionary is not None, restore_dictionary)
     if get_r("average_filters"):
         filts = [
@@ -970,7 +1035,7 @@ def search_div(
                 *collapse(
                     "highlight-controls",
                     "highlight",
-                    highlight_controls_div(),
+                    highlight_controls_div(get_r),
                     off=True,
                 ),
                 *collapse(
@@ -978,10 +1043,12 @@ def search_div(
                     "search",
                     search_controls_div(spec_model, get_r),
                 ),
+                # TODO: at least the _nomenclature_ of these two separate
+                #  'scaling' divs should be clarified
                 *collapse(
                     "numeric-controls",
                     "scaling",
-                    bound_scale_control_div(spec_model, get_r),
+                    scale_control_div(spec_model, get_r),
                     off=True,
                 ),
                 *collapse(
@@ -1021,50 +1088,7 @@ def search_div(
                 *collapse(
                     "graph-display-panel",
                     "display",
-                    html.Div(
-                        children=[
-                            html.Label(
-                                children=["graph background"],
-                                className="info-text",
-                                htmlFor="main-graph-bg-color",
-                            ),
-                            dcc.RadioItems(
-                                id="main-graph-bg-radio",
-                                className="radio-items",
-                                options=[
-                                    {
-                                        "label": "white",
-                                        "value": "rgba(255,255,255,1)",
-                                    },
-                                    {
-                                        "label": "light",
-                                        "value": css_variables["dark-tint-0"],
-                                    },
-                                    {
-                                        "label": "dark",
-                                        "value": css_variables["dark-tint-1"],
-                                    },
-                                ],
-                                value=css_variables["dark-tint-0"],
-                            ),
-                            html.Label(
-                                children=["gridlines"],
-                                className="info-text",
-                                htmlFor="main-graph-gridlines-radio",
-                            ),
-                            dcc.RadioItems(
-                                id="main-graph-gridlines-radio",
-                                className="radio-items",
-                                options=[
-                                    {"label": "off", "value": "off"},
-                                    {"label": "light", "value": "light"},
-                                    {"label": "dark", "value": "dark"},
-                                ],
-                                value="light",
-                            ),
-                            html.Button("clear labels", id="clear-labels"),
-                        ]
-                    ),
+                    display_controls_div(get_r),
                     off=True,
                 ),
             ],
