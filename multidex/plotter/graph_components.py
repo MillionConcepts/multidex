@@ -1,6 +1,6 @@
 """dash components that are graphs and associated helper functions"""
 
-from typing import Mapping, Optional
+from typing import Mapping
 
 import numpy as np
 import pandas as pd
@@ -167,11 +167,14 @@ def spectrum_line_graph(
     fig = go.Figure(
         layout={
             **GRAPH_DISPLAY_DEFAULTS,
-            "xaxis": AXIS_DISPLAY_DEFAULTS | {"title_text": "wavelength"},
+            "xaxis": AXIS_DISPLAY_DEFAULTS | {
+                "title_text": "wavelength", "title_standoff": 5
+            },
             "yaxis": AXIS_DISPLAY_DEFAULTS
             | {
                 "title_text": "reflectance",
                 "range": [0, min(y_axis) + max(y_axis)],
+                "title_standoff": 4,
                 "side": "right"
             },
         }

@@ -130,7 +130,12 @@ def scale_controls_container(
 def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
     return html.Div(
         id={"type": "spec-container", "index": index},
-        style={"display": "flex", "flexDirection": "column", "height": "100%", "width": "33%"},
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "height": "100%",
+            "width": "33%"
+        },
         children=[
             html.Div(
                 children=[spec_graph(graph_name, index)],
@@ -144,10 +149,14 @@ def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
             html.Div(
                 id={"type": image_name, "index": index},
                 style={
-                    "display": "inline-block",
-                    "height": "50%",
-                    "paddingTop": "1.5rem",
-                    "width": "100%",
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "justifyContent": "center",
+                    "height": "48%",
+                    "marginTop": "1%",
+                    "marginRight": "3%",
+                    "marginLeft": "1%",
+                    "width": "96%",
                 },
             ),
         ],
@@ -211,7 +220,7 @@ def spec_graph(name: str, index: int) -> dcc.Graph:
     return dcc.Graph(
         id={"type": name, "index": index},
         figure=fig,
-        # style={"height": "40%", "width": "25%"},
+        style={"height": "100%", "width": "100%"},
         config=GRAPH_CONFIG_SETTINGS,
     )
 
@@ -1063,13 +1072,12 @@ def search_div(
             ],
         ),
         html.Div(
-            style={"display": "flex", "flexDirection": "row", "height": "80vh"},
+            style={"display": "flex", "flexDirection": "row", "height": "85vh"},
             children=[
                 main_graph(
                     style={"height": "100%", "width": "66%", "flexShrink": 0}
                 ),
                 dynamic_spec_div(
-                    # "main-spec-print",
                     "main-spec-graph",
                     "main-spec-image",
                     0,
