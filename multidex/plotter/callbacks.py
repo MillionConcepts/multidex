@@ -26,8 +26,11 @@ from multidex_utils import (
     rows,
 )
 from plotter.ui_components import parse_model_quant_entry
-from plotter.graph_components import main_scatter_graph, spectrum_line_graph, \
-    failed_scatter_graph
+from plotter.graph_components import (
+    main_scatter_graph,
+    spectrum_line_graph,
+    failed_scatter_graph,
+)
 from plotter.graph import (
     load_values_into_search_div,
     add_dropdown,
@@ -44,9 +47,12 @@ from plotter.graph import (
     pretty_print_search_params,
     spectrum_from_graph_event,
     style_toggle,
-    make_scatter_annotations, retrieve_graph_data,
-    halt_for_ineffective_highlight_toggle, add_or_remove_label,
-    explicitly_set_graph_bounds, parse_main_graph_bounds_string,
+    make_scatter_annotations,
+    retrieve_graph_data,
+    halt_for_ineffective_highlight_toggle,
+    add_or_remove_label,
+    explicitly_set_graph_bounds,
+    parse_main_graph_bounds_string,
 )
 from plotter.spectrum_ops import data_df_from_queryset
 
@@ -219,7 +225,7 @@ def update_main_graph(
     bounds_string = parse_main_graph_bounds_string(ctx)
 
     # handle label addition / removal
-    label_ids = cget("main_label_ids")
+    label_ids = cget("label_ids")
     # TODO: performance increase is possible here by just returning the graph
     if ctx.triggered[0]["prop_id"] == "main-graph.clickData":
         add_or_remove_label(cset, ctx, label_ids)
@@ -235,9 +241,12 @@ def update_main_graph(
 
     data_df, metadata_df, highlight_ids, search_ids = retrieve_graph_data(cget)
     if not search_ids:
-        return failed_scatter_graph(
-            "no spectra match search parameters", graph_display_dict
-        ), {}
+        return (
+            failed_scatter_graph(
+                "no spectra match search parameters", graph_display_dict
+            ),
+            {},
+        )
 
     get_errors = ctx.inputs["main-graph-error.value"]
     filters_are_averaged = "average" in ctx.states["main-graph-average.value"]
@@ -249,7 +258,7 @@ def update_main_graph(
         metadata_df,
         spec_model,
         filters_are_averaged,
-        )
+    )
     graph_content = [
         truncated_ids,
         spec_model,
@@ -270,7 +279,6 @@ def update_main_graph(
     graph_df["size"] = marker_properties["marker"]["size"]
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
 
-
     # DEPRECATED: automatically reset graph zoom only if loading the page or
     # changing options and therefore scales
     # TODO: reset even explicitly-set bounds for now...change back if needed
@@ -285,16 +293,16 @@ def update_main_graph(
     # graph. this is another perhaps ugly flow control thing!
     if record_settings:
         for parameter in (
-                "x_settings",
-                "y_settings",
-                "marker_settings",
-                "marker_properties",
-                "graph_display_dict",
-                "axis_display_dict",
-                "x_title",
-                "y_title",
-                "get_errors",
-                "bounds_string"
+            "x_settings",
+            "y_settings",
+            "marker_settings",
+            "marker_properties",
+            "graph_display_dict",
+            "axis_display_dict",
+            "x_title",
+            "y_title",
+            "get_errors",
+            "bounds_string",
         ):
             cset(parameter, locals()[parameter])
 
@@ -329,9 +337,7 @@ def update_search_options(
         "search-load-trigger" in dash.callback_context.triggered[0]["prop_id"]
     )
     props = keygrab(spec_model.searchable_fields(), "label", field)
-    search_df = pd.concat(
-        [cget("data_df"), cget("metadata_df")], axis=1
-    )
+    search_df = pd.concat([cget("data_df"), cget("metadata_df")], axis=1)
     # if it's a field we do number interval searches on, reset term
     # interface and show number ranges in the range display. but don't reset
     # the number entries if we're in the middle of a load!
@@ -388,9 +394,7 @@ def update_search_ids(
     # avoid passing doubly-ingested input back after the check although on
     # the other hand it should be memoized -- but still but yes seriously it
     # should be memoized
-    search_df = pd.concat(
-        [cget("metadata_df"), cget("data_df")], axis=1
-    )
+    search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
     search = handle_graph_search(search_df, deepcopy(search_list), spec_model)
     # TODO: remove this cruft if in fact it remains so
     # ctx = dash.callback_context
@@ -479,36 +483,35 @@ def populate_saved_search_drop(*_triggers, search_file):
     return options
 
 
-def handle_main_highlight_save(
+def handle_highlight_save(
     _load_trigger, _save_button, trigger_value, *, cget, cset, spec_model
 ):
     ctx = dash.callback_context
     if "load-trigger" in str(ctx.triggered):
         # main highlight parameters are currently restored
         # in make_loaded_search_tab()
+        # TODO: did we actually need the data df here...? I think not.
         metadata_df = cget("metadata_df")
-        filter_df = cget("main-graph-filter-df")
-        params = cget("main_highlight_parameters")
+        params = cget("highlight_parameters")
         if params is not None:
             params = literal_eval(params)
-            search_df = pd.concat([metadata_df, filter_df], axis=1)
             cset(
                 "highlight_ids",
-                handle_graph_search(search_df, params, spec_model),
+                handle_graph_search(metadata_df, params, spec_model),
             )
         else:
             cset("highlight_ids", metadata_df.index)
-        cset("main_highlight_parameters", params)
+        cset("highlight_parameters", params)
     else:
         highlight_ids = cget("highlight_ids")
         search_ids = cget("search_ids")
         if highlight_ids == search_ids:
             raise PreventUpdate
         cset("highlight_ids", search_ids)
-        cset("main_highlight_parameters", cget("search_parameters"))
+        cset("highlight_parameters", cget("search_parameters"))
     return (
         "saved highlight: "
-        + pretty_print_search_params(cget("main_highlight_parameters")),
+        + pretty_print_search_params(cget("highlight_parameters")),
         trigger_value + 1,
     )
 
@@ -632,7 +635,7 @@ def save_search_state(_n_clicks, save_name, trigger_value, cget):
             *cget("y_settings").keys(),
             *cget("marker_settings").keys(),
             "search_parameters",
-            "main_highlight_parameters",
+            "highlight_parameters",
             "scale_to",
             "average_filters",
             "r_star",
@@ -644,7 +647,7 @@ def save_search_state(_n_clicks, save_name, trigger_value, cget):
             *cget("y_settings").values(),
             *cget("marker_settings").values(),
             str(cget("search_parameters")),
-            str(cget("main_highlight_parameters")),
+            str(cget("highlight_parameters")),
             str(cget("scale_to")),
             cget("average_filters"),
             cget("r_star"),

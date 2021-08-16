@@ -7,45 +7,45 @@ avoid excessive repetition in app structure definition and function calls.
 from dash.dependencies import Input, Output
 
 CALC_OPTION_DROPDOWNS = [
-    "main-filter-1-marker",
-    "main-filter-2-marker",
-    "main-filter-3-marker",
-    "main-filter-1-y",
-    "main-filter-2-y",
-    "main-filter-3-y",
-    "main-filter-1-x",
-    "main-filter-2-x",
-    "main-filter-3-x",
-    "main-component-x",
-    "main-component-y",
-    "main-component-marker",
+    "filter-1-marker",
+    "filter-2-marker",
+    "filter-3-marker",
+    "filter-1-y",
+    "filter-2-y",
+    "filter-3-y",
+    "filter-1-x",
+    "filter-2-x",
+    "filter-3-x",
+    "component-x",
+    "component-y",
+    "component-marker",
 ]
 
 X_INPUTS = [
     Input(dropdown, "value")
     for dropdown in CALC_OPTION_DROPDOWNS
     if dropdown.endswith("-x")
-] + [Input("main-graph-option-x", "value")]
+] + [Input("graph-option-x", "value")]
 
 Y_INPUTS = [
     Input(dropdown, "value")
     for dropdown in CALC_OPTION_DROPDOWNS
     if dropdown.endswith("-y")
-] + [Input("main-graph-option-y", "value")]
+] + [Input("graph-option-y", "value")]
 
 MARKER_INPUTS = [
     Input(dropdown, "value")
     for dropdown in CALC_OPTION_DROPDOWNS
     if dropdown.endswith("-marker")
 ] + [
-    Input("main-graph-option-marker", "value"),
-    Input("main-coloring-type", "value"),
-    Input("main-color-scale", "value"),
-    Input("main-color-solid", "value"),
-    Input("main-highlight-toggle", "value"),
-    Input("main-marker-outline-radio", "value"),
-    Input("main-marker-base-size", "value"),
-    Input("main-marker-symbol", "value"),
+    Input("graph-option-marker", "value"),
+    Input("coloring-type", "value"),
+    Input("color-scale", "value"),
+    Input("color-solid", "value"),
+    Input("highlight-toggle", "value"),
+    Input("marker-outline-radio", "value"),
+    Input("marker-base-size", "value"),
+    Input("marker-symbol", "value"),
 ]
 
 GRAPH_DISPLAY_INPUTS = [

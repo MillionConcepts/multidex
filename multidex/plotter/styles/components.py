@@ -15,7 +15,9 @@ ANNOTATION_SETTINGS = {
     "captureevents": False,
 }
 
-SEARCH_FAILURE_MESSAGE_SETTINGS = {"font": {"family": "Fira Mono", "size": 64}}
+SEARCH_FAILURE_MESSAGE_SETTINGS = {
+    "font": {"family": "Fira Mono", "size": 32},
+}
 
 GRAPH_DISPLAY_DEFAULTS = {
     "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
