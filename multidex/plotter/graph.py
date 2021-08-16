@@ -29,7 +29,7 @@ from multidex_utils import (
     none_to_quote_unquote_none,
     df_multiple_field_search,
     re_get,
-    djget,
+    djget, insert_wavelengths_into_text,
 )
 from plotter import spectrum_ops
 from plotter.reduction import (
@@ -175,7 +175,9 @@ def perform_spectrum_op(
         for ix in range(1, props["arity"] + 1)
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
-    title = props["value"] + " " + str(" ".join(filt_args))
+    base_title = props["value"] + " " + str(" ".join(filt_args))
+    # TODO, unfortunately: this probably needs more fiddly rules
+    title = insert_wavelengths_into_text(base_title, spec_model)
     if get_errors == "none":
         get_errors = False
     try:
@@ -558,11 +560,13 @@ def make_zspec_browse_image_components(
             continue
     if filename is None:
         filename = static_image_url + "missing.jpg"
+    # in this case we're just aggressively setting the appropriate
+    # aspect ratio. this is probably not always a good idea.
     return html.Img(
-            src=filename,
-            style={"maxWidth": "100%", "maxHeight": "100%"},
-            id="spec-image-" + eye,
-        )
+        src=filename,
+        style={"aspectRatio": "1.34 / 1", "maxWidth": "100%", "maxHeight":"100%"},
+        id="spec-image-" + eye,
+    )
 
 
 

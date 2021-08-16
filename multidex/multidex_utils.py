@@ -708,3 +708,23 @@ def regex_keyfilter(regex: str, dictionary: Mapping) -> dict:
 def dedict(dictionary: Mapping) -> Any:
     assert len(dictionary) == 1
     return dictionary[list(dictionary)[0]]
+
+
+# TODO: these kinds of printing rules probably need to go on individual
+#  models for cross-instrument compatibility
+def rearrange_band_depth_for_title(text: str) -> str:
+    filts = re.split(r"([L|R]?\d[RGB]?)", text, maxsplit=0)
+    return (
+        f"{filts[0]}{filts[3]}, " f"shoulders at {filts[1]} and " f"{filts[5]}"
+    )
+
+
+def insert_wavelengths_into_text(text: str, spec_model: "Model") -> str:
+    if "depth" in text:
+        text = rearrange_band_depth_for_title(text)
+    for filt, wavelength in (
+        spec_model.filters | spec_model.virtual_filters
+    ).items():
+        text = re.sub(filt, filt + " (" + str(wavelength) + "nm)", text)
+    text = re.sub(r"_", r" ", text)
+    return text
