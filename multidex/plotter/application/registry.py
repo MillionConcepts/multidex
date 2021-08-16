@@ -51,7 +51,8 @@ def register_update_main_graph(app, configured_function):
             Input({"type": "highlight-trigger", "index": 0}, "value"),
             Input("main-graph-bounds", "value"),
             Input("main-graph-error", "value"),
-            Input("main-graph", "clickData")
+            Input("main-graph", "clickData"),
+            Input("clear-labels", "n_clicks")
             # Input({'type': 'load-trigger', 'index': 0}, 'value')
         ],
         [State("main-graph", "figure"), State("main-graph-average", "value")],
