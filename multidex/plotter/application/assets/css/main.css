@@ -2,6 +2,7 @@
     --dark-tint-0: rgba(0,0,50,0.05);
     --dark-tint-1: rgba(0, 0, 25, 0.18);
     --dark-tint-2: rgba(0,0,0,0.24);
+    --dark-tint-3: rgba(0,0,25,0.4);
     --light-tint-1: rgba(255,255,242,0.7);
     --midnight-ochre: rgba(36, 28, 1, 1);
     --invisible-pearl: rgba(253, 253, 250, 1);
@@ -64,7 +65,7 @@ button {
 .medium-drop.term-search .Select-control {
     height: fit-content;
     min-height: 2rem;
-    max-height: 8rem;
+    max-height: 4rem;
     overflow-y: auto;
 }
 

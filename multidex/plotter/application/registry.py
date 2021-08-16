@@ -18,12 +18,12 @@ def register_change_calc_input_visibility(
 ):
     app.callback(
         [
-            Output("main-filter-1-" + value_class + "-container", "style"),
-            Output("main-filter-2-" + value_class + "-container", "style"),
-            Output("main-filter-3-" + value_class + "-container", "style"),
-            Output("main-component-" + value_class + "-container", "style"),
+            Output("filter-1-" + value_class + "-container", "style"),
+            Output("filter-2-" + value_class + "-container", "style"),
+            Output("filter-3-" + value_class + "-container", "style"),
+            Output("component-" + value_class + "-container", "style"),
         ],
-        [Input("main-graph-option-" + value_class, "value")],
+        [Input("graph-option-" + value_class, "value")],
     )(configured_function)
 
 
@@ -58,15 +58,15 @@ def register_update_main_graph(app, configured_function):
     )(configured_function)
 
 
-def register_handle_main_highlight_save(app, configured_function):
+def register_handle_highlight_save(app, configured_function):
     app.callback(
         [
-            Output("main-highlight-description", "children"),
+            Output("highlight-description", "children"),
             Output({"type": "highlight-trigger", "index": 0}, "value"),
         ],
         [
             Input({"type": "load-trigger", "index": 0}, "value"),
-            Input("main-highlight-save", "n_clicks"),
+            Input("highlight-save", "n_clicks"),
         ],
         [State({"type": "highlight-trigger", "index": 0}, "value")],
         prevent_initial_call=True,
@@ -93,10 +93,10 @@ def register_toggle_panel_visibility(app, configured_function):
 def register_toggle_color_drop_visibility(app, configured_function):
     app.callback(
         [
-            Output("main-color-scale", "style"),
-            Output("main-color-solid", "style"),
+            Output("color-scale", "style"),
+            Output("color-solid", "style"),
         ],
-        [Input("main-coloring-type", "value")],
+        [Input("coloring-type", "value")],
     )(configured_function)
 
 
@@ -216,21 +216,21 @@ def register_handle_load(app, configured_function):
 
 def register_update_spectrum_images(app, configured_function):
     app.callback(
-        Output({"type": "main-spec-image", "index": 0}, "children"),
+        Output({"type": "spec-image", "index": 0}, "children"),
         [Input("main-graph", "hoverData")],
     )(configured_function)
 
 
 def register_graph_point_to_metadata(app, configured_function):
     app.callback(
-        Output({"type": "main-spec-print", "index": 0}, "children"),
+        Output({"type": "spec-print", "index": 0}, "children"),
         [Input("main-graph", "hoverData")],
     )(configured_function)
 
 
 def register_update_spectrum_graph(app, configured_function):
     app.callback(
-        Output({"type": "main-spec-graph", "index": 0}, "figure"),
+        Output({"type": "spec-graph", "index": 0}, "figure"),
         [
             Input("main-graph", "hoverData"),
             Input("main-spec-scale", "value"),
@@ -268,7 +268,7 @@ def register_export_graph_csv(app, configured_function):
         Output(
             "fake-output-for-callback-with-only-side-effects-1", "children"
         ),
-        [Input("main-export-csv", "n_clicks")],
+        [Input("export-csv", "n_clicks")],
         [State("main-graph", "selectedData")],
         prevent_initial_call=True,
     )(configured_function)

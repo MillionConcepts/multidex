@@ -36,7 +36,7 @@ from plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain_variance,
 )
-from plotter.styles.components import COLORBAR_SETTINGS
+from plotter.styles.components import COLORBAR_SETTINGS, css_variables
 from plotter.ui_components import (
     search_parameter_div,
     search_div,
@@ -84,7 +84,7 @@ def truncate_id_list_for_missing_properties(
     filt_args = []
     indices = []
     for suffix in input_suffixes:
-        axis_option = re_get(settings, "-graph-option-" + suffix)
+        axis_option = re_get(settings, "graph-option-" + suffix)
         model_property = keygrab(
             spec_model.graphable_properties(), "value", axis_option
         )
@@ -101,7 +101,7 @@ def truncate_id_list_for_missing_properties(
             # inputs.
             filt_args.append(
                 [
-                    re_get(settings, f"-filter-{ix}-{suffix}")
+                    re_get(settings, f"filter-{ix}-{suffix}")
                     for ix in range(1, model_property["arity"] + 1)
                 ]
             )
@@ -171,7 +171,7 @@ def perform_spectrum_op(
         filter_df.loc[id_list].drop(["filter_avg", "err_avg"], axis=1).copy()
     )
     filt_args = [
-        re_get(settings, "-filter-" + str(ix))
+        re_get(settings, "filter-" + str(ix))
         for ix in range(1, props["arity"] + 1)
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
@@ -229,7 +229,7 @@ def make_axis(
     processed by truncate_id_list_for_missing_properties
     """
     # what is requested function or property?
-    axis_option = re_get(settings, "-graph-option-")
+    axis_option = re_get(settings, "graph-option-")
     # what are the characteristics of that function or property?
     props = keygrab(spec_model.graphable_properties(), "value", axis_option)
 
@@ -274,7 +274,7 @@ def make_marker_properties(
     this expects an id list that has already
     been processed by truncate_id_list_for_missing_properties
     """
-    marker_option = re_get(settings, "-graph-option-")
+    marker_option = re_get(settings, "graph-option-")
     props = keygrab(spec_model.graphable_properties(), "value", marker_option)
     # it would really be better to do this in components
     # but is difficult because you have to instantiate the colorbar somewhere
@@ -301,13 +301,13 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    if re_get(settings, "-coloring-type.value") == "solid":
-        color = re_get(settings, "-color-solid.value")
+    if re_get(settings, "coloring-type.value") == "solid":
+        color = re_get(settings, "color-solid.value")
         colormap = None
         colorbar = None
     else:
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
-        colormap = re_get(settings, "-color-scale.value")
+        colormap = re_get(settings, "color-scale.value")
         if props["value_type"] == "qual":
             string_hash, color = arbitrarily_hash_strings(
                 none_to_quote_unquote_none(property_list)
@@ -331,28 +331,28 @@ def make_marker_properties(
     # markers to be drawn in some different (and more expensive) way -- hence
     # this dumb logic tree
     opacity = 1
-    base_size = re_get(settings, "-marker-base-size.value")
-    if re_get(settings, "-highlight-toggle.value") == "on":
+    base_size = re_get(settings, "marker-base-size.value")
+    if re_get(settings, "highlight-toggle.value") == "on":
         marker_size = [
             base_size * 1.9 if spectrum in highlight_id_list else base_size
             for spectrum in id_list
         ]
-    elif re_get(settings, "-outline-radio.value") != "off":
+    elif re_get(settings, "outline-radio.value") != "off":
         marker_size = [base_size for _ in id_list]
     else:
         marker_size = base_size
 
     # define marker outline
-    if re_get(settings, "-outline-radio.value") != "off":
+    if re_get(settings, "outline-radio.value") != "off":
         marker_line = {
-            "color": re_get(settings, "-outline-radio.value"),
+            "color": re_get(settings, "outline-radio.value"),
             "width": 5,
         }
     else:
         marker_line = {}
 
     # set marker symbol
-    marker_symbol = re_get(settings, "-marker-symbol.value")
+    marker_symbol = re_get(settings, "marker-symbol.value")
 
     marker_property_dict = {
         "marker": {
@@ -369,16 +369,20 @@ def make_marker_properties(
         marker_property_dict["marker"]["colorbar"] = colorbar
     return marker_property_dict
 
+
 def format_display_settings(settings):
     settings_dict = {}
     axis_settings_dict = {}
-    if re_get(settings, "-graph-bg"):
-        settings_dict["plot_bgcolor"] = re_get(settings, "-graph-bg")
-    if re_get(settings, "-gridlines") == "on":
+    if re_get(settings, "graph-bg"):
+        settings_dict["plot_bgcolor"] = re_get(settings, "graph-bg")
+    if re_get(settings, "gridlines") == "light":
         axis_settings_dict["showgrid"] = True
+        axis_settings_dict["gridcolor"] = css_variables["dark-tint-0"]
+    elif re_get(settings, "gridlines") == "dark":
+        axis_settings_dict["showgrid"] = True
+        axis_settings_dict["gridcolor"] = css_variables["dark-tint-2"]
     else:
         axis_settings_dict["showgrid"] = False
-
     return settings_dict, axis_settings_dict
 
 
@@ -597,7 +601,7 @@ class SPlot:
             self.axis_display_dict,
             self.text,
             self.customdata,
-            self.main_label_ids,
+            self.label_ids,
             self.zoom,
             self.x_errors,
             self.y_errors,
@@ -631,7 +635,7 @@ class SPlot:
         "average_filters",
         "graph_display_dict",
         "axis_display_dict",
-        "main_label_ids",
+        "label_ids",
         "zoom",
         "x_errors",
         "y_errors",
@@ -750,7 +754,7 @@ def retrieve_graph_data(cget):
 def halt_for_ineffective_highlight_toggle(ctx, marker_settings):
     if isinstance(ctx.triggered[0]["prop_id"], dict):
         if ctx.triggered[0]["prop_id"]["type"] == "highlight-trigger":
-            if marker_settings["main-highlight-toggle.value"] == "off":
+            if marker_settings["highlight-toggle.value"] == "off":
                 raise PreventUpdate
 
 
@@ -764,19 +768,19 @@ def add_or_remove_label(cset, ctx, label_ids):
         label_ids.remove(clicked_id)
     else:
         label_ids.append(clicked_id)
-    cset("main_label_ids", label_ids)
+    cset("label_ids", label_ids)
 
 
 def parse_main_graph_bounds_string(ctx):
     bounds_string = ctx.inputs["main-graph-bounds.value"]
-    if bounds_string is None:
+    try:
+        bounds_string = [
+            float(bound) for bound in filter(None, bounds_string.split(" "))
+        ]
+        assert len(bounds_string) == 4
+        return bounds_string
+    except (ValueError, AssertionError, AttributeError):
         return None
-    bounds_string = [
-        float(bound) for bound in filter(None, bounds_string.split(" "))
-    ]
-    if len(bounds_string) != 4:
-        return None
-    return bounds_string
 
 
 def update_zoom_from_bounds_string(graph, bounds_string):

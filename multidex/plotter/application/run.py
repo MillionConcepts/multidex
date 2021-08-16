@@ -6,6 +6,7 @@ import flask
 import flask.cli
 import pandas as pd
 from dash import dash
+from dash.dependencies import ClientsideFunction
 from flask_caching import Cache
 
 from multidex_utils import qlist, model_metadata_df
@@ -25,7 +26,7 @@ from plotter.models import INSTRUMENT_MODEL_MAPPING
 def run_multidex(instrument_code, debug=False):
     # initialize the app itself. HTML / react objects and callbacks from them
     # must be described in this object as dash components.
-    app = dash.Dash(__name__)
+    app = dash.Dash(__name__, external_scripts=["assets/js/dragula.js"])
     # random directory for caching this instance
     cache_subdirectory = str(random.randint(1000000, 9999999))
     cache = Cache()
@@ -58,6 +59,13 @@ def run_multidex(instrument_code, debug=False):
     # prod; this app only runs locally and woe betide thee if otherwise
     flask.cli.show_server_banner = lambda *_: None
 
+    # from dash.dependencies import Output, Input
+    # app.clientside_callback(
+    #     ClientsideFunction(namespace="clientside", function_name="make_draggable"),
+    #     Output("marker-options", "data-drag"),
+    #     [Input("marker-options", "id")]
+    # )
+
     # there's probably a better way to do this than this hack
     port = 49303
     looking_for_port = True
@@ -82,7 +90,7 @@ def initialize_cache_values(cset, spec_model):
 
     cset("search_ids", qlist(spec_model.objects.all(), "id"))
     cset("highlight_ids", qlist(spec_model.objects.all(), "id"))
-    cset("main_label_ids", [])
+    cset("label_ids", [])
     cset(
         "data_df",
         data_df_from_queryset(spec_model.objects.all()),
