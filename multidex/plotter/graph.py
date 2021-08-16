@@ -573,7 +573,6 @@ def make_zspec_browse_image_components(
     )
 
 
-
 class SPlot:
     """
     class that holds a queryset of spectra with search parameters
@@ -629,7 +628,7 @@ class SPlot:
         "y_settings",
         "marker_settings",
         "graph_function",
-        "main_highlight_parameters",
+        "highlight_parameters",
         "highlight_ids",
         "scale_to",
         "average_filters",
@@ -641,11 +640,12 @@ class SPlot:
         "y_errors",
         "x_title",
         "y_title",
+        "main_graph_bounds",
     )
 
     setting_parameters = (
         "search_parameters",
-        "main_highlight_parameters",
+        "highlight_parameters",
         "x_settings",
         "y_settings",
         "marker_settings",
@@ -671,8 +671,8 @@ def load_values_into_search_div(row, spec_model, search_file, cset):
     """makes a search tab with preset values from a saved search."""
     saved_searches = pd.read_csv(search_file)
     row_dict = rows(saved_searches)[row].to_dict()
-    # TODO: doing this here might mean something is wrong in control flow
-    cset("main_highlight_parameters", row_dict["main_highlight_parameters"])
+    # TODO: bad smell, might mean something is wrong in control flow
+    cset("highlight_parameters", row_dict["highlight_parameters"])
     return search_div(spec_model, row_dict)
 
 
