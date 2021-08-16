@@ -229,7 +229,9 @@ def update_main_graph(
     # TODO: performance increase is possible here by just returning the graph
     if ctx.triggered[0]["prop_id"] == "main-graph.clickData":
         add_or_remove_label(cset, ctx, label_ids)
-
+    elif ctx.triggered[0]["prop_id"] == "clear-labels.n_clicks":
+        cset("label_ids", [])
+        label_ids = []
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
