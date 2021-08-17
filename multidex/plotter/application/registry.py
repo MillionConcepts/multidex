@@ -267,13 +267,22 @@ def register_populate_saved_search_drop(app, configured_function):
 def register_export_graph_csv(app, configured_function):
     app.callback(
         Output(
-            "fake-output-for-callback-with-only-side-effects-1", "children"
+            "fake-output-for-callback-with-only-side-effects-0", "children"
         ),
         [Input("export-csv", "n_clicks")],
         [State("main-graph", "selectedData")],
         prevent_initial_call=True,
     )(configured_function)
 
+def register_export_graph_png(app, configured_function):
+    app.callback(
+        Output(
+            "fake-output-for-callback-with-only-side-effects-1", "children"
+        ),
+        [Input("export-image", "n_clicks")],
+        [State("main-graph", "figure"), State("main-graph", "style")],
+        prevent_initial_call=True,
+    )(configured_function)
 
 # debug printer
 # app.callback(

@@ -682,3 +682,6 @@ def save_search_state(_n_clicks, save_name, trigger_value, cget):
     os.makedirs("saves", exist_ok=True)
     appended_df.to_csv(filename, index=False)
     return trigger_value + 1
+
+def export_graph_png(_clicks, fig, style):
+    pass

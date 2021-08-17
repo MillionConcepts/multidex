@@ -1,3 +1,5 @@
+@import url("fonts.css");
+
 :root {
     --dark-tint-0: rgba(0,0,50,0.05);
     --dark-tint-1: rgba(0, 0, 25, 0.18);
@@ -15,7 +17,7 @@ html {
 }
 
 html, button, .Select {
-    font-family: "Fira Mono", sans-serif;
+    font-family: Fira Mono, sans-serif;
     color: var(--midnight-ochre);
 }
 
@@ -253,23 +255,7 @@ button {
     flex-shrink: 0
 }
 
-@font-face {
-    font-family: "Fira Mono";
-    src: url("../fonts/FiraMono-Regular.ttf") format("truetype");
-    font-weight: 400;
-}
 
-@font-face {
-    font-family: "Fira Mono";
-    src: url("../fonts/FiraMono-Medium.ttf") format("truetype");
-    font-weight: 500;
-}
-
-@font-face {
-    font-family: "Fira Mono";
-    src: url("../fonts/FiraMono-Bold.ttf") format("truetype");
-    font-weight: 700;
-}
 
 
 /*todo: figure out how hard it is to override core components with CSS --
