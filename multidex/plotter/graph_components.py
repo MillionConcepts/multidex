@@ -116,6 +116,7 @@ def failed_scatter_graph(message: str, graph_display_settings: Mapping):
     fig = go.Figure()
     fig.add_annotation(text=message, **SEARCH_FAILURE_MESSAGE_SETTINGS)
     apply_graph_style(fig, graph_display_settings, None)
+    # fig.to_image()
     return fig
 
 
@@ -167,15 +168,14 @@ def spectrum_line_graph(
     fig = go.Figure(
         layout={
             **GRAPH_DISPLAY_DEFAULTS,
-            "xaxis": AXIS_DISPLAY_DEFAULTS | {
-                "title_text": "wavelength", "title_standoff": 5
-            },
+            "xaxis": AXIS_DISPLAY_DEFAULTS
+            | {"title_text": "wavelength", "title_standoff": 5},
             "yaxis": AXIS_DISPLAY_DEFAULTS
             | {
                 "title_text": "reflectance",
                 "range": [0, min(y_axis) + max(y_axis)],
                 "title_standoff": 4,
-                "side": "right"
+                "side": "right",
             },
         }
     )

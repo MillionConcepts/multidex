@@ -100,7 +100,6 @@ def scale_controls_container(
                 dcc.Checklist(
                     id=id_prefix + "-r-star",
                     className="info-text",
-
                     options=[
                         {"label": "R*", "value": "r-star"},
                     ],
@@ -134,7 +133,7 @@ def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
             "display": "flex",
             "flexDirection": "column",
             "height": "100%",
-            "width": "33%"
+            "width": "33%",
         },
         children=[
             html.Div(
@@ -143,7 +142,7 @@ def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
                 style={
                     "display": "inline-block",
                     "width": "100%",
-                    "height": "50%"
+                    "height": "50%",
                 },
             ),
             html.Div(
@@ -615,8 +614,9 @@ def save_search_input(element_id):
     )
 
 
-def axis_controls_container(axis: str, spec_model, get_r: Callable,
-                            filter_options) -> Div:
+def axis_controls_container(
+    axis: str, spec_model, get_r: Callable, filter_options
+) -> Div:
     children = [
         axis_value_drop(
             spec_model,
@@ -1017,8 +1017,9 @@ def search_div(
                 *collapse(
                     "control-container-marker",
                     "m axis",
-                    axis_controls_container("marker", spec_model, get_r,
-                                            filts),
+                    axis_controls_container(
+                        "marker", spec_model, get_r, filts
+                    ),
                 ),
                 *collapse(
                     "color-controls",
@@ -1062,7 +1063,7 @@ def search_div(
                         "average",
                         "error",
                     ),
-                    off=True
+                    off=True,
                 ),
                 *collapse(
                     "load-panel",
@@ -1076,10 +1077,23 @@ def search_div(
                     html.Div(
                         [
                             save_search_input("save-search"),
-                            html.Button(
-                                "Export CSV",
-                                id="export-csv",
-                                style={"marginTop": "1rem"},
+                            html.Div(
+                                style={
+                                    "display": "flex",
+                                    "flexDirection": "row",
+                                    "marginTop": "0.5rem"
+                                },
+                                children=[
+                                    html.Button(
+                                        "CSV",
+                                        id="export-csv",
+                                        style={"marginRight": "0.8rem"}
+                                    ),
+                                    html.Button(
+                                        "image",
+                                        id="export-image",
+                                    ),
+                                ],
                             ),
                         ]
                     ),
@@ -1094,7 +1108,11 @@ def search_div(
             ],
         ),
         html.Div(
-            style={"display": "flex", "flexDirection": "row", "height": "85vh"},
+            style={
+                "display": "flex",
+                "flexDirection": "row",
+                "height": "85vh",
+            },
             children=[
                 main_graph(
                     style={"height": "100%", "width": "66%", "flexShrink": 0}

@@ -46,14 +46,9 @@ GRAPH_CONFIG_SETTINGS = {
         "resetScale2d",
         "hoverClosestCartesian",
         "hoverCompareCartesian",
+        "toImage"
     ],
     "displaylogo": False,
-    "toImageButtonOptions": {
-        "format": "png",
-        "height": 1440,
-        "width": 1440,
-        "scale": 3,
-    },
 }
 
 COLORBAR_SETTINGS = {
