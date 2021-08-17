@@ -521,27 +521,29 @@ def make_mspec_browse_image_components(
     image_div_children = []
     for eye in ["left", "right"]:
         try:
-            # size = file_info[eye + "_size"]
+            # if there are lots, we're not exercising ourselves with trying to
+            # distinguish them...the metadata are largely not available
             eye_images = keyfilter(lambda key: eye in key, file_info)
             assert len(eye_images) >= 1
             filename = static_image_url + list(eye_images.values())[0]
+            size = list(
+                keyfilter(lambda key: "size" in key, eye_images).values()
+            )[0]
         except AssertionError:
-            # size = (480, 480)
+            size = (480, 480)
             filename = static_image_url + "missing.jpg"
-        # aspect_ratio = size[0] / size[1]
-        # width = base_size * aspect_ratio
-        # height = base_size / aspect_ratio
         image_div_children.append(
             html.Img(
                 src=filename,
-                style={"width": "50%", "height": "50%"},
+                style={
+                    "aspectRatio": f"{size[0]} / {size[1]}",
+                    "maxWidth": "50%", "maxHeight": "50%"
+                },
                 id="spec-image-" + eye,
             )
         )
-        component = html.Div(
-            children=image_div_children,
-        )
-    return component
+
+    return image_div_children
 
 
 # TODO: assess whether this hack remains in, assess goodness of display in
