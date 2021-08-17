@@ -1121,23 +1121,6 @@ def search_div(
             ],
             id="main-container",
         ),
-        # hidden divs for async triggers, dummy outputs, etc
-        trigger_div("main-graph-scale", 1),
-        trigger_div("search", 2),
-        trigger_div("load", 1),
-        trigger_div("save", 1),
-        trigger_div("highlight", 1),
-        html.Div(id="fire-on-load", children="2", style={"display": "none"}),
-        html.Div(
-            id="fake-output-for-callback-with-only-side-effects-0",
-            style={"display": "none"},
-        ),
-        html.Div(
-            id="fake-output-for-callback-with-only-side-effects-1",
-            style={"display": "none"},
-        ),
-        html.Div(id="graph-size-record-div", style={"display": "none"}),
-        html.Div(id="search-load-progress-flag"),
     ]
     return html.Div(
         children=search_children,
@@ -1152,6 +1135,24 @@ def multidex_body(spec_model):
     return html.Div(
         children=[
             search_div(spec_model),
+            # hidden divs for async triggers, dummy outputs, etc
+            trigger_div("main-graph-scale", 1),
+            trigger_div("search", 2),
+            trigger_div("load", 1),
+            trigger_div("save", 1),
+            trigger_div("highlight", 1),
+            html.Div(id="fire-on-load", children="2",
+                     style={"display": "none"}),
+            html.Div(
+                id="fake-output-for-callback-with-only-side-effects-0",
+                style={"display": "none"},
+            ),
+            html.Div(
+                id="fake-output-for-callback-with-only-side-effects-1",
+                style={"display": "none"},
+            ),
+            html.Div(id="graph-size-record-div", style={"display": "none"}),
+            html.Div(id="search-load-progress-flag"),
             # dcc.Interval(id="interval1", interval=1000, n_intervals=0),
         ],
         id="multidex",
