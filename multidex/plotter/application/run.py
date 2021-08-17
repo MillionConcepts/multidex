@@ -13,7 +13,7 @@ from multidex_utils import qlist, model_metadata_df
 from plotter.application.helpers import (
     configure_cache,
     register_everything,
-    configure_callbacks,
+    configure_callbacks, register_clientside_callbacks,
 )
 from plotter.application.structure import STATIC_IMAGE_URL
 from plotter.spectrum_ops import data_df_from_queryset
@@ -45,7 +45,8 @@ def run_multidex(instrument_code, debug=False):
     app.layout = multidex_body(spec_model)
     # register callbacks with app in reference to layout
     register_everything(app, configured_callbacks)
-
+    # TODO: move these references into external scripts
+    register_clientside_callbacks(app)
     # special case: serve context images using a flask 'route'
     static_folder = Path(
         Path(__file__).parent, "assets/browse/" + spec_model.instrument.lower()
@@ -58,13 +59,6 @@ def run_multidex(instrument_code, debug=False):
     # silence irrelevant warnings about the dangers of using a dev server in
     # prod; this app only runs locally and woe betide thee if otherwise
     flask.cli.show_server_banner = lambda *_: None
-
-    # from dash.dependencies import Output, Input
-    # app.clientside_callback(
-    #     ClientsideFunction(namespace="clientside", function_name="make_draggable"),
-    #     Output("marker-options", "data-drag"),
-    #     [Input("marker-options", "id")]
-    # )
 
     # there's probably a better way to do this than this hack
     port = 49303

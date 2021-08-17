@@ -671,8 +671,9 @@ def load_values_into_search_div(row, spec_model, search_file, cset):
     """makes a search tab with preset values from a saved search."""
     saved_searches = pd.read_csv(search_file)
     row_dict = rows(saved_searches)[row].to_dict()
-    # TODO: bad smell, might mean something is wrong in control flow
-    cset("highlight_parameters", row_dict["highlight_parameters"])
+    if "highlight parameters" in row_dict.keys():
+        # TODO: bad smell, might mean something is wrong in control flow
+        cset("highlight_parameters", row_dict["highlight_parameters"])
     return search_div(spec_model, row_dict)
 
 

@@ -223,7 +223,7 @@ button {
     color: #000;
     background: aliceblue;
     position: absolute;
-    top: 1rem;
+    top: 0.4rem;
     z-index: 1;
     font-size: 0.75rem;
     max-width: 9.5rem;

@@ -274,15 +274,44 @@ def register_export_graph_csv(app, configured_function):
         prevent_initial_call=True,
     )(configured_function)
 
+
 def register_export_graph_png(app, configured_function):
     app.callback(
         Output(
             "fake-output-for-callback-with-only-side-effects-1", "children"
         ),
-        [Input("export-image", "n_clicks")],
-        [State("main-graph", "figure"), State("main-graph", "style")],
+        [Input("graph-size-record-div", "children")],
+        [State("main-graph", "figure")],
         prevent_initial_call=True,
     )(configured_function)
+
+
+def register_record_graph_size_and_trigger_save(app):
+    app.clientside_callback(
+        """
+        function() {
+            const main_graph = document.getElementById("main-graph");
+            const info_object = {
+                'width': main_graph.clientWidth, 
+                'height': main_graph.clientHeight
+            }
+            return JSON.stringify(info_object)
+        }
+        """,
+        Output(
+            "graph-size-record-div", "children"
+        ),
+        [Input("export-image", "n_clicks")],
+        prevent_initial_call=True
+    )
+
+    # from dash.dependencies import Output, Input
+    # app.clientside_callback(
+    #     ClientsideFunction(namespace="clientside",
+    #     function_name="make_draggable"),
+    #     Output("marker-options", "data-drag"),
+    #     [Input("marker-options", "id")]
+    # )
 
 # debug printer
 # app.callback(
