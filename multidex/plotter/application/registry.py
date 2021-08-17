@@ -217,21 +217,21 @@ def register_handle_load(app, configured_function):
 
 def register_update_spectrum_images(app, configured_function):
     app.callback(
-        Output({"type": "spec-image", "index": 0}, "children"),
+        Output("spec-image", "children"),
         [Input("main-graph", "hoverData")],
     )(configured_function)
 
 
 def register_graph_point_to_metadata(app, configured_function):
     app.callback(
-        Output({"type": "spec-print", "index": 0}, "children"),
+        Output("spec-print", "children"),
         [Input("main-graph", "hoverData")],
     )(configured_function)
 
 
 def register_update_spectrum_graph(app, configured_function):
     app.callback(
-        Output({"type": "spec-graph", "index": 0}, "figure"),
+        Output("spec-graph", "figure"),
         [
             Input("main-graph", "hoverData"),
             Input("main-spec-scale", "value"),
