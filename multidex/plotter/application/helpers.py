@@ -43,13 +43,20 @@ def register_everything(app, configured_functions):
         register(app, func)
 
 
+def register_clientside_callbacks(app):
+    # TODO: move this into external scripts
+    js_callbacks = ["record_graph_size_and_trigger_save"]
+    for name in js_callbacks:
+        register = getattr(plotter.application.registry, "register_" + name)
+        register(app)
+
+
 def configure_callbacks(cget, cset, spec_model):
     """
     insert 'settings' / 'global' values for this app into callback functions.
     typically our convention is that 'global' variables in callbacks
     are keyword-only and callback inputs / states are positional.
     """
-
     settings = {
         "x_inputs": X_INPUTS,
         "y_inputs": Y_INPUTS,

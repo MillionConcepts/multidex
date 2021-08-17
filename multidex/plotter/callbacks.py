@@ -3,6 +3,7 @@ these functions are partially defined and/or passed to callback
 decorators in order to generate flow control within a dash app.
 """
 import datetime as dt
+import json
 import os
 import re
 
@@ -12,6 +13,7 @@ from itertools import cycle
 from typing import Tuple
 
 import dash
+import numpy as np
 import pandas as pd
 from dash.exceptions import PreventUpdate
 
@@ -25,6 +27,7 @@ from multidex_utils import (
     not_blank,
     rows,
 )
+from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.ui_components import parse_model_quant_entry
 from plotter.graph_components import (
     main_scatter_graph,
@@ -507,7 +510,7 @@ def handle_highlight_save(
     else:
         highlight_ids = cget("highlight_ids")
         search_ids = cget("search_ids")
-        if highlight_ids == search_ids:
+        if np.all(highlight_ids == search_ids):
             raise PreventUpdate
         cset("highlight_ids", search_ids)
         cset("highlight_parameters", cget("search_parameters"))
@@ -683,5 +686,8 @@ def save_search_state(_n_clicks, save_name, trigger_value, cget):
     appended_df.to_csv(filename, index=False)
     return trigger_value + 1
 
-def export_graph_png(_clicks, fig, style):
-    pass
+
+def export_graph_png(clientside_fig_info, fig_dict):
+    info = json.loads(clientside_fig_info)
+    aspect = info['width'] / info['height']
+    save_main_scatter_plot(fig_dict, aspect)

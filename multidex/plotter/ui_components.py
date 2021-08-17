@@ -521,8 +521,8 @@ def search_parameter_div(
         html.Div(
             className="tooltipped",
             children=[
-                model_range_entry("number-search", index, preset_parameter),
                 model_range_display("number-range-display", index),
+                model_range_entry("number-search", index, preset_parameter),
             ],
         ),
         html.Div(
@@ -1140,6 +1140,7 @@ def search_div(
             id="fake-output-for-callback-with-only-side-effects-1",
             style={"display": "none"},
         ),
+        html.Div(id="graph-size-record-div", style={"display": "none"}),
         html.Div(id="search-load-progress-flag"),
     ]
     return html.Div(
