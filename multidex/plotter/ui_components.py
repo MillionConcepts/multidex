@@ -126,9 +126,9 @@ def scale_controls_container(
     return scale_container
 
 
-def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
+def dynamic_spec_div(graph_name: str, image_name: str) -> html.Div:
     return html.Div(
-        id={"type": "spec-container", "index": index},
+        id="spec-container",
         style={
             "display": "flex",
             "flexDirection": "column",
@@ -137,8 +137,8 @@ def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
         },
         children=[
             html.Div(
-                children=[spec_graph(graph_name, index)],
-                id={"type": graph_name + "-container", "index": index},
+                children=[spec_graph(graph_name)],
+                id=graph_name + "-container",
                 style={
                     "display": "inline-block",
                     "width": "100%",
@@ -146,7 +146,7 @@ def dynamic_spec_div(graph_name: str, image_name: str, index: int) -> html.Div:
                 },
             ),
             html.Div(
-                id={"type": image_name, "index": index},
+                id=image_name,
                 style={
                     "display": "flex",
                     "flexDirection": "row",
@@ -212,12 +212,12 @@ def main_graph(style) -> dcc.Graph:
     )
 
 
-def spec_graph(name: str, index: int) -> dcc.Graph:
+def spec_graph(name: str) -> dcc.Graph:
     """dash component factory for reflectance graphs"""
     fig = go.Figure(layout={**GRAPH_DISPLAY_DEFAULTS})
     # noinspection PyTypeChecker
     return dcc.Graph(
-        id={"type": name, "index": index},
+        id=name,
         figure=fig,
         style={"height": "100%", "width": "100%"},
         config=GRAPH_CONFIG_SETTINGS,
@@ -1117,11 +1117,7 @@ def search_div(
                 main_graph(
                     style={"height": "100%", "width": "66%", "flexShrink": 0}
                 ),
-                dynamic_spec_div(
-                    "spec-graph",
-                    "spec-image",
-                    0,
-                ),
+                dynamic_spec_div("spec-graph", "spec-image"),
             ],
             id="main-container",
         ),
