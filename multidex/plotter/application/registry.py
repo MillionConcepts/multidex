@@ -81,7 +81,10 @@ def register_toggle_panel_visibility(app, configured_function):
             Output({"type": "collapse-arrow", "index": MATCH}, "style"),
             Output({"type": "collapse-text", "index": MATCH}, "style"),
         ],
-        [Input({"type": "collapse-div", "index": MATCH}, "n_clicks")],
+        [
+            Input({"type": "collapse-div", "index": MATCH}, "n_clicks"),
+            Input("collapse-all", "n_clicks")
+        ],
         [
             State({"type": "collapsible-panel", "index": MATCH}, "style"),
             State({"type": "collapse-arrow", "index": MATCH}, "style"),
@@ -308,9 +311,19 @@ def register_record_graph_size_and_trigger_save(app):
 
 def register_drag_spec_print(app):
     app.clientside_callback(
-        """function() {makeDraggable('spec-print')}""",
+        """function() {makeDraggable('spec-print-handle', 'spec-print-div')}""",
         Output(
             'fake-output-for-callback-with-only-side-effects-2', 'children'
+        ),
+        [Input('fire-on-load', 'children')]
+    )
+
+
+def register_hide_spec_print(app):
+    app.clientside_callback(
+        """function() {makeHider('spec-print-handle', 'spec-print')}""",
+        Output(
+            'fake-output-for-callback-with-only-side-effects-3', 'children'
         ),
         [Input('fire-on-load', 'children')]
     )

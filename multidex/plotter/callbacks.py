@@ -523,19 +523,24 @@ def handle_highlight_save(
     )
 
 
-def toggle_panel_visibility(_click, panel_style, arrow_style, text_style):
+def toggle_panel_visibility(
+        _click, _reset_click, panel_style, arrow_style, text_style
+    ):
     """
     switches collapsible panel between visible and invisible,
     and rotates and sets text on its associated arrow.
     """
-    panel_style = style_toggle(panel_style, states=("none", "revert"))
-    arrow_style = style_toggle(
-        arrow_style, "WebkitTransform", ("rotate(45deg)", "rotate(-45deg)")
-    )
-    arrow_style = style_toggle(
-        arrow_style, "transform", ("rotate(45deg)", "rotate(-45deg)")
-    )
-    text_style = style_toggle(text_style, states=("inline-block", "none"))
+    ctx = dash.callback_context
+    if ctx.triggered[0]['prop_id'] == 'collapse-all.n_clicks':
+        panel_style = {'display': 'none'}
+        arrow_style = {"WebkitTransform": "rotate(45deg)"}
+        text_style = {'display': 'inline-block'}
+    else:
+        panel_style = style_toggle(panel_style, states=("none", "revert"))
+        arrow_style = style_toggle(
+            arrow_style, "WebkitTransform", ("rotate(45deg)", "rotate(-45deg)")
+        )
+        text_style = style_toggle(text_style, states=("inline-block", "none"))
     return panel_style, arrow_style, text_style
 
 
