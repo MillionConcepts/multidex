@@ -37,11 +37,11 @@ from plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain_variance,
 )
-from plotter.styles.components import COLORBAR_SETTINGS, css_variables
-from plotter.ui_components import (
+from plotter.styles.graph_style import COLORBAR_SETTINGS, css_variables
+from plotter.components.ui_components import (
     search_parameter_div,
-    search_div,
 )
+from plotter.layout import search_div
 
 if TYPE_CHECKING:
     from plotter.models import ZSpec, MSpec

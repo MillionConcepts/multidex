@@ -6,7 +6,6 @@ import flask
 import flask.cli
 import pandas as pd
 from dash import dash
-from dash.dependencies import ClientsideFunction
 from flask_caching import Cache
 
 from multidex_utils import qlist, model_metadata_df
@@ -18,7 +17,7 @@ from plotter.application.helpers import (
 from plotter.application.structure import STATIC_IMAGE_URL
 from plotter.spectrum_ops import data_df_from_queryset
 
-from plotter.ui_components import multidex_body
+from plotter.layout import multidex_body
 from plotter.graph import cache_set, cache_get
 from plotter.models import INSTRUMENT_MODEL_MAPPING
 
@@ -26,7 +25,9 @@ from plotter.models import INSTRUMENT_MODEL_MAPPING
 def run_multidex(instrument_code, debug=False):
     # initialize the app itself. HTML / react objects and callbacks from them
     # must be described in this object as dash components.
-    app = dash.Dash(__name__, external_scripts=["assets/js/dragula.js"])
+    app = dash.Dash(
+        __name__,
+    )
     # random directory for caching this instance
     cache_subdirectory = str(random.randint(1000000, 9999999))
     cache = Cache()
@@ -51,7 +52,6 @@ def run_multidex(instrument_code, debug=False):
     static_folder = Path(
         Path(__file__).parent, "assets/browse/" + spec_model.instrument.lower()
     )
-
     @app.server.route(STATIC_IMAGE_URL + "<path:path>")
     def static_image_link(path):
         return flask.send_from_directory(static_folder, path)
@@ -59,7 +59,6 @@ def run_multidex(instrument_code, debug=False):
     # silence irrelevant warnings about the dangers of using a dev server in
     # prod; this app only runs locally and woe betide thee if otherwise
     flask.cli.show_server_banner = lambda *_: None
-
     # there's probably a better way to do this than this hack
     port = 49303
     looking_for_port = True

@@ -28,8 +28,8 @@ from multidex_utils import (
     rows,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
-from plotter.ui_components import parse_model_quant_entry
-from plotter.graph_components import (
+from plotter.components.ui_components import parse_model_quant_entry
+from plotter.components.graph_components import (
     main_scatter_graph,
     spectrum_line_graph,
     failed_scatter_graph,
