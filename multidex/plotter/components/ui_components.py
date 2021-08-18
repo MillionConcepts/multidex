@@ -247,7 +247,6 @@ def collapse_arrow(id_for, title, off=False):
     if off:
         arrow_style = {
             "WebkitTransform": "rotate(45deg)",
-            "transform": "rotate(45deg)",
         }
         text_style = {"display": "inline-block"}
     else:

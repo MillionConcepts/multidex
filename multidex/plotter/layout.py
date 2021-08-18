@@ -4,12 +4,22 @@ from typing import Optional, Mapping
 import dash_html_components as html
 
 from multidex_utils import get_if
-from plotter.components.ui_components import collapse, \
-    axis_controls_container, \
-    marker_color_symbol_div, marker_options_div, highlight_controls_div, \
-    search_controls_div, scale_control_div, scale_controls_container, \
-    load_search_drop, save_search_input, display_controls_div, main_graph, \
-    dynamic_spec_div, trigger_div
+from plotter.components.ui_components import (
+    collapse,
+    axis_controls_container,
+    marker_color_symbol_div,
+    marker_options_div,
+    highlight_controls_div,
+    search_controls_div,
+    scale_control_div,
+    scale_controls_container,
+    load_search_drop,
+    save_search_input,
+    display_controls_div,
+    main_graph,
+    dynamic_spec_div,
+    trigger_div,
+)
 
 
 # primary search panel
@@ -162,21 +172,36 @@ def multidex_body(spec_model):
     return html.Div(
         children=[
             html.Button(
-                id="collapse-all", style={
-                    'background': 'aliceblue',
-                    'position': 'fixed',
-                    'bottom': '0.7rem',
-                    # 'right': '0.1rem',
-                    'borderWidth': '5px',
-                    'height': '1.2rem',
-                    'width': '1.2rem',
-                    'zIndex': '9999'
-                }
+                id="collapse-all",
+                style={
+                    "background": "mediumseagreen",
+                    "position": "fixed",
+                    "bottom": "0.7rem",
+                    "borderWidth": "5px",
+                    "height": "1.2rem",
+                    "width": "1.2rem",
+                    "zIndex": "9999",
+                },
             ),
             html.Div(
-                id='spec-print',
-                style={'position': 'absolute', 'zIndex': 9999, 'background': 'aliceblue'},
-                children=[]
+                id="spec-print-div",
+                style={
+                    "position": "absolute",
+                    "zIndex": 9999,
+                    "background": "aliceblue",
+                    "left": "90vw",
+                },
+                children=[
+                    html.Div(
+                        id="spec-print-handle",
+                        style={
+                            "background": "lightpink",
+                            "width": "1rem",
+                            "height": "1rem",
+                        },
+                    ),
+                    html.P(id="spec-print"),
+                ],
             ),
             search_div(spec_model),
             # hidden divs for async triggers, dummy outputs, etc
@@ -198,6 +223,10 @@ def multidex_body(spec_model):
             ),
             html.Div(
                 id="fake-output-for-callback-with-only-side-effects-2",
+                style={"display": "none"},
+            ),
+            html.Div(
+                id="fake-output-for-callback-with-only-side-effects-3",
                 style={"display": "none"},
             ),
             html.Div(id="graph-size-record-div", style={"display": "none"}),

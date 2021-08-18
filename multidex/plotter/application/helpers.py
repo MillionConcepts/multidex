@@ -48,7 +48,8 @@ def register_clientside_callbacks(app):
     # TODO: move this into external scripts?
     js_callbacks = [
         "record_graph_size_and_trigger_save",
-        "drag_spec_print"
+        "drag_spec_print",
+        'hide_spec_print'
     ]
     for name in js_callbacks:
         register = getattr(plotter.application.registry, "register_" + name)
