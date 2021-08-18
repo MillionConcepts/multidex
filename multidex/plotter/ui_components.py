@@ -126,7 +126,7 @@ def scale_controls_container(
     return scale_container
 
 
-def dynamic_spec_div(graph_name: str, image_name: str) -> html.Div:
+def dynamic_spec_div() -> html.Div:
     return html.Div(
         id="spec-container",
         style={
@@ -136,9 +136,18 @@ def dynamic_spec_div(graph_name: str, image_name: str) -> html.Div:
             "width": "33%",
         },
         children=[
+            dcc.Checklist(
+                options=[
+                    {"label": "", "value": "graph"},
+                    {"label": "", "value": "info"},
+                    {"label": "", "value": "image"},
+                ],
+                style={"margin": 0},
+                id="spec-div-selector",
+            ),
             html.Div(
-                children=[spec_graph(graph_name)],
-                id=graph_name + "-container",
+                children=[spec_graph("spec-graph")],
+                id="spec-graph-container",
                 style={
                     "display": "inline-block",
                     "width": "100%",
@@ -146,7 +155,7 @@ def dynamic_spec_div(graph_name: str, image_name: str) -> html.Div:
                 },
             ),
             html.Div(
-                id=image_name,
+                id="spec-image",
                 style={
                     "display": "flex",
                     "flexDirection": "row",
@@ -156,6 +165,15 @@ def dynamic_spec_div(graph_name: str, image_name: str) -> html.Div:
                     "marginRight": "3%",
                     "marginLeft": "1%",
                     "width": "96%",
+                },
+            ),
+            html.Pre(
+                children=[],
+                id="spec-print",
+                style={
+                    "display": "none",
+                    "width": "96%",
+                    "height": "50%",
                 },
             ),
         ],
@@ -880,7 +898,7 @@ def display_controls_div(get_r: Callable) -> html.Div:
                     },
                     {
                         "label": "dark",
-                        "value": css_variables["dark-tint-1"],
+                        "value": css_variables["dark-tint-2"],
                     },
                 ],
                 value=bg_color,
@@ -1081,13 +1099,13 @@ def search_div(
                                 style={
                                     "display": "flex",
                                     "flexDirection": "row",
-                                    "marginTop": "0.5rem"
+                                    "marginTop": "0.5rem",
                                 },
                                 children=[
                                     html.Button(
                                         "CSV",
                                         id="export-csv",
-                                        style={"marginRight": "0.8rem"}
+                                        style={"marginRight": "0.8rem"},
                                     ),
                                     html.Button(
                                         "image",
@@ -1117,7 +1135,7 @@ def search_div(
                 main_graph(
                     style={"height": "100%", "width": "66%", "flexShrink": 0}
                 ),
-                dynamic_spec_div("spec-graph", "spec-image"),
+                dynamic_spec_div(),
             ],
             id="main-container",
         ),
@@ -1141,8 +1159,9 @@ def multidex_body(spec_model):
             trigger_div("load", 1),
             trigger_div("save", 1),
             trigger_div("highlight", 1),
-            html.Div(id="fire-on-load", children="2",
-                     style={"display": "none"}),
+            html.Div(
+                id="fire-on-load", children="2", style={"display": "none"}
+            ),
             html.Div(
                 id="fake-output-for-callback-with-only-side-effects-0",
                 style={"display": "none"},

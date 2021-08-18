@@ -1,6 +1,6 @@
 """dash components that are graphs and associated helper functions"""
 
-from typing import Mapping
+from typing import Mapping, Optional
 
 import numpy as np
 import pandas as pd
@@ -75,7 +75,7 @@ def main_scatter_graph(
     label_ids: list[int],
     x_title: str = None,
     y_title: str = None,
-    # zoom: Optional[tuple[list[float, float]]] = None,
+    zoom: Optional[tuple[list[float, float]]] = None,
 ) -> go.Figure:
     """
     main graph component. this function creates the Plotly figure; data
@@ -109,6 +109,13 @@ def main_scatter_graph(
         y_title,
     )
     apply_graph_style(fig, graph_display_settings, None)
+    if zoom is not None:
+        fig.update_layout(
+            {
+                "xaxis": {"range": [zoom[0][0], zoom[0][1]]},
+                "yaxis": {"range": [zoom[1][0], zoom[1][1]]},
+            }
+        )
     return fig
 
 
