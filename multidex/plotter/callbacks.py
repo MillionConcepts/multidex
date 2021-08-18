@@ -280,7 +280,9 @@ def update_main_graph(
     graph_df["x"], errors["x"], x_title = make_axis(x_settings, *graph_content)
     graph_df["y"], errors["y"], y_title = make_axis(y_settings, *graph_content)
     # similarly for marker properties
-    marker_properties = make_marker_properties(marker_settings, *graph_content)
+    marker_properties, marker_axis_type = make_marker_properties(
+        marker_settings, *graph_content
+    )
     # storing this to set draw order for highlights
     graph_df["size"] = marker_properties["marker"]["size"]
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
@@ -319,7 +321,8 @@ def update_main_graph(
             label_ids,
             x_title,
             y_title,
-            zoom
+            zoom,
+            marker_axis_type
             # bounds_string, # TODO: are we passing this ever or no?
         ),
         {},
