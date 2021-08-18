@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
 
+from plotter.colors import discretize_color_representations
 from plotter.spectrum_ops import d2r
 from plotter.styles.graph_style import (
     ANNOTATION_SETTINGS,
@@ -23,6 +24,7 @@ def plot_and_style_data(
     marker_property_dict,
     x_title,
     y_title,
+    marker_axis_type
 ):
     fig.add_trace(
         go.Scatter(
@@ -39,6 +41,8 @@ def plot_and_style_data(
     fig.update_xaxes(axis_display_dict | {"title_text": x_title})
     fig.update_yaxes(axis_display_dict | {"title_text": y_title})
     fig.update_traces(**marker_property_dict)
+    if marker_axis_type == "qual":
+        fig = discretize_color_representations(fig)
     for axis in ["x", "y"]:
         if errors[axis] is None:
             fig.update_traces({"error_" + axis: {"visible": False}})
@@ -76,6 +80,7 @@ def main_scatter_graph(
     x_title: str = None,
     y_title: str = None,
     zoom: Optional[tuple[list[float, float]]] = None,
+    marker_axis_type="quant"
 ) -> go.Figure:
     """
     main graph component. this function creates the Plotly figure; data
@@ -107,6 +112,7 @@ def main_scatter_graph(
         marker_property_dict,
         x_title,
         y_title,
+        marker_axis_type
     )
     apply_graph_style(fig, graph_display_settings, None)
     if zoom is not None:

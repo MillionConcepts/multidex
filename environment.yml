@@ -28,8 +28,10 @@ dependencies:
   - pvl
   - sympy
   - pip
+  - wand
   - pip:
     - "git+https://github.com/MillionConcepts/pdr.git"
+    - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
 
 

@@ -366,7 +366,7 @@ def make_marker_properties(
     # setting a "None" colorbar causes plotly to draw fake ticks
     if colorbar is not None:
         marker_property_dict["marker"]["colorbar"] = colorbar
-    return marker_property_dict
+    return marker_property_dict, props["value_type"]
 
 
 def format_display_settings(settings):
