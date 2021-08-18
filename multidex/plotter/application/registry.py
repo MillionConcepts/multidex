@@ -305,6 +305,16 @@ def register_record_graph_size_and_trigger_save(app):
         prevent_initial_call=True
     )
 
+
+def register_drag_spec_print(app):
+    app.clientside_callback(
+        """function() {makeDraggable('spec-print')}""",
+        Output(
+            'fake-output-for-callback-with-only-side-effects-2', 'children'
+        ),
+        [Input('fire-on-load', 'children')]
+    )
+
     # from dash.dependencies import Output, Input
     # app.clientside_callback(
     #     ClientsideFunction(namespace="clientside",

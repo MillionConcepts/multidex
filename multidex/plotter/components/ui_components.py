@@ -2,7 +2,7 @@
 import random
 from ast import literal_eval
 from functools import partial
-from typing import TYPE_CHECKING, Mapping, Optional, Iterable, Callable
+from typing import Mapping, Optional, Iterable, Callable
 
 import dash_core_components as dcc
 import dash_html_components as html
@@ -10,24 +10,17 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dash_html_components import Div
 
-from plotter.styles.components import (
+from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
     css_variables,
 )
-from plotter.styles.markers import SOLID_MARKER_COLORS, MARKER_SYMBOLS
+from plotter.styles.marker_style import SOLID_MARKER_COLORS, MARKER_SYMBOLS
 from multidex_utils import get_if, none_to_empty
-
-if TYPE_CHECKING:
-    from plotter.models import Spectrum
-
-# TODO: is this a terrible placeholder?
 
 
 # note that style properties are camelCased rather than hyphenated in
 # compliance with conventions for React virtual DOM
-
-
 def scale_to_drop(model, element_id, value=None):
     """dropdown for selecting a virtual filter to scale to"""
     return dcc.Dropdown(
@@ -136,15 +129,6 @@ def dynamic_spec_div() -> html.Div:
             "width": "33%",
         },
         children=[
-            dcc.Checklist(
-                options=[
-                    {"label": "", "value": "graph"},
-                    {"label": "", "value": "info"},
-                    {"label": "", "value": "image"},
-                ],
-                style={"margin": 0},
-                id="spec-div-selector",
-            ),
             html.Div(
                 children=[spec_graph("spec-graph")],
                 id="spec-graph-container",
@@ -165,15 +149,6 @@ def dynamic_spec_div() -> html.Div:
                     "marginRight": "3%",
                     "marginLeft": "1%",
                     "width": "96%",
-                },
-            ),
-            html.Pre(
-                children=[],
-                id="spec-print",
-                style={
-                    "display": "none",
-                    "width": "96%",
-                    "height": "50%",
                 },
             ),
         ],
@@ -997,182 +972,4 @@ def scale_control_div(spec_model, get_r: Callable) -> html.Div:
                 r_star_value="r-star",
             ),
         ]
-    )
-
-
-# primary search panel
-# TODO: it is getting very obnoxious to keep track of indentation, even with
-#  the level of abstraction currently in use, and it needs to be further
-#  refactored -- maybe into a flat list of some kind?
-def search_div(
-    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
-):
-    # are we restoring from saved settings? if so, this function gets them;
-    # if not, this function politely acts as None
-    # TODO: refactor this horror to load from an external set of defaults
-    get_r = partial(get_if, restore_dictionary is not None, restore_dictionary)
-    if get_r("average_filters"):
-        filts = [
-            {"label": filt, "value": filt}
-            for filt in spec_model.canonical_averaged_filters
-        ]
-    else:
-        filts = None
-    search_children = [
-        html.Div(
-            className="graph-controls-container",
-            children=[
-                *collapse(
-                    "control-container-x",
-                    "x axis",
-                    axis_controls_container("x", spec_model, get_r, filts),
-                ),
-                *collapse(
-                    "control-container-y",
-                    "y axis",
-                    axis_controls_container("y", spec_model, get_r, filts),
-                ),
-                *collapse(
-                    "control-container-marker",
-                    "m axis",
-                    axis_controls_container(
-                        "marker", spec_model, get_r, filts
-                    ),
-                ),
-                *collapse(
-                    "color-controls",
-                    "m style",
-                    marker_color_symbol_div(get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "marker-options",
-                    "m options",
-                    marker_options_div(get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "highlight-controls",
-                    "highlight",
-                    highlight_controls_div(get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "search-controls",
-                    "search",
-                    search_controls_div(spec_model, get_r),
-                ),
-                # TODO: at least the _nomenclature_ of these two separate
-                #  'scaling' divs should be clarified
-                *collapse(
-                    "numeric-controls",
-                    "scaling",
-                    scale_control_div(spec_model, get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "spec-controls",
-                    "spectrum",
-                    scale_controls_container(
-                        spec_model,
-                        "main-spec",
-                        "L1_R1",
-                        "r-star",
-                        "average",
-                        "error",
-                    ),
-                    off=True,
-                ),
-                *collapse(
-                    "load-panel",
-                    "load",
-                    load_search_drop("load-search"),
-                    off=True,
-                ),
-                *collapse(
-                    "save-panel",
-                    "save",
-                    html.Div(
-                        [
-                            save_search_input("save-search"),
-                            html.Div(
-                                style={
-                                    "display": "flex",
-                                    "flexDirection": "row",
-                                    "marginTop": "0.5rem",
-                                },
-                                children=[
-                                    html.Button(
-                                        "CSV",
-                                        id="export-csv",
-                                        style={"marginRight": "0.8rem"},
-                                    ),
-                                    html.Button(
-                                        "image",
-                                        id="export-image",
-                                    ),
-                                ],
-                            ),
-                        ]
-                    ),
-                    off=True,
-                ),
-                *collapse(
-                    "graph-display-panel",
-                    "display",
-                    display_controls_div(get_r),
-                    off=True,
-                ),
-            ],
-        ),
-        html.Div(
-            style={
-                "display": "flex",
-                "flexDirection": "row",
-                "height": "85vh",
-            },
-            children=[
-                main_graph(
-                    style={"height": "100%", "width": "66%", "flexShrink": 0}
-                ),
-                dynamic_spec_div(),
-            ],
-            id="main-container",
-        ),
-    ]
-    return html.Div(
-        children=search_children,
-        # as opposed to regular DOM id
-        id="search-div",
-    )
-
-
-def multidex_body(spec_model):
-    """top-level "body" div of application"""
-    # noinspection PyTypeChecker
-    return html.Div(
-        children=[
-            search_div(spec_model),
-            # hidden divs for async triggers, dummy outputs, etc
-            trigger_div("main-graph-scale", 1),
-            trigger_div("search", 2),
-            trigger_div("load", 1),
-            trigger_div("save", 1),
-            trigger_div("highlight", 1),
-            html.Div(
-                id="fire-on-load", children="2", style={"display": "none"}
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-0",
-                style={"display": "none"},
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-1",
-                style={"display": "none"},
-            ),
-            html.Div(id="graph-size-record-div", style={"display": "none"}),
-            html.Div(id="search-load-progress-flag"),
-            # dcc.Interval(id="interval1", interval=1000, n_intervals=0),
-        ],
-        id="multidex",
     )

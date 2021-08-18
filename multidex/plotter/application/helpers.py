@@ -1,5 +1,7 @@
 from inspect import getmembers, isfunction, getmodule
 
+from dash.dependencies import ClientsideFunction
+
 import plotter.application.registry
 import plotter.callbacks
 from multidex_utils import partially_evaluate_from_parameters
@@ -10,7 +12,6 @@ from plotter.application.structure import (
     GRAPH_DISPLAY_INPUTS,
     STATIC_IMAGE_URL,
 )
-from plotter.graph_components import spectrum_line_graph
 
 
 def configure_cache(cache_subdirectory):
@@ -44,8 +45,11 @@ def register_everything(app, configured_functions):
 
 
 def register_clientside_callbacks(app):
-    # TODO: move this into external scripts
-    js_callbacks = ["record_graph_size_and_trigger_save"]
+    # TODO: move this into external scripts?
+    js_callbacks = [
+        "record_graph_size_and_trigger_save",
+        "drag_spec_print"
+    ]
     for name in js_callbacks:
         register = getattr(plotter.application.registry, "register_" + name)
         register(app)
