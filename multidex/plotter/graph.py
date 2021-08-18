@@ -29,7 +29,8 @@ from multidex_utils import (
     none_to_quote_unquote_none,
     df_multiple_field_search,
     re_get,
-    djget, insert_wavelengths_into_text,
+    djget,
+    insert_wavelengths_into_text,
 )
 from plotter import spectrum_ops
 from plotter.reduction import (
@@ -410,12 +411,15 @@ def style_toggle(style, style_property="display", states=("none", "revert")):
     return style
 
 
-def style_select(style, selection, style_property="display", states=("none", "revert")):
+def style_select(
+    style, selection, style_property="display", states=("none", "revert")
+):
     """
     generic style-toggling function that just cycles
     style property of component between states
     by default it toggles visibility
     """
+
 
 def spectrum_values_range(metadata_df, field):
     """
@@ -531,24 +535,27 @@ def make_mspec_browse_image_components(
             eye_images = keyfilter(lambda key: eye in key, file_info)
             assert len(eye_images) >= 1
             filename = static_image_url + list(eye_images.values())[0]
-            size = list(
-                keyfilter(lambda key: "size" in key, eye_images).values()
-            )[0]
+            # size = list(
+            #     keyfilter(lambda key: "size" in key, eye_images).values()
+            # )[0]
         except AssertionError:
-            size = (480, 480)
+            # size = (480, 480)
             filename = static_image_url + "missing.jpg"
         image_div_children.append(
             html.Img(
                 src=filename,
                 style={
-                    "aspectRatio": f"{size[0]} / {size[1]}",
-                    "maxWidth": "50%", "maxHeight": "50%"
+                    # "aspectRatio": f"{size[0]} / {size[1]}",
+                    "maxWidth": "55%",
+                    "maxHeight": "55%",
                 },
                 id="spec-image-" + eye,
             )
         )
 
-    return image_div_children
+    return html.Div(
+        children=image_div_children
+    )
 
 
 # TODO: assess whether this hack remains in, assess goodness of display in
@@ -573,10 +580,14 @@ def make_zspec_browse_image_components(
         filename = static_image_url + "missing.jpg"
     # in this case we're just aggressively setting the appropriate
     # aspect ratio. this is probably not always a good idea.
-    return html.Img(
-        src=filename,
-        style={"aspectRatio": "1.34 / 1", "maxWidth": "100%", "maxHeight":"100%"},
-        id="spec-image-" + eye,
+    return html.Div(
+        children=[
+            html.Img(
+                src=filename,
+                style={"maxWidth": "100%", "maxHeight": "100%"},
+                id="spec-image-" + eye,
+            )
+        ],
     )
 
 
