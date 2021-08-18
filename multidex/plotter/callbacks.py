@@ -221,8 +221,9 @@ def update_main_graph(
     record_settings=True,
 ):
     ctx = dash.callback_context
+    trigger = ctx.triggered[0]["prop_id"]
     # handle explicit bounds changes
-    if ctx.triggered[0]["prop_id"] == "main-graph-bounds.value":
+    if trigger == "main-graph-bounds.value":
         return explicitly_set_graph_bounds(ctx)
 
     bounds_string = parse_main_graph_bounds_string(ctx)
@@ -230,9 +231,9 @@ def update_main_graph(
     # handle label addition / removal
     label_ids = cget("label_ids")
     # TODO: performance increase is possible here by just returning the graph
-    if ctx.triggered[0]["prop_id"] == "main-graph.clickData":
+    if trigger == "main-graph.clickData":
         add_or_remove_label(cset, ctx, label_ids)
-    elif ctx.triggered[0]["prop_id"] == "clear-labels.n_clicks":
+    elif trigger == "clear-labels.n_clicks":
         cset("label_ids", [])
         label_ids = []
     x_settings = pickctx(ctx, x_inputs)
@@ -284,16 +285,13 @@ def update_main_graph(
     graph_df["size"] = marker_properties["marker"]["size"]
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
 
-    # DEPRECATED: automatically reset graph zoom only if loading the page or
-    # changing options and therefore scales
-    # TODO: reset even explicitly-set bounds for now...change back if needed
-    # if (
-    #         ctx.triggered[0]["prop_id"]
-    #         in ["main-graph-option-y.value", "main-graph-option-x.value", "."]
-    # ) or (len(ctx.triggered) > 1):
-    #     zoom = None
-    # else:
-    #     zoom = (graph_layout["xaxis"]["range"], graph_layout["yaxis"]["range"])
+    # avoid resetting zoom for labels, color changes, etc.
+    # TODO: continue assessing these conditions
+    if ('marker' in trigger) or ('click' in trigger):
+        layout = ctx.states['main-graph.figure']['layout']
+        zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
+    else:
+        zoom = None
     # for functions that (perhaps asynchronously) fetch the state of the
     # graph. this is another perhaps ugly flow control thing!
     if record_settings:
@@ -321,6 +319,7 @@ def update_main_graph(
             label_ids,
             x_title,
             y_title,
+            zoom
             # bounds_string, # TODO: are we passing this ever or no?
         ),
         {},
@@ -385,9 +384,12 @@ def update_search_ids(
     # construct a list of search parameters from the filled inputs
     # (ideally totally non-filled inputs would also be rejected by
     # handle_graph_search)
-    entries = [
-        parse_model_quant_entry(entry) for entry in quant_search_entries
-    ]
+    try:
+        entries = [
+            parse_model_quant_entry(entry) for entry in quant_search_entries
+        ]
+    except ValueError:
+        raise PreventUpdate
     search_list = [
         {"field": field, "term": term, **entry}
         for field, term, entry in zip(fields, terms, entries)

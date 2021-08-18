@@ -89,4 +89,4 @@ def save_main_scatter_plot(scatter_fig_dict, aspect_ratio):
     ).decode()
     wand_image = inject_fonts_and_reload(svgtext)
     fn_timestamp = re.sub(r"[.:-]", "_", dt.datetime.now().isoformat())
-    wand_image.save(filename=f"/exports/{fn_timestamp}.png")
+    wand_image.save(filename=f"./exports/{fn_timestamp}.png")

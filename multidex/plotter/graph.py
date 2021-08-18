@@ -285,13 +285,11 @@ def make_marker_properties(
         property_list, _, title = perform_decomposition(
             id_list, filter_df, settings, props
         )
-
-    if props["type"] == "computed":
+    elif props["type"] == "computed":
         property_list, title = (
             filter_df.loc[id_list, props["value"]].values,
             props["value"],
         )
-
     elif props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
@@ -411,6 +409,13 @@ def style_toggle(style, style_property="display", states=("none", "revert")):
     style[style_property] = next(style_cycle)
     return style
 
+
+def style_select(style, selection, style_property="display", states=("none", "revert")):
+    """
+    generic style-toggling function that just cycles
+    style property of component between states
+    by default it toggles visibility
+    """
 
 def spectrum_values_range(metadata_df, field):
     """
