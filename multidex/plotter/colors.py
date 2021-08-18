@@ -81,7 +81,7 @@ def get_lut(percent_scale, count):
     )
 
 
-def make_blocked_discrete_scale(percent_scale, count):
+def make_discrete_scale(percent_scale, count):
     discrete_scale = scale_to_plotly_rgb(
         get_lut(percent_scale, count).tolist()
     )
@@ -103,14 +103,15 @@ def make_blocked_discrete_scale(percent_scale, count):
 def discretize_color_representations(fig):
     marker_dict = next(fig.select_traces())["marker"]
     tickvals = marker_dict["colorbar"]["tickvals"]
-    count = len(tickvals) + 1
     continuous_scale = [val[1] for val in marker_dict["colorscale"]]
     percent_scale = np.array(scale_to_percents(continuous_scale))
-    discrete_scale = make_blocked_discrete_scale(percent_scale, count)
+    discrete_scale = make_discrete_scale(percent_scale, len(tickvals) + 1)
     marker_dict["colorscale"] = discrete_scale
     # don't ask me why they do this
     marker_dict["colorbar"]["tickvals"] = np.interp(
-        tickvals, tickvals, np.linspace(0.5, 8.5, 10)
+        tickvals,
+        tickvals,
+        np.linspace(0.5, len(tickvals) - 1.5, len(tickvals)),
     )
     fig.update_traces(marker=marker_dict)
     return fig
