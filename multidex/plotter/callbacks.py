@@ -56,7 +56,7 @@ from plotter.graph import (
     halt_for_ineffective_highlight_toggle,
     add_or_remove_label,
     explicitly_set_graph_bounds,
-    parse_main_graph_bounds_string,
+    parse_main_graph_bounds_string, get_axis_option_props,
 )
 from plotter.spectrum_ops import data_df_from_queryset
 
@@ -262,7 +262,15 @@ def update_main_graph(
             ),
             {},
         )
-
+    for settings in x_settings, y_settings, marker_settings:
+        axis_option, props = get_axis_option_props(settings, spec_model)
+        if (props["type"] == "decomposition") and len(search_ids) <= 8:
+            return (
+                failed_scatter_graph(
+                    "too few spectra for PCA", graph_display_dict
+                ),
+                {},
+            )
     get_errors = ctx.inputs["main-graph-error.value"]
     filters_are_averaged = "average" in ctx.states["main-graph-average.value"]
     truncated_ids = truncate_id_list_for_missing_properties(
@@ -292,6 +300,7 @@ def update_main_graph(
     marker_properties, marker_axis_type = make_marker_properties(
         marker_settings, *graph_content
     )
+
     # storing this to set draw order for highlights
     graph_df["size"] = marker_properties["marker"]["size"]
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)

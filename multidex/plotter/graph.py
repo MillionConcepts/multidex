@@ -21,7 +21,6 @@ from plotly import graph_objects as go
 from toolz import keyfilter
 
 from multidex_utils import (
-    rows,
     keygrab,
     not_blank,
     seconds_since_beginning_of_day,
@@ -33,15 +32,15 @@ from multidex_utils import (
     insert_wavelengths_into_text,
 )
 from plotter import spectrum_ops
-from plotter.reduction import (
-    default_multidex_pipeline,
-    transform_and_explain_variance,
-)
-from plotter.styles.graph_style import COLORBAR_SETTINGS, css_variables
 from plotter.components.ui_components import (
     search_parameter_div,
 )
 from plotter.layout import search_div
+from plotter.reduction import (
+    default_multidex_pipeline,
+    transform_and_explain_variance,
+)
+from plotter.styles.graph_style import COLORBAR_SETTINGS
 
 if TYPE_CHECKING:
     from plotter.models import ZSpec, MSpec
@@ -139,8 +138,7 @@ def perform_decomposition(id_list, filter_df, settings, props):
 
     # TODO: temporary hack -- don't do PCA on tiny sets
     if len(queryset_df.index) < 8:
-        raise PreventUpdate
-
+        raise ValueError("Won't do PCA on tiny sets.")
     # drop errors
     queryset_df = queryset_df[
         [c for c in queryset_df.columns if "err" not in c]
@@ -229,11 +227,7 @@ def make_axis(
     scaled and averaged as desired. expects a list that has been
     processed by truncate_id_list_for_missing_properties
     """
-    # what is requested function or property?
-    axis_option = re_get(settings, "graph-option-")
-    # what are the characteristics of that function or property?
-    props = keygrab(spec_model.graphable_properties(), "value", axis_option)
-
+    axis_option, props = get_axis_option_props(settings, spec_model)
     if props["type"] == "decomposition":
         if filters_are_averaged is True:
             decomp_df = filter_df[
@@ -259,8 +253,20 @@ def make_axis(
     return value_series.values, None, axis_option
 
 
+def get_axis_option_props(settings, spec_model):
+    # what is requested function or property?
+    axis_option = re_get(settings, "graph-option-")
+    # what are the characteristics of that function or property?
+    props = keygrab(spec_model.graphable_properties(), "value", axis_option)
+    return axis_option, props
+
+
 # TODO: this is sloppy but cleanup would be better after everything's
-#  implemented...probably...
+#  implemented...probably...it would really be better to do this in components
+#  but is difficult because you have to instantiate the colorbar somewhere
+#  it would also be better to style with CSS but it seems like plotly
+#  really wants to put element-level style declarations on graph ticks and
+#  it is an unusually large hassle to get inside its svg rendering loop
 def make_marker_properties(
     settings,
     id_list,
@@ -275,12 +281,7 @@ def make_marker_properties(
     this expects an id list that has already
     been processed by truncate_id_list_for_missing_properties
     """
-    marker_option = re_get(settings, "graph-option-")
-    props = keygrab(spec_model.graphable_properties(), "value", marker_option)
-    # it would really be better to do this in components
-    # but is difficult because you have to instantiate the colorbar somewhere
-    # it would also be better to style with CSS but it seems like plotly
-    # really wants to put element-level style declarations on graph ticks!
+    marker_option, props = get_axis_option_props(settings, spec_model)
 
     if props["type"] == "decomposition":
         property_list, _, title = perform_decomposition(
