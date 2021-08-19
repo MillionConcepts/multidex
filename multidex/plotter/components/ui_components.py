@@ -847,10 +847,13 @@ def display_controls_div(get_r: Callable) -> html.Div:
         bg_color = css_variables["dark-tint-0"]
     else:
         bg_color = get_r("plot_bgcolor")
+    # TODO: these inconsistent variable names smell bad
     if get_r("showgrid") is None:
-        gridlines_color = "light"
+        gridlines_color = css_variables["dark-tint-0"]
+    elif get_r("showgrid") is False:
+        gridlines_color = False
     else:
-        gridlines_color = get_r("showgrid")
+        gridlines_color = get_r("gridcolor")
     return html.Div(
         children=[
             html.Label(
@@ -886,9 +889,9 @@ def display_controls_div(get_r: Callable) -> html.Div:
                 id="main-graph-gridlines-radio",
                 className="radio-items",
                 options=[
-                    {"label": "off", "value": "off"},
-                    {"label": "light", "value": "light"},
-                    {"label": "dark", "value": "dark"},
+                    {"label": "off", "value": False},
+                    {"label": "light", "value": css_variables["dark-tint-0"]},
+                    {"label": "dark", "value": css_variables["dark-tint-2"]},
                 ],
                 value=gridlines_color,
             ),

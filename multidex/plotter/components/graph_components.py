@@ -41,7 +41,11 @@ def plot_and_style_data(
     fig.update_xaxes(axis_display_dict | {"title_text": x_title})
     fig.update_yaxes(axis_display_dict | {"title_text": y_title})
     fig.update_traces(**marker_property_dict)
-    if marker_axis_type == "qual":
+    if (
+            (marker_axis_type == "qual")
+            # don't try to discretize solid colors
+            and not isinstance(marker_property_dict['marker']['color'], str)
+    ):
         fig = discretize_color_representations(fig)
     for axis in ["x", "y"]:
         if errors[axis] is None:

@@ -374,14 +374,11 @@ def format_display_settings(settings):
     axis_settings_dict = {}
     if re_get(settings, "graph-bg"):
         settings_dict["plot_bgcolor"] = re_get(settings, "graph-bg")
-    if re_get(settings, "gridlines") == "light":
-        axis_settings_dict["showgrid"] = True
-        axis_settings_dict["gridcolor"] = css_variables["dark-tint-0"]
-    elif re_get(settings, "gridlines") == "dark":
-        axis_settings_dict["showgrid"] = True
-        axis_settings_dict["gridcolor"] = css_variables["dark-tint-2"]
-    else:
+    if re_get(settings, "gridlines") is False:
         axis_settings_dict["showgrid"] = False
+    else:
+        axis_settings_dict["showgrid"] = True
+        axis_settings_dict["gridcolor"] = re_get(settings, "gridlines")
     return settings_dict, axis_settings_dict
 
 
@@ -685,10 +682,10 @@ def describe_current_graph(cget):
     }
 
 
-def load_values_into_search_div(row, spec_model, search_file, cset):
+def load_values_into_search_div(search_file, spec_model, cset):
     """makes a search tab with preset values from a saved search."""
-    saved_searches = pd.read_csv(search_file)
-    row_dict = rows(saved_searches)[row].to_dict()
+    search = pd.read_csv(search_file).iloc[0]
+    row_dict = search.to_dict()
     if "highlight parameters" in row_dict.keys():
         # TODO: bad smell, might mean something is wrong in control flow
         cset("highlight_parameters", row_dict["highlight_parameters"])
