@@ -206,6 +206,7 @@ def register_handle_load(app, configured_function):
         [
             Output("search-div", "children"),
             Output({"type": "load-trigger", "index": 0}, "value"),
+            Output("default-settings-checked-div", "children")
         ],
         [
             Input("load-search-load-button", "n_clicks"),
@@ -213,8 +214,8 @@ def register_handle_load(app, configured_function):
         [
             State("load-search-drop", "value"),
             State({"type": "load-trigger", "index": 0}, "value"),
+            State("default-settings-checked-div", "children")
         ],
-        prevent_initial_call=True,
     )(configured_function)
 
 
@@ -262,6 +263,7 @@ def register_populate_saved_search_drop(app, configured_function):
         Output("load-search-drop", "options"),
         [
             Input({"type": "save-trigger", "index": 0}, "value"),
+            Input({"type": "load-trigger", "index": 0}, "value"),
             Input("fire-on-load", "children"),
         ],
     )(configured_function)

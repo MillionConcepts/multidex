@@ -200,7 +200,9 @@ def multidex_body(spec_model):
                             "height": "1.1rem",
                         },
                     ),
-                    html.P(id="spec-print", style={'display':"none"}),
+                    html.P(
+                        id="spec-print", style={"display": "none", "margin": 0}
+                    ),
                 ],
             ),
             search_div(spec_model),
@@ -229,8 +231,13 @@ def multidex_body(spec_model):
                 id="fake-output-for-callback-with-only-side-effects-3",
                 style={"display": "none"},
             ),
+            html.Div(
+                id="default-settings-checked-div", style={"display": "none"}
+            ),
             html.Div(id="graph-size-record-div", style={"display": "none"}),
-            html.Div(id="search-load-progress-flag"),
+            html.Div(
+                id="search-load-progress-flag", style={"display": "none"}
+            ),
             # dcc.Interval(id="interval1", interval=1000, n_intervals=0),
         ],
         id="multidex",

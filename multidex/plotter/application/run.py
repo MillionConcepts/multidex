@@ -32,7 +32,7 @@ def run_multidex(instrument_code, debug=False):
     cache_subdirectory = str(random.randint(1000000, 9999999))
     cache = Cache()
     cache.init_app(app.server, config=configure_cache(cache_subdirectory))
-    spec_model = INSTRUMENT_MODEL_MAPPING[instrument_code]
+    spec_model = INSTRUMENT_MODEL_MAPPING[instrument_code.upper()]
     # active queryset is explicitly stored in global cache, as are
     # many other app runtime values
     # setter and getter functions for a flask_caching.Cache object. in the
@@ -52,6 +52,7 @@ def run_multidex(instrument_code, debug=False):
     static_folder = Path(
         Path(__file__).parent, "assets/browse/" + spec_model.instrument.lower()
     )
+
     @app.server.route(STATIC_IMAGE_URL + "<path:path>")
     def static_image_link(path):
         return flask.send_from_directory(static_folder, path)

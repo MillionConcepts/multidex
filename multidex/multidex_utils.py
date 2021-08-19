@@ -81,7 +81,7 @@ def none_to_quote_unquote_none(
 
 
 def arbitrarily_hash_strings(strings: Iterable[str]) -> tuple[dict, list[int]]:
-    unique_string_values = list(set(strings))
+    unique_string_values = sorted(list(set(strings)), reverse=True)
     arbitrary_hash = {
         string: ix for ix, string in enumerate(unique_string_values)
     }
@@ -177,7 +177,9 @@ def columns(dataframe: pd.DataFrame) -> list[np.ndarray]:
 # dash-y dictionary utilities
 
 
-def dict_to_paragraphs(dictionary, style=None, ordering=None):
+def dict_to_paragraphs(
+        dictionary, style=None, ordering=None, filterfalse=True
+):
     """
     parses dictionary to list of dash <p> components
     """
@@ -189,6 +191,9 @@ def dict_to_paragraphs(dictionary, style=None, ordering=None):
 
     if ordering is None:
         ordering = []
+    from cytoolz import valfilter
+    if filterfalse is True:
+        dictionary = valfilter(lambda x: x not in (False, None), dictionary)
     ordered_grafs = [
         make_paragraph(key, dictionary.get(key))
         for key in ordering

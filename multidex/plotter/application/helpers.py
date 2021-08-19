@@ -1,7 +1,5 @@
 from inspect import getmembers, isfunction, getmodule
 
-from dash.dependencies import ClientsideFunction
-
 import plotter.application.registry
 import plotter.callbacks
 from multidex_utils import partially_evaluate_from_parameters
@@ -77,8 +75,8 @@ def configure_callbacks(cget, cset, spec_model):
         # scale factor, in viewport units, for spectrum images
         "base_size": 20,
         "static_image_url": STATIC_IMAGE_URL,
-        # file containing saved searches
-        "search_file": "./saves/" + cget("spec_model_name") + "_searches.csv",
+        # path containing saved searches
+        "search_path": "./saves/" + spec_model.instrument.lower(),
     }
     return {
         name: partially_evaluate_from_parameters(func, settings)

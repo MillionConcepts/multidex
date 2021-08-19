@@ -10,6 +10,7 @@ import re
 from ast import literal_eval
 from copy import deepcopy
 from itertools import cycle
+from pathlib import Path
 from typing import Tuple
 
 import dash
@@ -62,11 +63,12 @@ from plotter.spectrum_ops import data_df_from_queryset
 
 def handle_load(
     _n_clicks_load,
-    load_row,
+    selected_file,
     load_trigger_index,
+    default_settings_checked,
     *,
     spec_model,
-    search_file,
+    search_path,
     cset,
 ):
     """
@@ -74,23 +76,30 @@ def handle_load(
     """
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
-    if "load-search-load-button" in trigger:
-        # don't try anything if nothing in the saved search dropdown is
-        # selected
-        if load_row is None:
+    if trigger == '.':
+        if default_settings_checked is True:
             raise PreventUpdate
-        # explicitly trigger graph recalculation call in update_queryset
-        if not load_trigger_index:
-            load_trigger_index = 0
-        load_trigger_index = load_trigger_index + 1
-        loaded_div = load_values_into_search_div(
-            load_row, spec_model, search_file, cset
-        )
-        # this cache parameter is for semi-asynchronous flow control of the
-        # load process without having to literally
-        # have one dispatch callback function for the entire app
-        cset("load_state", {"update_search_options": True})
-        return loaded_div, load_trigger_index
+        try:
+            selected_file = next(
+                str(search) for search in Path(search_path).iterdir()
+                if search.stem.lower() == 'default'
+            )
+        except StopIteration:
+            raise PreventUpdate
+    # don't try anything if nothing in the saved search dropdown is
+    # selected / we're not loading
+    elif selected_file is None:
+        raise PreventUpdate
+    # explicitly trigger graph recalculation call in update_queryset
+    if not load_trigger_index:
+        load_trigger_index = 0
+    load_trigger_index = load_trigger_index + 1
+    loaded_div = load_values_into_search_div(selected_file, spec_model, cset)
+    # this cache parameter is for semi-asynchronous flow control of the
+    # load process without having to literally
+    # have one dispatch callback function for the entire app
+    cset("load_state", {"update_search_options": True})
+    return loaded_div, load_trigger_index, True
 
 
 def control_search_dropdowns(
@@ -289,8 +298,8 @@ def update_main_graph(
 
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
-    if ('marker' in trigger) or ('click' in trigger):
-        layout = ctx.states['main-graph.figure']['layout']
+    if ("marker" in trigger) or ("click" in trigger):
+        layout = ctx.states["main-graph.figure"]["layout"]
         zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
     else:
         zoom = None
@@ -482,11 +491,12 @@ def update_spectrum_images(
     )
 
 
-def populate_saved_search_drop(*_triggers, search_file):
+def populate_saved_search_drop(*_triggers, search_path):
     try:
         options = [
-            {"label": row["name"], "value": row_index}
-            for row_index, row in enumerate(rows(pd.read_csv(search_file)))
+            {"label": file.stem, "value": str(file)}
+            for file in Path(search_path).iterdir()
+            if file.name.endswith("csv")
         ]
     except FileNotFoundError:
         options = []
@@ -527,17 +537,17 @@ def handle_highlight_save(
 
 
 def toggle_panel_visibility(
-        _click, _reset_click, panel_style, arrow_style, text_style
-    ):
+    _click, _reset_click, panel_style, arrow_style, text_style
+):
     """
     switches collapsible panel between visible and invisible,
     and rotates and sets text on its associated arrow.
     """
     ctx = dash.callback_context
-    if ctx.triggered[0]['prop_id'] == 'collapse-all.n_clicks':
-        panel_style = {'display': 'none'}
+    if ctx.triggered[0]["prop_id"] == "collapse-all.n_clicks":
+        panel_style = {"display": "none"}
         arrow_style = {"WebkitTransform": "rotate(45deg)"}
-        text_style = {'display': 'inline-block'}
+        text_style = {"display": "inline-block"}
     else:
         panel_style = style_toggle(panel_style, states=("none", "revert"))
         arrow_style = style_toggle(
@@ -558,7 +568,7 @@ def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
 
 
 # TODO: This should be reading from something in marslab.compat probably
-def export_graph_csv(_clicks, selected, *, cget):
+def export_graph_csv(_clicks, selected, *, cget, spec_model):
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("data_df").copy()
     if selected is not None:
@@ -580,30 +590,12 @@ def export_graph_csv(_clicks, selected, *, cget):
         .loc[search_ids]
         .sort_values(by="SEQ_ID")
     )
-    filename = (
-        cget("spec_model_name")
-        + "_"
-        + dt.datetime.now().strftime("%Y%m%dT%H%M%S")
-        + "_"
-        + re.sub(
-            "[-;,:/\. ]+",
-            "_",
-            pretty_print_search_params(cget("search_parameters")),
-        )
-    )
-    if cget("scale_to") != "None":
-        filename += "_scaled_to_" + cget("scale_to")
-    if cget("average_filters"):
-        filename += "_near_filters_averaged"
-    if selected is not None:
-        filename += "_custom_selection"
-    if cget("r_star") is True:
-        filename += "_r_star"
-    else:
-        filename += "_iof"
+    filename = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + ".csv"
     filename += ".csv"
-    os.makedirs("exports", exist_ok=True)
-    output_df.to_csv("exports/" + filename, index=None)
+    output_path = Path("exports/", spec_model.instrument.lower())
+    os.makedirs(output_path, exist_ok=True)
+    output_df.to_csv(Path(output_path, filename), index=None)
+    # todo: huh?
     return 1
 
 
@@ -638,47 +630,41 @@ def toggle_averaged_filters(
     ]
 
 
-def save_search_state(_n_clicks, save_name, trigger_value, cget):
+def save_search_state(
+    _n_clicks, save_name, trigger_value, *, search_path, cget
+):
     """
     fairly permissive right now. this saves current search-tab state to a
     file as csv, which can then be reloaded by make_loaded_search_tab.
     """
-    filename = "saves/" + cget("spec_model_name") + "_searches.csv"
-    try:
-        state_variable_names = [
-            *cget("x_settings").keys(),
-            *cget("y_settings").keys(),
-            *cget("marker_settings").keys(),
-            *cget("graph_display_dict").keys(),
-            *cget("axis_display_dict").keys(),
-            "search_parameters",
-            "highlight_parameters",
-            "scale_to",
-            "average_filters",
-            "r_star",
-            "errors",
-        ]
-
-        state_variable_values = [
-            *cget("x_settings").values(),
-            *cget("y_settings").values(),
-            *cget("marker_settings").values(),
-            *cget("graph_display_dict").values(),
-            *cget("axis_display_dict").values(),
-            str(cget("search_parameters")),
-            str(cget("highlight_parameters")),
-            str(cget("scale_to")),
-            cget("average_filters"),
-            cget("r_star"),
-            cget("errors"),
-        ]
-    except AttributeError as error:
-        print(error)
-        raise ValueError
-    try:
-        saved_searches = pd.read_csv(filename)
-    except FileNotFoundError:
-        saved_searches = pd.DataFrame(columns=state_variable_names + ["name"])
+    if save_name is None:
+        raise PreventUpdate
+    state_variable_names = [
+        *cget("x_settings").keys(),
+        *cget("y_settings").keys(),
+        *cget("marker_settings").keys(),
+        *cget("graph_display_dict").keys(),
+        *cget("axis_display_dict").keys(),
+        "search_parameters",
+        "highlight_parameters",
+        "scale_to",
+        "average_filters",
+        "r_star",
+        "errors",
+    ]
+    state_variable_values = [
+        *cget("x_settings").values(),
+        *cget("y_settings").values(),
+        *cget("marker_settings").values(),
+        *cget("graph_display_dict").values(),
+        *cget("axis_display_dict").values(),
+        str(cget("search_parameters")),
+        str(cget("highlight_parameters")),
+        str(cget("scale_to")),
+        cget("average_filters"),
+        cget("r_star"),
+        cget("errors"),
+    ]
     state_line = pd.DataFrame(
         {
             parameter: value
@@ -688,16 +674,19 @@ def save_search_state(_n_clicks, save_name, trigger_value, cget):
         },
         index=[0],
     )
-    if save_name is None:
-        save_name = dt.datetime.now().strftime("%D %H:%M:%S")
     state_line["name"] = save_name
-    appended_df = pd.concat([saved_searches, state_line], axis=0)
-    os.makedirs("saves", exist_ok=True)
-    appended_df.to_csv(filename, index=False)
+    save_name = save_name + ".csv"
+    os.makedirs(search_path, exist_ok=True)
+    state_line.to_csv(Path(search_path, save_name), index=False)
     return trigger_value + 1
 
 
 def export_graph_png(clientside_fig_info, fig_dict):
+    # this condition occurs during saved search loading. search loading
+    #  triggers a call from the clientside js snippet that triggers image
+    #  export. this is an inelegant way to suppress that call.
+    if not fig_dict.get("data"):
+        raise PreventUpdate
     info = json.loads(clientside_fig_info)
-    aspect = info['width'] / info['height']
+    aspect = info["width"] / info["height"]
     save_main_scatter_plot(fig_dict, aspect)
