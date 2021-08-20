@@ -6,6 +6,7 @@ from typing import Mapping, Optional, Iterable, Callable
 
 import dash_core_components as dcc
 import dash_html_components as html
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dash_html_components import Div
@@ -398,15 +399,22 @@ def model_options_drop(
     element_id: str,
     index: int,
     value: Optional[str] = None,
-    className="medium-drop",
+    className = "medium-drop",
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
     could end up getting unmanageable as a UI element
     """
+    # TODO: hacky.
+    if value is not None:
+        loaded_values = [
+            {'label': item, 'value': item} for item in value
+        ]
+    else:
+        loaded_values = []
     return dcc.Dropdown(
         id={"type": element_id, "index": index},
-        options=[{"label": "any", "value": "any"}],
+        options=[{"label": "any", "value": "any"}] + loaded_values,
         className=className,
         multi=True,
         value=none_to_empty(value),
@@ -507,7 +515,7 @@ def search_parameter_div(
         model_options_drop(
             "term-search",
             index,
-            get_r("term"),
+            value=get_r("term"),
             className="medium-drop term-search",
         ),
         html.Div(
@@ -516,14 +524,6 @@ def search_parameter_div(
                 model_range_display("number-range-display", index),
                 model_range_entry("number-search", index, preset_parameter),
             ],
-        ),
-        html.Div(
-            children=[
-                dcc.Input(
-                    id={"type": "search-load-trigger", "index": index}, value=0
-                )
-            ],
-            style={"display": "none"},
         ),
     ]
     if index != 0:
@@ -544,7 +544,7 @@ def search_parameter_div(
     )
 
 
-def search_container_div(searchable_fields, preset_parameters):
+def search_container_div(spec_model, preset_parameters):
     search_container = html.Div(
         id="search-controls-container",
         className="search-controls-container",
@@ -552,6 +552,7 @@ def search_container_div(searchable_fields, preset_parameters):
     # list was 'serialized' to string to put it in a single df cell
     if preset_parameters is None:
         preset_parameters = "None"  # doing a slightly goofy thing here
+    searchable_fields = spec_model.searchable_fields()
     if literal_eval(preset_parameters) is not None:
         search_container.children = [
             search_parameter_div(ix, searchable_fields, parameter)
@@ -810,7 +811,7 @@ def search_controls_div(spec_model, get_r: Callable) -> html.Div:
         },
         children=[
             search_container_div(
-                spec_model.searchable_fields(),
+                spec_model,
                 get_r("search_parameters"),
             ),
             html.Div(

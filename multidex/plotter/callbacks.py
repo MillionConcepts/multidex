@@ -26,7 +26,6 @@ from multidex_utils import (
     keygrab,
     field_values,
     not_blank,
-    rows,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.components.ui_components import parse_model_quant_entry
@@ -59,6 +58,10 @@ from plotter.graph import (
     parse_main_graph_bounds_string, get_axis_option_props,
 )
 from plotter.spectrum_ops import data_df_from_queryset
+
+
+def trigger_search_update(_load_trigger, search_trigger):
+    return search_trigger + 1
 
 
 def handle_load(
@@ -282,6 +285,14 @@ def update_main_graph(
         spec_model,
         filters_are_averaged,
     )
+    if not truncated_ids:
+        return (
+            failed_scatter_graph(
+                "matching spectra lack requested properties",
+                graph_display_dict
+            ),
+            {},
+        )
     graph_content = [
         truncated_ids,
         spec_model,
@@ -348,7 +359,7 @@ def update_main_graph(
 
 
 def update_search_options(
-    field, _load_trigger_index, current_quant_search, *, cget, spec_model
+    field, _load_trigger_index, current_search, *, cget, spec_model
 ):
     """
     populate term values and parameter range as appropriate when different
@@ -368,13 +379,12 @@ def update_search_options(
     # the number entries if we're in the middle of a load!
     if props["value_type"] == "quant":
         if is_loading:
-            search_text = current_quant_search
+            search_text = current_search
         else:
             search_text = ""
         return [
             [{"label": "any", "value": "any"}],
             "min/max: " + str(spectrum_values_range(search_df, field))
-            # TODO: this should be a hover-over tooltip eventually
             + """ e.g., '100--200' or '100, 105, 110'""",
             search_text,
         ]
