@@ -86,7 +86,7 @@ def save_main_scatter_plot(scatter_fig_dict, aspect_ratio, instrument_code):
         height=BASE_SIZE,
     ).decode()
     wand_image = inject_fonts_and_reload(svgtext)
-    fn_timestamp = re.sub(r"[.:-]", "_", dt.datetime.now().isoformat())
+    fn_timestamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     output_path = Path("exports", "images", instrument_code)
     os.makedirs(output_path, exist_ok=True)
     wand_image.save(filename=Path(output_path, f"{fn_timestamp}.png"))
