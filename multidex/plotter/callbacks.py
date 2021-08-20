@@ -690,7 +690,7 @@ def save_search_state(
     return trigger_value + 1
 
 
-def export_graph_png(clientside_fig_info, fig_dict):
+def export_graph_png(clientside_fig_info, fig_dict, *, spec_model):
     # this condition occurs during saved search loading. search loading
     #  triggers a call from the clientside js snippet that triggers image
     #  export. this is an inelegant way to suppress that call.
@@ -698,4 +698,4 @@ def export_graph_png(clientside_fig_info, fig_dict):
         raise PreventUpdate
     info = json.loads(clientside_fig_info)
     aspect = info["width"] / info["height"]
-    save_main_scatter_plot(fig_dict, aspect)
+    save_main_scatter_plot(fig_dict, aspect, spec_model.instrument.lower())
