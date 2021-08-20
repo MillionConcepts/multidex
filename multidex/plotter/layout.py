@@ -38,6 +38,13 @@ def search_div(
         ]
     else:
         filts = None
+    # TODO: dumb hack
+    if spec_model.instrument == "MCAM":
+        spectrum_scale = "L6_R6"
+    elif spec_model.instrument == "ZCAM":
+        spectrum_scale = "L1_R1"
+    else:
+        spectrum_scale = None
     search_children = [
         html.Div(
             className="graph-controls-container",
@@ -96,7 +103,7 @@ def search_div(
                     scale_controls_container(
                         spec_model,
                         "main-spec",
-                        "L1_R1",
+                        spectrum_scale,
                         "r-star",
                         "average",
                         "error",
