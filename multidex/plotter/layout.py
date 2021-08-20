@@ -1,6 +1,7 @@
 from functools import partial
 from typing import Optional, Mapping
 
+import dash_core_components as dcc
 import dash_html_components as html
 
 from multidex_utils import get_if
@@ -237,6 +238,15 @@ def multidex_body(spec_model):
             html.Div(id="graph-size-record-div", style={"display": "none"}),
             html.Div(
                 id="search-load-progress-flag", style={"display": "none"}
+            ),
+            html.Div(
+                children=[
+                    dcc.Input(
+                        id="search-load-trigger",
+                        value=0
+                    )
+                ],
+                style={"display": "none"},
             ),
             # dcc.Interval(id="interval1", interval=1000, n_intervals=0),
         ],

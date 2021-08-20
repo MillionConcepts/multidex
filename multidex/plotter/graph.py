@@ -428,10 +428,6 @@ def spectrum_values_range(metadata_df, field):
     return values.min(), values.max()
 
 
-def trigger_search_update(_load_trigger, search_triggers):
-    return ["bang" for _ in search_triggers]
-
-
 def non_blank_search_parameters(parameters):
     entry_keys = ["term", "begin", "end", "value_list"]
     return [

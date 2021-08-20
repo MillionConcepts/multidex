@@ -30,9 +30,9 @@ def register_change_calc_input_visibility(
 def register_trigger_search_update(app, configured_function):
     # trigger updates on page load
     app.callback(
-        Output({"type": "search-load-trigger", "index": ALL}, "value"),
+        Output("search-load-trigger", "value"),
         Input({"type": "load-trigger", "index": 0}, "value"),
-        [State({"type": "search-load-trigger", "index": ALL}, "value")],
+        [State("search-load-trigger", "value")],
     )(configured_function)
 
 
@@ -129,7 +129,7 @@ def register_update_search_options(app, configured_function):
         ],
         [
             Input({"type": "field-search", "index": MATCH}, "value"),
-            Input({"type": "search-load-trigger", "index": MATCH}, "value"),
+            Input("search-load-trigger", "value"),
         ],
         [
             State({"type": "number-search", "index": MATCH}, "value"),

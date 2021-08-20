@@ -120,4 +120,3 @@ def discretize_color_representations(fig):
         )
     fig.update_traces(marker=marker_dict)
     return fig
-    
