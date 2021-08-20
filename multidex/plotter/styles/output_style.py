@@ -1,6 +1,6 @@
 GRAPH_SETTINGS = {
     "paper_bgcolor": "white",
-    "margin": {"l": 60, "r": 275, "t": 30, "b": 30},
+    "margin": {"l": 60, "r": 285, "t": 30, "b": 30},
 }
 MARKER_SETTINGS = {}
 COLORBAR_SETTINGS = {

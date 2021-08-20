@@ -107,11 +107,17 @@ def discretize_color_representations(fig):
     percent_scale = np.array(scale_to_percents(continuous_scale))
     discrete_scale = make_discrete_scale(percent_scale, len(tickvals) + 1)
     marker_dict["colorscale"] = discrete_scale
-    # don't ask me why they do this
-    marker_dict["colorbar"]["tickvals"] = np.interp(
-        tickvals,
-        tickvals,
-        np.linspace(0.5, len(tickvals) - 1.5, len(tickvals)),
-    )
+    # don't ask me why they define tick positions like this...
+    # first, a special case:
+    if len(tickvals) == 2:
+        marker_dict["colorbar"]["tickvals"] = [0.25, 0.75]
+    # and otherwise interpolating to the weird quasi-relative scale they use
+    else:
+        marker_dict["colorbar"]["tickvals"] = np.interp(
+            tickvals,
+            tickvals,
+            np.linspace(0.5, len(tickvals) - 1.5, len(tickvals)),
+        )
     fig.update_traces(marker=marker_dict)
     return fig
+    
