@@ -589,7 +589,7 @@ def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
 # TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget, spec_model):
     ctx = dash.callback_context
-    if ctx.triggered['value'] is None:
+    if ctx.triggered[0]['value'] is None:
         raise PreventUpdate
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("data_df").copy()
