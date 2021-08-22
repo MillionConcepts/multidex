@@ -65,7 +65,20 @@ def apply_output_image_style(fig):
     # hacky, but the alternative seems to be editing its transform attribute...
     colorbar_dict = COLORBAR_SETTINGS.copy()
     # again, hacky to use typesetting as layout, but...
-    colorbar_dict["title"]["text"] = f"{marker.colorbar.title.text}<br> &nbsp;"
+
+    if len(marker.colorbar.title.text) > 12:
+        colorbar_dict["title"]["side"] = "right"
+        colorbar_dict["title"][
+            "text"
+        ] = f"<br><br><br> &nbsp;{marker.colorbar.title.text}"
+
+    else:
+        colorbar_dict["title"]["side"] = "top"
+        colorbar_dict["title"][
+            "text"
+        ] = f"{marker.colorbar.title.text}<br> &nbsp;"
+
+    # more breaks for longer ticks?
     marker_dict = (
         MARKER_SETTINGS | {"size": marker_size} | {"colorbar": colorbar_dict}
     )

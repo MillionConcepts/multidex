@@ -1,10 +1,7 @@
 import io
 
 from PIL import Image
-try:
-    from marslab.composition import Composition
-except ImportError:
-    from dustgoggles.composition import Composition
+from dustgoggles.composition import Composition
 
 
 # make consistently-sized thumbnails out of the asdf context images. we

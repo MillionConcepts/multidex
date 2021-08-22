@@ -6,7 +6,7 @@ MARKER_SETTINGS = {}
 COLORBAR_SETTINGS = {
     "tickfont": {"size": 18},
     "tickangle": 0,
-    "title": {"font": {"size": 24, "color": "black"}, "side": "top"},
+    "title": {"font": {"size": 24, "color": "black"}},
 }
 AXIS_SETTINGS = {
     "title": {"font": {"size": 24, "color": "black"}, "standoff": 30},
