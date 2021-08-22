@@ -81,7 +81,7 @@ def none_to_quote_unquote_none(
 
 
 def arbitrarily_hash_strings(strings: Iterable[str]) -> tuple[dict, list[int]]:
-    unique_string_values = list(set(strings))
+    unique_string_values = sorted(list(set(strings)), reverse=True)
     arbitrary_hash = {
         string: ix for ix, string in enumerate(unique_string_values)
     }
@@ -177,7 +177,9 @@ def columns(dataframe: pd.DataFrame) -> list[np.ndarray]:
 # dash-y dictionary utilities
 
 
-def dict_to_paragraphs(dictionary, style=None, ordering=None):
+def dict_to_paragraphs(
+        dictionary, style=None, ordering=None, filterfalse=True
+):
     """
     parses dictionary to list of dash <p> components
     """
@@ -189,6 +191,9 @@ def dict_to_paragraphs(dictionary, style=None, ordering=None):
 
     if ordering is None:
         ordering = []
+    from cytoolz import valfilter
+    if filterfalse is True:
+        dictionary = valfilter(lambda x: x not in (False, None), dictionary)
     ordered_grafs = [
         make_paragraph(key, dictionary.get(key))
         for key in ordering
@@ -353,6 +358,7 @@ def partially_evaluate_from_parameters(
 
 
 def listify(thing: Any) -> list:
+    # TODO: replace this with the dustgoggles version
     """Always a list, for things that want lists"""
     if isiterable(thing):
         return list(thing)
@@ -707,3 +713,23 @@ def regex_keyfilter(regex: str, dictionary: Mapping) -> dict:
 def dedict(dictionary: Mapping) -> Any:
     assert len(dictionary) == 1
     return dictionary[list(dictionary)[0]]
+
+
+# TODO: these kinds of printing rules probably need to go on individual
+#  models for cross-instrument compatibility
+def rearrange_band_depth_for_title(text: str) -> str:
+    filts = re.split(r"([L|R]?\d[RGB]?)", text, maxsplit=0)
+    return (
+        f"{filts[0]}{filts[3]}, " f"shoulders at {filts[1]} and " f"{filts[5]}"
+    )
+
+
+def insert_wavelengths_into_text(text: str, spec_model: "Model") -> str:
+    if "depth" in text:
+        text = rearrange_band_depth_for_title(text)
+    for filt, wavelength in (
+        spec_model.filters | spec_model.virtual_filters
+    ).items():
+        text = re.sub(filt, filt + " (" + str(wavelength) + "nm)", text)
+    text = re.sub(r"_", r" ", text)
+    return text

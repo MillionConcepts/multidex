@@ -10,7 +10,6 @@ from plotter.application.structure import (
     GRAPH_DISPLAY_INPUTS,
     STATIC_IMAGE_URL,
 )
-from plotter.graph_components import spectrum_line_graph
 
 
 def configure_cache(cache_subdirectory):
@@ -43,13 +42,24 @@ def register_everything(app, configured_functions):
         register(app, func)
 
 
+def register_clientside_callbacks(app):
+    # TODO: move this into external scripts?
+    js_callbacks = [
+        "record_graph_size_and_trigger_save",
+        "drag_spec_print",
+        'hide_spec_print'
+    ]
+    for name in js_callbacks:
+        register = getattr(plotter.application.registry, "register_" + name)
+        register(app)
+
+
 def configure_callbacks(cget, cset, spec_model):
     """
     insert 'settings' / 'global' values for this app into callback functions.
     typically our convention is that 'global' variables in callbacks
     are keyword-only and callback inputs / states are positional.
     """
-
     settings = {
         "x_inputs": X_INPUTS,
         "y_inputs": Y_INPUTS,
@@ -65,8 +75,8 @@ def configure_callbacks(cget, cset, spec_model):
         # scale factor, in viewport units, for spectrum images
         "base_size": 20,
         "static_image_url": STATIC_IMAGE_URL,
-        # file containing saved searches
-        "search_file": "./saves/" + cget("spec_model_name") + "_searches.csv",
+        # path containing saved searches
+        "search_path": "./saves/" + spec_model.instrument.lower(),
     }
     return {
         name: partially_evaluate_from_parameters(func, settings)

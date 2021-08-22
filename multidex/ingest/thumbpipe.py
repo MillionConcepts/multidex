@@ -1,7 +1,7 @@
 import io
 
 from PIL import Image
-from marslab.composition import Composition
+from dustgoggles.composition import Composition
 
 
 # make consistently-sized thumbnails out of the asdf context images. we
@@ -38,7 +38,7 @@ def jpeg_buffer(image):
 
 
 def default_thumbnailer():
-    params = {"crop": {"bounds": (230, 185, 155, 170)}, "thumb": {"scale": 3}}
+    params = {"crop": {"bounds": (20, 20, 122, 5)}, "thumb": {"scale": 2}}
     steps = {
         "load": Image.open,
         "flatten": remove_alpha,

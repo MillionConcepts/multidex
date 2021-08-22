@@ -18,8 +18,10 @@ from multidex_utils import modeldict
 # fields that notionally have to do with "observation-" level metadata,
 # however that is defined wrt mission-level divisions
 
+
 # default settings for SQL fields -- just a shorthand
 B_N_I = {"blank": True, "null": True, "db_index": True}
+
 XCAM_SHARED_OBSERVATION_FIELDS = {
     # name of entire sequence or observation
     "name": models.CharField("Name", max_length=100, db_index=True),
@@ -163,21 +165,19 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "soil_location", "value_type": "qual"},
     {"value": "soil_color", "value_type": "qual"},
     {"value": "landform_type", "value_type": "qual"},
-
 )
 
 XCAM_CALCULATED_PROPERTIES = (
-# slightly special cases: these are computed at runtime
-{"value": "filter_avg", "value_type": "quant", "type": "computed"},
-{"value": "err_avg", "value_type": "quant", "type": "computed"},
-
+    # slightly special cases: these are computed at runtime
+    {"value": "filter_avg", "value_type": "quant", "type": "computed"},
+    {"value": "err_avg", "value_type": "quant", "type": "computed"},
 )
 for prop in chain.from_iterable(
     [
         XCAM_FIELD_INTERFACE_PROPERTIES,
         SPECTRUM_OP_INTERFACE_PROPERTIES,
         REDUCTION_OP_INTERFACE_PROPERTIES,
-        XCAM_CALCULATED_PROPERTIES
+        XCAM_CALCULATED_PROPERTIES,
     ]
 ):
     if "label" not in prop.keys():
@@ -191,7 +191,7 @@ for prop in chain.from_iterable(
 
 class XSpec(models.Model):
     """
-    abstract class representing an ROI from an XCAM-familyinstrument
+    abstract class representing an ROI from an XCAM-family instrument
     """
 
     # four-letter instrument designation: PCAM, MCAM, ZCAM
