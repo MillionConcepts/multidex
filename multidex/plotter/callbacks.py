@@ -87,7 +87,7 @@ def handle_load(
                 str(search) for search in Path(search_path).iterdir()
                 if search.stem.lower() == 'default'
             )
-        except StopIteration:
+        except (StopIteration, FileNotFoundError):
             raise PreventUpdate
     # don't try anything if nothing in the saved search dropdown is
     # selected / we're not loading
