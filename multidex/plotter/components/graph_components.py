@@ -6,54 +6,26 @@ import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
 
+from plotter.colors import discretize_color_representations
 from plotter.spectrum_ops import d2r
-from plotter.ui_components import (
+from plotter.styles.graph_style import (
     ANNOTATION_SETTINGS,
     GRAPH_DISPLAY_DEFAULTS,
     AXIS_DISPLAY_DEFAULTS,
+    SEARCH_FAILURE_MESSAGE_SETTINGS,
 )
 
 
-def main_scatter_graph(
-    graph_df: pd.DataFrame,
-    errors: Mapping,
-    marker_property_dict: Mapping,
-    graph_display_settings: Mapping,
-    axis_display_settings: Mapping,
-    label_ids: list[int],
-    zoom: Optional[tuple[list[float, float]]] = None,
-    x_title: str = None,
-    y_title: str = None,
-) -> go.Figure:
-    """
-    main graph component. this function creates the Plotly figure; data
-    is formatted in callbacks.update_main_graph().
-    """
-    # TODO: go.Scattergl (WebGL) is noticeably worse-looking than go.Scatter
-    #  (SVG), but go.Scatter may be inadequately performant with all the
-    #  points in the data set. can we optimize a bit? hard with plotly...
-
-    fig = go.Figure()
-
-    # sort points by marker size so that we can draw highlighted points last,
-    # and thus at a higher 'z-axis'
-    if len(graph_df["size"].unique()) > 1:
-        errors, graph_df, marker_property_dict = sort_by_marker_size(
-            errors, graph_df, marker_property_dict
-        )
-
-    # add floating labels from clicked points doing it this way instead of
-    # with 'text' because plotly requires redraws to show the text, and fails
-    # to do so every other time for ... reasons ... so it looks like it does
-    # nothing every other time unless you pan or whatever
-    for database_id, string, xpos, ypos in graph_df[
-        ["customdata", "text", "x", "y"]
-    ].values:
-        if database_id in label_ids:
-            fig.add_annotation(
-                x=xpos, y=ypos, text=string, **ANNOTATION_SETTINGS
-            )
-
+def plot_and_style_data(
+    axis_display_settings,
+    errors,
+    fig,
+    graph_df,
+    marker_property_dict,
+    x_title,
+    y_title,
+    marker_axis_type
+):
     fig.add_trace(
         go.Scatter(
             x=graph_df["x"],
@@ -64,16 +36,17 @@ def main_scatter_graph(
             marker={"color": "black", "size": 8},
         )
     )
-    display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
     axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
-    # TODO: refactor to build layout dictionary first rather than using the
-    #  update_layout pattern, for speed
     # noinspection PyTypeChecker
-    fig.update_layout(display_dict)
     fig.update_xaxes(axis_display_dict | {"title_text": x_title})
     fig.update_yaxes(axis_display_dict | {"title_text": y_title})
     fig.update_traces(**marker_property_dict)
-
+    if (
+            (marker_axis_type == "qual")
+            # don't try to discretize solid colors
+            and not isinstance(marker_property_dict['marker']['color'], str)
+    ):
+        fig = discretize_color_representations(fig)
     for axis in ["x", "y"]:
         if errors[axis] is None:
             fig.update_traces({"error_" + axis: {"visible": False}})
@@ -88,6 +61,64 @@ def main_scatter_graph(
                 }
             )
 
+
+def apply_graph_style(fig, graph_display_settings, zoom):
+    display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
+    fig.update_layout(display_dict)
+    if zoom is not None:
+        fig.update_layout(
+            {
+                "xaxis": {"range": [zoom[0][0], zoom[0][1]]},
+                "yaxis": {"range": [zoom[1][0], zoom[1][1]]},
+            }
+        )
+
+
+def main_scatter_graph(
+    graph_df: pd.DataFrame,
+    errors: Mapping,
+    marker_property_dict: Mapping,
+    graph_display_settings: Mapping,
+    axis_display_settings: Mapping,
+    label_ids: list[int],
+    x_title: str = None,
+    y_title: str = None,
+    zoom: Optional[tuple[list[float, float]]] = None,
+    marker_axis_type="quant"
+) -> go.Figure:
+    """
+    main graph component. this function creates the Plotly figure; data
+    and metadata are filtered and formatted in callbacks.update_main_graph().
+    """
+    # TODO: go.Scattergl (WebGL) is noticeably worse-looking than go.Scatter
+    #  (SVG), but go.Scatter may be inadequately performant with all the
+    #  points in the data set. can we optimize a bit? hard with plotly...
+
+    # TODO: refactor to build layout dictionaries first rather than
+    #  using the update_layout pattern, for speed
+
+    fig = go.Figure()
+
+    # sort points by marker size so that we can draw highlighted points
+    # last, and thus at a higher 'z-axis'
+    if len(graph_df["size"].unique()) > 1:
+        errors, graph_df, marker_property_dict = sort_by_marker_size(
+            errors, graph_df, marker_property_dict
+        )
+    # the click-to-label annotations
+    draw_floating_labels(fig, graph_df, label_ids)
+    # and the scattered points and their error bars
+    plot_and_style_data(
+        axis_display_settings,
+        errors,
+        fig,
+        graph_df,
+        marker_property_dict,
+        x_title,
+        y_title,
+        marker_axis_type
+    )
+    apply_graph_style(fig, graph_display_settings, None)
     if zoom is not None:
         fig.update_layout(
             {
@@ -96,6 +127,31 @@ def main_scatter_graph(
             }
         )
     return fig
+
+
+def failed_scatter_graph(message: str, graph_display_settings: Mapping):
+    fig = go.Figure()
+    fig.add_annotation(text=message, **SEARCH_FAILURE_MESSAGE_SETTINGS)
+    apply_graph_style(fig, graph_display_settings, None)
+    # fig.to_image()
+    return fig
+
+
+# we are using 'annotations' rather than 'text' for this,
+# because plotly requires redraws to show the text, and fails
+# to do so every other time for ... reasons ... so it (falsely) appears to do
+# nothing every other time unless you pan or whatever
+def draw_floating_labels(fig, graph_df, label_ids):
+    """
+    add floating labels for clicked points
+    """
+    for database_id, string, xpos, ypos in graph_df[
+        ["customdata", "text", "x", "y"]
+    ].values:
+        if database_id in label_ids:
+            fig.add_annotation(
+                x=xpos, y=ypos, text=string, **ANNOTATION_SETTINGS
+            )
 
 
 def spectrum_line_graph(
@@ -129,11 +185,14 @@ def spectrum_line_graph(
     fig = go.Figure(
         layout={
             **GRAPH_DISPLAY_DEFAULTS,
-            "xaxis": AXIS_DISPLAY_DEFAULTS | {"title_text": "wavelength"},
+            "xaxis": AXIS_DISPLAY_DEFAULTS
+            | {"title_text": "wavelength", "title_standoff": 5},
             "yaxis": AXIS_DISPLAY_DEFAULTS
             | {
                 "title_text": "reflectance",
                 "range": [0, min(y_axis) + max(y_axis)],
+                "title_standoff": 4,
+                "side": "right",
             },
         }
     )

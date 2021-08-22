@@ -66,7 +66,7 @@ def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     return nominal_value, (offsets.min(axis=1), offsets.max(axis=1))
 
 
-def filter_df_from_queryset(
+def data_df_from_queryset(
     queryset,
     r_star=True,
     average_filters=False,

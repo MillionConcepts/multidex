@@ -12,8 +12,11 @@
 /multidex/notes.ipynb
 /multidex/ingest_hopper/
 *BAK
+*bak
 *scratch.py
 /multidex/scratch_space/
 /multidex/plotter/cruft_holder/
 /multidex/data/ZCAM.sqlite3
 /multidex/data/MCAM.sqlite3
+*scratch*.ipynb
+*test.json
