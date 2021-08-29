@@ -12,21 +12,6 @@ from plotter.application.structure import (
 )
 
 
-def configure_cache(cache_subdirectory):
-    """configure cache for a particular instance of multidex."""
-
-    # we are using flask-caching to share state between callbacks
-    # because dash refuses to enforce thread safety in python globals.
-    # memcached or another backend can be implemented for improved speed
-    # if it ever matters.
-    return {
-        "CACHE_TYPE": "filesystem",
-        "CACHE_DIR": ".cache/" + cache_subdirectory,
-        "CACHE_DEFAULT_TIMEOUT": 0,
-        "CACHE_THRESHOLD": 0,  # important for filesystem backend
-    }
-
-
 def register_everything(app, configured_functions):
     """
     register all callback functions with appropriate components of the app,
@@ -40,6 +25,21 @@ def register_everything(app, configured_functions):
                 register(app, func, value_class)
             continue
         register(app, func)
+
+
+def configure_flask_cache(cache_subdirectory):
+    """configure cache for a particular instance of multidex."""
+
+    # we are using flask-caching to share state between callbacks
+    # because dash refuses to enforce thread safety in python globals.
+    # memcached or another backend can be implemented for improved speed
+    # if it ever matters.
+    return {
+        "CACHE_TYPE": "filesystem",
+        "CACHE_DIR": ".cache/" + cache_subdirectory,
+        "CACHE_DEFAULT_TIMEOUT": 0,
+        "CACHE_THRESHOLD": 0,  # important for filesystem backend
+    }
 
 
 def register_clientside_callbacks(app):
