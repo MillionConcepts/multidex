@@ -6,7 +6,7 @@ produce an env named `multidex` suitable for running the app.
 
 ### usage
 runtime commands enabling user-facing functionality are currently all included in 
-[multidex.py](multidex/plotter/multidex.py). Run this script with a single argument for the instrument whose data 
+[multidex.py](multidex/multidex.py). Run this script with a single argument for the instrument whose data 
 you'd like to explore (e.g. `python multidex.py ZCAM`) and a server should launch at 127.0.0.1:49303. Pointing your 
 browser at this server will open the application in your browser. This should work on any platform `conda` works on. 
 Chrome-family browsers will probably be faster than Firefox or Safari. We do not recommend accessing an individual 
