@@ -604,6 +604,10 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
         metadata_df = metadata_df.rename(
             columns={"SOIL_LOCATION": "SOIL LOCATION"}
         )
+    if cget("r_star") is True:
+        metadata_df['UNITS'] = 'R*'
+    else:
+        metadata_df['UNITS'] = 'IOF'
     output_df = (
         pd.concat(
             [metadata_df, filter_df],
