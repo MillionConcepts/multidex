@@ -1,10 +1,10 @@
 // Make the DIV element draggable:
 
-let whatAreWeDragging = null
-let mouseDragTracker = {'x': 0, 'y': 0}
-let currentEvent = null
-let draggables = []
-let visibilityRecord = {}
+let whatAreWeDragging = null;
+let mouseDragTracker = {'x': 0, 'y': 0};
+let currentEvent = null;
+let draggables = [];
+let visibilityRecord = {};
 
 const drag = function (event) {
     event.preventDefault();
@@ -16,7 +16,7 @@ const drag = function (event) {
     whatAreWeDragging.style.left = (whatAreWeDragging.offsetLeft - xMotion) + "px";
 }
 
-const getOutOfDrag = function () {
+const unTuck = function () {
     document.onmouseup = null;
     document.onmousemove = null;
     whatAreWeDragging = null;
@@ -27,16 +27,15 @@ const getIntoDrag = function (event) {
     event.path.forEach(
         function isItDraggable(element) {
             if (draggables.includes(element.id)) {
-                whatAreWeDragging = element
+                whatAreWeDragging = element;
             }
-        })
+        }
+    );
     mouseDragTracker['x'] = event.clientX;
     mouseDragTracker['y'] = event.clientY;
-    document.onmouseup = getOutOfDrag;
+    document.onmouseup = unTuck;
     document.onmousemove = drag;
-}
-
-
+};
 
 const makeDraggable = function (handleElementId, targetElementId) {
     draggables.push(targetElementId)
@@ -46,22 +45,22 @@ const makeDraggable = function (handleElementId, targetElementId) {
 
 const visToggler = function(elementId) {
     return function() {
-        let element = document.getElementById(elementId)
+        let element = document.getElementById(elementId);
         if (element.style.display !== 'none') {
-            visibilityRecord[elementId] = element.style.display
-            element.style.display = 'none'
+            visibilityRecord[elementId] = element.style.display;
+            element.style.display = 'none';
         }
         else {
             if (Object.keys(visibilityRecord).includes(elementId)) {
-                element.style.display = visibilityRecord[elementId]
+                element.style.display = visibilityRecord[elementId];
             }
             else {
-                element.style.display = 'revert'
+                element.style.display = 'revert';
             }
         }
     }
-}
+};
 
 const makeHider = function (handleElementId, targetElementId) {
-    document.getElementById(handleElementId).ondblclick = visToggler(targetElementId)
-}
+    document.getElementById(handleElementId).ondblclick = visToggler(targetElementId);
+};
