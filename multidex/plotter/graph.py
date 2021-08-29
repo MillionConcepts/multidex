@@ -6,6 +6,7 @@ functions used by interface functions in callbacks.py
 """
 
 import datetime as dt
+from ast import literal_eval
 from collections.abc import Iterable
 from copy import deepcopy
 from functools import reduce
@@ -468,7 +469,7 @@ def add_dropdown(children, spec_model, cget, cset):
     adds another dropdown for search constraints.
     """
     # check with the cache in order to pick an index
-    # this is because resetting the layout for tabs destroys n_clicks
+    # this is because resetting the layout on load destroys n_clicks
     # could parse the page instead but i think this is better
     index = cget("search_parameter_index")
     if not index:
@@ -683,9 +684,16 @@ def load_values_into_search_div(search_file, spec_model, cset):
     """makes a search tab with preset values from a saved search."""
     search = pd.read_csv(search_file).iloc[0]
     row_dict = search.to_dict()
+    # TODO: somewhat bad smell, might mean something is wrong in control flow
     if "highlight parameters" in row_dict.keys():
-        # TODO: bad smell, might mean something is wrong in control flow
         cset("highlight_parameters", row_dict["highlight_parameters"])
+    if "search_parameters" in row_dict.keys():
+        cset(
+            "search_parameter_index",
+            len(literal_eval(row_dict["search_parameters"]))
+        )
+    else:
+        cset("search_parameter_index", 0)
     return search_div(spec_model, row_dict)
 
 
