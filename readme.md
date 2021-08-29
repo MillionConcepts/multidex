@@ -17,9 +17,5 @@ Monolithic .sqlite3 database files are distributed separately from this applicat
 [multidex/data](multidex/data/) Please contact the repository maintainers if you need and do not have access to these 
 files.
 
-### known issues
-* PCA is not compatible with 'average nearby filters' mode. It will not work and may break the application.
-* the Dockerfile is unfinished. Do not use it.
-
 ### licensing notes
 This code carries a BSD 3-Clause license. You can do nearly anything that you want with it. _However_, **some of the contents of this repository may be subject to the Mars 2020 Team Guidelines, so please act accordingly.**
