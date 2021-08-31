@@ -208,7 +208,7 @@ def multidex_body(spec_model):
                             "height": "1.1rem",
                         },
                     ),
-                    html.P(
+                    html.Div(
                         id="spec-print", style={"display": "none", "margin": 0}
                     ),
                 ],

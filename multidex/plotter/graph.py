@@ -32,6 +32,7 @@ from multidex_utils import (
     djget,
     insert_wavelengths_into_text,
 )
+from notetaking import Notepad
 from plotter import spectrum_ops
 from plotter.components.ui_components import (
     search_parameter_div,
@@ -58,14 +59,14 @@ if TYPE_CHECKING:
 # because Flask does not guarantee thread safety of globals.
 
 
-def cache_set(cache: "flask_caching.Cache") -> Callable[[str, Any], bool]:
+def cache_set(cache) -> Callable[[str, Any], bool]:
     def cset(key: str, value: Any) -> bool:
         return cache.set(key, value)
 
     return cset
 
 
-def cache_get(cache: "flask_caching.Cache") -> Callable[[str], Any]:
+def cache_get(cache) -> Callable[[str], Any]:
     def cget(key: str) -> Any:
         return cache.get(key)
 
@@ -376,7 +377,7 @@ def format_display_settings(settings):
     axis_settings_dict = {}
     if re_get(settings, "graph-bg"):
         settings_dict["plot_bgcolor"] = re_get(settings, "graph-bg")
-    if re_get(settings, "gridlines") is False:
+    if re_get(settings, "gridlines") == "off":
         axis_settings_dict["showgrid"] = False
     else:
         axis_settings_dict["showgrid"] = True
