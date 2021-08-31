@@ -101,7 +101,7 @@ def scale_controls_container(
                 ),
                 html.Label(
                     children=["show error"],
-                    className=["info-text"],
+                    className="info-text",
                     htmlFor=id_prefix + "-error",
                 ),
                 dcc.Dropdown(
@@ -890,7 +890,9 @@ def display_controls_div(get_r: Callable) -> html.Div:
                 id="main-graph-gridlines-radio",
                 className="radio-items",
                 options=[
-                    {"label": "off", "value": False},
+                    # note: setting value to Python False causes slightly-bad
+                    # under-the-hood behavior in React
+                    {"label": "off", "value": "off"},
                     {"label": "light", "value": css_variables["dark-tint-0"]},
                     {"label": "dark", "value": css_variables["dark-tint-2"]},
                 ],
