@@ -4,11 +4,12 @@ of database models in plotter.models
 """
 
 from ast import literal_eval
+from functools import cache
 from itertools import chain
 from typing import Optional, Sequence
 
+from cytoolz import keyfilter
 from django.db import models
-from toolz import keyfilter
 
 from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
 from multidex_utils import modeldict
@@ -204,6 +205,7 @@ class XSpec(models.Model):
     field_names = None
 
     @classmethod
+    @cache
     def accessible_properties(cls):
         return (
             list(SPECTRUM_OP_INTERFACE_PROPERTIES)
@@ -217,6 +219,7 @@ class XSpec(models.Model):
         )
 
     @classmethod
+    @cache
     def graphable_properties(cls):
         return [
             ap
@@ -226,6 +229,7 @@ class XSpec(models.Model):
         ]
 
     @classmethod
+    @cache
     def searchable_fields(cls):
         return [
             ap
@@ -239,6 +243,7 @@ class XSpec(models.Model):
             return {}
         return literal_eval(images)
 
+    @cache
     def filter_values(
         self,
         scale_to: Optional[Sequence[str]] = None,
@@ -270,11 +275,8 @@ class XSpec(models.Model):
         """
         metadata-summarizing function. could be made more efficient.
         """
-        return keyfilter(
-            lambda x: x
-            in [a_prop["value"] for a_prop in self.accessible_properties()],
-            modeldict(self),
-        )
+        aprops = [a_prop["value"] for a_prop in self.accessible_properties()]
+        return keyfilter(lambda x: x in aprops, modeldict(self))
 
     def __str__(self):
         return "sol" + str(self.sol) + "_" + self.name + "_" + self.seq_id
