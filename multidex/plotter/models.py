@@ -93,8 +93,8 @@ class CSpec(XSpec):
     # TODO check if CCAM should actually inherit from XSpec?
     # TODO what to actually include in the model?...
     target = models.CharField("Target", **B_N_I, max_length=50)
-    type = models.CharField("Type of Product", **B_N_I, max_length=50)
-    distance = models.CharField("Distance", max_length=20, **B_N_I)
+    type_of_product = models.CharField("Type of Product", **B_N_I, max_length=50)
+    # distance = models.CharField("Distance", max_length=20, **B_N_I)
     lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
     num_spectra = models.IntegerField("Number of Spectra", **B_N_I)
     shots_averaged = models.IntegerField("Shots Averaged", **B_N_I)
@@ -112,6 +112,7 @@ class CSpec(XSpec):
     instrument = "CCAM"
     instrument_brief_name = "ChemCam"
 
+
 ZCAM_COREGISTERED_INSTRUMENTS = (
     "SCAM LIBS",
     "SCAM VISIR",
@@ -128,7 +129,7 @@ for instrument in ZCAM_COREGISTERED_INSTRUMENTS:
     )
 
 # bulk setup for each XCAM instrument
-for spec_model in [ZSpec, MSpec]:
+for spec_model in [ZSpec, MSpec, CSpec]:
     # mappings from filter name to nominal band centers, in nm
     setattr(
         spec_model,
@@ -168,4 +169,4 @@ for spec_model in [ZSpec, MSpec]:
     )
 
 # for automated model selection
-INSTRUMENT_MODEL_MAPPING = MappingProxyType({"ZCAM": ZSpec, "MCAM": MSpec})
+INSTRUMENT_MODEL_MAPPING = MappingProxyType({"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec})
