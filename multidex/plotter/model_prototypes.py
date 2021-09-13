@@ -4,11 +4,12 @@ of database models in plotter.models
 """
 
 from ast import literal_eval
+from functools import cache
 from itertools import chain
 from typing import Optional, Sequence
 
+from cytoolz import keyfilter
 from django.db import models
-from toolz import keyfilter
 
 from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
 from multidex_utils import modeldict
@@ -18,8 +19,10 @@ from multidex_utils import modeldict
 # fields that notionally have to do with "observation-" level metadata,
 # however that is defined wrt mission-level divisions
 
+
 # default settings for SQL fields -- just a shorthand
 B_N_I = {"blank": True, "null": True, "db_index": True}
+
 XCAM_SHARED_OBSERVATION_FIELDS = {
     # name of entire sequence or observation
     "name": models.CharField("Name", max_length=100, db_index=True),
@@ -163,21 +166,19 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "soil_location", "value_type": "qual"},
     {"value": "soil_color", "value_type": "qual"},
     {"value": "landform_type", "value_type": "qual"},
-
 )
 
 XCAM_CALCULATED_PROPERTIES = (
-# slightly special cases: these are computed at runtime
-{"value": "filter_avg", "value_type": "quant", "type": "computed"},
-{"value": "err_avg", "value_type": "quant", "type": "computed"},
-
+    # slightly special cases: these are computed at runtime
+    {"value": "filter_avg", "value_type": "quant", "type": "computed"},
+    {"value": "err_avg", "value_type": "quant", "type": "computed"},
 )
 for prop in chain.from_iterable(
     [
         XCAM_FIELD_INTERFACE_PROPERTIES,
         SPECTRUM_OP_INTERFACE_PROPERTIES,
         REDUCTION_OP_INTERFACE_PROPERTIES,
-        XCAM_CALCULATED_PROPERTIES
+        XCAM_CALCULATED_PROPERTIES,
     ]
 ):
     if "label" not in prop.keys():
@@ -191,7 +192,7 @@ for prop in chain.from_iterable(
 
 class XSpec(models.Model):
     """
-    abstract class representing an ROI from an XCAM-familyinstrument
+    abstract class representing an ROI from an XCAM-family instrument
     """
 
     # four-letter instrument designation: PCAM, MCAM, ZCAM
@@ -204,6 +205,7 @@ class XSpec(models.Model):
     field_names = None
 
     @classmethod
+    @cache
     def accessible_properties(cls):
         return (
             list(SPECTRUM_OP_INTERFACE_PROPERTIES)
@@ -217,6 +219,7 @@ class XSpec(models.Model):
         )
 
     @classmethod
+    @cache
     def graphable_properties(cls):
         return [
             ap
@@ -226,6 +229,7 @@ class XSpec(models.Model):
         ]
 
     @classmethod
+    @cache
     def searchable_fields(cls):
         return [
             ap
@@ -239,6 +243,7 @@ class XSpec(models.Model):
             return {}
         return literal_eval(images)
 
+    @cache
     def filter_values(
         self,
         scale_to: Optional[Sequence[str]] = None,
@@ -270,11 +275,8 @@ class XSpec(models.Model):
         """
         metadata-summarizing function. could be made more efficient.
         """
-        return keyfilter(
-            lambda x: x
-            in [a_prop["value"] for a_prop in self.accessible_properties()],
-            modeldict(self),
-        )
+        aprops = [a_prop["value"] for a_prop in self.accessible_properties()]
+        return keyfilter(lambda x: x in aprops, modeldict(self))
 
     def __str__(self):
         return "sol" + str(self.sol) + "_" + self.name + "_" + self.seq_id

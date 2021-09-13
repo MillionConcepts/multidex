@@ -6,7 +6,8 @@ functions used by interface functions in callbacks.py
 """
 
 import datetime as dt
-from collections import Iterable
+from ast import literal_eval
+from collections.abc import Iterable
 from copy import deepcopy
 from functools import reduce
 from itertools import chain, cycle
@@ -16,44 +17,36 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 import dash_html_components as html
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from dash.exceptions import PreventUpdate
+from plotly import graph_objects as go
 from toolz import keyfilter
 
-from plotter import spectrum_ops
-from plotter.ui_components import (
-    search_parameter_div,
-    search_div,
-)
-from plotter.reduction import (
-    default_multidex_pipeline,
-    transform_and_explain_variance,
-)
 from multidex_utils import (
-    rows,
     keygrab,
     not_blank,
     seconds_since_beginning_of_day,
     arbitrarily_hash_strings,
     none_to_quote_unquote_none,
-    fetch_css_variables,
     df_multiple_field_search,
     re_get,
     djget,
+    insert_wavelengths_into_text,
 )
+from notetaking import Notepad
+from plotter import spectrum_ops
+from plotter.components.ui_components import (
+    search_parameter_div,
+)
+from plotter.layout import search_div
+from plotter.reduction import (
+    default_multidex_pipeline,
+    transform_and_explain_variance,
+)
+from plotter.styles.graph_style import COLORBAR_SETTINGS
 
 if TYPE_CHECKING:
     from plotter.models import ZSpec, MSpec
     import flask_caching
-
-css_variables = fetch_css_variables()
-COLORBAR_SETTINGS = {
-    "tickfont": {
-        "family": "Fira Mono",
-        "color": css_variables["midnight-ochre"],
-    },
-    "titlefont": {"family": "Fira Mono"},
-}
 
 
 # ### cache functions ###
@@ -66,14 +59,14 @@ COLORBAR_SETTINGS = {
 # because Flask does not guarantee thread safety of globals.
 
 
-def cache_set(cache: "flask_caching.Cache") -> Callable[[str, Any], bool]:
+def cache_set(cache) -> Callable[[str, Any], bool]:
     def cset(key: str, value: Any) -> bool:
         return cache.set(key, value)
 
     return cset
 
 
-def cache_get(cache: "flask_caching.Cache") -> Callable[[str], Any]:
+def cache_get(cache) -> Callable[[str], Any]:
     def cget(key: str) -> Any:
         return cache.get(key)
 
@@ -93,7 +86,7 @@ def truncate_id_list_for_missing_properties(
     filt_args = []
     indices = []
     for suffix in input_suffixes:
-        axis_option = re_get(settings, "-graph-option-" + suffix)
+        axis_option = re_get(settings, "graph-option-" + suffix)
         model_property = keygrab(
             spec_model.graphable_properties(), "value", axis_option
         )
@@ -110,7 +103,7 @@ def truncate_id_list_for_missing_properties(
             # inputs.
             filt_args.append(
                 [
-                    re_get(settings, "-filter-" + str(ix) + "-" + suffix)
+                    re_get(settings, f"filter-{ix}-{suffix}")
                     for ix in range(1, model_property["arity"] + 1)
                 ]
             )
@@ -147,8 +140,7 @@ def perform_decomposition(id_list, filter_df, settings, props):
 
     # TODO: temporary hack -- don't do PCA on tiny sets
     if len(queryset_df.index) < 8:
-        raise PreventUpdate
-
+        raise ValueError("Won't do PCA on tiny sets.")
     # drop errors
     queryset_df = queryset_df[
         [c for c in queryset_df.columns if "err" not in c]
@@ -180,11 +172,13 @@ def perform_spectrum_op(
         filter_df.loc[id_list].drop(["filter_avg", "err_avg"], axis=1).copy()
     )
     filt_args = [
-        re_get(settings, "-filter-" + str(ix))
+        re_get(settings, "filter-" + str(ix))
         for ix in range(1, props["arity"] + 1)
     ]
     spectrum_op = getattr(spectrum_ops, props["value"])
-    title = props["value"] + " " + str(" ".join(filt_args))
+    base_title = props["value"] + " " + str(" ".join(filt_args))
+    # TODO, unfortunately: this probably needs more fiddly rules
+    title = insert_wavelengths_into_text(base_title, spec_model)
     if get_errors == "none":
         get_errors = False
     try:
@@ -235,11 +229,7 @@ def make_axis(
     scaled and averaged as desired. expects a list that has been
     processed by truncate_id_list_for_missing_properties
     """
-    # what is requested function or property?
-    axis_option = re_get(settings, "-graph-option-")
-    # what are the characteristics of that function or property?
-    props = keygrab(spec_model.graphable_properties(), "value", axis_option)
-
+    axis_option, props = get_axis_option_props(settings, spec_model)
     if props["type"] == "decomposition":
         if filters_are_averaged is True:
             decomp_df = filter_df[
@@ -265,8 +255,20 @@ def make_axis(
     return value_series.values, None, axis_option
 
 
+def get_axis_option_props(settings, spec_model):
+    # what is requested function or property?
+    axis_option = re_get(settings, "graph-option-")
+    # what are the characteristics of that function or property?
+    props = keygrab(spec_model.graphable_properties(), "value", axis_option)
+    return axis_option, props
+
+
 # TODO: this is sloppy but cleanup would be better after everything's
-#  implemented...probably...
+#  implemented...probably...it would really be better to do this in components
+#  but is difficult because you have to instantiate the colorbar somewhere
+#  it would also be better to style with CSS but it seems like plotly
+#  really wants to put element-level style declarations on graph ticks and
+#  it is an unusually large hassle to get inside its svg rendering loop
 def make_marker_properties(
     settings,
     id_list,
@@ -281,24 +283,17 @@ def make_marker_properties(
     this expects an id list that has already
     been processed by truncate_id_list_for_missing_properties
     """
-    marker_option = re_get(settings, "-graph-option-")
-    props = keygrab(spec_model.graphable_properties(), "value", marker_option)
-    # it would really be better to do this in components
-    # but is difficult because you have to instantiate the colorbar somewhere
-    # it would also be better to style with CSS but it seems like plotly
-    # really wants to put element-level style declarations on graph ticks!
+    marker_option, props = get_axis_option_props(settings, spec_model)
 
     if props["type"] == "decomposition":
         property_list, _, title = perform_decomposition(
             id_list, filter_df, settings, props
         )
-
-    if props["type"] == "computed":
+    elif props["type"] == "computed":
         property_list, title = (
             filter_df.loc[id_list, props["value"]].values,
             props["value"],
         )
-
     elif props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
@@ -308,13 +303,13 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    if re_get(settings, "-coloring-type.value") == "solid":
-        color = re_get(settings, "-color-solid.value")
+    if re_get(settings, "coloring-type.value") == "solid":
+        color = re_get(settings, "color-solid.value")
         colormap = None
         colorbar = None
     else:
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
-        colormap = re_get(settings, "-color-scale.value")
+        colormap = re_get(settings, "color-scale.value")
         if props["value_type"] == "qual":
             string_hash, color = arbitrarily_hash_strings(
                 none_to_quote_unquote_none(property_list)
@@ -338,52 +333,55 @@ def make_marker_properties(
     # markers to be drawn in some different (and more expensive) way -- hence
     # this dumb logic tree
     opacity = 1
-    base_size = re_get(settings, "-marker-base-size.value")
-    if re_get(settings, "-highlight-toggle.value") == "on":
+    base_size = re_get(settings, "marker-base-size.value")
+    if re_get(settings, "highlight-toggle.value") == "on":
         marker_size = [
             base_size * 1.9 if spectrum in highlight_id_list else base_size
             for spectrum in id_list
         ]
-    elif re_get(settings, "-outline-radio.value") != "off":
+    elif re_get(settings, "outline-radio.value") != "off":
         marker_size = [base_size for _ in id_list]
     else:
         marker_size = base_size
 
     # define marker outline
-    if re_get(settings, "-outline-radio.value") != "off":
+    if re_get(settings, "outline-radio.value") != "off":
         marker_line = {
-            "color": re_get(settings, "-outline-radio.value"),
+            "color": re_get(settings, "outline-radio.value"),
             "width": 5,
         }
     else:
         marker_line = {}
 
     # set marker symbol
-    marker_symbol = re_get(settings, "-marker-symbol.value")
+    marker_symbol = re_get(settings, "marker-symbol.value")
 
-    return {
+    marker_property_dict = {
         "marker": {
             "color": color,
             "colorscale": colormap,
-            "colorbar": colorbar,
             "size": marker_size,
             "opacity": opacity,
             "symbol": marker_symbol,
         },
         "line": marker_line,
     }
+    # setting a "None" colorbar causes plotly to draw fake ticks
+    if colorbar is not None:
+        marker_property_dict["marker"]["colorbar"] = colorbar
+    return marker_property_dict, props["value_type"]
 
 
-def make_graph_display_settings(settings):
+def format_display_settings(settings):
     settings_dict = {}
     axis_settings_dict = {}
-    if re_get(settings, "-graph-bg"):
-        settings_dict["plot_bgcolor"] = re_get(settings, "-graph-bg")
-    if re_get(settings, "-gridlines") == "on":
-        axis_settings_dict["showgrid"] = True
-    else:
+    if re_get(settings, "graph-bg"):
+        settings_dict["plot_bgcolor"] = re_get(settings, "graph-bg")
+    if re_get(settings, "gridlines") == "off":
         axis_settings_dict["showgrid"] = False
-
+    else:
+        axis_settings_dict["showgrid"] = True
+        axis_settings_dict["gridcolor"] = re_get(settings, "gridlines")
     return settings_dict, axis_settings_dict
 
 
@@ -413,6 +411,16 @@ def style_toggle(style, style_property="display", states=("none", "revert")):
     return style
 
 
+def style_select(
+    style, selection, style_property="display", states=("none", "revert")
+):
+    """
+    generic style-toggling function that just cycles
+    style property of component between states
+    by default it toggles visibility
+    """
+
+
 def spectrum_values_range(metadata_df, field):
     """
     returns minimum and maximum values of property within id list of spectra.
@@ -420,10 +428,6 @@ def spectrum_values_range(metadata_df, field):
     """
     values = metadata_df[field]
     return values.min(), values.max()
-
-
-def trigger_search_update(_load_trigger, search_triggers):
-    return ["bang" for _ in search_triggers]
 
 
 def non_blank_search_parameters(parameters):
@@ -466,7 +470,7 @@ def add_dropdown(children, spec_model, cget, cset):
     adds another dropdown for search constraints.
     """
     # check with the cache in order to pick an index
-    # this is because resetting the layout for tabs destroys n_clicks
+    # this is because resetting the layout on load destroys n_clicks
     # could parse the page instead but i think this is better
     index = cget("search_parameter_index")
     if not index:
@@ -522,30 +526,36 @@ def make_mspec_browse_image_components(
     image_div_children = []
     for eye in ["left", "right"]:
         try:
-            # size = file_info[eye + "_size"]
+            # if there are lots, we're not exercising ourselves with trying to
+            # distinguish them...the metadata are largely not available
             eye_images = keyfilter(lambda key: eye in key, file_info)
             assert len(eye_images) >= 1
             filename = static_image_url + list(eye_images.values())[0]
+            # size = list(
+            #     keyfilter(lambda key: "size" in key, eye_images).values()
+            # )[0]
         except AssertionError:
             # size = (480, 480)
             filename = static_image_url + "missing.jpg"
-        # aspect_ratio = size[0] / size[1]
-        # width = base_size * aspect_ratio
-        # height = base_size / aspect_ratio
         image_div_children.append(
             html.Img(
                 src=filename,
-                style={"width": "50%", "height": "50%"},
+                style={
+                    # "aspectRatio": f"{size[0]} / {size[1]}",
+                    "maxWidth": "55%",
+                    "maxHeight": "55%",
+                },
                 id="spec-image-" + eye,
             )
         )
-        component = html.Div(
-            children=image_div_children,
-        )
-    return component
+
+    return html.Div(
+        children=image_div_children
+    )
 
 
-# TODO: assess whether this hack remains in
+# TODO: assess whether this hack remains in, assess goodness of display in
+#  new layout
 def make_zspec_browse_image_components(
     zspec: "ZSpec", image_directory, static_image_url
 ):
@@ -556,28 +566,25 @@ def make_zspec_browse_image_components(
     route defined in the live app instance -- silly hack rn
     """
     file_info = zspec.overlay_browse_file_info(image_directory)
-    image_div_children = []
+    filename = None
     for eye in ["left", "right"]:
         try:
-            # size = file_info[eye + "_size"]
             filename = static_image_url + file_info[eye + "_file"]
         except KeyError:
-            # size = (480, 480)
-            filename = static_image_url + "missing.jpg"
-        # aspect_ratio = size[0] / size[1]
-        # width = base_size * aspect_ratio
-        # height = base_size / aspect_ratio
-        image_div_children.append(
+            continue
+    if filename is None:
+        filename = static_image_url + "missing.jpg"
+    # in this case we're just aggressively setting the appropriate
+    # aspect ratio. this is probably not always a good idea.
+    return html.Div(
+        children=[
             html.Img(
                 src=filename,
-                style={"width": "50%", "height": "50%"},
+                style={"maxWidth": "100%", "maxHeight": "100%"},
                 id="spec-image-" + eye,
             )
-        )
-        component = html.Div(
-            children=image_div_children,
-        )
-    return component
+        ],
+    )
 
 
 class SPlot:
@@ -607,7 +614,7 @@ class SPlot:
             self.axis_display_dict,
             self.text,
             self.customdata,
-            self.main_label_ids,
+            self.label_ids,
             self.zoom,
             self.x_errors,
             self.y_errors,
@@ -635,23 +642,24 @@ class SPlot:
         "y_settings",
         "marker_settings",
         "graph_function",
-        "main_highlight_parameters",
+        "highlight_parameters",
         "highlight_ids",
         "scale_to",
         "average_filters",
         "graph_display_dict",
         "axis_display_dict",
-        "main_label_ids",
+        "label_ids",
         "zoom",
         "x_errors",
         "y_errors",
         "x_title",
         "y_title",
+        "main_graph_bounds",
     )
 
     setting_parameters = (
         "search_parameters",
-        "main_highlight_parameters",
+        "highlight_parameters",
         "x_settings",
         "y_settings",
         "marker_settings",
@@ -673,12 +681,20 @@ def describe_current_graph(cget):
     }
 
 
-def load_values_into_search_div(row, spec_model, search_file, cset):
+def load_values_into_search_div(search_file, spec_model, cset):
     """makes a search tab with preset values from a saved search."""
-    saved_searches = pd.read_csv(search_file)
-    row_dict = rows(saved_searches)[row].to_dict()
-    # TODO: doing this here might mean something is wrong in control flow
-    cset("main_highlight_parameters", row_dict["main_highlight_parameters"])
+    search = pd.read_csv(search_file).iloc[0]
+    row_dict = search.to_dict()
+    # TODO: somewhat bad smell, might mean something is wrong in control flow
+    if "highlight parameters" in row_dict.keys():
+        cset("highlight_parameters", row_dict["highlight_parameters"])
+    if "search_parameters" in row_dict.keys():
+        cset(
+            "search_parameter_index",
+            len(literal_eval(row_dict["search_parameters"]))
+        )
+    else:
+        cset("search_parameter_index", 0)
     return search_div(spec_model, row_dict)
 
 
@@ -689,11 +705,7 @@ def pretty_print_search_params(search_parameters):
     for param in search_parameters:
         if "begin" in param.keys() or "end" in param.keys():
             string_list.append(
-                param["field"]
-                + ": "
-                + str(param["begin"])
-                + " -- "
-                + str(param["end"])
+                f"{param['field']}: {param['begin']} -- {param['end']}"
             )
         else:
             if param.get("term"):
@@ -751,3 +763,69 @@ def make_scatter_annotations(metadata_df, truncated_ids):
         + feature_color
     ).values
     return text
+
+
+def retrieve_graph_data(cget):
+    search_ids = cget("search_ids")
+    highlight_ids = cget("highlight_ids")
+    data_df = cget("data_df")
+    metadata_df = cget("metadata_df")
+    return data_df, metadata_df, highlight_ids, search_ids
+
+
+def halt_for_ineffective_highlight_toggle(ctx, marker_settings):
+    if isinstance(ctx.triggered[0]["prop_id"], dict):
+        if ctx.triggered[0]["prop_id"]["type"] == "highlight-trigger":
+            if marker_settings["highlight-toggle.value"] == "off":
+                raise PreventUpdate
+
+
+def add_or_remove_label(cset, ctx, label_ids):
+    """
+    label point based on click. this adds the point id to the set of labels;
+    it does not perform label rendering.
+    """
+    clicked_id = ctx.triggered[0]["value"]["points"][0]["customdata"]
+    if clicked_id in label_ids:
+        label_ids.remove(clicked_id)
+    else:
+        label_ids.append(clicked_id)
+    cset("label_ids", label_ids)
+
+
+def parse_main_graph_bounds_string(ctx):
+    bounds_string = ctx.inputs["main-graph-bounds.value"]
+    try:
+        bounds_string = [
+            float(bound) for bound in filter(None, bounds_string.split(" "))
+        ]
+        assert len(bounds_string) == 4
+        return bounds_string
+    except (ValueError, AssertionError, AttributeError):
+        return None
+
+
+def update_zoom_from_bounds_string(graph, bounds_string):
+    graph.update_layout(
+        {
+            "xaxis": {
+                "range": [bounds_string[0], bounds_string[1]],
+                "autorange": False,
+            },
+            "yaxis": {
+                "range": [bounds_string[2], bounds_string[3]],
+                "autorange": False,
+            },
+        }
+    )
+    return graph
+
+
+def explicitly_set_graph_bounds(ctx):
+    """change graph bounds based on input to the 'set bounds' field"""
+    bounds_string = parse_main_graph_bounds_string(ctx)
+    if bounds_string is None:
+        raise PreventUpdate
+    graph = go.Figure(ctx.states["main-graph.figure"])
+    update_zoom_from_bounds_string(graph, bounds_string)
+    return graph, {}
