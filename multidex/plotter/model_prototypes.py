@@ -27,11 +27,11 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
     # ltst for first frame of sequence
     "ltst": models.TimeField("Local True Solar Time", **B_N_I),
     "seq_id": models.CharField("sequence id", max_length=20, db_index=True),
-    "rover_elevation": models.FloatField("Rover Elevation", **B_N_I),
-    "target_elevation": models.FloatField(
-        "Target Elevation", null=True, db_index=True
-    ),
-    "tau": models.FloatField("Tau", **B_N_I),
+    # "rover_elevation": models.FloatField("Rover Elevation", **B_N_I),
+    # "target_elevation": models.FloatField(
+    #     "Target Elevation", null=True, db_index=True
+    # ),
+    # "tau": models.FloatField("Tau", **B_N_I),
     "focal_distance": models.FloatField("Focal Distance", **B_N_I),
     "incidence_angle": models.FloatField("Incidence Angle", **B_N_I),
     "emission_angle": models.FloatField("Emission Angle", **B_N_I),
@@ -39,38 +39,38 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
     "l_s": models.FloatField("Solar Longitude", **B_N_I),
     # arbitrary number for the site. part of the ROVER_NAV_FRAME
     # coordinate system
-    "site": models.IntegerField("Site", **B_N_I),
+    # "site": models.IntegerField("Site", **B_N_I),
     # similar
-    "drive": models.IntegerField("Drive", **B_N_I),
+    # "drive": models.IntegerField("Drive", **B_N_I),
     # planetographic lat/lon
-    "lat": models.FloatField("Latitude", **B_N_I),
-    "lon": models.FloatField("Longitude", **B_N_I),
-    "odometry": models.FloatField("Odometry", **B_N_I),
-    "filename": models.CharField(
-        "Source CSV Filename", max_length=100, db_index=True
-    ),
-    "sclk": models.IntegerField("Spacecraft Clock", **B_N_I),
-    "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I),
+    # "lat": models.FloatField("Latitude", **B_N_I),
+    # "lon": models.FloatField("Longitude", **B_N_I),
+    # "odometry": models.FloatField("Odometry", **B_N_I),
+    # "filename": models.CharField(
+    #     "Source CSV Filename", max_length=100, db_index=True
+    # ),
+    # "sclk": models.IntegerField("Spacecraft Clock", **B_N_I),
+    # "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I),
 }
 
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
 # metadata, however that is defined wrt mission-level divisions
 XCAM_SINGLE_SPECTRUM_FIELDS = {
     # color of associated ROI
-    "color": models.CharField(
-        "ROI Color", blank=True, max_length=20, db_index=True
-    ),
-    "feature": models.CharField("feature category", **B_N_I, max_length=45),
-    # ############################################
-    # ## lithological information -- relevant only to rocks ###
-    # #########################################################
-    # large-to-small taxonomic categories for rock clusters
-    "filename": models.CharField(
-        "Name of archive CSV file", max_length=50, db_index=True
-    ),
-    # ## end lithological ###
-    # stringified dict of images associated with the spectrum
-    "images": models.TextField(**B_N_I, default="{}"),
+    # "color": models.CharField(
+    #     "ROI Color", blank=True, max_length=20, db_index=True
+    # ),
+    # "feature": models.CharField("feature category", **B_N_I, max_length=45),
+    # # ############################################
+    # # ## lithological information -- relevant only to rocks ###
+    # # #########################################################
+    # # large-to-small taxonomic categories for rock clusters
+    # "filename": models.CharField(
+    #     "Name of archive CSV file", max_length=50, db_index=True
+    # ),
+    # # ## end lithological ###
+    # # stringified dict of images associated with the spectrum
+    # "images": models.TextField(**B_N_I, default="{}"),
 }
 
 
@@ -155,7 +155,7 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "min_count", "value_type": "quant"},
     {"value": "analysis_name", "value_type": "qual"},
     {"value": "scam_libs", "value_type": "qual"},
-    {"value": "scam_visir", "value_type": "qual"},
+    {"value": "scam_visir", "value_type": "qualx"},
     {"value": "scam_raman", "value_type": "qual"},
     {"value": "float", "value_type": "qual"},
     {"value": "rock_surface", "value_type": "qual"},
