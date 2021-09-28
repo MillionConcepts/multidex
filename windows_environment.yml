@@ -27,13 +27,13 @@ dependencies:
   - pvl
   - sympy
   - git
-  - wand
   - pip
   - python-kaleido
   - pip:
     - "git+https://github.com/MillionConcepts/pdr.git"
     - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
+    - wand
 
 
 
