@@ -14,7 +14,7 @@ from itertools import chain, cycle
 from operator import or_
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-import dash_html_components as html
+from dash import html
 import numpy as np
 import pandas as pd
 from dash.exceptions import PreventUpdate
