@@ -1,8 +1,8 @@
 from functools import partial
 from typing import Optional, Mapping
 
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 
 from multidex_utils import get_if
 from plotter.components.ui_components import (
