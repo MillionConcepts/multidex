@@ -23,7 +23,7 @@ dependencies:
   - plotly
   - matplotlib
   - werkzeug==1.0.1
-  - scikit-learnn
+  - scikit-learn
   - pvl
   - sympy
   - git
