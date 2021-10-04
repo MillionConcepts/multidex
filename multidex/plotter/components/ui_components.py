@@ -4,20 +4,19 @@ from ast import literal_eval
 from functools import partial
 from typing import Mapping, Optional, Iterable, Callable
 
-import dash_core_components as dcc
-import dash_html_components as html
-import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from dash_html_components import Div
+from dash import dcc
+from dash import html
+from dash.html import Div
 
+from multidex_utils import get_if, none_to_empty
 from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
     css_variables,
 )
 from plotter.styles.marker_style import SOLID_MARKER_COLORS, MARKER_SYMBOLS
-from multidex_utils import get_if, none_to_empty
 
 
 # note that style properties are camelCased rather than hyphenated in
