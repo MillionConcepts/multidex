@@ -90,8 +90,6 @@ class MSpec(XSpec):
 
 
 class CSpec(XSpec):
-    # TODO check if CCAM should actually inherit from XSpec?
-    # TODO what to actually include in the model?...
     target = models.CharField("Target", **B_N_I, max_length=50)
     type_of_product = models.CharField("Type of Product", **B_N_I, max_length=50)
     # distance = models.CharField("Distance", max_length=20, **B_N_I)

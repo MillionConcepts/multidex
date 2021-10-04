@@ -158,7 +158,7 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "min_count", "value_type": "quant"},
     {"value": "analysis_name", "value_type": "qual"},
     {"value": "scam_libs", "value_type": "qual"},
-    {"value": "scam_visir", "value_type": "qualx"},
+    {"value": "scam_visir", "value_type": "qual"},
     {"value": "scam_raman", "value_type": "qual"},
     {"value": "float", "value_type": "qual"},
     {"value": "rock_surface", "value_type": "qual"},
