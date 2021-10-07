@@ -529,17 +529,16 @@ def handle_highlight_save(
     if "load-trigger" in str(ctx.triggered):
         # main highlight parameters are currently restored
         # in make_loaded_search_tab()
-        # TODO: did we actually need the data df here...? I think not.
-        metadata_df = cget("metadata_df")
+        search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
         params = cget("highlight_parameters")
         if params is not None:
-            params = literal_eval(params)
+            params = literal_eval(str(params))
             cset(
                 "highlight_ids",
-                handle_graph_search(metadata_df, params, spec_model),
+                handle_graph_search(search_df, params, spec_model),
             )
         else:
-            cset("highlight_ids", metadata_df.index)
+            cset("highlight_ids", search_df.index.to_list())
         cset("highlight_parameters", params)
     else:
         highlight_ids = cget("highlight_ids")
