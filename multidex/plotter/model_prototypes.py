@@ -166,6 +166,7 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "soil_location", "value_type": "qual"},
     {"value": "soil_color", "value_type": "qual"},
     {"value": "landform_type", "value_type": "qual"},
+    {"value": "odometry", "value_type": "quant"}
 )
 
 XCAM_CALCULATED_PROPERTIES = (
