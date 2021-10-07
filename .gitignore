@@ -3,6 +3,7 @@
 **/.ipynb_checkpoints
 *.log
 **idea/
+*.egg-info
 /multidex/cache/*
 /multidex/exports/*
 /multidex/saves/*

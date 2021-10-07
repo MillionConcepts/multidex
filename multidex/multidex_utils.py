@@ -720,7 +720,7 @@ def dedict(dictionary: Mapping) -> Any:
 def rearrange_band_depth_for_title(text: str) -> str:
     filts = re.split(r"([L|R]?\d[RGB]?)", text, maxsplit=0)
     return (
-        f"{filts[0]}{filts[3]}, " f"shoulders at {filts[1]} and " f"{filts[5]}"
+        f"{filts[0]}{filts[5]}, " f"shoulders at {filts[1]} and " f"{filts[3]}"
     )
 
 
