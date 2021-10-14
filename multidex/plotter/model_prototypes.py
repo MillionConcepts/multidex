@@ -59,21 +59,21 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
 # metadata, however that is defined wrt mission-level divisions
 XCAM_SINGLE_SPECTRUM_FIELDS = {
-    # # color of associated ROI
-    # "color": models.CharField(
-    #     "ROI Color", blank=True, max_length=20, db_index=True
-    # ),
-    # "feature": models.CharField("feature category", **B_N_I, max_length=45),
-    # # ############################################
-    # # ## lithological information -- relevant only to rocks ###
-    # # #########################################################
-    # # large-to-small taxonomic categories for rock clusters
-    # "filename": models.CharField(
-    #     "Name of archive CSV file", max_length=50, db_index=True
-    # ),
-    # # ## end lithological ###
-    # # stringified dict of images associated with the spectrum
-    # "images": models.TextField(**B_N_I, default="{}"),
+    # color of associated ROI
+    "color": models.CharField(
+        "ROI Color", blank=True, max_length=20, db_index=True
+    ),
+    "feature": models.CharField("feature category", **B_N_I, max_length=45),
+    # ############################################
+    # ## lithological information -- relevant only to rocks ###
+    # #########################################################
+    # large-to-small taxonomic categories for rock clusters
+    "filename": models.CharField(
+        "Name of archive CSV file", max_length=50, db_index=True
+    ),
+    # ## end lithological ###
+    # stringified dict of images associated with the spectrum
+    "images": models.TextField(**B_N_I, default="{}"),
 }
 
 
