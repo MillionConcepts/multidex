@@ -195,7 +195,7 @@ class XSpec(models.Model):
     abstract class representing an ROI from an XCAM-family instrument
     """
 
-    # four-letter instrument designation: PCAM, MCAM, ZCAM
+    # four-letter instrument designation: PCAM, MCAM, ZCAM, CCAM
     instrument = None
     # brief and full instrument names
     instrument_brief_name = None
