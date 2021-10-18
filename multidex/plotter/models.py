@@ -104,7 +104,6 @@ class CSpec(XSpec):
     solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
     temp = models.FloatField("Instrument Temperature (C)", **B_N_I)
     libs_before = models.BooleanField("LIBS before pass", **B_N_I)
-    atmospheric_opacity = models.FloatField("Atmospheric Opacity", **B_N_I)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
 
     instrument = "CCAM"
