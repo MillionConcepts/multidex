@@ -80,7 +80,10 @@ contain one file, "backend.sqlite3".
 ## step 5: run multidex
 
 Now you can execute MultiDEx by running `python multidex.py INSTRUMENT_CODE`, 
-e.g., `python multidex.py MCAM`.
+e.g., `python multidex.py MCAM`. A server should launch at 127.0.0.1:49303.
+Open that URL in a browser and you should see the application. We recommend
+Chrome-family browsers, although it should function in Firefox or Safari --
+it will just be slower.
 
 ## common gotchas
 
