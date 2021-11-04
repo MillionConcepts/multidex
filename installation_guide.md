@@ -92,6 +92,9 @@ it will just be slower.
 * If terminal commands don't seem like they're working at all, make sure you're in 
   the correct directory -- depending on the task, that might be the directory where you
   downloaded the `conda` setup script, or the directory where you cloned the MultiDEx repository.
+  If you're on Windows, make sure you're not using the system Command Prompt or Powershell,
+  but rather the Anaconda Prompt (sometimes called Miniconda Prompt, etc.) that came with your
+  `conda` installation.
 * If you use multiple shells on macOS or Linux, `conda` will only 
   automatically set up the one it detects as your system default. If you can't 
   activate the environment, check a different shell or explicitly run `conda init NAME_OF_YOUR_SHELL`
