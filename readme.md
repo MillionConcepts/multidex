@@ -1,15 +1,7 @@
 M/ZCAM multispectral plotter tool. Beta status.
 
-### dependencies
-See the `conda` [environment.yml](environment.yml) file. 
-
-On MacOS and Linux, `conda env create -f environment.yml` should produce an env named `multidex` suitable for running the app. (There is a ton of documentation online for setting up and using `conda`, so we won't try to reproduce that here. [Here is one.](https://www.youtube.com/watch?v=zL65J9c5_KU))
-
-On Windows, you will need to install ImageMagick separately. 
-[You can get it here.](https://download.imagemagick.org/ImageMagick/download/binaries/ImageMagick-7.0.10-62-Q16-HDRI-x64-dll.exe) 
-When installing ImageMagick, **you must click the "install development headers and libraries for C and C++" box in the installer.**
-If you do not do this, the Wand library will be unable to find your installation of ImageMagick. After installing ImageMagick,
-run `conda env create -f windows_environment.yml`.
+### installation
+See [the installation guide](installation_guide.md).
 
 ### usage
 runtime commands enabling user-facing functionality are currently all included in 
