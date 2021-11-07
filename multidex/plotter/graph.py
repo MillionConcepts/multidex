@@ -4,7 +4,7 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
-
+import ast
 import datetime as dt
 from ast import literal_eval
 from collections.abc import Iterable
@@ -522,26 +522,19 @@ def make_mspec_browse_image_components(
     images associated with that object, pathed to the assets image
     route defined in the live app instance
     """
-    file_info = mspec.overlay_browse_file_info(image_directory)
     image_div_children = []
+    images = ast.literal_eval(mspec.images)
     for eye in ["left", "right"]:
         try:
-            # if there are lots, we're not exercising ourselves with trying to
-            # distinguish them...the metadata are largely not available
-            eye_images = keyfilter(lambda key: eye in key, file_info)
+            eye_images = keyfilter(lambda key: eye in key, images)
             assert len(eye_images) >= 1
             filename = static_image_url + list(eye_images.values())[0]
-            # size = list(
-            #     keyfilter(lambda key: "size" in key, eye_images).values()
-            # )[0]
         except AssertionError:
-            # size = (480, 480)
             filename = static_image_url + "missing.jpg"
         image_div_children.append(
             html.Img(
                 src=filename,
                 style={
-                    # "aspectRatio": f"{size[0]} / {size[1]}",
                     "maxWidth": "55%",
                     "maxHeight": "55%",
                 },
@@ -549,9 +542,7 @@ def make_mspec_browse_image_components(
             )
         )
 
-    return html.Div(
-        children=image_div_children
-    )
+    return html.Div(children=image_div_children)
 
 
 # TODO: assess whether this hack remains in, assess goodness of display in
@@ -691,7 +682,7 @@ def load_values_into_search_div(search_file, spec_model, cset):
     if "search_parameters" in row_dict.keys():
         cset(
             "search_parameter_index",
-            len(literal_eval(row_dict["search_parameters"]))
+            len(literal_eval(row_dict["search_parameters"])),
         )
     else:
         cset("search_parameter_index", 0)
