@@ -77,6 +77,14 @@ maintainers if you need and do not have access to these files. Once you have
 these files, place them in the multidex/data subdirectory, which should already
 contain one file, "backend.sqlite3".
 
+## step 5: put browse images in the browse directory
+
+Browse images are also distributed separately from this application as .zip files. Please contact 
+the repository maintainers if you need and do not have access to these files. Once you
+have the .zip file for the instrument you are working with, uncompress it into 
+multidex/plotter/application/assets/browse/$INSTRUMENT_NAME, e.g., 
+multidex/plotter/application/assets/browse/mcam.
+
 ## step 5: run multidex
 
 Now you can execute MultiDEx by running `python multidex.py INSTRUMENT_CODE`, 

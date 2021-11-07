@@ -67,6 +67,9 @@ class MSpec(XSpec):
         return MERSPECT_MSL_COLOR_MAPPINGS[self.color]
 
     # TODO: hacky?
+    #  yes, it absolutely is. Deprecate this completely, just fold direct
+    #  object introspection back in, as is currently happening in
+    #  graph.make_mspec_browse_image_components
     def overlay_browse_file_info(self, image_directory: str) -> dict:
         files = self.image_files()
         images = {}
