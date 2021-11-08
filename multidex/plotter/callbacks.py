@@ -5,7 +5,6 @@ decorators in order to generate flow control within a dash app.
 import datetime as dt
 import json
 import os
-import re
 
 from ast import literal_eval
 from copy import deepcopy
@@ -237,9 +236,24 @@ def update_main_graph(
     # handle explicit bounds changes
     if trigger == "main-graph-bounds.value":
         return explicitly_set_graph_bounds(ctx)
-
     bounds_string = parse_main_graph_bounds_string(ctx)
-
+    try:
+        color_clip = [
+            ctx.inputs["color-clip-bound-low.value"],
+            ctx.inputs["color-clip-bound-high.value"]
+        ]
+        if len(color_clip) != 2:
+            raise ValueError("need two numerals in this field to do things")
+        if color_clip[0] > color_clip[1]:
+            raise ValueError("refusing to clip backwards")
+    except (AttributeError, TypeError, ValueError):
+        # don't change anything if they're in the middle of messing around
+        # with the color clip
+        if "color-clip-bound" in trigger:
+            raise PreventUpdate
+        # but if they have changed some other input with an invalid color clip
+        # string in the dialog, render as if there were no color clip at all.
+        color_clip = []
     # handle label addition / removal
     label_ids = cget("label_ids")
     # TODO: performance increase is possible here by just returning the graph
@@ -276,6 +290,8 @@ def update_main_graph(
             )
     get_errors = ctx.inputs["main-graph-error.value"]
     filters_are_averaged = "average" in ctx.states["main-graph-average.value"]
+
+
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
@@ -299,8 +315,9 @@ def update_main_graph(
         data_df,
         metadata_df,
         get_errors,
-        highlight_ids,
         filters_are_averaged,
+        highlight_ids,
+        color_clip
     ]
     graph_df = pd.DataFrame({"customdata": truncated_ids})
     # storing these separately because the API for error bars is annoying

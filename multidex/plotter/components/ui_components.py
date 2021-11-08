@@ -398,7 +398,7 @@ def model_options_drop(
     element_id: str,
     index: int,
     value: Optional[str] = None,
-    className = "medium-drop",
+    className="medium-drop",
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
@@ -406,9 +406,7 @@ def model_options_drop(
     """
     # TODO: hacky.
     if value is not None:
-        loaded_values = [
-            {'label': item, 'value': item} for item in value
-        ]
+        loaded_values = [{"label": item, "value": item} for item in value]
     else:
         loaded_values = []
     return dcc.Dropdown(
@@ -735,6 +733,53 @@ def marker_outline_div(outline_color) -> Div:
     )
 
 
+def marker_clip_div(get_r: Callable) -> Div:
+    high = get_r("color-clip-bound-high")
+    if high is None:
+        high = 100
+    low = get_r("color-clip-bound-low")
+    if low is None:
+        low = 0
+    return html.Div(
+        [
+            html.Label(
+                children=["color clip"],
+                className="axis-title-text",
+                # TODO: wrap this more nicely
+                htmlFor="color-clip-bound-low",
+            ),
+            dcc.Input(
+                type="number",
+                id="color-clip-bound-low",
+                style={
+                    "height": "1.4rem",
+                    "width": "3rem",
+                },
+                value=low,
+                min=0,
+                max=100,
+            ),
+            dcc.Input(
+                type="number",
+                id="color-clip-bound-high",
+                style={
+                    "height": "1.4rem",
+                    "width": "3rem",
+                },
+                value=high,
+                min=0,
+                max=100,
+            ),
+        ],
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "marginRight": "0.3rem",
+            "marginLeft": "0.3rem",
+        },
+    )
+
+
 def marker_options_div(get_r: Callable) -> Div:
     coloring_type = get_r("coloring-type.value")
     if coloring_type is None:
@@ -760,7 +805,7 @@ def marker_options_div(get_r: Callable) -> Div:
     )
 
 
-def marker_color_symbol_div(get_r):
+def marker_color_symbol_div(get_r: Callable) -> Div:
     marker_symbol = get_r("marker-symbol.value")
     if marker_symbol is None:
         marker_symbol = "circle"
