@@ -60,7 +60,7 @@ def find_ingest_files(path: Path, recursive: bool = False):
         context_files = filter(looks_like_context, map(str, path.iterdir()))
     else:
         marslab_files = [str(path)]
-        context_files = filter(looks_like_context, map(str, path.iterdir()))
+        context_files = filter(looks_like_context, map(str, path.parent.iterdir()))
     return marslab_files, context_files
 
 
@@ -96,7 +96,6 @@ def asdf_stemmer(asdf_fn: str):
 def match_obs_images(marslab_file, context_df):
     file_stem = asdf_stemmer(Path(marslab_file).name)
     context_matches = context_df.loc[context_df["stem"] == str(file_stem)]
-    context_df.loc[context_matches.index, "save"] = True
     obs_images = {}
     for record in context_matches[["stem", "eye"]].to_dict(orient="records"):
         eye = record["eye"]
