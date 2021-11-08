@@ -41,6 +41,8 @@ MARKER_INPUTS = [
     Input("graph-option-marker", "value"),
     Input("coloring-type", "value"),
     Input("color-scale", "value"),
+    Input("color-clip-bound-low", "value"),
+    Input("color-clip-bound-high", "value"),
     Input("color-solid", "value"),
     Input("highlight-toggle", "value"),
     Input("marker-outline-radio", "value"),

@@ -20,6 +20,7 @@ from plotter.components.ui_components import (
     main_graph,
     dynamic_spec_div,
     trigger_div,
+    marker_clip_div,
 )
 
 
@@ -77,6 +78,9 @@ def search_div(
                     "m options",
                     marker_options_div(get_r),
                     off=True,
+                ),
+                *collapse(
+                    "marker-clip", "m clip", marker_clip_div(get_r), off=True
                 ),
                 *collapse(
                     "highlight-controls",
@@ -247,12 +251,7 @@ def multidex_body(spec_model):
                 id="search-load-progress-flag", style={"display": "none"}
             ),
             html.Div(
-                children=[
-                    dcc.Input(
-                        id="search-load-trigger",
-                        value=0
-                    )
-                ],
+                children=[dcc.Input(id="search-load-trigger", value=0)],
                 style={"display": "none"},
             ),
             # dcc.Interval(id="interval1", interval=1000, n_intervals=0),

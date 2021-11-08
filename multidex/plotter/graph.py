@@ -220,8 +220,9 @@ def make_axis(
     filter_df: pd.DataFrame,
     metadata_df: pd.DataFrame,
     get_errors: bool,
-    _highlight,
     filters_are_averaged,
+    _highlight,
+    _color_clip
 ) -> tuple[list[float], Optional[list[float]], str]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
@@ -276,8 +277,9 @@ def make_marker_properties(
     filter_df,
     metadata_df,
     _get_errors,
-    highlight_id_list,
     _filters_are_averaged,
+    highlight_id_list,
+    color_clip
 ):
     """
     this expects an id list that has already
@@ -325,6 +327,8 @@ def make_marker_properties(
                         map(seconds_since_beginning_of_day, property_list)
                     )
             color = property_list
+            if color_clip not in ([], [0, 100]):
+                color = np.clip(color, *np.percentile(color, color_clip))
         colorbar = go.scatter.marker.ColorBar(**colorbar_dict)
 
     # define marker size settings
