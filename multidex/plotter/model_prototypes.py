@@ -26,10 +26,10 @@ B_N_I = {"blank": True, "null": True, "db_index": True}
 XCAM_SHARED_OBSERVATION_FIELDS = {
     # name of entire sequence or observation
     "name": models.CharField("Name", max_length=100, db_index=True),
-    "sol": models.IntegerField("Sol", db_index=True),
+    "sol": models.IntegerField("Sol", **B_N_I),
     # ltst for first frame of sequence
     "ltst": models.TimeField("Local True Solar Time", **B_N_I),
-    "seq_id": models.CharField("sequence id", max_length=20, db_index=True),
+    "seq_id": models.CharField("sequence id", max_length=20, **B_N_I),
     "rover_elevation": models.FloatField("Rover Elevation", **B_N_I),
     "target_elevation": models.FloatField(
         "Target Elevation", null=True, db_index=True
@@ -280,7 +280,7 @@ class XSpec(models.Model):
         return keyfilter(lambda x: x in aprops, modeldict(self))
 
     def __str__(self):
-        return "sol" + str(self.sol) + "_" + self.name + "_" + self.seq_id
+        return f"sol {self.sol}_{self.name}_{self.seq_id}"
 
     class Meta:
         abstract = True
