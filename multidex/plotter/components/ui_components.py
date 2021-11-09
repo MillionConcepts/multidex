@@ -486,7 +486,7 @@ def model_range_entry(
     )
 
 
-def model_range_display(element_id: str, index: int) -> html.P:
+def model_range_display(element_id: str, index: int) -> html.Span:
     """placeholder area for displaying range for number field searches"""
     return html.Span(
         className="tooltiptext",

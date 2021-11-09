@@ -111,7 +111,7 @@ def discretize_color_representations(fig):
     # first, a special case:
     if len(tickvals) == 2:
         marker_dict["colorbar"]["tickvals"] = [0.25, 0.75]
-    # and otherwise interpolating to the weird quasi-relative scale they use
+    # otherwise, interpolate to the weird quasi-relative scale they use
     else:
         marker_dict["colorbar"]["tickvals"] = np.interp(
             tickvals,
