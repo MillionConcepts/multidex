@@ -178,7 +178,7 @@ def columns(dataframe: pd.DataFrame) -> list[np.ndarray]:
 
 
 def dict_to_paragraphs(
-        dictionary, style=None, ordering=None, filterfalse=True
+    dictionary, style=None, ordering=None, filterfalse=True
 ):
     """
     parses dictionary to list of dash <p> components
@@ -192,6 +192,7 @@ def dict_to_paragraphs(
     if ordering is None:
         ordering = []
     from cytoolz import valfilter
+
     if filterfalse is True:
         dictionary = valfilter(lambda x: x not in (False, None), dictionary)
     ordered_grafs = [
@@ -576,48 +577,33 @@ def df_term_search(
 
 def df_interval_search(
     metadata_df: pd.DataFrame,
-    field: str,
+    column: str,
     interval_begin: Any = None,
     interval_end: Any = None,
     strictly: bool = False,
 ) -> pd.DataFrame.index:
     """
-    interval_begin and interval_end must be of types for which
-    the elements of the set of the chosen attribute of the elements of queryset
-    possess a complete ordering exposed to pandas
+    interval_begin and interval_end must be of types for which the elements of
+    column from metadata_df possess a complete ordering exposed to pandas.
     if both interval_begin and interval_end are defined, returns
     all entries > begin and < end.
     if only interval_begin is defined: all entries > begin.
     if only interval_end is defined: all entries < end.
-    if neither: trivially returns the index.)
+    if neither: trivially return the index.
     """
     if strictly:
-        less_than = lt
-        greater_than = gt
+        less_than, greater_than = (lt, gt)
     else:
-        less_than = le
-        greater_than = ge
-
-    # these variables are queries defined by the ordering on this attribute.
-    greater_than_begin = (
-        metadata_df[field]
-        .loc[greater_than(metadata_df[field], interval_begin)]
-        .index
-    )
-    less_than_end = (
-        metadata_df[field]
-        .loc[less_than(metadata_df[field], interval_end)]
-        .index
-    )
-
-    # select only entries with attribute greater than interval_begin (if
-    # defined)
-    # and less than interval_end (if defined)
+        less_than, greater_than = (le, ge)
     indices = [metadata_df.index]
-    if interval_begin:
-        indices.append(greater_than_begin)
-    if interval_end:
-        indices.append(less_than_end)
+    for relation, bound in zip(
+        (greater_than, less_than), (interval_begin, interval_end)
+    ):
+        if bound is None:
+            continue
+        indices.append(
+            metadata_df[column].loc[relation(metadata_df[column], bound)].index
+        )
     return reduce(pd.Index.intersection, indices)
 
 
