@@ -54,7 +54,8 @@ from plotter.graph import (
     halt_for_ineffective_highlight_toggle,
     add_or_remove_label,
     explicitly_set_graph_bounds,
-    parse_main_graph_bounds_string, get_axis_option_props,
+    parse_main_graph_bounds_string,
+    get_axis_option_props,
 )
 from plotter.spectrum_ops import data_df_from_queryset
 
@@ -78,13 +79,14 @@ def handle_load(
     """
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
-    if trigger == '.':
+    if trigger == ".":
         if default_settings_checked is True:
             raise PreventUpdate
         try:
             selected_file = next(
-                str(search) for search in Path(search_path).iterdir()
-                if search.stem.lower() == 'default'
+                str(search)
+                for search in Path(search_path).iterdir()
+                if search.stem.lower() == "default"
             )
         except (StopIteration, FileNotFoundError):
             raise PreventUpdate
@@ -220,6 +222,12 @@ def update_data_df(
     return scale_trigger_count + 1
 
 
+# TODO: this is somewhat nasty. is there a cleaner way to do this?
+#  flow control becomes really hard if we break the function up.
+#  it requires triggers spread across multiple divs or cached globals
+#  and is much uglier than even this. dash's restriction on callbacks to a
+#  single output makes it even worse. probably the best thing to do
+#  in the long run is to treat this basically as a dispatch function.
 def update_main_graph(
     *args,
     x_inputs,
@@ -240,7 +248,7 @@ def update_main_graph(
     try:
         color_clip = [
             ctx.inputs["color-clip-bound-low.value"],
-            ctx.inputs["color-clip-bound-high.value"]
+            ctx.inputs["color-clip-bound-high.value"],
         ]
         if len(color_clip) != 2:
             raise ValueError("need two numerals in this field to do things")
@@ -291,7 +299,6 @@ def update_main_graph(
     get_errors = ctx.inputs["main-graph-error.value"]
     filters_are_averaged = "average" in ctx.states["main-graph-average.value"]
 
-
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
@@ -305,7 +312,7 @@ def update_main_graph(
         return (
             failed_scatter_graph(
                 "matching spectra lack requested properties",
-                graph_display_dict
+                graph_display_dict,
             ),
             {},
         )
@@ -317,7 +324,7 @@ def update_main_graph(
         get_errors,
         filters_are_averaged,
         highlight_ids,
-        color_clip
+        color_clip,
     ]
     graph_df = pd.DataFrame({"customdata": truncated_ids})
     # storing these separately because the API for error bars is annoying
@@ -401,7 +408,8 @@ def update_search_options(
             search_text = ""
         return [
             [{"label": "any", "value": "any"}],
-            "min/max: " + str(spectrum_values_range(search_df, field))
+            "min/max: "
+            + str(spectrum_values_range(search_df, field))
             + """ e.g., '100--200' or '100, 105, 110'""",
             search_text,
         ]
@@ -480,6 +488,7 @@ def change_calc_input_visibility(calc_type, *, spec_model):
             for x in range(3)
         ] + [{"display": "none"}]
     elif props["type"] == "decomposition":
+        # noinspection PyTypeChecker
         return [{"display": "none"} for _ in range(3)] + [
             {"display": "flex", "flexDirection": "column"}
         ]
@@ -522,9 +531,7 @@ def update_spectrum_images(
         return make_zspec_browse_image_components(
             spectrum, image_directory, static_image_url
         )
-    return make_mspec_browse_image_components(
-        spectrum, image_directory, static_image_url
-    )
+    return make_mspec_browse_image_components(spectrum, static_image_url)
 
 
 def populate_saved_search_drop(*_triggers, search_path):
@@ -605,7 +612,7 @@ def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
 # TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget, spec_model):
     ctx = dash.callback_context
-    if ctx.triggered[0]['value'] is None:
+    if ctx.triggered[0]["value"] is None:
         raise PreventUpdate
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("data_df").copy()
@@ -621,9 +628,9 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
             columns={"SOIL_LOCATION": "SOIL LOCATION"}
         )
     if cget("r_star") is True:
-        metadata_df['UNITS'] = 'R*'
+        metadata_df["UNITS"] = "R*"
     else:
-        metadata_df['UNITS'] = 'IOF'
+        metadata_df["UNITS"] = "IOF"
     output_df = (
         pd.concat(
             [metadata_df, filter_df],
@@ -718,6 +725,7 @@ def save_search_state(
     state_line["name"] = save_name
     save_name = save_name + ".csv"
     os.makedirs(search_path, exist_ok=True)
+    # noinspection PyTypeChecker
     state_line.to_csv(Path(search_path, save_name), index=False)
     return trigger_value + 1
 

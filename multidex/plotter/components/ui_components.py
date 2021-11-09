@@ -11,6 +11,7 @@ from dash import html
 from dash.html import Div
 
 from multidex_utils import get_if, none_to_empty
+from plotter.colors import get_plotly_colorscales
 from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
@@ -219,9 +220,7 @@ def spec_graph(name: str) -> dcc.Graph:
 
 def image_holder(index: int = 0) -> dcc.Graph:
     """dash component factory for zoomable assets images. maybe. placeholder"""
-    return dcc.Graph(
-        id="image-" + str(index),
-    )
+    return dcc.Graph(id="image-" + str(index))
 
 
 def color_scale_drop(element_id: str, value: str = None) -> dcc.Dropdown:
@@ -230,7 +229,7 @@ def color_scale_drop(element_id: str, value: str = None) -> dcc.Dropdown:
     """
     options = [
         {"label": colormap, "value": colormap}
-        for colormap in px.colors.named_colorscales()
+        for colormap in get_plotly_colorscales().keys()
     ]
     if not value:
         value = "haline"
