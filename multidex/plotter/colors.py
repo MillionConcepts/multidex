@@ -20,9 +20,13 @@ PLOTLY_COLOR_MODULES = (
 
 def get_plotly_colorscales(modules: tuple = PLOTLY_COLOR_MODULES) -> dict:
     return {
-        scale[0]: scale[1]
-        for scale in chain.from_iterable(map(inspect.getmembers, modules))
-        if isinstance(scale[1], Sequence) and not scale[0].startswith("_")
+        # they're all so conveniently named!
+        module.__name__.split(".")[-1]: {
+            scale[0]: scale[1]
+            for scale in inspect.getmembers(module)
+            if isinstance(scale[1], Sequence) and not scale[0].startswith("_")
+        }
+        for module in modules
     }
 
 
@@ -120,3 +124,17 @@ def discretize_color_representations(fig):
         )
     fig.update_traces(marker=marker_dict)
     return fig
+
+
+def generate_color_scale_options(scale_type, value):
+    colormaps = get_plotly_colorscales()
+    # this case should occur only on load of a saved state with a solid color
+    if scale_type not in colormaps.keys():
+        scale_type = "sequential"
+    options = [
+        {"label": colormap, "value": colormap}
+        for colormap in colormaps[scale_type].keys()
+    ]
+    if (value is None) or value not in [option["value"] for option in options]:
+        value = options[0]["value"]
+    return options, value

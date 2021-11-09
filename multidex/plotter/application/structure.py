@@ -39,7 +39,7 @@ MARKER_INPUTS = [
     if dropdown.endswith("-marker")
 ] + [
     Input("graph-option-marker", "value"),
-    Input("coloring-type", "value"),
+    Input("color-scale-type", "value"),
     Input("color-scale", "value"),
     Input("color-clip-bound-low", "value"),
     Input("color-clip-bound-high", "value"),

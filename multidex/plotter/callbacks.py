@@ -5,12 +5,10 @@ decorators in order to generate flow control within a dash app.
 import datetime as dt
 import json
 import os
-
 from ast import literal_eval
 from copy import deepcopy
 from itertools import cycle
 from pathlib import Path
-from typing import Tuple
 
 import dash
 import numpy as np
@@ -26,13 +24,13 @@ from multidex_utils import (
     field_values,
     not_blank,
 )
-from plotter.render_output.output_writer import save_main_scatter_plot
-from plotter.components.ui_components import parse_model_quant_entry
+from plotter.colors import get_plotly_colorscales, generate_color_scale_options
 from plotter.components.graph_components import (
     main_scatter_graph,
     spectrum_line_graph,
     failed_scatter_graph,
 )
+from plotter.components.ui_components import parse_model_quant_entry
 from plotter.graph import (
     load_values_into_search_div,
     add_dropdown,
@@ -57,6 +55,7 @@ from plotter.graph import (
     parse_main_graph_bounds_string,
     get_axis_option_props,
 )
+from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.spectrum_ops import data_df_from_queryset
 
 
@@ -593,14 +592,36 @@ def toggle_panel_visibility(
     return panel_style, arrow_style, text_style
 
 
-def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
+def allow_qualitative_color_scales(marker_option: str, *, spec_model):
+    coloring_types = ["sequential", "solid", "diverging", "cyclical"]
+    marker_value_type = keygrab(
+        spec_model.graphable_properties(), "value", marker_option
+    )["value_type"]
+    if marker_value_type == "qual":
+        coloring_types.append("qualitative")
+    return [[
+        {"label": coloring_type, "value": coloring_type}
+        for coloring_type in coloring_types
+    ]]
+
+
+def populate_color_dropdowns(
+    scale_type: str,
+    options: list[dict],
+    scale_value: str,
+    scale_type_options: list[dict]
+) -> tuple[dict, list[dict], str, dict]:
     """
-    just show or hide scale/solid color dropdowns per coloring type radio
-    button selection. very unsophisticated for now.
+    show or hide scale/solid color dropdowns & populate color scale options
+    per coloring type dropdown selection.
+    TODO: retain deeper memory of color scale selections?
     """
-    if type_selection == "solid":
-        return {"display": "none"}, {"display": "block"}
-    return {"display": "block"}, {"display": "none"}
+    if scale_type == "solid":
+        return {"display": "none"}, options, scale_value, {"display": "block"}
+    if scale_type not in [option["value"] for option in scale_type_options]:
+        scale_type = "sequential"
+    options, value = generate_color_scale_options(scale_type, scale_value)
+    return {"display": "block"}, options, value, {"display": "none"}
 
 
 # TODO: This should be reading from something in marslab.compat probably
