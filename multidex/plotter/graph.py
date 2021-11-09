@@ -12,7 +12,7 @@ from copy import deepcopy
 from functools import reduce
 from itertools import chain, cycle
 from operator import or_
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -42,6 +42,7 @@ from plotter.reduction import (
     transform_and_explain_variance,
 )
 from plotter.styles.graph_style import COLORBAR_SETTINGS
+from plotter.types import SpectrumModel, SpectrumModelInstance
 
 if TYPE_CHECKING:
     from plotter.models import ZSpec, MSpec
@@ -220,7 +221,7 @@ def make_axis(
     get_errors: bool,
     filters_are_averaged,
     _highlight,
-    _color_clip
+    _color_clip,
 ) -> tuple[list[float], Optional[list[float]], str]:
     """
     make an axis for one of our graphs by looking at the appropriate rows from
@@ -277,7 +278,7 @@ def make_marker_properties(
     _get_errors,
     _filters_are_averaged,
     highlight_id_list,
-    color_clip
+    color_clip,
 ):
     """
     this expects an id list that has already
@@ -496,9 +497,7 @@ def clear_search(cset, spec_model):
 # TODO: probably inefficient
 
 
-def make_mspec_browse_image_components(
-    mspec: "MSpec", static_image_url
-):
+def make_mspec_browse_image_components(mspec: "MSpec", static_image_url):
     """
     MSpec object, size factor (viewport units), image directory ->
     pair of dash html.Img components containing the spectrum-reduced
@@ -700,19 +699,15 @@ def pretty_print_search_params(search_parameters):
     return string_list[0]
 
 
-def print_selected(selected):
-    print(selected)
-    return 0
-
-
-def spectrum_from_graph_event(event_data: dict, spec_model: "Model") -> Any:
+def spectrum_from_graph_event(
+    event_data: dict, spec_model: SpectrumModel
+) -> SpectrumModelInstance:
     """
     dcc.Graph event data (e.g. hoverData), plotter.Spectrum class ->
     plotter.Spectrum instance
     this function assumes it's getting data from a browser event that
-    highlights
-    a single graphed point, like clicking it or hovering on it, and returns
-    the associated Spectrum object.
+    highlights  a single graphed point (like clicking it or hovering on it),
+    and returns the associated Spectrum object.
     """
     # the graph's customdata property should contain numbers corresponding
     # to database pks of spectra of associated points.
@@ -721,25 +716,22 @@ def spectrum_from_graph_event(event_data: dict, spec_model: "Model") -> Any:
     )
 
 
-def make_scatter_annotations(metadata_df, truncated_ids):
-    truncated_metadata = metadata_df.loc[truncated_ids]
-    feature_color = truncated_metadata["feature"].copy()
-    no_feature_ix = feature_color.loc[feature_color.isna()].index
-    feature_color.loc[no_feature_ix] = truncated_metadata["color"].loc[
-        no_feature_ix
-    ]
+def make_scatter_annotations(
+    metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
+) -> np.ndarray:
+    meta = metadata_df.loc[truncated_ids]
+    descriptor = meta["feature"].copy()
+    no_feature_ix = descriptor.loc[descriptor.isna()].index
+    descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
     text = (
-        "sol"
-        + truncated_metadata["sol"].astype(str)
-        + " "
-        + truncated_metadata["name"]
-        + " "
-        + feature_color
+        "sol" + meta["sol"].astype(str) + " " + meta["name"] + " " + descriptor
     ).values
     return text
 
 
-def retrieve_graph_data(cget):
+def retrieve_graph_data(
+    cget: Callable[[str], Any]
+) -> tuple[pd.DataFrame, pd.DataFrame, Sequence[int], Sequence[int]]:
     search_ids = cget("search_ids")
     highlight_ids = cget("highlight_ids")
     data_df = cget("data_df")
