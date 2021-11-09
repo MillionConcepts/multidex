@@ -2,7 +2,7 @@
 import random
 from ast import literal_eval
 from functools import partial
-from typing import Mapping, Optional, Iterable, Callable
+from typing import Mapping, Optional, Iterable, Callable, Union
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -218,11 +218,6 @@ def spec_graph(name: str) -> dcc.Graph:
     )
 
 
-def image_holder(index: int = 0) -> dcc.Graph:
-    """dash component factory for zoomable assets images. maybe. placeholder"""
-    return dcc.Graph(id="image-" + str(index))
-
-
 def color_scale_drop(element_id: str, value: str = None) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
@@ -417,8 +412,11 @@ def model_options_drop(
     )
 
 
-def parse_model_quant_entry(string: str) -> dict:
-    value_dict = {}
+def parse_model_quant_entry(
+    string: str,
+) -> dict[str, Union[float, list[float]]]:
+    # annoyed by this type hint but using it anyway
+    value_dict: dict[str, Union[float, list[float]]] = {}
     is_range = "--" in string
     is_list = "," in string
     if is_range and is_list:
@@ -435,18 +433,13 @@ def parse_model_quant_entry(string: str) -> dict:
                 "currently not supported."
             )
         # allow either a blank beginning or end, but not both
-        try:
-            value_dict["begin"] = float(range_list[0])
-        except ValueError:
-            value_dict["begin"] = ""
-        try:
-            value_dict["end"] = float(range_list[1])
-        except ValueError:
-            value_dict["end"] = ""
-        if not (value_dict["begin"] or value_dict["end"]):
-            raise ValueError(
-                "Either a beginning or end numerical value must be entered."
-            )
+        for name, position in zip(("begin", "end"), (0, 1)):
+            try:
+                value_dict[name] = float(range_list[position])
+            except ValueError:
+                continue
+        if value_dict == {}:
+            raise ValueError("At least one numerical value must be entered.")
     elif string != "":
         list_list = string.split(",")
         # do not allow ducks and rutabagas and such to be entered into the list

@@ -459,12 +459,6 @@ def update_search_ids(
     # should be memoized
     search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
     search = handle_graph_search(search_df, deepcopy(search_list), spec_model)
-    # TODO: remove this cruft if in fact it remains so
-    # ctx = dash.callback_context
-    # if (
-    #     set(search) != set(cget("search_ids"))
-    #     or "load-trigger" in ctx.triggered[0]["prop_id"]
-    # ):
     cset("search_ids", search)
     # save search parameters for graph description
     cset("search_parameters", search_list)
