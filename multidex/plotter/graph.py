@@ -14,9 +14,9 @@ from itertools import chain, cycle
 from operator import or_
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
-from dash import html
 import numpy as np
 import pandas as pd
+from dash import html
 from dash.exceptions import PreventUpdate
 from plotly import graph_objects as go
 from toolz import keyfilter
@@ -32,7 +32,6 @@ from multidex_utils import (
     djget,
     insert_wavelengths_into_text,
 )
-from notetaking import Notepad
 from plotter import spectrum_ops
 from plotter.components.ui_components import (
     search_parameter_div,
@@ -46,7 +45,6 @@ from plotter.styles.graph_style import COLORBAR_SETTINGS
 
 if TYPE_CHECKING:
     from plotter.models import ZSpec, MSpec
-    import flask_caching
 
 
 # ### cache functions ###
@@ -389,14 +387,6 @@ def format_display_settings(settings):
     return settings_dict, axis_settings_dict
 
 
-# this is somewhat nasty. is there a cleaner way to do this?
-# flow control becomes really hard if we break the function up.
-# it requires triggers spread across multiple divs or cached globals
-# and is much uglier than even this. dash's restriction on callbacks to a
-# single output makes it even worse. probably the best thing to do
-# in the long run is to treat this basically as a dispatch function.
-
-
 def style_toggle(style, style_property="display", states=("none", "revert")):
     """
     generic style-toggling function that just cycles
@@ -413,16 +403,6 @@ def style_toggle(style, style_property="display", states=("none", "revert")):
         continue
     style[style_property] = next(style_cycle)
     return style
-
-
-def style_select(
-    style, selection, style_property="display", states=("none", "revert")
-):
-    """
-    generic style-toggling function that just cycles
-    style property of component between states
-    by default it toggles visibility
-    """
 
 
 def spectrum_values_range(metadata_df, field):
@@ -454,7 +434,6 @@ def handle_graph_search(search_df, parameters, spec_model):
         return list(search_df.index)
     # add value_type and type information to dictionaries (based on
     # search properties defined in the model)
-
     for parameter in parameters:
         field = parameter.get("field")
         if field:
@@ -518,7 +497,7 @@ def clear_search(cset, spec_model):
 
 
 def make_mspec_browse_image_components(
-    mspec: "MSpec", image_directory, static_image_url
+    mspec: "MSpec", static_image_url
 ):
     """
     MSpec object, size factor (viewport units), image directory ->
