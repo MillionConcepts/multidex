@@ -83,7 +83,7 @@ def register_toggle_panel_visibility(app, configured_function):
         ],
         [
             Input({"type": "collapse-div", "index": MATCH}, "n_clicks"),
-            Input("collapse-all", "n_clicks")
+            Input("collapse-all", "n_clicks"),
         ],
         [
             State({"type": "collapsible-panel", "index": MATCH}, "style"),
@@ -94,13 +94,27 @@ def register_toggle_panel_visibility(app, configured_function):
     )(configured_function)
 
 
-def register_toggle_color_drop_visibility(app, configured_function):
+def register_allow_qualitative_color_scales(app, configured_function):
+    app.callback(
+        [Output("color-scale-type", "options")],
+        [Input("graph-option-marker", "value")],
+    )(configured_function)
+
+
+def register_populate_color_dropdowns(app, configured_function):
     app.callback(
         [
             Output("color-scale", "style"),
+            Output("color-scale", "options"),
+            Output("color-scale", "value"),
             Output("color-solid", "style"),
         ],
-        [Input("coloring-type", "value")],
+        [Input("color-scale-type", "value")],
+        [
+            State("color-scale", "value"),
+            State("color-scale", "options"),
+            State("color-scale-type", "options")
+        ],
     )(configured_function)
 
 
@@ -206,7 +220,7 @@ def register_handle_load(app, configured_function):
         [
             Output("search-div", "children"),
             Output({"type": "load-trigger", "index": 0}, "value"),
-            Output("default-settings-checked-div", "children")
+            Output("default-settings-checked-div", "children"),
         ],
         [
             Input("load-search-load-button", "n_clicks"),
@@ -214,7 +228,7 @@ def register_handle_load(app, configured_function):
         [
             State("load-search-drop", "value"),
             State({"type": "load-trigger", "index": 0}, "value"),
-            State("default-settings-checked-div", "children")
+            State("default-settings-checked-div", "children"),
         ],
     )(configured_function)
 
@@ -303,11 +317,9 @@ def register_record_graph_size_and_trigger_save(app):
             return JSON.stringify(info_object)
         }
         """,
-        Output(
-            "graph-size-record-div", "children"
-        ),
+        Output("graph-size-record-div", "children"),
         [Input("export-image", "n_clicks")],
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
 
 
@@ -315,9 +327,9 @@ def register_drag_spec_print(app):
     app.clientside_callback(
         """function() {makeDraggable('spec-print-handle', 'spec-print-div')}""",
         Output(
-            'fake-output-for-callback-with-only-side-effects-2', 'children'
+            "fake-output-for-callback-with-only-side-effects-2", "children"
         ),
-        [Input('fire-on-load', 'children')]
+        [Input("fire-on-load", "children")],
     )
 
 
@@ -325,9 +337,9 @@ def register_hide_spec_print(app):
     app.clientside_callback(
         """function() {makeHider('spec-print-handle', 'spec-print')}""",
         Output(
-            'fake-output-for-callback-with-only-side-effects-3', 'children'
+            "fake-output-for-callback-with-only-side-effects-3", "children"
         ),
-        [Input('fire-on-load', 'children')]
+        [Input("fire-on-load", "children")],
     )
 
     # from dash.dependencies import Output, Input
@@ -337,6 +349,7 @@ def register_hide_spec_print(app):
     #     Output("marker-options", "data-drag"),
     #     [Input("marker-options", "id")]
     # )
+
 
 # debug printer
 # app.callback(

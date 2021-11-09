@@ -4,14 +4,13 @@ from ast import literal_eval
 from functools import partial
 from typing import Mapping, Optional, Iterable, Callable, Union
 
-import plotly.express as px
 import plotly.graph_objects as go
 from dash import dcc
 from dash import html
 from dash.html import Div
 
 from multidex_utils import get_if, none_to_empty
-from plotter.colors import get_plotly_colorscales
+from plotter.colors import generate_color_scale_options
 from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
@@ -218,16 +217,13 @@ def spec_graph(name: str) -> dcc.Graph:
     )
 
 
-def color_scale_drop(element_id: str, value: str = None) -> dcc.Dropdown:
+def marker_color_drop(
+    element_id: str, value: str = None, scale_type: str = "sequential"
+) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
     """
-    options = [
-        {"label": colormap, "value": colormap}
-        for colormap in get_plotly_colorscales().keys()
-    ]
-    if not value:
-        value = "haline"
+    options, value = generate_color_scale_options(scale_type, value)
     return dcc.Dropdown(
         id=element_id,
         className="filter-drop medium-drop",
@@ -642,23 +638,24 @@ def axis_controls_container(
 
 
 def marker_coloring_type_div(coloring_type: str) -> Div:
+    coloring_types = ("sequential", "solid", "diverging", "cyclical")
     return html.Div(
         style={
             "display": "flex",
-            "flexDirection": "row",
+            "flexDirection": "column",
         },
         children=[
             html.Label(
                 className="info-text",
-                children=["color: "],
-                htmlFor="marker-outline-radio",
+                children=["scale type"],
+                htmlFor="color-scale-type",
             ),
-            dcc.RadioItems(
-                id="coloring-type",
-                className="radio-items",
+            dcc.Dropdown(
+                id="color-scale-type",
+                className="filter-drop medium-drop",
                 options=[
-                    {"label": "scale", "value": "scale"},
-                    {"label": "solid", "value": "solid"},
+                    {"label": c_type, "value": c_type}
+                    for c_type in coloring_types
                 ],
                 value=coloring_type,
             ),
@@ -697,7 +694,7 @@ def marker_outline_div(outline_color) -> Div:
         style={
             "display": "flex",
             "flexDirection": "row",
-            "marginTop": "1.7rem",
+            "marginTop": "0.5rem",
         },
         children=[
             html.Label(
@@ -740,6 +737,7 @@ def marker_clip_div(get_r: Callable) -> Div:
                 # TODO: wrap this more nicely
                 htmlFor="color-clip-bound-low",
             ),
+            # TODO: make this and other number fields less hideous
             dcc.Input(
                 type="number",
                 id="color-clip-bound-low",
@@ -773,9 +771,9 @@ def marker_clip_div(get_r: Callable) -> Div:
 
 
 def marker_options_div(get_r: Callable) -> Div:
-    coloring_type = get_r("coloring-type.value")
-    if coloring_type is None:
-        coloring_type = "scale"
+    marker_symbol = get_r("marker-symbol.value")
+    if marker_symbol is None:
+        marker_symbol = "circle"
     outline_color = get_r("marker-outline-radio.value")
     if outline_color is None:
         outline_color = "off"
@@ -792,38 +790,6 @@ def marker_options_div(get_r: Callable) -> Div:
         children=[
             marker_outline_div(outline_color),
             marker_size_div(marker_size),
-            marker_coloring_type_div(coloring_type),
-        ],
-    )
-
-
-def marker_color_symbol_div(get_r: Callable) -> Div:
-    marker_symbol = get_r("marker-symbol.value")
-    if marker_symbol is None:
-        marker_symbol = "circle"
-    solid_color = get_r("color-solid.value")
-    if solid_color is None:
-        solid_color = "black"
-    return html.Div(
-        id="marker-color-symbol-container",
-        style={"display": "flex", "flexDirection": "column", "width": "8rem"},
-        className="axis-controls-container",
-        children=[
-            html.Label(
-                children=["color"],
-                htmlFor="color-scale",
-                className="info-text",
-            ),
-            color_scale_drop(
-                "color-scale",
-                value=get_r("color-scale.value"),
-            ),
-            dcc.Dropdown(
-                "color-solid",
-                className="filter-drop medium-drop",
-                value=solid_color,
-                options=SOLID_MARKER_COLORS,
-            ),
             html.Label(
                 children=["marker symbol"],
                 htmlFor="marker-symbol",
@@ -835,6 +801,39 @@ def marker_color_symbol_div(get_r: Callable) -> Div:
                 value=marker_symbol,
                 options=MARKER_SYMBOLS,
             ),
+        ],
+    )
+
+
+def marker_color_symbol_div(get_r: Callable) -> Div:
+    coloring_type = get_r("color-scale-type.value")
+    if coloring_type is None:
+        coloring_type = "scale"
+    solid_color = get_r("color-solid.value")
+    if solid_color is None:
+        solid_color = "black"
+    return html.Div(
+        id="marker-color-symbol-container",
+        style={"display": "flex", "flexDirection": "column", "width": "8rem"},
+        className="axis-controls-container",
+        children=[
+            html.Label(
+                children=["color"],
+                htmlFor="marker-color-drop",
+                className="info-text",
+            ),
+            marker_color_drop(
+                "color-scale",
+                value=get_r("color-scale.value"),
+                scale_type=get_r("color-scale-type.value"),
+            ),
+            dcc.Dropdown(
+                "color-solid",
+                className="filter-drop medium-drop",
+                value=solid_color,
+                options=SOLID_MARKER_COLORS,
+            ),
+            marker_coloring_type_div(coloring_type),
         ],
     )
 

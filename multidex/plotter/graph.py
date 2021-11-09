@@ -304,7 +304,7 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    if re_get(settings, "coloring-type.value") == "solid":
+    if re_get(settings, "color-scale-type.value") == "solid":
         color = re_get(settings, "color-solid.value")
         colormap = None
         colorbar = None
