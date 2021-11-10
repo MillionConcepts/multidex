@@ -126,7 +126,7 @@ def discretize_color_representations(fig):
     return fig
 
 
-def generate_color_scale_options(scale_type, value):
+def generate_palette_options(scale_type, value):
     colormaps = get_plotly_colorscales()
     # this case should occur only on load of a saved state with a solid color
     if scale_type not in colormaps.keys():

@@ -94,9 +94,9 @@ def register_toggle_panel_visibility(app, configured_function):
     )(configured_function)
 
 
-def register_allow_qualitative_color_scales(app, configured_function):
+def register_allow_qualitative_palettes(app, configured_function):
     app.callback(
-        [Output("color-scale-type", "options")],
+        [Output("palette-type-drop", "options")],
         [Input("graph-option-marker", "value")],
     )(configured_function)
 
@@ -104,16 +104,16 @@ def register_allow_qualitative_color_scales(app, configured_function):
 def register_populate_color_dropdowns(app, configured_function):
     app.callback(
         [
-            Output("color-scale", "style"),
-            Output("color-scale", "options"),
-            Output("color-scale", "value"),
-            Output("color-solid", "style"),
+            Output("palette-name-drop", "options"),
+            Output("palette-name-drop", "value"),
+            Output("palette-name-drop", "style"),
+            Output("solid-color-drop", "style")
         ],
-        [Input("color-scale-type", "value")],
+        [Input("palette-type-drop", "value")],
         [
-            State("color-scale", "value"),
-            State("color-scale", "options"),
-            State("color-scale-type", "options")
+            State("palette-type-drop", "options"),
+            State("palette-name-drop", "value"),
+            State("palette-name-drop", "options"),
         ],
     )(configured_function)
 

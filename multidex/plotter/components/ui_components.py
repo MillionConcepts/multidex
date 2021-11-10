@@ -10,7 +10,7 @@ from dash import html
 from dash.html import Div
 
 from multidex_utils import get_if, none_to_empty
-from plotter.colors import generate_color_scale_options
+from plotter.colors import generate_palette_options
 from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
@@ -223,7 +223,7 @@ def marker_color_drop(
     """
     dropdown for selecting calculation options for marker settings
     """
-    options, value = generate_color_scale_options(scale_type, value)
+    options, value = generate_palette_options(scale_type, value)
     return dcc.Dropdown(
         id=element_id,
         className="filter-drop medium-drop",
@@ -638,7 +638,7 @@ def axis_controls_container(
 
 
 def marker_coloring_type_div(coloring_type: str) -> Div:
-    coloring_types = ("sequential", "solid", "diverging", "cyclical")
+    palette_types = ("sequential", "solid", "diverging", "cyclical")
     return html.Div(
         style={
             "display": "flex",
@@ -648,14 +648,14 @@ def marker_coloring_type_div(coloring_type: str) -> Div:
             html.Label(
                 className="info-text",
                 children=["scale type"],
-                htmlFor="color-scale-type",
+                htmlFor="palette-type-drop",
             ),
             dcc.Dropdown(
-                id="color-scale-type",
+                id="palette-type-drop",
                 className="filter-drop medium-drop",
                 options=[
                     {"label": c_type, "value": c_type}
-                    for c_type in coloring_types
+                    for c_type in palette_types
                 ],
                 value=coloring_type,
             ),
@@ -806,10 +806,10 @@ def marker_options_div(get_r: Callable) -> Div:
 
 
 def marker_color_symbol_div(get_r: Callable) -> Div:
-    coloring_type = get_r("color-scale-type.value")
+    coloring_type = get_r("palette-type-drop.value")
     if coloring_type is None:
         coloring_type = "scale"
-    solid_color = get_r("color-solid.value")
+    solid_color = get_r("solid-color-drop.value")
     if solid_color is None:
         solid_color = "black"
     return html.Div(
@@ -823,15 +823,16 @@ def marker_color_symbol_div(get_r: Callable) -> Div:
                 className="info-text",
             ),
             marker_color_drop(
-                "color-scale",
-                value=get_r("color-scale.value"),
-                scale_type=get_r("color-scale-type.value"),
+                "palette-name-drop",
+                value=get_r("palette-name-drop.value"),
+                scale_type=get_r("palette-type-drop.value"),
             ),
             dcc.Dropdown(
-                "color-solid",
+                "solid-color-drop",
                 className="filter-drop medium-drop",
                 value=solid_color,
                 options=SOLID_MARKER_COLORS,
+                style = {"display": "none"}
             ),
             marker_coloring_type_div(coloring_type),
         ],

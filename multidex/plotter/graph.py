@@ -52,10 +52,10 @@ if TYPE_CHECKING:
 
 # many of the other functions in this module take outputs of these two
 # functions as arguments. returning a function that calls a specific cache
-# defined in-app allows us to share data between defined clusters of dash
-# objects. the specific cache is in some sense a set of pointers that serves
-# as a namespace. this, rather than a global variable or variables, is used
-# because Flask does not guarantee thread safety of globals.
+# backend defined in-app allows us to share data between defined clusters of
+# dash objects. the specific cache is in some sense a set of pointers that
+# serves as a namespace. this, rather than a global variable or variables, is
+# used because Flask does not guarantee thread safety of globals.
 
 
 def cache_set(cache) -> Callable[[str, Any], bool]:
@@ -304,13 +304,13 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    if re_get(settings, "color-scale-type.value") == "solid":
-        color = re_get(settings, "color-solid.value")
+    if re_get(settings, "palette-type-drop.value") == "solid":
+        color = re_get(settings, "solid-color-drop.value")
         colormap = None
         colorbar = None
     else:
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
-        colormap = re_get(settings, "color-scale.value")
+        colormap = re_get(settings, "palette-name-drop.value")
         if props["value_type"] == "qual":
             string_hash, color = arbitrarily_hash_strings(
                 none_to_quote_unquote_none(property_list)
