@@ -1,6 +1,7 @@
 """
-these functions are partially defined and/or passed to callback
-decorators in order to generate flow control within a dash app.
+these are intended principally as function prototypes. they are partially
+defined and/or passed to callback decorators in order to generate flow control
+within the app. they should rarely, if ever, be called in these generic forms.
 """
 import datetime as dt
 import json
@@ -24,7 +25,7 @@ from multidex_utils import (
     field_values,
     not_blank,
 )
-from plotter.colors import get_plotly_colorscales, generate_color_scale_options
+from plotter.colors import generate_palette_options
 from plotter.components.graph_components import (
     main_scatter_graph,
     spectrum_line_graph,
@@ -592,36 +593,47 @@ def toggle_panel_visibility(
     return panel_style, arrow_style, text_style
 
 
-def allow_qualitative_color_scales(marker_option: str, *, spec_model):
-    coloring_types = ["sequential", "solid", "diverging", "cyclical"]
+def allow_qualitative_palettes(marker_option: str, *, spec_model):
+    palette_types = ["sequential", "solid", "diverging", "cyclical"]
     marker_value_type = keygrab(
         spec_model.graphable_properties(), "value", marker_option
     )["value_type"]
     if marker_value_type == "qual":
-        coloring_types.append("qualitative")
-    return [[
-        {"label": coloring_type, "value": coloring_type}
-        for coloring_type in coloring_types
-    ]]
+        palette_types.append("qualitative")
+    return [
+        [
+            {"label": palette_type, "value": palette_type}
+            for palette_type in palette_types
+        ]
+    ]
 
 
 def populate_color_dropdowns(
-    scale_type: str,
-    options: list[dict],
-    scale_value: str,
-    scale_type_options: list[dict]
-) -> tuple[dict, list[dict], str, dict]:
+    palette_type_value: str,
+    palette_type_options: list[dict],
+    palette_value: str,
+    palette_options: list[dict],
+) -> tuple[list[dict], str, dict, dict]:
     """
     show or hide scale/solid color dropdowns & populate color scale options
     per coloring type dropdown selection.
     TODO: retain deeper memory of color scale selections?
     """
-    if scale_type == "solid":
-        return {"display": "none"}, options, scale_value, {"display": "block"}
-    if scale_type not in [option["value"] for option in scale_type_options]:
-        scale_type = "sequential"
-    options, value = generate_color_scale_options(scale_type, scale_value)
-    return {"display": "block"}, options, value, {"display": "none"}
+    if palette_type_value == "solid":
+        return (
+            palette_options,
+            palette_value,
+            {"display": "none"},
+            {"display": "block"},
+        )
+    if palette_type_value not in [
+        option["value"] for option in palette_type_options
+    ]:
+        palette_type_value = "sequential"
+    palette_options, value = generate_palette_options(
+        palette_type_value, palette_value
+    )
+    return palette_options, value, {"display": "block"}, {"display": "none"}
 
 
 # TODO: This should be reading from something in marslab.compat probably
