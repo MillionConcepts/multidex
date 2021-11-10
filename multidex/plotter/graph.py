@@ -33,6 +33,7 @@ from multidex_utils import (
     insert_wavelengths_into_text,
 )
 from plotter import spectrum_ops
+from plotter.colors import get_palette_from_scale_name, plotly_colorscale_type
 from plotter.components.ui_components import (
     search_parameter_div,
 )
@@ -304,8 +305,12 @@ def make_marker_properties(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    if re_get(settings, "palette-type-drop.value") == "solid":
-        color = re_get(settings, "solid-color-drop.value")
+    palette_type = plotly_colorscale_type(
+        re_get(settings, "palette-name-drop.value")
+    )
+    if palette_type is None:
+        # solid color case
+        color = re_get(settings, "palette-name-drop.value")
         colormap = None
         colorbar = None
     else:
@@ -319,6 +324,13 @@ def make_marker_properties(
                 "tickvals": list(string_hash.values()),
                 "ticktext": list(string_hash.keys()),
             }
+            if palette_type == "qualitative":
+                # only do this for "qualitative" scales to trick plotly...
+                # plotly's tricks for discretizing "continuous" scales are
+                # better than mine
+                colormap = get_palette_from_scale_name(
+                    colormap, len(string_hash), qualitative=True
+                )
         else:
             if len(property_list) > 0:
                 if isinstance(property_list[0], dt.time):
@@ -745,6 +757,30 @@ def halt_for_ineffective_highlight_toggle(ctx, marker_settings):
             if marker_settings["highlight-toggle.value"] == "off":
                 raise PreventUpdate
 
+
+def halt_to_debounce_palette_update(trigger, marker_settings, cget):
+    if trigger != "palette-name-drop.value":
+        return
+    if cget("marker_settings")[
+        "palette-name-drop.value"
+    ] == marker_settings["palette-name-drop.value"]:
+        raise PreventUpdate
+
+
+def halt_for_inappropriate_palette_type(marker_settings, spec_model):
+    """
+    this condition should only occur during transition from a qual to quant
+    marker option when a qual map was selected. it may be a sloppy way to stop
+    it.
+    """
+    palette_type = plotly_colorscale_type(
+        re_get(marker_settings, "palette-name-drop.value")
+    )
+    if palette_type != "qualitative":
+        return
+    _, props = get_axis_option_props(marker_settings, spec_model)
+    if props["value_type"] == "quant":
+        raise PreventUpdate
 
 def add_or_remove_label(cset, ctx, label_ids):
     """

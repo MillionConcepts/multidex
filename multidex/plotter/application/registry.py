@@ -36,6 +36,30 @@ def register_trigger_search_update(app, configured_function):
     )(configured_function)
 
 
+def register_allow_qualitative_palettes(app, configured_function):
+    app.callback(
+        [Output("palette-type-drop", "options"), Output("palette-type-drop", "value")],
+        [Input("graph-option-marker", "value")],
+        [State("palette-type-drop", "options"), State("palette-type-drop", "value")]
+    )(configured_function)
+
+
+def register_populate_color_dropdowns(app, configured_function):
+    app.callback(
+        [
+            Output("palette-name-drop", "options"),
+            Output("palette-name-drop", "value"),
+        ],
+        [
+            Input("palette-type-drop", "value"),
+            Input("palette-type-drop", "options"),
+        ],
+        [
+            State("palette-name-drop", "value"),
+        ],
+    )(configured_function)
+
+
 def register_update_main_graph(app, configured_function):
     # trigger redraw of main graph on new search, axis calculation change, etc
     app.callback(
@@ -94,28 +118,7 @@ def register_toggle_panel_visibility(app, configured_function):
     )(configured_function)
 
 
-def register_allow_qualitative_palettes(app, configured_function):
-    app.callback(
-        [Output("palette-type-drop", "options")],
-        [Input("graph-option-marker", "value")],
-    )(configured_function)
 
-
-def register_populate_color_dropdowns(app, configured_function):
-    app.callback(
-        [
-            Output("palette-name-drop", "options"),
-            Output("palette-name-drop", "value"),
-            Output("palette-name-drop", "style"),
-            Output("solid-color-drop", "style")
-        ],
-        [Input("palette-type-drop", "value")],
-        [
-            State("palette-type-drop", "options"),
-            State("palette-name-drop", "value"),
-            State("palette-name-drop", "options"),
-        ],
-    )(configured_function)
 
 
 # change visibility of search filter inputs

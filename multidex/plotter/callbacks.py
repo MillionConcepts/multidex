@@ -54,7 +54,8 @@ from plotter.graph import (
     add_or_remove_label,
     explicitly_set_graph_bounds,
     parse_main_graph_bounds_string,
-    get_axis_option_props,
+    get_axis_option_props, halt_to_debounce_palette_update,
+    halt_for_inappropriate_palette_type,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.spectrum_ops import data_df_from_queryset
@@ -251,7 +252,7 @@ def update_main_graph(
             ctx.inputs["color-clip-bound-high.value"],
         ]
         if len(color_clip) != 2:
-            raise ValueError("need two numerals in this field to do things")
+            raise ValueError("need two numbers in this field to do things")
         if color_clip[0] > color_clip[1]:
             raise ValueError("refusing to clip backwards")
     except (AttributeError, TypeError, ValueError):
@@ -274,7 +275,11 @@ def update_main_graph(
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
     halt_for_ineffective_highlight_toggle(ctx, marker_settings)
-
+    halt_for_inappropriate_palette_type(marker_settings, spec_model)
+    # TODO: this isn't quite enough, in the sense that a swap from qual to
+    #  quant with a qual palette selected will trigger two draws. not
+    #  high-priority fix, performance-only.
+    halt_to_debounce_palette_update(ctx, marker_settings, cget)
     graph_display_dict, axis_display_dict = format_display_settings(
         pickctx(ctx, graph_display_inputs)
     )
@@ -342,6 +347,7 @@ def update_main_graph(
 
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
+    # TODO: cleanly prevent these from unsetting autoscale on load
     if ("marker" in trigger) or ("click" in trigger):
         layout = ctx.states["main-graph.figure"]["layout"]
         zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
@@ -593,48 +599,52 @@ def toggle_panel_visibility(
     return panel_style, arrow_style, text_style
 
 
-def allow_qualitative_palettes(marker_option: str, *, spec_model):
+def allow_qualitative_palettes(
+    marker_option: str, existing_palette_type_options, existing_palette_type_value, *, spec_model
+):
     palette_types = ["sequential", "solid", "diverging", "cyclical"]
     marker_value_type = keygrab(
         spec_model.graphable_properties(), "value", marker_option
     )["value_type"]
     if marker_value_type == "qual":
         palette_types.append("qualitative")
-    return [
-        [
+    options = [
             {"label": palette_type, "value": palette_type}
             for palette_type in palette_types
         ]
-    ]
+    # don't trigger a bunch of stuff unnecessarily
+    if options == existing_palette_type_options:
+        raise PreventUpdate
+    # always set a valid option
+    if existing_palette_type_value not in palette_types:
+        palette_type_value = "sequential"
+    else:
+        palette_type_value = existing_palette_type_value
+    return options, palette_type_value
 
 
 def populate_color_dropdowns(
     palette_type_value: str,
     palette_type_options: list[dict],
-    palette_value: str,
-    palette_options: list[dict],
-) -> tuple[list[dict], str, dict, dict]:
+    palette_value: str
+) -> tuple[list[dict], str]:
     """
     show or hide scale/solid color dropdowns & populate color scale options
     per coloring type dropdown selection.
     TODO: retain deeper memory of color scale selections?
     """
-    if palette_type_value == "solid":
-        return (
-            palette_options,
-            palette_value,
-            {"display": "none"},
-            {"display": "block"},
-        )
     if palette_type_value not in [
         option["value"] for option in palette_type_options
     ]:
         palette_type_value = "sequential"
-    palette_options, value = generate_palette_options(
+    palette_options_output, palette_value_output = generate_palette_options(
         palette_type_value, palette_value
     )
-    return palette_options, value, {"display": "block"}, {"display": "none"}
-
+    # e.g., switch from qual to quant marker option but with a sequential
+    # scale selected
+    if palette_value_output == palette_value:
+        raise PreventUpdate
+    return palette_options_output, palette_value_output
 
 # TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget, spec_model):

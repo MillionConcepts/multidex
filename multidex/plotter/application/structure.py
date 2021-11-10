@@ -39,11 +39,9 @@ MARKER_INPUTS = [
     if dropdown.endswith("-marker")
 ] + [
     Input("graph-option-marker", "value"),
-    Input("palette-type-drop", "value"),
     Input("palette-name-drop", "value"),
     Input("color-clip-bound-low", "value"),
     Input("color-clip-bound-high", "value"),
-    Input("solid-color-drop", "value"),
     Input("highlight-toggle", "value"),
     Input("marker-outline-radio", "value"),
     Input("marker-base-size", "value"),
