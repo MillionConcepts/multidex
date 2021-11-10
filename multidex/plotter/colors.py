@@ -1,14 +1,17 @@
 import inspect
 from collections.abc import Sequence
 from functools import partial
-from itertools import chain
+from itertools import chain, cycle
 from operator import mul
 from typing import Union
 
+from dustgoggles.structures import dig_for_value
 import matplotlib.colors as mcolors
 import numpy as np
 import plotly.colors as pcolors
 from more_itertools import windowed
+
+from plotter.styles.marker_style import SOLID_MARKER_COLORS
 
 PLOTLY_COLOR_MODULES = (
     pcolors.sequential,
@@ -28,6 +31,15 @@ def get_plotly_colorscales(modules: tuple = PLOTLY_COLOR_MODULES) -> dict:
         }
         for module in modules
     }
+
+
+def plotly_colorscale_type(
+    scale_name: str, modules: tuple = PLOTLY_COLOR_MODULES
+) -> str:
+    scale_dict = get_plotly_colorscales(modules)
+    for scale_type in scale_dict.keys():
+        if scale_name in scale_dict[scale_type].keys():
+            return scale_type
 
 
 def rgbstring_to_rgb_percent(rgbstring: str) -> tuple[float]:
@@ -85,6 +97,21 @@ def get_lut(percent_scale, count):
     )
 
 
+def get_palette_from_scale_name(
+    scale_name, count, qualitative=True
+):
+    scale = dig_for_value(get_plotly_colorscales(), scale_name)
+    # %rgb representation
+    percents = np.array(scale_to_percents(scale))
+    if qualitative is True:
+        # i.e., take explicit color values from the palette
+        wheel = cycle(percents)
+        lut = [next(wheel) for _ in range(count)]
+    else:
+        lut = get_lut(percents, count)
+    return scale_to_plotly_rgb(lut)
+
+
 def make_discrete_scale(percent_scale, count):
     discrete_scale = scale_to_plotly_rgb(
         get_lut(percent_scale, count).tolist()
@@ -106,6 +133,12 @@ def make_discrete_scale(percent_scale, count):
 # note we're assuming this just has one -- or one relevant -- trace
 def discretize_color_representations(fig):
     marker_dict = next(fig.select_traces())["marker"]
+    marker_dict = discretize_marker_colors(marker_dict)
+    fig.update_traces(marker=marker_dict)
+    return fig
+
+
+def discretize_marker_colors(marker_dict):
     tickvals = marker_dict["colorbar"]["tickvals"]
     continuous_scale = [val[1] for val in marker_dict["colorscale"]]
     percent_scale = np.array(scale_to_percents(continuous_scale))
@@ -122,19 +155,20 @@ def discretize_color_representations(fig):
             tickvals,
             np.linspace(0.5, len(tickvals) - 1.5, len(tickvals)),
         )
-    fig.update_traces(marker=marker_dict)
-    return fig
+    return marker_dict
 
 
-def generate_palette_options(scale_type, value):
-    colormaps = get_plotly_colorscales()
-    # this case should occur only on load of a saved state with a solid color
-    if scale_type not in colormaps.keys():
-        scale_type = "sequential"
-    options = [
-        {"label": colormap, "value": colormap}
-        for colormap in colormaps[scale_type].keys()
-    ]
-    if (value is None) or value not in [option["value"] for option in options]:
-        value = options[0]["value"]
-    return options, value
+def generate_palette_options(scale_value, palette_value):
+    if scale_value == "solid":
+        output_options = SOLID_MARKER_COLORS
+    else:
+        colormaps = get_plotly_colorscales()
+        output_options = [
+            {"label": colormap, "value": colormap}
+            for colormap in colormaps[scale_value].keys()
+        ]
+    if (palette_value is None) or palette_value not in [option["value"] for option in output_options]:
+        output_value = output_options[0]["value"]
+    else:
+        output_value = palette_value
+    return output_options, output_value

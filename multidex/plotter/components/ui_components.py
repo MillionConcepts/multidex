@@ -218,11 +218,15 @@ def spec_graph(name: str) -> dcc.Graph:
 
 
 def marker_color_drop(
-    element_id: str, value: str = None, scale_type: str = "sequential"
+    element_id: str, value: str, scale_type: str
 ) -> dcc.Dropdown:
     """
     dropdown for selecting calculation options for marker settings
     """
+    if value is None:
+        value = "haline"
+    if scale_type is None:
+        scale_type = "sequential"
     options, value = generate_palette_options(scale_type, value)
     return dcc.Dropdown(
         id=element_id,
@@ -647,7 +651,7 @@ def marker_coloring_type_div(coloring_type: str) -> Div:
         children=[
             html.Label(
                 className="info-text",
-                children=["scale type"],
+                children=["palette type"],
                 htmlFor="palette-type-drop",
             ),
             dcc.Dropdown(
@@ -806,9 +810,9 @@ def marker_options_div(get_r: Callable) -> Div:
 
 
 def marker_color_symbol_div(get_r: Callable) -> Div:
-    coloring_type = get_r("palette-type-drop.value")
-    if coloring_type is None:
-        coloring_type = "scale"
+    palette_type = get_r("palette-type-drop.value")
+    if palette_type is None:
+        palette_type = "sequential"
     solid_color = get_r("solid-color-drop.value")
     if solid_color is None:
         solid_color = "black"
@@ -818,8 +822,8 @@ def marker_color_symbol_div(get_r: Callable) -> Div:
         className="axis-controls-container",
         children=[
             html.Label(
-                children=["color"],
-                htmlFor="marker-color-drop",
+                children=["palette"],
+                htmlFor="palette-name-drop",
                 className="info-text",
             ),
             marker_color_drop(
@@ -827,14 +831,7 @@ def marker_color_symbol_div(get_r: Callable) -> Div:
                 value=get_r("palette-name-drop.value"),
                 scale_type=get_r("palette-type-drop.value"),
             ),
-            dcc.Dropdown(
-                "solid-color-drop",
-                className="filter-drop medium-drop",
-                value=solid_color,
-                options=SOLID_MARKER_COLORS,
-                style = {"display": "none"}
-            ),
-            marker_coloring_type_div(coloring_type),
+            marker_coloring_type_div(palette_type),
         ],
     )
 
