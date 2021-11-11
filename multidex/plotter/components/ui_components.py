@@ -16,7 +16,7 @@ from plotter.styles.graph_style import (
     GRAPH_CONFIG_SETTINGS,
     css_variables,
 )
-from plotter.styles.marker_style import SOLID_MARKER_COLORS, MARKER_SYMBOLS
+from plotter.styles.marker_style import MARKER_SYMBOLS
 
 
 # note that style properties are camelCased rather than hyphenated in
@@ -155,43 +155,6 @@ def dynamic_spec_div() -> html.Div:
     )
 
 
-# def dynamic_spec_div(
-#     print_name: str, graph_name: str, image_name: str, index: int
-# ) -> html.Div:
-#     return html.Div(
-#         children=[
-#             html.Pre(
-#                 children=[],
-#                 id={"type": print_name, "index": index},
-#                 style={
-#                     "marginLeft": "5vw",
-#                     "width": "15vw",
-#                     "display": "inline-block",
-#                     "verticalAlign": "top",
-#                 },
-#             ),
-#             html.Div(
-#                 children=[spec_graph(graph_name, index)],
-#                 id={"type": graph_name + "-container", "index": index},
-#                 style={
-#                     "display": "inline-block",
-#                 },
-#             ),
-#             html.Div(
-#                 id={"type": image_name, "index": index},
-#                 style={
-#                     "display": "inline-block",
-#                     "maxHeight": "20vw",
-#                     "paddingTop": "1.5rem",
-#                     "width": "30vw",
-#                 },
-#             ),
-#         ],
-#         id={"type": "spec-container", "index": index},
-#         style={"display": "flex"},
-#     )
-
-
 def main_graph(style) -> dcc.Graph:
     """dash component factory for main graph"""
     fig = go.Figure(layout={**GRAPH_DISPLAY_DEFAULTS})
@@ -239,9 +202,7 @@ def marker_color_drop(
 
 def collapse_arrow(id_for, title, off=False):
     if off:
-        arrow_style = {
-            "WebkitTransform": "rotate(45deg)",
-        }
+        arrow_style = {"WebkitTransform": "rotate(45deg)"}
         text_style = {"display": "inline-block"}
     else:
         arrow_style = None
@@ -272,10 +233,7 @@ def collapse(collapse_id, title, component=html.Div(), off=False):
     return (
         collapse_arrow(collapse_id, title, off),
         html.Div(
-            id={
-                "type": "collapsible-panel",
-                "index": collapse_id,
-            },
+            id={"type": "collapsible-panel", "index": collapse_id},
             className="collapsible-panel",
             style=style_dict,
             children=[component],
@@ -299,10 +257,7 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
     return html.Div(
         className="axis-title-text",
         id=element_id + "-container",
-        style={
-            "display": "flex",
-            "flexDirection": "column",
-        },
+        style={"display": "flex", "flexDirection": "column"},
         children=[
             html.Label(children=[label_content], htmlFor=element_id),
             dcc.Dropdown(
@@ -341,8 +296,6 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
                 value=value,
                 className=" ".join(classnames),
                 clearable=False
-                # style={"width": "6rem", "display": "inline-block"},
-                # style={"display":"inline-block"}
             ),
         ],
     )
@@ -419,6 +372,7 @@ def parse_model_quant_entry(
     value_dict: dict[str, Union[float, list[float]]] = {}
     is_range = "--" in string
     is_list = "," in string
+    # TODO: expose these errors to the user in some useful way.
     if is_range and is_list:
         raise ValueError(
             "Entering both an explicit value list and a value range is "
@@ -427,7 +381,6 @@ def parse_model_quant_entry(
     if is_range:
         range_list = string.split("--")
         if len(range_list) > 2:
-            # try:
             raise ValueError(
                 "Entering a value range with more than two numbers is "
                 "currently not supported."
@@ -523,9 +476,7 @@ def search_parameter_div(
             )
         ),
     else:
-        children.append(
-            html.Button("add parameter", id="add-param"),
-        )
+        children.append(html.Button("add parameter", id="add-param"))
     return html.Div(
         className="search-parameter-container",
         children=children,
@@ -710,15 +661,9 @@ def marker_outline_div(outline_color) -> Div:
                 id="marker-outline-radio",
                 className="radio-items",
                 options=[
-                    {
-                        "label": "off",
-                        "value": "off",
-                    },
+                    {"label": "off", "value": "off"},
                     {"label": "b", "value": "rgba(0,0,0,1)"},
-                    {
-                        "label": "w",
-                        "value": "rgba(255,255,255,1)",
-                    },
+                    {"label": "w", "value": "rgba(255,255,255,1)"},
                 ],
                 value=outline_color,
             ),
@@ -741,14 +686,11 @@ def marker_clip_div(get_r: Callable) -> Div:
                 # TODO: wrap this more nicely
                 htmlFor="color-clip-bound-low",
             ),
-            # TODO: make this and other number fields less hideous
+            # TODO: make this and other number fields less visually hideous
             dcc.Input(
                 type="number",
                 id="color-clip-bound-low",
-                style={
-                    "height": "1.4rem",
-                    "width": "3rem",
-                },
+                style={"height": "1.4rem", "width": "3rem"},
                 value=low,
                 min=0,
                 max=100,
@@ -756,10 +698,7 @@ def marker_clip_div(get_r: Callable) -> Div:
             dcc.Input(
                 type="number",
                 id="color-clip-bound-high",
-                style={
-                    "height": "1.4rem",
-                    "width": "3rem",
-                },
+                style={"height": "1.4rem", "width": "3rem"},
                 value=high,
                 min=0,
                 max=100,
@@ -813,9 +752,6 @@ def marker_color_symbol_div(get_r: Callable) -> Div:
     palette_type = get_r("palette-type-drop.value")
     if palette_type is None:
         palette_type = "sequential"
-    solid_color = get_r("solid-color-drop.value")
-    if solid_color is None:
-        solid_color = "black"
     return html.Div(
         id="marker-color-symbol-container",
         style={"display": "flex", "flexDirection": "column", "width": "8rem"},
@@ -850,25 +786,15 @@ def search_controls_div(spec_model, get_r: Callable) -> html.Div:
             html.Div(
                 className="search-button-container",
                 children=[
-                    # hidden trigger for queryset
-                    # update on dropdown removal
+                    html.Button("clear search", id="clear-search"),
                     html.Button(
-                        id={
-                            "type": "submit-search",
-                            "index": 1,
-                        },
-                        style={"display": "none"},
-                    ),
-                    html.Button(
-                        "clear search",
-                        id="clear-search",
-                    ),
-                    html.Button(
-                        id={
-                            "type": "submit-search",
-                            "index": 0,
-                        },
+                        id={"type": "submit-search", "index": 0},
                         children="update graph",
+                    ),
+                    # hidden trigger for queryset update on dropdown removal
+                    html.Button(
+                        id={"type": "submit-search", "index": 1},
+                        style={"display": "none"},
                     ),
                 ],
             ),
@@ -899,18 +825,9 @@ def display_controls_div(get_r: Callable) -> html.Div:
                 id="main-graph-bg-radio",
                 className="radio-items",
                 options=[
-                    {
-                        "label": "white",
-                        "value": "rgba(255,255,255,1)",
-                    },
-                    {
-                        "label": "light",
-                        "value": css_variables["dark-tint-0"],
-                    },
-                    {
-                        "label": "dark",
-                        "value": css_variables["dark-tint-2"],
-                    },
+                    {"label": "white", "value": "rgba(255,255,255,1)"},
+                    {"label": "light", "value": css_variables["dark-tint-0"]},
+                    {"label": "dark", "value": css_variables["dark-tint-2"]},
                 ],
                 value=bg_color,
             ),
@@ -953,10 +870,7 @@ def highlight_controls_div(get_r: Callable) -> html.Div:
                 id="highlight-toggle",
                 className="info-text",
                 options=[
-                    {
-                        "label": "highlight on",
-                        "value": "on",
-                    },
+                    {"label": "highlight on", "value": "on"},
                     {"label": "off", "value": "off"},
                 ],
                 value=highlight,
@@ -964,9 +878,7 @@ def highlight_controls_div(get_r: Callable) -> html.Div:
             html.P(
                 id="highlight-description",
                 className="info-text",
-                style={
-                    "maxWidth": "12rem",
-                },
+                style={"maxWidth": "12rem"},
             ),
         ],
     )
@@ -986,10 +898,7 @@ def scale_control_div(spec_model, get_r: Callable) -> html.Div:
                     dcc.Input(
                         type="text",
                         id="main-graph-bounds",
-                        style={
-                            "height": "1.4rem",
-                            "width": "10rem",
-                        },
+                        style={"height": "1.4rem", "width": "10rem"},
                         placeholder="xmin xmax ymin ymax",
                     ),
                 ],
@@ -1005,8 +914,7 @@ def scale_control_div(spec_model, get_r: Callable) -> html.Div:
                 "main-graph",
                 scale_value=get_r("scale_to"),
                 average_value=get_r("average_filters"),
-                # TODO: fix init issue, need extra layer
-                #  somewhere
+                # TODO: fix init issue, need extra layer somewhere
                 r_star_value="r-star",
             ),
         ]
