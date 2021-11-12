@@ -186,9 +186,12 @@ def marker_color_drop(
     """
     if scale_type is None:
         scale_type = "qualitative"
-    if (value is None) and (allow_none is False):
-        value = "Bold"
-    options, value = generate_palette_options(scale_type, value, allow_none)
+    if value is None:
+        if allow_none is False:
+            value = "Bold"
+        else:
+            value = "none"
+    options, value = generate_palette_options(scale_type, value, None, allow_none)
     return dcc.Dropdown(
         id=element_id,
         className="filter-drop medium-drop",
@@ -744,18 +747,18 @@ def highlight_size_div(highlight_size: str) -> Div:
     return html.Div(
         style={
             "display": "flex",
-            "flexDirection": "row",
+            "flexDirection": "column",
             "marginTop": "0.5rem",
         },
         children=[
             html.Label(
-                children=["increase size: "],
+                children=["embiggen: "],
                 className="info-text",
                 htmlFor="highlight-size-radio",
             ),
             dcc.RadioItems(
                 id="highlight-size-radio",
-                className="radio-items",
+                className="info-text",
                 options=[
                     {"label": "none", "value": 1},
                     {"label": "some", "value": 2},
@@ -940,11 +943,13 @@ def highlight_controls_div(get_r: Callable) -> html.Div:
                         id="highlight-description",
                         className="info-text",
                         style={"maxWidth": "12rem"},
+                        children="no highlight presently set."
                     ),
                 ],
             ),
             highlight_options_div(size, color, symbol),
-        ]
+        ],
+        style = {"display": "flex", "flexDirection": "row"}
     )
 
 

@@ -308,6 +308,7 @@ def make_marker_properties(
     palette_type = plotly_colorscale_type(
         re_get(settings, "palette-name-drop.value")
     )
+    # TODO: when highlights exist, add a coloraxis when appropriate
     if palette_type is None:
         # solid color case
         color = re_get(settings, "palette-name-drop.value")
@@ -317,9 +318,12 @@ def make_marker_properties(
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
         colormap = re_get(settings, "palette-name-drop.value")
         if props["value_type"] == "qual":
-            string_hash, color = arbitrarily_hash_strings(
+            string_hash = arbitrarily_hash_strings(
                 none_to_quote_unquote_none(property_list)
             )
+            # TODO: compute this one step later so that we can avoid
+            #  including entirely-highlighted things in colorbar
+            color = [string_hash[prop] for prop in property_list]
             colorbar_dict |= {
                 "tickvals": list(string_hash.values()),
                 "ticktext": list(string_hash.keys()),
@@ -341,7 +345,6 @@ def make_marker_properties(
             if color_clip not in ([], [0, 100]):
                 color = np.clip(color, *np.percentile(color, color_clip))
         colorbar = go.scatter.marker.ColorBar(**colorbar_dict)
-
     # set marker size and, if present, outline.
     # plotly demands that marker size be defined as a sequence
     # in order to be able to set marker outlines -- however, this also causes
@@ -362,7 +365,6 @@ def make_marker_properties(
 
     marker_property_dict = {
         "marker": {
-            "color": color,
             "colorscale": colormap,
             "size": size,
             "opacity": 1,
@@ -373,7 +375,7 @@ def make_marker_properties(
     # colorbar = None causes plotly to draw undesirable fake ticks
     if colorbar is not None:
         marker_property_dict["marker"]["colorbar"] = colorbar
-    return marker_property_dict, props["value_type"]
+    return marker_property_dict, props["value_type"], color
 
 
 def format_display_settings(settings):
@@ -739,10 +741,10 @@ def retrieve_graph_data(
     return data_df, metadata_df, search_ids
 
 
-def halt_for_ineffective_highlight_toggle(ctx, marker_settings):
+def halt_for_ineffective_highlight_toggle(ctx, highlight_settings):
     if isinstance(ctx.triggered[0]["prop_id"], dict):
         if ctx.triggered[0]["prop_id"]["type"] == "highlight-trigger":
-            if marker_settings["highlight-toggle.value"] == "off":
+            if highlight_settings["highlight-toggle.value"] == "off":
                 raise PreventUpdate
 
 
@@ -836,7 +838,7 @@ def branch_highlight_df(
         len(highlight_ids) == 0
     ):
         return graph_df, None, {}
-    graph_df, highlight_df = split_on(
+    highlight_df, graph_df = split_on(
         graph_df, graph_df["customdata"].isin(highlight_ids)
     )
     highlight_marker_dict = {}

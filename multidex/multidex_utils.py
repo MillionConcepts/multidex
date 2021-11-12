@@ -80,13 +80,11 @@ def none_to_quote_unquote_none(
     return de_noned_list
 
 
-def arbitrarily_hash_strings(strings: Iterable[str]) -> tuple[dict, list[int]]:
+def arbitrarily_hash_strings(strings: Iterable[str]) -> dict:
     unique_string_values = sorted(list(set(strings)), reverse=True)
-    arbitrary_hash = {
+    return {
         string: ix for ix, string in enumerate(unique_string_values)
     }
-    return arbitrary_hash, [arbitrary_hash[string] for string in strings]
-
 
 # django utility functions
 
