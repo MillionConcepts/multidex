@@ -39,7 +39,7 @@ from plotter.graph import (
     clear_search,
     truncate_id_list_for_missing_properties,
     make_axis,
-    make_marker_properties,
+    make_markers,
     format_display_settings,
     spectrum_values_range,
     handle_graph_search,
@@ -341,7 +341,7 @@ def update_main_graph(
     graph_df["x"], errors["x"], x_title = make_axis(x_settings, *graph_content)
     graph_df["y"], errors["y"], y_title = make_axis(y_settings, *graph_content)
     # similarly for marker properties
-    marker_properties, marker_axis_type, color = make_marker_properties(
+    marker_properties, color, coloraxis, marker_axis_type = make_markers(
         marker_settings, *graph_content
     )
     # place color in graph df column so it works properly with split highlights
@@ -351,8 +351,8 @@ def update_main_graph(
     # drawn as separate trace (or get None, {}) if no highlight is active)
     graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
         graph_df,
-        highlight_ids=cget("highlight_ids"),
-        highlight_settings=highlight_settings,
+        highlight_ids,
+        highlight_settings,
         base_marker_size=marker_properties["marker"]["size"],
     )
     # avoid resetting zoom for labels, color changes, etc.
@@ -388,6 +388,8 @@ def update_main_graph(
             highlight_df,
             errors,
             marker_properties,
+            marker_axis_type,
+            coloraxis,
             highlight_marker_dict,
             graph_display_dict,
             axis_display_dict,
@@ -395,7 +397,6 @@ def update_main_graph(
             x_title,
             y_title,
             zoom,
-            marker_axis_type,
         ),
         {},
     )
@@ -649,13 +650,13 @@ def populate_color_dropdowns(
     palette_type_options: list[dict],
     palette_value: str,
     *,
-    cget
+    cget,
 ) -> tuple[list[dict], str]:
     """
     show or hide scale/solid color dropdowns & populate color scale options
     per coloring type dropdown selection.
     """
-   # TODO: load from some external defaults
+    # TODO: load from some external defaults
     palette_memory = cget("palette_memory")
     if palette_memory is None:
         palette_memory = {
@@ -663,7 +664,7 @@ def populate_color_dropdowns(
             "diverging": "delta_r",
             "solid": "hotpink",
             "cyclical": "IceFire",
-            "qualitative": "Bold"
+            "qualitative": "Bold",
         }
     if palette_type_value not in [
         option["value"] for option in palette_type_options
