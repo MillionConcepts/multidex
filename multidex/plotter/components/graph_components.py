@@ -1,5 +1,6 @@
 """dash components that are graphs and associated helper functions"""
 
+from copy import deepcopy
 from typing import Mapping, Optional
 
 import numpy as np
@@ -24,7 +25,7 @@ def plot_and_style_data(
     marker_property_dict,
     x_title,
     y_title,
-    marker_axis_type
+    marker_axis_type,
 ):
     fig.add_trace(
         go.Scatter(
@@ -33,18 +34,19 @@ def plot_and_style_data(
             hovertext=graph_df["text"],
             customdata=graph_df["customdata"],
             mode="markers + text",
-            marker={"color": "black", "size": 8},
+            # marker={"color": "black", "size": 8},
+            **marker_property_dict
         )
     )
     axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
     # noinspection PyTypeChecker
     fig.update_xaxes(axis_display_dict | {"title_text": x_title})
     fig.update_yaxes(axis_display_dict | {"title_text": y_title})
-    fig.update_traces(**marker_property_dict)
+    # fig.update_traces(**marker_property_dict)
     if (
-            (marker_axis_type == "qual")
-            # don't try to discretize solid colors
-            and not isinstance(marker_property_dict['marker']['color'], str)
+        (marker_axis_type == "qual")
+        # don't try to discretize solid colors
+        and not isinstance(marker_property_dict["marker"]["color"], str)
     ):
         fig = discretize_color_representations(fig)
     for axis in ["x", "y"]:
@@ -76,15 +78,17 @@ def apply_graph_style(fig, graph_display_settings, zoom):
 
 def main_scatter_graph(
     graph_df: pd.DataFrame,
+    highlight_df: Optional[pd.DataFrame],
     errors: Mapping,
     marker_property_dict: Mapping,
+    highlight_marker_dict: Mapping,
     graph_display_settings: Mapping,
     axis_display_settings: Mapping,
     label_ids: list[int],
     x_title: str = None,
     y_title: str = None,
     zoom: Optional[tuple[list[float, float]]] = None,
-    marker_axis_type="quant"
+    marker_axis_type: str = "quant",
 ) -> go.Figure:
     """
     main graph component. this function creates the Plotly figure; data
@@ -101,10 +105,10 @@ def main_scatter_graph(
 
     # sort points by marker size so that we can draw highlighted points
     # last, and thus at a higher 'z-axis'
-    if len(graph_df["size"].unique()) > 1:
-        errors, graph_df, marker_property_dict = sort_by_marker_size(
-            errors, graph_df, marker_property_dict
-        )
+    # if len(graph_df["size"].unique()) > 1:
+    #     errors, graph_df, marker_property_dict = sort_by_marker_size(
+    #         errors, graph_df, marker_property_dict
+    #     )
     # the click-to-label annotations
     draw_floating_labels(fig, graph_df, label_ids)
     # and the scattered points and their error bars
@@ -116,16 +120,25 @@ def main_scatter_graph(
         marker_property_dict,
         x_title,
         y_title,
-        marker_axis_type
+        marker_axis_type,
     )
-    apply_graph_style(fig, graph_display_settings, None)
-    if zoom is not None:
-        fig.update_layout(
-            {
-                "xaxis": {"range": [zoom[0][0], zoom[0][1]]},
-                "yaxis": {"range": [zoom[1][0], zoom[1][1]]},
-            }
+    if highlight_df is not None:
+        assembled_marker_dict = dict(deepcopy(marker_property_dict))
+        assembled_marker_dict["marker"] = (
+            assembled_marker_dict["marker"] | highlight_marker_dict
         )
+        fig.add_trace(
+            go.Scatter(
+                x=highlight_df["x"],
+                y=highlight_df["y"],
+                hovertext=highlight_df["text"],
+                customdata=highlight_df["customdata"],
+                mode="markers + text",
+                **assembled_marker_dict,
+            )
+        )
+    # last-step canvas stuff: set bounds, gridline color, etc.
+    apply_graph_style(fig, graph_display_settings, zoom)
     return fig
 
 

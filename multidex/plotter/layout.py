@@ -20,14 +20,17 @@ from plotter.components.ui_components import (
     main_graph,
     dynamic_spec_div,
     trigger_div,
-    marker_clip_div,
+    marker_clip_div, fake_output_divs,
 )
+from plotter.types import SpectrumModel
 
 
-# primary search panel
 def search_div(
-    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
+    spec_model: SpectrumModel, restore_dictionary: Optional[Mapping] = None
 ):
+    """
+    generates the primary search panel, restoring from settings if available.
+    """
     # are we restoring from saved settings? if so, this function gets them;
     # if not, this function politely acts as None
     # TODO: refactor this horror to load from an external set of defaults
@@ -84,7 +87,7 @@ def search_div(
                 ),
                 *collapse(
                     "highlight-controls",
-                    "highlight",
+                    "h controls",
                     highlight_controls_div(get_r),
                     off=True,
                 ),
@@ -138,10 +141,7 @@ def search_div(
                                         id="export-csv",
                                         style={"marginRight": "0.8rem"},
                                     ),
-                                    html.Button(
-                                        "image",
-                                        id="export-image",
-                                    ),
+                                    html.Button("image", id="export-image"),
                                 ],
                             ),
                         ]
@@ -227,22 +227,7 @@ def multidex_body(spec_model):
             html.Div(
                 id="fire-on-load", children="2", style={"display": "none"}
             ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-0",
-                style={"display": "none"},
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-1",
-                style={"display": "none"},
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-2",
-                style={"display": "none"},
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-3",
-                style={"display": "none"},
-            ),
+            *fake_output_divs(4),
             html.Div(
                 id="default-settings-checked-div", style={"display": "none"}
             ),
@@ -254,6 +239,7 @@ def multidex_body(spec_model):
                 children=[dcc.Input(id="search-load-trigger", value=0)],
                 style={"display": "none"},
             ),
+            # tick-tock
             # dcc.Interval(id="interval1", interval=1000, n_intervals=0),
         ],
         id="multidex",

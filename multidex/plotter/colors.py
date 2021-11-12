@@ -97,9 +97,7 @@ def get_lut(percent_scale, count):
     )
 
 
-def get_palette_from_scale_name(
-    scale_name, count, qualitative=True
-):
+def get_palette_from_scale_name(scale_name, count, qualitative=True):
     scale = dig_for_value(get_plotly_colorscales(), scale_name)
     # %rgb representation
     percents = np.array(scale_to_percents(scale))
@@ -158,17 +156,26 @@ def discretize_marker_colors(marker_dict):
     return marker_dict
 
 
-def generate_palette_options(scale_value, palette_value):
+def generate_palette_options(
+    scale_value, palette_value, remembered_value, allow_none=False
+):
     if scale_value == "solid":
-        output_options = SOLID_MARKER_COLORS
+        output_options = list(SOLID_MARKER_COLORS)
     else:
         colormaps = get_plotly_colorscales()
         output_options = [
             {"label": colormap, "value": colormap}
             for colormap in colormaps[scale_value].keys()
         ]
-    if (palette_value is None) or palette_value not in [option["value"] for option in output_options]:
-        output_value = output_options[0]["value"]
+    # "none" option used for some highlight features
+    if allow_none is True:
+        output_options = [{"label": "none", "value": "none"}] + output_options
+    # fall back to first colormap / color in specified scale type if we've
+    # really swapped scale types or on a clean load
+    if (palette_value is None) or palette_value not in [
+        option["value"] for option in output_options
+    ]:
+        output_value = remembered_value
     else:
         output_value = palette_value
     return output_options, output_value

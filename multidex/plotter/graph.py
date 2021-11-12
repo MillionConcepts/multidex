@@ -15,9 +15,11 @@ from operator import or_
 from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
 import numpy as np
+import pandas
 import pandas as pd
 from dash import html
 from dash.exceptions import PreventUpdate
+from dustgoggles.pivot import split_on
 from plotly import graph_objects as go
 from toolz import keyfilter
 
@@ -221,7 +223,6 @@ def make_axis(
     metadata_df: pd.DataFrame,
     get_errors: bool,
     filters_are_averaged,
-    _highlight,
     _color_clip,
 ) -> tuple[list[float], Optional[list[float]], str]:
     """
@@ -278,7 +279,6 @@ def make_marker_properties(
     metadata_df,
     _get_errors,
     _filters_are_averaged,
-    highlight_id_list,
     color_clip,
 ):
     """
@@ -342,46 +342,35 @@ def make_marker_properties(
                 color = np.clip(color, *np.percentile(color, color_clip))
         colorbar = go.scatter.marker.ColorBar(**colorbar_dict)
 
-    # define marker size settings
-    # note that you have to define marker size as a sequence
+    # set marker size and, if present, outline.
+    # plotly demands that marker size be defined as a sequence
     # in order to be able to set marker outlines -- however, this also causes
-    # markers to be drawn in some different (and more expensive) way -- hence
-    # this dumb logic tree
-    opacity = 1
-    base_size = re_get(settings, "marker-base-size.value")
-    if re_get(settings, "highlight-toggle.value") == "on":
-        marker_size = [
-            base_size * 1.9 if spectrum in highlight_id_list else base_size
-            for spectrum in id_list
-        ]
-    elif re_get(settings, "outline-radio.value") != "off":
-        marker_size = [base_size for _ in id_list]
+    # markers to be drawn in a different (and more expensive) way -- hence
+    # this silly-looking logic
+    size = re_get(settings, "marker-size-radio.value")
+    if re_get(settings, "outline-radio.value") == "off":
+        outline = {}
     else:
-        marker_size = base_size
-
-    # define marker outline
-    if re_get(settings, "outline-radio.value") != "off":
-        marker_line = {
+        size = [size for _ in id_list]
+        outline = {
             "color": re_get(settings, "outline-radio.value"),
             "width": 5,
         }
-    else:
-        marker_line = {}
 
     # set marker symbol
-    marker_symbol = re_get(settings, "marker-symbol.value")
+    symbol = re_get(settings, "marker-symbol-drop.value")
 
     marker_property_dict = {
         "marker": {
             "color": color,
             "colorscale": colormap,
-            "size": marker_size,
-            "opacity": opacity,
-            "symbol": marker_symbol,
+            "size": size,
+            "opacity": 1,
+            "symbol": symbol,
         },
-        "line": marker_line,
+        "line": outline,
     }
-    # setting a "None" colorbar causes plotly to draw fake ticks
+    # colorbar = None causes plotly to draw undesirable fake ticks
     if colorbar is not None:
         marker_property_dict["marker"]["colorbar"] = colorbar
     return marker_property_dict, props["value_type"]
@@ -690,7 +679,7 @@ def pretty_print_search_params(search_parameters):
     for param in search_parameters:
         if "begin" in param.keys() or "end" in param.keys():
             string_list.append(
-                f"{param['field']}: {param['begin']} -- {param['end']}"
+                f"{param['field']}: {param.get('begin')} -- {param.get('end')}"
             )
         else:
             if param.get("term"):
@@ -743,12 +732,11 @@ def make_scatter_annotations(
 
 def retrieve_graph_data(
     cget: Callable[[str], Any]
-) -> tuple[pd.DataFrame, pd.DataFrame, Sequence[int], Sequence[int]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, Sequence[int]]:
     search_ids = cget("search_ids")
-    highlight_ids = cget("highlight_ids")
     data_df = cget("data_df")
     metadata_df = cget("metadata_df")
-    return data_df, metadata_df, highlight_ids, search_ids
+    return data_df, metadata_df, search_ids
 
 
 def halt_for_ineffective_highlight_toggle(ctx, marker_settings):
@@ -761,9 +749,10 @@ def halt_for_ineffective_highlight_toggle(ctx, marker_settings):
 def halt_to_debounce_palette_update(trigger, marker_settings, cget):
     if trigger != "palette-name-drop.value":
         return
-    if cget("marker_settings")[
-        "palette-name-drop.value"
-    ] == marker_settings["palette-name-drop.value"]:
+    if (
+        cget("marker_settings")["palette-name-drop.value"]
+        == marker_settings["palette-name-drop.value"]
+    ):
         raise PreventUpdate
 
 
@@ -781,6 +770,7 @@ def halt_for_inappropriate_palette_type(marker_settings, spec_model):
     _, props = get_axis_option_props(marker_settings, spec_model)
     if props["value_type"] == "quant":
         raise PreventUpdate
+
 
 def add_or_remove_label(cset, ctx, label_ids):
     """
@@ -831,3 +821,35 @@ def explicitly_set_graph_bounds(ctx):
     graph = go.Figure(ctx.states["main-graph.figure"])
     update_zoom_from_bounds_string(graph, bounds_string)
     return graph, {}
+
+
+def branch_highlight_df(
+    graph_df, highlight_ids, highlight_settings, base_marker_size
+) -> tuple[pd.DataFrame, Optional[pd.DataFrame], dict]:
+    """
+    an element of the update_main_graph() flow. if highlight is active,
+    split highlighted points out of main df and interpret styles as specified,
+    to be drawn as a separate trace.
+    """
+    # don't do anything if there is nothing to do
+    if highlight_settings["highlight-toggle.value"] == "off" or (
+        len(highlight_ids) == 0
+    ):
+        return graph_df, None, {}
+    graph_df, highlight_df = split_on(
+        graph_df, graph_df["customdata"].isin(highlight_ids)
+    )
+    highlight_marker_dict = {}
+    # iterate over values of all highlight UI elements, interpreting them as
+    # marker values legible to go.Scatter & its relatives
+    for prop, setting_input in zip(
+        ("color", "size", "symbol"),
+        ("color-drop", "size-radio", "symbol-drop"),
+    ):
+        setting = highlight_settings[f"highlight-{setting_input}.value"]
+        if setting != "none":
+            if prop == "size":
+                # highlight size increase is relative, not absolute
+                setting = setting * base_marker_size
+            highlight_marker_dict[prop] = setting
+    return graph_df, highlight_df, highlight_marker_dict

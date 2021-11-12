@@ -54,8 +54,10 @@ from plotter.graph import (
     add_or_remove_label,
     explicitly_set_graph_bounds,
     parse_main_graph_bounds_string,
-    get_axis_option_props, halt_to_debounce_palette_update,
+    get_axis_option_props,
+    halt_to_debounce_palette_update,
     halt_for_inappropriate_palette_type,
+    branch_highlight_df,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.spectrum_ops import data_df_from_queryset
@@ -234,6 +236,7 @@ def update_main_graph(
     x_inputs,
     y_inputs,
     marker_inputs,
+    highlight_inputs,
     graph_display_inputs,
     cget,
     cset,
@@ -284,7 +287,7 @@ def update_main_graph(
         pickctx(ctx, graph_display_inputs)
     )
 
-    data_df, metadata_df, highlight_ids, search_ids = retrieve_graph_data(cget)
+    data_df, metadata_df, search_ids = retrieve_graph_data(cget)
     if not search_ids:
         return (
             failed_scatter_graph(
@@ -328,7 +331,6 @@ def update_main_graph(
         metadata_df,
         get_errors,
         filters_are_averaged,
-        highlight_ids,
         color_clip,
     ]
     graph_df = pd.DataFrame({"customdata": truncated_ids})
@@ -340,11 +342,17 @@ def update_main_graph(
     marker_properties, marker_axis_type = make_marker_properties(
         marker_settings, *graph_content
     )
-
-    # storing this to set draw order for highlights
-    graph_df["size"] = marker_properties["marker"]["size"]
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
 
+    # now that graph dataframe is constructed, split & style highlights to be
+    # drawn as separate trace (or get None, {}) if no highlight is active)
+    highlight_settings = pickctx(ctx, highlight_inputs)
+    graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
+        graph_df,
+        highlight_ids=cget("highlight_ids"),
+        highlight_settings=highlight_settings,
+        base_marker_size=marker_properties["marker"]["size"],
+    )
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
     # TODO: cleanly prevent these from unsetting autoscale on load
@@ -360,7 +368,9 @@ def update_main_graph(
             "x_settings",
             "y_settings",
             "marker_settings",
+            "highlight_settings",
             "marker_properties",
+            "highlight_marker_dict",
             "graph_display_dict",
             "axis_display_dict",
             "x_title",
@@ -373,16 +383,17 @@ def update_main_graph(
     return (
         main_scatter_graph(
             graph_df,
+            highlight_df,
             errors,
             marker_properties,
+            highlight_marker_dict,
             graph_display_dict,
             axis_display_dict,
             label_ids,
             x_title,
             y_title,
             zoom,
-            marker_axis_type
-            # bounds_string, # TODO: are we passing this ever or no?
+            marker_axis_type,
         ),
         {},
     )
@@ -600,7 +611,11 @@ def toggle_panel_visibility(
 
 
 def allow_qualitative_palettes(
-    marker_option: str, existing_palette_type_options, existing_palette_type_value, *, spec_model
+    marker_option: str,
+    existing_palette_type_options,
+    existing_palette_type_value,
+    *,
+    spec_model,
 ):
     palette_types = ["sequential", "solid", "diverging", "cyclical"]
     marker_value_type = keygrab(
@@ -609,15 +624,18 @@ def allow_qualitative_palettes(
     if marker_value_type == "qual":
         palette_types.append("qualitative")
     options = [
-            {"label": palette_type, "value": palette_type}
-            for palette_type in palette_types
-        ]
+        {"label": palette_type, "value": palette_type}
+        for palette_type in palette_types
+    ]
     # don't trigger a bunch of stuff unnecessarily
     if options == existing_palette_type_options:
         raise PreventUpdate
     # always set a valid option
     if existing_palette_type_value not in palette_types:
-        palette_type_value = "sequential"
+        if "qualitative" in palette_types:
+            palette_type_value = "qualitative"
+        else:
+            palette_type_value = "sequential"
     else:
         palette_type_value = existing_palette_type_value
     return options, palette_type_value
@@ -626,25 +644,39 @@ def allow_qualitative_palettes(
 def populate_color_dropdowns(
     palette_type_value: str,
     palette_type_options: list[dict],
-    palette_value: str
+    palette_value: str,
+    *,
+    cget
 ) -> tuple[list[dict], str]:
     """
     show or hide scale/solid color dropdowns & populate color scale options
     per coloring type dropdown selection.
-    TODO: retain deeper memory of color scale selections?
     """
+   # TODO: load from some external defaults
+    palette_memory = cget("palette_memory")
+    if palette_memory is None:
+        palette_memory = {
+            "sequential": "Plasma",
+            "diverging": "delta_r",
+            "solid": "hotpink",
+            "cyclical": "IceFire",
+            "qualitative": "Bold"
+        }
     if palette_type_value not in [
         option["value"] for option in palette_type_options
     ]:
         palette_type_value = "sequential"
+    remembered_value = palette_memory[palette_type_value]
     palette_options_output, palette_value_output = generate_palette_options(
-        palette_type_value, palette_value
+        palette_type_value, palette_value, remembered_value
     )
     # e.g., switch from qual to quant marker option but with a sequential
     # scale selected
     if palette_value_output == palette_value:
         raise PreventUpdate
+    palette_memory[palette_type_value] = palette_value_output
     return palette_options_output, palette_value_output
+
 
 # TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget, spec_model):

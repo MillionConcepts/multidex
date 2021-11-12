@@ -1,13 +1,13 @@
-"""factory functions for UI dash components"""
-import random
+"""factory functions for dash UI components"""
 from ast import literal_eval
 from functools import partial
+import random
 from typing import Mapping, Optional, Iterable, Callable, Union
 
-import plotly.graph_objects as go
-from dash import dcc
+from dash import dcc, html
 from dash import html
 from dash.html import Div
+import plotly.graph_objects as go
 
 from multidex_utils import get_if, none_to_empty
 from plotter.colors import generate_palette_options
@@ -74,9 +74,7 @@ def scale_controls_container(
                 dcc.Checklist(
                     id=id_prefix + "-average",
                     className="info-text",
-                    options=[
-                        {"label": "merge", "value": "average"},
-                    ],
+                    options=[{"label": "merge", "value": "average"}],
                     value=[average_value],
                 ),
                 html.Label(
@@ -181,16 +179,16 @@ def spec_graph(name: str) -> dcc.Graph:
 
 
 def marker_color_drop(
-    element_id: str, value: str, scale_type: str
+    element_id: str, value: str, scale_type: str, allow_none: bool = False
 ) -> dcc.Dropdown:
     """
-    dropdown for selecting calculation options for marker settings
+    dropdown for selecting color scales / solid colors given a scale type
     """
-    if value is None:
-        value = "haline"
     if scale_type is None:
-        scale_type = "sequential"
-    options, value = generate_palette_options(scale_type, value)
+        scale_type = "qualitative"
+    if (value is None) and (allow_none is False):
+        value = "Bold"
+    options, value = generate_palette_options(scale_type, value, allow_none)
     return dcc.Dropdown(
         id=element_id,
         className="filter-drop medium-drop",
@@ -201,6 +199,7 @@ def marker_color_drop(
 
 
 def collapse_arrow(id_for, title, off=False):
+    """arrow that toggles collapse state of collapsible div with id id_for"""
     if off:
         arrow_style = {"WebkitTransform": "rotate(45deg)"}
         text_style = {"display": "inline-block"}
@@ -280,7 +279,6 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
         ]
     if not value:
         value = random.choice(options)["value"]
-
     classnames = ["dash-dropdown", "filter-drop", "medium-drop"]
     if label_content == "right":
         classnames.append("right-filter-drop")
@@ -295,13 +293,14 @@ def filter_drop(model, element_id, value, label_content=None, options=None):
                 options=options,
                 value=value,
                 className=" ".join(classnames),
-                clearable=False
+                clearable=False,
             ),
         ],
     )
 
 
 def component_drop(element_id, value, label_content=None, options=None):
+    """dropdown for PCA (etc.) component selection"""
     if options is None:
         options = [
             {"label": str(component_ix + 1), "value": component_ix}
@@ -349,7 +348,6 @@ def model_options_drop(
 ) -> dcc.Dropdown:
     """
     dropdown for selecting search values for a specific field
-    could end up getting unmanageable as a UI element
     """
     # TODO: hacky.
     if value is not None:
@@ -595,10 +593,7 @@ def axis_controls_container(
 def marker_coloring_type_div(coloring_type: str) -> Div:
     palette_types = ("sequential", "solid", "diverging", "cyclical")
     return html.Div(
-        style={
-            "display": "flex",
-            "flexDirection": "column",
-        },
+        style={"display": "flex", "flexDirection": "column"},
         children=[
             html.Label(
                 className="info-text",
@@ -620,22 +615,19 @@ def marker_coloring_type_div(coloring_type: str) -> Div:
 
 def marker_size_div(marker_size) -> Div:
     return html.Div(
-        style={
-            "display": "flex",
-            "flexDirection": "row",
-        },
+        style={"display": "flex", "flexDirection": "row"},
         children=[
             html.Label(
                 children=["size: "],
                 className="info-text",
-                htmlFor="marker-base-size",
+                htmlFor="marker-size-radio",
             ),
             dcc.RadioItems(
-                id="marker-base-size",
+                id="marker-size-radio",
                 className="radio-items",
                 options=[
-                    {"label": "s", "value": 4},
-                    {"label": "m", "value": 9},
+                    {"label": "s", "value": 8},
+                    {"label": "m", "value": 11},
                     {"label": "l", "value": 18},
                 ],
                 value=marker_size,
@@ -714,15 +706,15 @@ def marker_clip_div(get_r: Callable) -> Div:
 
 
 def marker_options_div(get_r: Callable) -> Div:
-    marker_symbol = get_r("marker-symbol.value")
+    marker_symbol = get_r("marker-symbol-drop.value")
     if marker_symbol is None:
         marker_symbol = "circle"
     outline_color = get_r("marker-outline-radio.value")
     if outline_color is None:
-        outline_color = "off"
-    marker_size = get_r("marker-base-size.value")
+        outline_color = "rgba(0,0,0,1)"
+    marker_size = get_r("marker-size-radio.value")
     if marker_size is None:
-        marker_size = 9
+        marker_size = 11
     return html.Div(
         id="marker-options-div",
         style={
@@ -735,11 +727,11 @@ def marker_options_div(get_r: Callable) -> Div:
             marker_size_div(marker_size),
             html.Label(
                 children=["marker symbol"],
-                htmlFor="marker-symbol",
+                htmlFor="marker-symbol-drop",
                 className="info-text",
             ),
             dcc.Dropdown(
-                "marker-symbol",
+                "marker-symbol-drop",
                 className="medium-drop filter-drop",
                 value=marker_symbol,
                 options=MARKER_SYMBOLS,
@@ -748,10 +740,35 @@ def marker_options_div(get_r: Callable) -> Div:
     )
 
 
+def highlight_size_div(highlight_size: str) -> Div:
+    return html.Div(
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "marginTop": "0.5rem",
+        },
+        children=[
+            html.Label(
+                children=["increase size: "],
+                className="info-text",
+                htmlFor="highlight-size-radio",
+            ),
+            dcc.RadioItems(
+                id="highlight-size-radio",
+                className="radio-items",
+                options=[
+                    {"label": "none", "value": 1},
+                    {"label": "some", "value": 2},
+                    {"label": "lots", "value": 4},
+                ],
+                value=highlight_size,
+            ),
+        ],
+    )
+
+
 def marker_color_symbol_div(get_r: Callable) -> Div:
     palette_type = get_r("palette-type-drop.value")
-    if palette_type is None:
-        palette_type = "sequential"
     return html.Div(
         id="marker-color-symbol-container",
         style={"display": "flex", "flexDirection": "column", "width": "8rem"},
@@ -774,10 +791,7 @@ def marker_color_symbol_div(get_r: Callable) -> Div:
 
 def search_controls_div(spec_model, get_r: Callable) -> html.Div:
     return html.Div(
-        style={
-            "display": "flex",
-            "flexDirection": "row",
-        },
+        style={"display": "flex", "flexDirection": "row"},
         children=[
             search_container_div(
                 spec_model,
@@ -853,34 +867,84 @@ def display_controls_div(get_r: Callable) -> html.Div:
     )
 
 
-def highlight_controls_div(get_r: Callable) -> html.Div:
-    if get_r("highlight-toggle.value") is None:
-        highlight = "off"
-    else:
-        highlight = get_r("highlight-toggle.value")
+def highlight_options_div(size, color, symbol) -> html.Div:
     return html.Div(
-        className="axis-controls-container",
+        id="highlight-options-div",
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "marginRight": "0.3rem",
+        },
         children=[
-            html.Button(
-                "set highlight",
-                id="highlight-save",
-                style={"marginTop": "1rem"},
-            ),
-            dcc.RadioItems(
-                id="highlight-toggle",
+            highlight_size_div(size),
+            html.Label(
+                children=["highlight color"],
+                htmlFor="highlight-color-drop",
                 className="info-text",
-                options=[
-                    {"label": "highlight on", "value": "on"},
-                    {"label": "off", "value": "off"},
-                ],
-                value=highlight,
             ),
-            html.P(
-                id="highlight-description",
+            marker_color_drop(
+                "highlight-color-drop",
+                value=color,
+                scale_type="solid",
+                allow_none=True,
+            ),
+            html.Label(
+                children=["highlight symbol"],
+                htmlFor="highlight-symbol-drop",
                 className="info-text",
-                style={"maxWidth": "12rem"},
+            ),
+            dcc.Dropdown(
+                "highlight-symbol-drop",
+                className="medium-drop filter-drop",
+                value=symbol,
+                options=[{"label": "none", "value": "none"}]
+                + list(MARKER_SYMBOLS),
             ),
         ],
+    )
+
+
+def highlight_controls_div(get_r: Callable) -> html.Div:
+    status = get_r("highlight-toggle.value")
+    if status is None:
+        status = "off"
+    size = get_r("highlight-size-radio.value")
+    if size is None:
+        size = 1
+    symbol = get_r("highlight-symbol.value")
+    if symbol is None:
+        symbol = "none"
+    color = get_r("highlight-color.value")
+    if color is None:
+        color = "none"
+    return html.Div(
+        children=[
+            html.Div(
+                className="axis-controls-container",
+                children=[
+                    html.Button(
+                        "set highlight",
+                        id="highlight-save",
+                        style={"marginTop": "1rem"},
+                    ),
+                    dcc.RadioItems(
+                        id="highlight-toggle",
+                        className="info-text",
+                        options=[
+                            {"label": "highlight off", "value": "off"},
+                            {"label": "on", "value": "on"},
+                        ],
+                        value=status,
+                    ),
+                    html.P(
+                        id="highlight-description",
+                        className="info-text",
+                        style={"maxWidth": "12rem"},
+                    ),
+                ],
+            ),
+            highlight_options_div(size, color, symbol),
+        ]
     )
 
 
@@ -919,3 +983,13 @@ def scale_control_div(spec_model, get_r: Callable) -> html.Div:
             ),
         ]
     )
+
+
+def fake_output_divs(n_divs: int) -> list[html.Div]:
+    return [
+        html.Div(
+            id=f"fake-output-for-callback-with-only-side-effects-{ix}",
+            style={"display": "none"},
+        )
+        for ix in range(n_divs)
+    ]
