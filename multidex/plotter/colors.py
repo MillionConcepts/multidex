@@ -104,6 +104,8 @@ def get_palette_from_scale_name(scale_name, count, qualitative=True):
     if qualitative is True:
         # i.e., take explicit color values from the palette
         wheel = cycle(percents)
+        # prevent weird behavior from go.Scatter in some cases
+        count = max(count, 2)
         lut = [next(wheel) for _ in range(count)]
     else:
         lut = get_lut(percents, count)
@@ -175,7 +177,10 @@ def generate_palette_options(
     if (palette_value is None) or palette_value not in [
         option["value"] for option in output_options
     ]:
-        output_value = remembered_value
+        if remembered_value is None:
+            output_value = output_options[0]["value"]
+        else:
+            output_value = remembered_value
     else:
         output_value = palette_value
     return output_options, output_value

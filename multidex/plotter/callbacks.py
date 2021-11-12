@@ -277,7 +277,9 @@ def update_main_graph(
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
-    halt_for_ineffective_highlight_toggle(ctx, marker_settings)
+    highlight_settings = pickctx(ctx, highlight_inputs)
+    highlight_ids = cget("highlight_ids")
+    halt_for_ineffective_highlight_toggle(ctx, highlight_settings)
     halt_for_inappropriate_palette_type(marker_settings, spec_model)
     # TODO: this isn't quite enough, in the sense that a swap from qual to
     #  quant with a qual palette selected will trigger two draws. not
@@ -339,14 +341,14 @@ def update_main_graph(
     graph_df["x"], errors["x"], x_title = make_axis(x_settings, *graph_content)
     graph_df["y"], errors["y"], y_title = make_axis(y_settings, *graph_content)
     # similarly for marker properties
-    marker_properties, marker_axis_type = make_marker_properties(
+    marker_properties, marker_axis_type, color = make_marker_properties(
         marker_settings, *graph_content
     )
+    # place color in graph df column so it works properly with split highlights
+    graph_df["color"] = color
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
-
     # now that graph dataframe is constructed, split & style highlights to be
     # drawn as separate trace (or get None, {}) if no highlight is active)
-    highlight_settings = pickctx(ctx, highlight_inputs)
     graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
         graph_df,
         highlight_ids=cget("highlight_ids"),
@@ -641,6 +643,7 @@ def allow_qualitative_palettes(
     return options, palette_type_value
 
 
+# TODO: "gray" is overloaded between sequential + solid -- maybe "grey"
 def populate_color_dropdowns(
     palette_type_value: str,
     palette_type_options: list[dict],

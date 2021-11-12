@@ -27,15 +27,19 @@ def plot_and_style_data(
     y_title,
     marker_axis_type,
 ):
+    # last-mile thing here to keep separate from highlight -- TODO: silly?
+    marker_property_dict["marker"]["color"] = graph_df["color"].values
     fig.add_trace(
         go.Scatter(
             x=graph_df["x"],
             y=graph_df["y"],
             hovertext=graph_df["text"],
+            # suppresses trace hoverover
+            hovertemplate="%{hovertext}<extra></extra>",
             customdata=graph_df["customdata"],
             mode="markers + text",
             # marker={"color": "black", "size": 8},
-            **marker_property_dict
+            **marker_property_dict,
         )
     )
     axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
@@ -127,12 +131,20 @@ def main_scatter_graph(
         assembled_marker_dict["marker"] = (
             assembled_marker_dict["marker"] | highlight_marker_dict
         )
+        del assembled_marker_dict["marker"]["colorbar"]
+        if "color" not in highlight_marker_dict:
+            # just treat it like we did the graph df
+            assembled_marker_dict["marker"]["color"] = highlight_df[
+                "color"
+            ].values
         fig.add_trace(
             go.Scatter(
                 x=highlight_df["x"],
                 y=highlight_df["y"],
                 hovertext=highlight_df["text"],
                 customdata=highlight_df["customdata"],
+                # suppresses trace hoverover
+                hovertemplate="%{hovertext}<extra></extra>",
                 mode="markers + text",
                 **assembled_marker_dict,
             )
