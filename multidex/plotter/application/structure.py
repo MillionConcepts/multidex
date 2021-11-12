@@ -42,10 +42,16 @@ MARKER_INPUTS = [
     Input("palette-name-drop", "value"),
     Input("color-clip-bound-low", "value"),
     Input("color-clip-bound-high", "value"),
-    Input("highlight-toggle", "value"),
     Input("marker-outline-radio", "value"),
-    Input("marker-base-size", "value"),
-    Input("marker-symbol", "value"),
+    Input("marker-size-radio", "value"),
+    Input("marker-symbol-drop", "value"),
+]
+
+HIGHLIGHT_INPUTS = [
+    Input("highlight-toggle", "value"),
+    Input("highlight-size-radio", "value"),
+    Input("highlight-symbol-drop", "value"),
+    Input("highlight-color-drop", "value")
 ]
 
 GRAPH_DISPLAY_INPUTS = [

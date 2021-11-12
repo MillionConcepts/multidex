@@ -9,7 +9,7 @@ from plotter.application.structure import (
     MARKER_INPUTS,
     GRAPH_DISPLAY_INPUTS,
     FILTER_DROPDOWN_OUTPUTS,
-    X_INPUTS,
+    X_INPUTS, HIGHLIGHT_INPUTS,
 )
 
 
@@ -69,6 +69,7 @@ def register_update_main_graph(app, configured_function):
             *X_INPUTS,
             *Y_INPUTS,
             *MARKER_INPUTS,
+            *HIGHLIGHT_INPUTS,
             *GRAPH_DISPLAY_INPUTS,
             Input({"type": "search-trigger", "index": ALL}, "value"),
             Input({"type": "main-graph-scale-trigger", "index": 0}, "value"),

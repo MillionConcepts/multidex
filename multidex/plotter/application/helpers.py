@@ -8,7 +8,7 @@ from plotter.application.structure import (
     Y_INPUTS,
     MARKER_INPUTS,
     GRAPH_DISPLAY_INPUTS,
-    STATIC_IMAGE_URL,
+    STATIC_IMAGE_URL, HIGHLIGHT_INPUTS,
 )
 
 
@@ -64,6 +64,7 @@ def configure_callbacks(cget, cset, spec_model):
         "x_inputs": X_INPUTS,
         "y_inputs": Y_INPUTS,
         "marker_inputs": MARKER_INPUTS,
+        "highlight_inputs": HIGHLIGHT_INPUTS,
         "graph_display_inputs": GRAPH_DISPLAY_INPUTS,
         "cget": cget,
         "cset": cset,
