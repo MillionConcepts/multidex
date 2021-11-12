@@ -9,6 +9,7 @@ from dustgoggles.structures import dig_for_value
 import matplotlib.colors as mcolors
 import numpy as np
 import plotly.colors as pcolors
+import plotly.graph_objects as go
 from more_itertools import windowed
 
 from plotter.styles.marker_style import SOLID_MARKER_COLORS
@@ -130,32 +131,53 @@ def make_discrete_scale(percent_scale, count):
     )
 
 
-# note we're assuming this just has one -- or one relevant -- trace
-def discretize_color_representations(fig):
-    marker_dict = next(fig.select_traces())["marker"]
-    marker_dict = discretize_marker_colors(marker_dict)
-    fig.update_traces(marker=marker_dict)
+def discretize_color_representations(fig: go.Figure) -> go.Figure:
+    """
+    convert the first colorbar found in fig (if any) to "discrete"
+    representation (chunky rather than smooth transitions between colors at
+    tick boundaries).
+    """
+    # TODO, maybe: clean this up -- the obnoxiously-slightly-different syntax
+    #  for update_traces() and update_coloraxes() makes it icky
+    coloraxes, traces = fig.select_coloraxes(), fig.select_traces()
+    for coloraxis in coloraxes:
+        if "colorbar" not in coloraxis:
+            continue
+        coloraxis = discretize_colors(coloraxis)
+        # don't keep doing this (selectors are complicated & not needed here)
+        fig.update_coloraxes(coloraxis)
+        return fig
+    for trace in traces:
+        if "marker" not in trace:
+            continue
+        marker = trace["marker"]
+        if "colorbar" not in marker:
+            continue
+        marker = discretize_colors(marker)
+        fig.update_traces(marker=marker)
+        return fig
+    # no colorbars? FINE
     return fig
 
 
-def discretize_marker_colors(marker_dict):
-    tickvals = marker_dict["colorbar"]["tickvals"]
-    continuous_scale = [val[1] for val in marker_dict["colorscale"]]
+def discretize_colors(colorbar_parent):
+    tickvals = colorbar_parent["colorbar"]["tickvals"]
+    continuous_scale = [val[1] for val in colorbar_parent["colorscale"]]
     percent_scale = np.array(scale_to_percents(continuous_scale))
     discrete_scale = make_discrete_scale(percent_scale, len(tickvals) + 1)
-    marker_dict["colorscale"] = discrete_scale
+    colorbar_parent["colorscale"] = discrete_scale
     # don't ask me why they define tick positions like this...
     # first, a special case:
     if len(tickvals) == 2:
-        marker_dict["colorbar"]["tickvals"] = [0.25, 0.75]
+        colorbar_parent["colorbar"]["tickvals"] = [0.25, 0.75]
     # otherwise, interpolate to the weird quasi-relative scale they use
     else:
-        marker_dict["colorbar"]["tickvals"] = np.interp(
+        colorbar_parent["colorbar"]["tickvals"] = np.interp(
             tickvals,
             tickvals,
             np.linspace(0.5, len(tickvals) - 1.5, len(tickvals)),
         )
-    return marker_dict
+    return colorbar_parent
 
 
 def generate_palette_options(

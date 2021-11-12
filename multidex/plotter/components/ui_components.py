@@ -494,7 +494,8 @@ def search_container_div(spec_model, preset_parameters):
     if preset_parameters is None:
         preset_parameters = "None"  # doing a slightly goofy thing here
     searchable_fields = spec_model.searchable_fields()
-    if literal_eval(preset_parameters) is not None:
+    # TODO: may no longer need None
+    if literal_eval(preset_parameters) not in (None, []):
         search_container.children = [
             search_parameter_div(ix, searchable_fields, parameter)
             for ix, parameter in enumerate(literal_eval(preset_parameters))

@@ -4,9 +4,8 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
-import ast
-import datetime as dt
 from ast import literal_eval
+import datetime as dt
 from collections.abc import Iterable
 from copy import deepcopy
 from functools import reduce
@@ -14,12 +13,12 @@ from itertools import chain, cycle
 from operator import or_
 from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
-import numpy as np
-import pandas
-import pandas as pd
+
 from dash import html
 from dash.exceptions import PreventUpdate
 from dustgoggles.pivot import split_on
+import numpy as np
+import pandas as pd
 from plotly import graph_objects as go
 from toolz import keyfilter
 
@@ -136,10 +135,9 @@ def deframe(df_or_series):
 def perform_decomposition(id_list, filter_df, settings, props):
     # TODO: this is fairly inefficient and recomputes the decomposition
     #  every time any axis is changed. it might be better to cache this.
-    #  at the moment, the performance concerns probably don't really matter
-    #  at this point; PCA on these sets is < 250ms per and generally much less.
+    #  at the moment, the performance concerns probably don't really matter,
+    #  though; PCA on these sets is < 250ms per and generally much less.
     queryset_df = filter_df.loc[id_list]
-
     # TODO: temporary hack -- don't do PCA on tiny sets
     if len(queryset_df.index) < 8:
         raise ValueError("Won't do PCA on tiny sets.")
@@ -271,7 +269,7 @@ def get_axis_option_props(settings, spec_model):
 #  it would also be better to style with CSS but it seems like plotly
 #  really wants to put element-level style declarations on graph ticks and
 #  it is an unusually large hassle to get inside its svg rendering loop
-def make_marker_properties(
+def make_markers(
     settings,
     id_list,
     spec_model,
@@ -344,7 +342,9 @@ def make_marker_properties(
             color = property_list
             if color_clip not in ([], [0, 100]):
                 color = np.clip(color, *np.percentile(color, color_clip))
-        colorbar = go.scatter.marker.ColorBar(**colorbar_dict)
+        # colorbar = go.scatter.marker.ColorBar(**colorbar_dict)
+        colorbar = go.layout.coloraxis.ColorBar(**colorbar_dict)
+
     # set marker size and, if present, outline.
     # plotly demands that marker size be defined as a sequence
     # in order to be able to set marker outlines -- however, this also causes
@@ -362,20 +362,23 @@ def make_marker_properties(
 
     # set marker symbol
     symbol = re_get(settings, "marker-symbol-drop.value")
-
+    coloraxis = {
+        "colorscale": colormap
+    }
     marker_property_dict = {
         "marker": {
-            "colorscale": colormap,
             "size": size,
             "opacity": 1,
             "symbol": symbol,
+            "coloraxis": "coloraxis1"
         },
         "line": outline,
     }
     # colorbar = None causes plotly to draw undesirable fake ticks
     if colorbar is not None:
-        marker_property_dict["marker"]["colorbar"] = colorbar
-    return marker_property_dict, props["value_type"], color
+        # marker_property_dict["marker"]["colorbar"] = colorbar
+        coloraxis["colorbar"] = colorbar
+    return marker_property_dict, color, coloraxis, props["value_type"]
 
 
 def format_display_settings(settings):
