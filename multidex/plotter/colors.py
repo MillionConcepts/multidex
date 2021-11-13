@@ -162,6 +162,12 @@ def discretize_color_representations(fig: go.Figure) -> go.Figure:
 
 def discretize_colors(colorbar_parent):
     tickvals = colorbar_parent["colorbar"]["tickvals"]
+    # generally indicating explicitly-specified colors per point --
+    # already as discrete as they can get!
+    if ("colorscale" not in colorbar_parent) or (
+        colorbar_parent["colorscale"] is None
+    ):
+        return colorbar_parent
     continuous_scale = [val[1] for val in colorbar_parent["colorscale"]]
     percent_scale = np.array(scale_to_percents(continuous_scale))
     discrete_scale = make_discrete_scale(percent_scale, len(tickvals) + 1)

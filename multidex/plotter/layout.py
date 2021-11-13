@@ -1,27 +1,14 @@
-from functools import partial
 from typing import Optional, Mapping
 
 from dash import dcc
 from dash import html
 
-from multidex_utils import get_if
 from plotter.components.ui_components import (
-    collapse,
-    axis_controls_container,
-    marker_color_symbol_div,
-    marker_options_div,
-    highlight_controls_div,
-    search_controls_div,
-    scale_control_div,
-    scale_controls_container,
-    load_search_drop,
-    save_search_input,
-    display_controls_div,
     main_graph,
     dynamic_spec_div,
     trigger_div,
-    marker_clip_div,
     fake_output_divs,
+    graph_controls_div,
 )
 from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
 from plotter.types import SpectrumModel
@@ -49,120 +36,12 @@ def search_div(spec_model: SpectrumModel, settings: Optional[Mapping] = None):
     else:
         spectrum_scale = None
     search_children = [
-        html.Div(
-            className="graph-controls-container",
-            children=[
-                *collapse(
-                    "control-container-x",
-                    "x axis",
-                    axis_controls_container("x", spec_model, settings, filts),
-                ),
-                *collapse(
-                    "control-container-y",
-                    "y axis",
-                    axis_controls_container("y", spec_model, settings, filts),
-                ),
-                *collapse(
-                    "control-container-marker",
-                    "m axis",
-                    axis_controls_container(
-                        "marker", spec_model, settings, filts
-                    ),
-                ),
-                *collapse(
-                    "color-controls",
-                    "m style",
-                    marker_color_symbol_div(settings),
-                    off=True,
-                ),
-                *collapse(
-                    "marker-options",
-                    "m options",
-                    marker_options_div(settings),
-                    off=True,
-                ),
-                *collapse(
-                    "marker-clip",
-                    "m clip",
-                    marker_clip_div(settings),
-                    off=True,
-                ),
-                *collapse(
-                    "highlight-controls",
-                    "h controls",
-                    highlight_controls_div(settings),
-                    off=True,
-                ),
-                *collapse(
-                    "search-controls",
-                    "search",
-                    search_controls_div(spec_model, settings),
-                ),
-                # TODO: at least the _nomenclature_ of these two separate
-                #  'scaling' divs should be clarified
-                *collapse(
-                    "numeric-controls",
-                    "scaling",
-                    scale_control_div(spec_model, settings),
-                    off=True,
-                ),
-                *collapse(
-                    "spec-controls",
-                    "spectrum",
-                    scale_controls_container(
-                        spec_model,
-                        "main-spec",
-                        spectrum_scale,
-                        "r-star",
-                        "average",
-                        "error",
-                    ),
-                    off=True,
-                ),
-                *collapse(
-                    "load-panel",
-                    "load",
-                    load_search_drop("load-search"),
-                    off=True,
-                ),
-                *collapse(
-                    "save-panel",
-                    "save",
-                    html.Div(
-                        [
-                            save_search_input("save-search"),
-                            html.Div(
-                                style={
-                                    "display": "flex",
-                                    "flexDirection": "row",
-                                    "marginTop": "0.5rem",
-                                },
-                                children=[
-                                    html.Button(
-                                        "CSV",
-                                        id="export-csv",
-                                        style={"marginRight": "0.8rem"},
-                                    ),
-                                    html.Button("image", id="export-image"),
-                                ],
-                            ),
-                        ]
-                    ),
-                    off=True,
-                ),
-                *collapse(
-                    "graph-display-panel",
-                    "display",
-                    display_controls_div(settings),
-                    off=True,
-                ),
-            ],
-        ),
+        graph_controls_div(spec_model, settings, filts, spectrum_scale),
         html.Div(
             style={
                 "display": "flex",
                 "flexDirection": "row",
-                "height": "85vh",
+                "height": "83vh",
             },
             children=[
                 main_graph(

@@ -76,7 +76,7 @@ def none_to_quote_unquote_none(
         if element is not None:
             de_noned_list.append(element)
         else:
-            de_noned_list.append("None")
+            de_noned_list.append("none")
     return de_noned_list
 
 
@@ -211,14 +211,6 @@ def pickitems(dictionary: Mapping, some_list: Iterable) -> dict:
     return keyfilter(in_me(some_list), dictionary)
 
 
-# TODO: What am I actually doing here? not what I say I am, for sure.
-def pickcomps(comp_dictionary, id_list):
-    """items of dictionary of dash components where id is in id_list"""
-    return pickitems(
-        comp_dictionary, [comp.component_id for comp in comp_dictionary]
-    )
-
-
 def comps_to_strings(component_list: Iterable["Component"]) -> list[str]:
     """convert list of dash components with properties to list of strings"""
     return [
@@ -323,15 +315,6 @@ def in_me(container: Iterable) -> Callable:
 
 
 # ## generic
-
-
-def get_if(boolean: bool, dictionary: Mapping, key: Any) -> Any:
-    """return dictionary[key] iff boolean; otherwise return None"""
-    if boolean:
-        return dictionary.get(key)
-    return None
-
-
 def get_parameters(func: Callable) -> list[str]:
     return [param.name for param in signature(func).parameters.values()]
 

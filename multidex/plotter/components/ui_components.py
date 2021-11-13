@@ -1,6 +1,6 @@
 """factory functions for dash UI components"""
 import random
-from typing import Mapping, Optional, Iterable, Union
+from typing import Mapping, Optional, Iterable, Union, Sequence
 
 import plotly.graph_objects as go
 from dash import dcc
@@ -8,7 +8,7 @@ from dash import html
 from dash.html import Div
 
 from multidex_utils import none_to_empty
-from plotter.colors import generate_palette_options
+from plotter.colors import generate_palette_options, plotly_colorscale_type
 from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
@@ -19,6 +19,9 @@ from plotter.styles.marker_style import MARKER_SYMBOLS
 
 # note that style properties are camelCased rather than hyphenated in
 # compliance with conventions for React virtual DOM
+from plotter.types import SpectrumModel
+
+
 def scale_to_drop(model, element_id, value=None):
     """dropdown for selecting a virtual filter to scale to"""
     return dcc.Dropdown(
@@ -167,19 +170,19 @@ def spec_graph(name: str) -> dcc.Graph:
 
 
 def marker_color_drop(
-    element_id: str, value: str, scale_type: str, allow_none: bool = False
+    element_id: str, palette: str, palette_type: str, allow_none: bool = False
 ) -> dcc.Dropdown:
     """
     dropdown for selecting color scales / solid colors given a scale type
     """
-    options, value = generate_palette_options(
-        scale_type, value, None, allow_none
+    options, palette = generate_palette_options(
+        palette_type, palette, None, allow_none
     )
     return dcc.Dropdown(
         id=element_id,
         className="filter-drop medium-drop",
         options=options,
-        value=value,
+        value=palette,
         clearable=False,
     )
 
@@ -450,13 +453,43 @@ def search_parameter_div(
     ]
     if index != 0:
         children.append(
-            html.Button(
-                id={"type": "remove-param", "index": index},
-                children="remove parameter",
+            html.Div(
+                style={"display": "flex", "flexDirection": "row"},
+                children=[
+                    html.Button(
+                        id={"type": "remove-param", "index": index},
+                        children="remove",
+                    ),
+                    dcc.Checklist(
+                        style={"marginLeft": "0.3rem"},
+                        id={"type": "param-logic-options", "index": index},
+                        className="info-text",
+                        options=[
+                            {"label": "allow null", "value": "allow null"},
+                        ],
+                        value=[""],
+                    ),
+                ]
             )
-        ),
+        )
     else:
-        children.append(html.Button("add parameter", id="add-param"))
+        children.append(
+            html.Div(
+                style={"display": "flex", "flexDirection": "row"},
+                children=[
+                    html.Button("add new", id="add-param"),
+                    dcc.Checklist(
+                        style={"marginLeft": "1rem"},
+                        id={"type": "param-logic-options", "index": index},
+                        className="info-text",
+                        options=[
+                            {"label": "allow null", "value": "allow null"},
+                        ],
+                        value=[""],
+                    ),
+                ],
+            )
+        )
     return html.Div(
         className="search-parameter-container",
         children=children,
@@ -645,8 +678,8 @@ def marker_outline_div(outline_color) -> Div:
 
 
 def marker_clip_div(settings: Mapping) -> Div:
-    high = int(settings["color-clip-bound-high"])
-    low = int(settings["color-clip-bound-low"])
+    high = int(settings["color-clip-bound-high.value"])
+    low = int(settings["color-clip-bound-low.value"])
     return html.Div(
         [
             html.Label(
@@ -685,7 +718,7 @@ def marker_clip_div(settings: Mapping) -> Div:
 def marker_options_div(settings: Mapping) -> Div:
     marker_symbol = settings["marker-symbol-drop.value"]
     outline_color = settings["marker-outline-radio.value"]
-    marker_size = settings["marker-size-radio.value"]
+    marker_size = int(settings["marker-size-radio.value"])
     return html.Div(
         id="marker-options-div",
         style={
@@ -739,7 +772,8 @@ def highlight_size_div(highlight_size: str) -> Div:
 
 
 def marker_color_symbol_div(settings: Mapping) -> Div:
-    palette_type = settings["palette-type-drop.value"]
+    palette = settings["palette-name-drop.value"]
+    palette_type = plotly_colorscale_type(palette)
     return html.Div(
         id="marker-color-symbol-container",
         style={"display": "flex", "flexDirection": "column", "width": "8rem"},
@@ -752,10 +786,10 @@ def marker_color_symbol_div(settings: Mapping) -> Div:
             ),
             marker_color_drop(
                 "palette-name-drop",
-                value=settings["palette-name-drop.value"],
-                scale_type=settings["palette-type-drop.value"],
+                palette=palette,
+                palette_type=palette_type,
             ),
-            marker_coloring_type_div(palette_type),
+            marker_coloring_type_div(plotly_colorscale_type(palette)),
         ],
     )
 
@@ -775,6 +809,15 @@ def search_controls_div(spec_model, settings: Mapping) -> html.Div:
                     html.Button(
                         id={"type": "submit-search", "index": 0},
                         children="update graph",
+                    ),
+                    dcc.RadioItems(
+                        id="logical-quantifier-radio",
+                        className="radio-items",
+                        options=[
+                            {"label": "AND", "value": "AND"},
+                            {"label": "OR", "value": "OR"},
+                        ],
+                        value="AND",
                     ),
                     # hidden trigger for queryset update on dropdown removal
                     html.Button(
@@ -848,8 +891,8 @@ def highlight_options_div(size, color, symbol) -> html.Div:
             ),
             marker_color_drop(
                 "highlight-color-drop",
-                value=color,
-                scale_type="solid",
+                palette=color,
+                palette_type="solid",
                 allow_none=True,
             ),
             html.Label(
@@ -870,9 +913,9 @@ def highlight_options_div(size, color, symbol) -> html.Div:
 
 def highlight_controls_div(settings: Mapping) -> html.Div:
     status = settings["highlight-toggle.value"]
-    size = settings["highlight-size-radio.value"]
-    symbol = settings["highlight-symbol.value"]
-    color = settings["highlight-color.value"]
+    size = int(settings["highlight-size-radio.value"])
+    symbol = settings["highlight-symbol-drop.value"]
+    color = settings["highlight-color-drop.value"]
     return html.Div(
         children=[
             html.Div(
@@ -951,3 +994,119 @@ def fake_output_divs(n_divs: int) -> list[html.Div]:
         )
         for ix in range(n_divs)
     ]
+
+
+def graph_controls_div(
+    spec_model: SpectrumModel,
+    settings: Mapping,
+    filts: Sequence,
+    spectrum_scale: str,
+) -> Div:
+    """factory for top-level graph controls div at top of screen"""
+    return html.Div(
+        className="graph-controls-container",
+        children=[
+            *collapse(
+                "control-container-x",
+                "x axis",
+                axis_controls_container("x", spec_model, settings, filts),
+            ),
+            *collapse(
+                "control-container-y",
+                "y axis",
+                axis_controls_container("y", spec_model, settings, filts),
+            ),
+            *collapse(
+                "control-container-marker",
+                "m axis",
+                axis_controls_container("marker", spec_model, settings, filts),
+            ),
+            *collapse(
+                "color-controls",
+                "m style",
+                marker_color_symbol_div(settings),
+                off=True,
+            ),
+            *collapse(
+                "marker-options",
+                "m options",
+                marker_options_div(settings),
+                off=True,
+            ),
+            *collapse(
+                "marker-clip",
+                "m clip",
+                marker_clip_div(settings),
+                off=True,
+            ),
+            *collapse(
+                "highlight-controls",
+                "h controls",
+                highlight_controls_div(settings),
+                off=True,
+            ),
+            *collapse(
+                "search-controls",
+                "search",
+                search_controls_div(spec_model, settings),
+            ),
+            # TODO: at least the _nomenclature_ of these two separate
+            #  'scaling' divs should be clarified
+            *collapse(
+                "numeric-controls",
+                "scaling",
+                scale_control_div(spec_model, settings),
+                off=True,
+            ),
+            *collapse(
+                "spec-controls",
+                "spectrum",
+                scale_controls_container(
+                    spec_model,
+                    "main-spec",
+                    spectrum_scale,
+                    "r-star",
+                    "average",
+                    "error",
+                ),
+                off=True,
+            ),
+            *collapse(
+                "load-panel",
+                "load",
+                load_search_drop("load-search"),
+                off=True,
+            ),
+            *collapse(
+                "save-panel",
+                "save",
+                html.Div(
+                    [
+                        save_search_input("save-search"),
+                        html.Div(
+                            style={
+                                "display": "flex",
+                                "flexDirection": "row",
+                                "marginTop": "0.5rem",
+                            },
+                            children=[
+                                html.Button(
+                                    "CSV",
+                                    id="export-csv",
+                                    style={"marginRight": "0.8rem"},
+                                ),
+                                html.Button("image", id="export-image"),
+                            ],
+                        ),
+                    ]
+                ),
+                off=True,
+            ),
+            *collapse(
+                "graph-display-panel",
+                "display",
+                display_controls_div(settings),
+                off=True,
+            ),
+        ],
+    )
