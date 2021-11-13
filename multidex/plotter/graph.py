@@ -34,7 +34,7 @@ from multidex_utils import (
     insert_wavelengths_into_text,
 )
 from plotter import spectrum_ops
-from plotter.colors import get_palette_from_scale_name, plotly_colorscale_type
+from plotter.colors import get_palette_from_scale_name, get_scale_type
 from plotter.components.ui_components import (
     search_parameter_div,
 )
@@ -303,7 +303,7 @@ def make_markers(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    palette_type = plotly_colorscale_type(
+    palette_type = get_scale_type(
         re_get(settings, "palette-name-drop.value")
     )
     if palette_type is None:
@@ -659,7 +659,7 @@ def halt_to_debounce_palette_update(trigger, marker_settings, cget):
 
 def save_palette_memory(marker_settings, cget, cset):
     palette = re_get(marker_settings, "palette-name-drop.value")
-    palette_type = plotly_colorscale_type(palette)
+    palette_type = get_scale_type(palette)
     palette_memory = cget("palette_memory")
     palette_memory[palette_type] = palette
     cset("palette_memory", palette_memory)
@@ -671,7 +671,7 @@ def halt_for_inappropriate_palette_type(marker_settings, spec_model):
     marker option when a qual map was selected. it may be a sloppy way to stop
     it.
     """
-    palette_type = plotly_colorscale_type(
+    palette_type = get_scale_type(
         re_get(marker_settings, "palette-name-drop.value")
     )
     if palette_type != "qualitative":
