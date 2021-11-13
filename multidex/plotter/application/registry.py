@@ -206,6 +206,7 @@ def register_control_search_dropdowns(app, configured_function):
             Output("search-controls-container", "children"),
             Output({"type": "submit-search", "index": 1}, "n_clicks"),
         ],
+        # TODO: avoid redrawing graph on add-param click
         [
             Input("add-param", "n_clicks"),
             Input("clear-search", "n_clicks"),

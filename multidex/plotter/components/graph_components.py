@@ -94,13 +94,6 @@ def main_scatter_graph(
     #  using the update_layout pattern, for speed
 
     fig = go.Figure()
-
-    # sort points by marker size so that we can draw highlighted points
-    # last, and thus at a higher 'z-axis'
-    # if len(graph_df["size"].unique()) > 1:
-    #     errors, graph_df, marker_property_dict = sort_by_marker_size(
-    #         errors, graph_df, marker_property_dict
-    #     )
     # the click-to-label annotations
     draw_floating_labels(fig, graph_df, label_ids)
     # and the scattered points and their error bars

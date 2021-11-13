@@ -3,6 +3,7 @@ these are intended principally as function prototypes. they are partially
 defined and/or passed to callback decorators in order to generate flow control
 within the app. they should rarely, if ever, be called in these generic forms.
 """
+import csv
 import datetime as dt
 import json
 import os
@@ -168,7 +169,7 @@ def update_spectrum_graph(
     *,
     spec_model,
 ):
-    if scale_to != "None":
+    if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     average_filters = True if average_input_value == ["average"] else False
     if not event_data:
@@ -211,7 +212,7 @@ def update_data_df(
             r_star=r_star,
         ),
     )
-    if scale_to != "None":
+    if scale_to != "none":
         scale_to_string = "_".join(scale_to)
     else:
         scale_to_string = scale_to
@@ -284,7 +285,7 @@ def update_main_graph(
     halt_to_debounce_palette_update(ctx, marker_settings, cget)
     if trigger == "palette-name-drop.value":
         save_palette_memory(marker_settings, cget, cset)
-    graph_display_dict, axis_display_dict = format_display_settings(
+    graph_display_settings, axis_display_settings = format_display_settings(
         pickctx(ctx, graph_display_inputs)
     )
 
@@ -292,7 +293,7 @@ def update_main_graph(
     if not search_ids:
         return (
             failed_scatter_graph(
-                "no spectra match search parameters", graph_display_dict
+                "no spectra match search parameters", graph_display_settings
             ),
             {},
         )
@@ -301,7 +302,7 @@ def update_main_graph(
         if (props["type"] == "decomposition") and len(search_ids) <= 8:
             return (
                 failed_scatter_graph(
-                    "too few spectra for PCA", graph_display_dict
+                    "too few spectra for PCA", graph_display_settings
                 ),
                 {},
             )
@@ -321,7 +322,7 @@ def update_main_graph(
         return (
             failed_scatter_graph(
                 "matching spectra lack requested properties",
-                graph_display_dict,
+                graph_display_settings,
             ),
             {},
         )
@@ -369,6 +370,8 @@ def update_main_graph(
         "y_settings",
         "marker_settings",
         "highlight_settings",
+        "graph_display_settings",
+        "axis_display_settings",
         "get_errors",
         "bounds_string",
     ):
@@ -383,8 +386,8 @@ def update_main_graph(
             marker_axis_type,
             coloraxis,
             highlight_marker_dict,
-            graph_display_dict,
-            axis_display_dict,
+            graph_display_settings,
+            axis_display_settings,
             label_ids,
             x_title,
             y_title,
@@ -751,6 +754,8 @@ def save_search_state(
         "y_settings",
         "marker_settings",
         "highlight_settings",
+        "graph_display_settings",
+        "axis_display_settings"
     )
     string_things = (
         "search_parameters",
@@ -772,14 +777,15 @@ def save_search_state(
     # escape everything appropriately for re-loading as string / other literal
     for key in state.keys():
         if key not in literal_things:
-            state[key] = f'""{key}""'
-        else:
-            state[key] = f'"{key}"'
+            state[key] = f'"{state[key]}"'
+        # else:
+            # state[key] = f'"{state[key]}"'
     save_name = save_name + ".csv"
     os.makedirs(search_path, exist_ok=True)
     with open(Path(search_path, save_name), "w+") as save_csv:
-        save_csv.write(",".join(state.keys()) + "\n")
-        save_csv.write(",".join(state.values()) + "\n")
+        writer = csv.DictWriter(save_csv, fieldnames=tuple(state.keys()))
+        writer.writeheader()
+        writer.writerow(state)
     return trigger_value + 1
 
 

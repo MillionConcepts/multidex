@@ -5,8 +5,8 @@ definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
 import csv
-from ast import literal_eval
 import datetime as dt
+from ast import literal_eval
 from collections.abc import Iterable
 from copy import deepcopy
 from functools import reduce
@@ -14,12 +14,11 @@ from itertools import chain, cycle
 from operator import or_
 from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
-from cytoolz import valmap
+import numpy as np
+import pandas as pd
 from dash import html
 from dash.exceptions import PreventUpdate
 from dustgoggles.pivot import split_on
-import numpy as np
-import pandas as pd
 from plotly import graph_objects as go
 from toolz import keyfilter
 
@@ -307,12 +306,11 @@ def make_markers(
     palette_type = plotly_colorscale_type(
         re_get(settings, "palette-name-drop.value")
     )
-    # TODO: when highlights exist, add a coloraxis when appropriate
     if palette_type is None:
         # solid color case
         color = re_get(settings, "palette-name-drop.value")
-        colormap = None
         colorbar = None
+        colormap = None
     else:
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
         colormap = re_get(settings, "palette-name-drop.value")
@@ -363,15 +361,13 @@ def make_markers(
 
     # set marker symbol
     symbol = re_get(settings, "marker-symbol-drop.value")
-    coloraxis = {
-        "colorscale": colormap
-    }
+    coloraxis = {"colorscale": colormap}
     marker_property_dict = {
         "marker": {
             "size": size,
             "opacity": 1,
             "symbol": symbol,
-            "coloraxis": "coloraxis1"
+            "coloraxis": "coloraxis1",
         },
         "line": outline,
     }
@@ -499,11 +495,6 @@ def clear_search(cset, spec_model):
 
 
 # TODO: inefficient -- but this may be irrelevant?
-
-
-# TODO: probably inefficient
-
-
 def make_mspec_browse_image_components(mspec: "MSpec", static_image_url):
     """
     MSpec object, size factor (viewport units), image directory ->
@@ -570,10 +561,8 @@ def make_zspec_browse_image_components(
 def load_values_into_search_div(search_file, spec_model, cset):
     """makes a search tab with preset values from a saved search."""
     with open(search_file) as save_csv:
-        search = {
-            k: literal_eval(v)
-            for k, v in next(csv.DictReader(save_csv))
-        }
+        search = next(csv.DictReader(save_csv))
+        search = {k: literal_eval(v) for k, v in search.items()}
     # TODO: somewhat bad smell, might mean something is wrong in control flow
     if search["highlight_parameters"] is not None:
         cset("highlight_parameters", search["highlight_parameters"])
