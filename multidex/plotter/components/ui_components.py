@@ -532,29 +532,27 @@ def trigger_div(prefix, number_of_triggers):
     )
 
 
-def load_search_drop(element_id):
+def load_search_drop():
     return html.Div(
         className="load-button-container",
         children=[
             html.Label(children=["search name"], htmlFor=element_id + "-drop"),
-            dcc.Dropdown(id=element_id + "-drop", className="medium-drop"),
+            dcc.Dropdown(id="load-search-drop", className="medium-drop"),
             html.Button(
-                id=element_id + "-load-button",
+                id="load-search-load-button",
                 children="load",
             ),
         ],
     )
 
 
-def save_search_input(element_id):
+def save_search_input():
     return html.Div(
         className="save-button-container",
         children=[
-            html.Label(
-                children=["save as"], htmlFor=element_id + "-name-input"
-            ),
-            dcc.Input(id=element_id + "-name-input", type="text"),
-            html.Button(id=element_id + "-save-button", children="save"),
+            html.Label(children=["save as"], htmlFor="save-search-name-input"),
+            dcc.Input(id="save-search-name-input", type="text"),
+            html.Button(id="save-search-save-button", children="save"),
         ],
         style={"display": "flex", "flexDirection": "column"},
     )
@@ -678,11 +676,22 @@ def marker_outline_div(outline_color) -> Div:
     )
 
 
+def clip_input(element_id, value):
+    return dcc.Input(
+        type="number",
+        id=element_id,
+        style={"height": "1.4rem", "width": "3rem"},
+        value=value,
+        min=0,
+        max=100,
+    )
+
+
 def marker_clip_div(settings: Mapping) -> Div:
     high = int(settings["color-clip-bound-high.value"])
     low = int(settings["color-clip-bound-low.value"])
     return html.Div(
-        [
+        children=[
             html.Label(
                 children=["color clip"],
                 className="axis-title-text",
@@ -690,22 +699,8 @@ def marker_clip_div(settings: Mapping) -> Div:
                 htmlFor="color-clip-bound-low",
             ),
             # TODO: make this and other number fields less visually hideous
-            dcc.Input(
-                type="number",
-                id="color-clip-bound-low",
-                style={"height": "1.4rem", "width": "3rem"},
-                value=low,
-                min=0,
-                max=100,
-            ),
-            dcc.Input(
-                type="number",
-                id="color-clip-bound-high",
-                style={"height": "1.4rem", "width": "3rem"},
-                value=high,
-                min=0,
-                max=100,
-            ),
+            clip_input("color-clip-bound-low", low),
+            clip_input("color-clip-bound-high", high),
         ],
         style={
             "display": "flex",
@@ -997,6 +992,29 @@ def fake_output_divs(n_divs: int) -> list[html.Div]:
     ]
 
 
+def save_div():
+    return html.Div(
+        [
+            save_search_input(),
+            html.Div(
+                style={
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "marginTop": "0.5rem",
+                },
+                children=[
+                    html.Button(
+                        "CSV",
+                        id="export-csv",
+                        style={"marginRight": "0.8rem"},
+                    ),
+                    html.Button("image", id="export-image"),
+                ],
+            ),
+        ]
+    )
+
+
 def graph_controls_div(
     spec_model: SpectrumModel,
     settings: Mapping,
@@ -1072,35 +1090,11 @@ def graph_controls_div(
                 ),
                 off=True,
             ),
-            *collapse(
-                "load-panel",
-                "load",
-                load_search_drop("load-search"),
-                off=True,
-            ),
+            *collapse("load-panel", "load", load_search_drop(), off=True),
             *collapse(
                 "save-panel",
                 "save",
-                html.Div(
-                    [
-                        save_search_input("save-search"),
-                        html.Div(
-                            style={
-                                "display": "flex",
-                                "flexDirection": "row",
-                                "marginTop": "0.5rem",
-                            },
-                            children=[
-                                html.Button(
-                                    "CSV",
-                                    id="export-csv",
-                                    style={"marginRight": "0.8rem"},
-                                ),
-                                html.Button("image", id="export-image"),
-                            ],
-                        ),
-                    ]
-                ),
+                html.Div([save_search_input(), save_div()]),
                 off=True,
             ),
             *collapse(
