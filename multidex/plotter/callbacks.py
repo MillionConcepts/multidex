@@ -199,12 +199,9 @@ def update_data_df(
         average_filters = True
     else:
         average_filters = False
-    if scale_to not in ["None", None]:
+    if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
-    if "r-star" in r_star:
-        r_star = True
-    else:
-        r_star = False
+    r_star = r_star == "r_star"
     cset(
         "data_df",
         data_df_from_queryset(
