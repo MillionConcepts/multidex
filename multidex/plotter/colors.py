@@ -34,7 +34,7 @@ def get_plotly_colorscales(modules: tuple = PLOTLY_COLOR_MODULES) -> dict:
     }
 
 
-def plotly_colorscale_type(
+def get_scale_type(
     scale_name: str, modules: tuple = PLOTLY_COLOR_MODULES
 ) -> str:
     scale_dict = get_plotly_colorscales(modules)
@@ -43,16 +43,13 @@ def plotly_colorscale_type(
             return scale_type
 
 
-def rgbstring_to_rgb_percent(rgbstring: str) -> tuple[float]:
-    # noinspection PyTypeChecker
-    return tuple(
-        map(
-            partial(mul, 1 / 255),
-            map(
-                int, rgbstring.replace("rgb(", "").replace(")", "").split(",")
-            ),
-        )
+def rgbstring_to_rgb_percent(rgb: str) -> tuple[float]:
+    division = map(
+        partial(mul, 1 / 255),
+        map(int, rgb.replace("rgb(", "").replace(")", "").split(",")),
     )
+    # noinspection PyTypeChecker
+    return tuple(division)
 
 
 def plotly_color_to_percent(
@@ -70,10 +67,8 @@ def scale_to_percents(scale: Sequence[str]) -> tuple[tuple[float]]:
 
 
 def percent_to_plotly_rgb(percent: Sequence[float]) -> str:
-    return (
-        f"rgb("
-        f"{','.join(tuple(map(str, map(round, map(partial(mul, 255), percent)))))})"
-    )
+    rgb = tuple(map(str, map(round, map(partial(mul, 255), percent))))
+    return f"rgb({','.join(rgb)})"
 
 
 def scale_to_plotly_rgb(scale: Sequence[Sequence[float]]) -> tuple[str]:
@@ -82,20 +77,15 @@ def scale_to_plotly_rgb(scale: Sequence[Sequence[float]]) -> tuple[str]:
 
 def get_lut(percent_scale, count):
     interp_points = np.linspace(0, len(percent_scale), count)
-    return (
-        np.array(
-            [
-                np.interp(
-                    interp_points,
-                    np.arange(len(percent_scale)),
-                    percent_scale[:, ix],
-                )
-                for ix in range(3)
-            ]
+    interp_channels = [
+        np.interp(
+            interp_points,
+            np.arange(len(percent_scale)),
+            percent_scale[:, ix],
         )
-        .astype(np.float64)
-        .T
-    )
+        for ix in range(3)
+    ]
+    return np.array(interp_channels).astype(np.float64).T
 
 
 def get_palette_from_scale_name(scale_name, count, qualitative=True):
@@ -137,9 +127,8 @@ def discretize_color_representations(fig: go.Figure) -> go.Figure:
     representation (chunky rather than smooth transitions between colors at
     tick boundaries).
     """
-    # TODO, maybe: clean this up -- the obnoxiously-slightly-different syntax
-    #  for update_traces() and update_coloraxes() makes it icky
     coloraxes, traces = fig.select_coloraxes(), fig.select_traces()
+    # note obnoxiously-slightly-different API syntax for trace and coloraxis
     for coloraxis in coloraxes:
         if "colorbar" not in coloraxis:
             continue

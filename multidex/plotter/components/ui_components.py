@@ -8,7 +8,7 @@ from dash import html
 from dash.html import Div
 
 from multidex_utils import none_to_empty
-from plotter.colors import generate_palette_options, plotly_colorscale_type
+from plotter.colors import generate_palette_options, get_scale_type
 from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
@@ -536,7 +536,7 @@ def load_search_drop():
     return html.Div(
         className="load-button-container",
         children=[
-            html.Label(children=["search name"], htmlFor=element_id + "-drop"),
+            html.Label(children=["search name"], htmlFor="load-search-drop"),
             dcc.Dropdown(id="load-search-drop", className="medium-drop"),
             html.Button(
                 id="load-search-load-button",
@@ -769,7 +769,7 @@ def highlight_size_div(highlight_size: str) -> Div:
 
 def marker_color_symbol_div(settings: Mapping) -> Div:
     palette = settings["palette-name-drop.value"]
-    palette_type = plotly_colorscale_type(palette)
+    palette_type = get_scale_type(palette)
     return html.Div(
         id="marker-color-symbol-container",
         style={"display": "flex", "flexDirection": "column", "width": "8rem"},
@@ -785,7 +785,7 @@ def marker_color_symbol_div(settings: Mapping) -> Div:
                 palette=palette,
                 palette_type=palette_type,
             ),
-            marker_coloring_type_div(plotly_colorscale_type(palette)),
+            marker_coloring_type_div(get_scale_type(palette)),
         ],
     )
 
