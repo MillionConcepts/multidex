@@ -164,6 +164,8 @@ def register_update_search_ids(app, configured_function):
         [
             Input({"type": "submit-search", "index": ALL}, "n_clicks"),
             Input({"type": "load-trigger", "index": 0}, "value"),
+            Input({"type": "param-logic-options", "index": ALL}, "value"),
+            Input("logical-quantifier-radio", "value")
         ],
         [
             State({"type": "field-search", "index": ALL}, "value"),

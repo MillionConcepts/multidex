@@ -437,6 +437,8 @@ def update_search_options(
 def update_search_ids(
     _search_n_clicks,
     _load_trigger_index,
+    allow_null_selections,
+    global_logical_quantifier,
     fields,
     terms,
     quant_search_entries,
