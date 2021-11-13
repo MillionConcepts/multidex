@@ -511,7 +511,7 @@ def make_mspec_browse_image_components(mspec: "MSpec", static_image_url):
     route defined in the live app instance
     """
     image_div_children = []
-    images = ast.literal_eval(mspec.images)
+    images = literal_eval(mspec.images)
     for eye in ["left", "right"]:
         try:
             eye_images = keyfilter(lambda key: eye in key, images)
@@ -828,6 +828,29 @@ def explicitly_set_graph_bounds(ctx):
     return graph, {}
 
 
+def assemble_highlight_marker_dict(highlight_settings, base_marker_size):
+    highlight_marker_dict = {}
+    # iterate over values of all highlight UI elements, interpreting them as
+    # marker values legible to go.Scatter & its relatives
+    for prop, setting_input in zip(
+        ("color", "size", "symbol"),
+        ("color-drop", "size-radio", "symbol-drop"),
+    ):
+        setting = highlight_settings[f"highlight-{setting_input}.value"]
+        if setting == "none":
+            continue
+        if prop == "size":
+            # highlight size increase is relative, not absolute;
+            # base_marker_size can be either int or list[int] --
+            # need to retain its type to retain how outline works
+            if isinstance(base_marker_size, list):
+                setting = [setting * value for value in base_marker_size]
+            else:
+                setting = setting * base_marker_size
+        highlight_marker_dict[prop] = setting
+    return highlight_marker_dict
+
+
 def branch_highlight_df(
     graph_df, highlight_ids, highlight_settings, base_marker_size
 ) -> tuple[pd.DataFrame, Optional[pd.DataFrame], dict]:
@@ -844,17 +867,7 @@ def branch_highlight_df(
     highlight_df, graph_df = split_on(
         graph_df, graph_df["customdata"].isin(highlight_ids)
     )
-    highlight_marker_dict = {}
-    # iterate over values of all highlight UI elements, interpreting them as
-    # marker values legible to go.Scatter & its relatives
-    for prop, setting_input in zip(
-        ("color", "size", "symbol"),
-        ("color-drop", "size-radio", "symbol-drop"),
-    ):
-        setting = highlight_settings[f"highlight-{setting_input}.value"]
-        if setting != "none":
-            if prop == "size":
-                # highlight size increase is relative, not absolute
-                setting = setting * base_marker_size
-            highlight_marker_dict[prop] = setting
+    highlight_marker_dict = assemble_highlight_marker_dict(
+        highlight_settings, base_marker_size
+    )
     return graph_df, highlight_df, highlight_marker_dict

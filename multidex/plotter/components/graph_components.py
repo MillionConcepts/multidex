@@ -118,6 +118,7 @@ def main_scatter_graph(
             customdata=graph_df["customdata"],
             mode="markers + text",
             # marker={"color": "black", "size": 8},
+            showlegend=False,
             **marker_property_dict,
         )
     )
@@ -141,6 +142,7 @@ def main_scatter_graph(
                 # suppresses trace display in hoverover
                 hovertemplate="%{hovertext}<extra></extra>",
                 mode="markers + text",
+                showlegend=False,
                 **full_marker_dict,
             )
         )
