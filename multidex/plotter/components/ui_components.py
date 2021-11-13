@@ -66,7 +66,7 @@ def scale_controls_container(
                     id=id_prefix + "-average",
                     className="info-text",
                     options=[{"label": "merge", "value": "average"}],
-                    value=[average_value],
+                    value=[average_value] if average_value else [],
                 ),
                 html.Label(
                     className="info-text",
@@ -85,7 +85,7 @@ def scale_controls_container(
                     options=[
                         {"label": "R*", "value": "r-star"},
                     ],
-                    value=[r_star_value],
+                    value=[r_star_value] if r_star_value else [],
                 ),
                 html.Label(
                     children=["show error"],
@@ -427,12 +427,11 @@ def model_range_display(element_id: str, index: int) -> html.Span:
     )
 
 
-def search_parameter_div(
-    index: int, searchable_fields: Iterable[str], preset=None
-) -> html.Div:
-    if preset is None:
-        preset = {}
-    children = [
+def search_parameter_div_drop_elements(index, searchable_fields, preset):
+    """
+    per-parameter dropdown-selection elements
+    """
+    return [
         html.Label(children=["search field"], className="axis-title-text"),
         field_drop(
             searchable_fields, "field-search", index, preset.get("field")
@@ -451,45 +450,47 @@ def search_parameter_div(
             ],
         ),
     ]
-    if index != 0:
-        children.append(
-            html.Div(
-                style={"display": "flex", "flexDirection": "row"},
-                children=[
-                    html.Button(
-                        id={"type": "remove-param", "index": index},
-                        children="remove",
-                    ),
-                    dcc.Checklist(
-                        style={"marginLeft": "0.3rem"},
-                        id={"type": "param-logic-options", "index": index},
-                        className="info-text",
-                        options=[
-                            {"label": "allow null", "value": "allow null"},
-                        ],
-                        value=[""],
-                    ),
-                ]
-            )
-        )
+
+
+def search_parameter_div_option_elements(index):
+    """
+    all per-parameter click elements but the add/remove button, which
+    differs between first and subsequent parameter divs
+    """
+    return [
+        html.Button("add new", id="add-param"),
+        # TODO: restore from save
+        dcc.Checklist(
+            style={"marginLeft": "1rem"},
+            id={"type": "param-logic-options", "index": index},
+            className="info-text",
+            options=[{"label": "allow null", "value": "allow null"}],
+            value=[],
+        ),
+    ]
+
+
+def search_parameter_div(
+    index: int, searchable_fields: Iterable[str], preset=None
+) -> html.Div:
+    if preset is None:
+        preset = {}
+    children = search_parameter_div_drop_elements(
+        index, searchable_fields, preset
+    )
+    if index == 0:
+        button = html.Button("add new", id="add-param")
     else:
-        children.append(
-            html.Div(
-                style={"display": "flex", "flexDirection": "row"},
-                children=[
-                    html.Button("add new", id="add-param"),
-                    dcc.Checklist(
-                        style={"marginLeft": "1rem"},
-                        id={"type": "param-logic-options", "index": index},
-                        className="info-text",
-                        options=[
-                            {"label": "allow null", "value": "allow null"},
-                        ],
-                        value=[""],
-                    ),
-                ],
-            )
+        button = html.Button(
+            id={"type": "remove-param", "index": index},
+            children="remove",
         )
+    children.append(
+        html.Div(
+            style={"display": "flex", "flexDirection": "row"},
+            children=[button] + search_parameter_div_option_elements(index),
+        )
+    )
     return html.Div(
         className="search-parameter-container",
         children=children,
