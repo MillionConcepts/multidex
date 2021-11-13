@@ -5,6 +5,7 @@ includes preprocessing and wrapping for marslab.spectops
 
 import math
 from itertools import product
+from statistics import mean
 from typing import Union
 
 import numpy as np
@@ -49,9 +50,16 @@ def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
         corner_series_list = []
         for filt_ix, sign in enumerate(corner):
             filt = filters[filt_ix]
+            # are the filters merged? averaging the values is probably wrong
+            # but it's all I've got atm
+            if "_" in filt:
+                filt_1, filt_2 = filt.split("_")
+                filt_unc = mean((unc[filt_1], unc[filt_2]))
+            else:
+                filt_unc = unc[filt]
             corner_series_list.append(
                 filter_df[filt]
-                + filter_df[filt] * corner[filt_ix] * unc[filt] / 100
+                + filter_df[filt] * corner[filt_ix] * filt_unc / 100
             )
         corner_df = pd.concat(corner_series_list, axis=1)
         # record the value of the spectrum op for each of these bounding
@@ -99,12 +107,15 @@ def data_df_from_queryset(
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
     filter_df.index = id_list
-    filter_df["filter_avg"] = np.round(filter_df[
-        [c for c in filter_df.columns if "err" not in c]
-    ].mean(axis=1), 5)
-    filter_df["err_avg"] = np.round(filter_df[
-        [c for c in filter_df.columns if "err" in c]
-    ].mean(axis=1), 5)
+    filter_df["filter_avg"] = np.round(
+        filter_df[[c for c in filter_df.columns if "err" not in c]].mean(
+            axis=1
+        ),
+        5,
+    )
+    filter_df["err_avg"] = np.round(
+        filter_df[[c for c in filter_df.columns if "err" in c]].mean(axis=1), 5
+    )
 
     return filter_df
 
@@ -166,7 +177,8 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
     if errors:
         error_df = filter_df[[column + "_err" for column in band_df.columns]]
         error_df.columns = [
-            spec_model().all_filter_waves()[column] for column in band_df.columns
+            spec_model().all_filter_waves()[column]
+            for column in band_df.columns
         ]
     else:
         error_df = None
