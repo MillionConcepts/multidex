@@ -20,22 +20,21 @@ from plotter.components.ui_components import (
     main_graph,
     dynamic_spec_div,
     trigger_div,
-    marker_clip_div, fake_output_divs,
+    marker_clip_div,
+    fake_output_divs,
 )
+from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
 from plotter.types import SpectrumModel
 
 
-def search_div(
-    spec_model: SpectrumModel, restore_dictionary: Optional[Mapping] = None
-):
+def search_div(spec_model: SpectrumModel, settings: Optional[Mapping] = None):
     """
-    generates the primary search panel, restoring from settings if available.
+    generates the primary search panel.
     """
-    # are we restoring from saved settings? if so, this function gets them;
-    # if not, this function politely acts as None
-    # TODO: refactor this horror to load from an external set of defaults
-    get_r = partial(get_if, restore_dictionary is not None, restore_dictionary)
-    if get_r("average_filters"):
+    if settings is None:
+        settings = DEFAULT_SETTINGS_DICTIONARY
+    # TODO: this feels bad
+    if DEFAULT_SETTINGS_DICTIONARY["average_filters"] is True:
         filts = [
             {"label": filt, "value": filt}
             for filt in spec_model.canonical_averaged_filters
@@ -56,52 +55,55 @@ def search_div(
                 *collapse(
                     "control-container-x",
                     "x axis",
-                    axis_controls_container("x", spec_model, get_r, filts),
+                    axis_controls_container("x", spec_model, settings, filts),
                 ),
                 *collapse(
                     "control-container-y",
                     "y axis",
-                    axis_controls_container("y", spec_model, get_r, filts),
+                    axis_controls_container("y", spec_model, settings, filts),
                 ),
                 *collapse(
                     "control-container-marker",
                     "m axis",
                     axis_controls_container(
-                        "marker", spec_model, get_r, filts
+                        "marker", spec_model, settings, filts
                     ),
                 ),
                 *collapse(
                     "color-controls",
                     "m style",
-                    marker_color_symbol_div(get_r),
+                    marker_color_symbol_div(settings),
                     off=True,
                 ),
                 *collapse(
                     "marker-options",
                     "m options",
-                    marker_options_div(get_r),
+                    marker_options_div(settings),
                     off=True,
                 ),
                 *collapse(
-                    "marker-clip", "m clip", marker_clip_div(get_r), off=True
+                    "marker-clip",
+                    "m clip",
+                    marker_clip_div(settings),
+                    off=True,
                 ),
                 *collapse(
                     "highlight-controls",
                     "h controls",
-                    highlight_controls_div(get_r),
+                    highlight_controls_div(settings),
                     off=True,
                 ),
                 *collapse(
                     "search-controls",
                     "search",
-                    search_controls_div(spec_model, get_r),
+                    search_controls_div(spec_model, settings),
                 ),
                 # TODO: at least the _nomenclature_ of these two separate
                 #  'scaling' divs should be clarified
                 *collapse(
                     "numeric-controls",
                     "scaling",
-                    scale_control_div(spec_model, get_r),
+                    scale_control_div(spec_model, settings),
                     off=True,
                 ),
                 *collapse(
@@ -151,7 +153,7 @@ def search_div(
                 *collapse(
                     "graph-display-panel",
                     "display",
-                    display_controls_div(get_r),
+                    display_controls_div(settings),
                     off=True,
                 ),
             ],
