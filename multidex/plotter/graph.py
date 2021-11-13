@@ -4,6 +4,7 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
+import csv
 from ast import literal_eval
 import datetime as dt
 from collections.abc import Iterable
@@ -13,7 +14,7 @@ from itertools import chain, cycle
 from operator import or_
 from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
-
+from cytoolz import valmap
 from dash import html
 from dash.exceptions import PreventUpdate
 from dustgoggles.pivot import split_on
@@ -566,115 +567,21 @@ def make_zspec_browse_image_components(
     )
 
 
-class SPlot:
-    """
-    class that holds a queryset of spectra with search parameters
-    and axis relationships. probably also eventually visual settings.
-    used for saving and restoring plots.
-    """
-
-    def __init__(self, arg_dict):
-        # maybe eventually we define this more flexibly but better to be
-        # strict for now
-        self.y_axis = None
-        self.x_axis = None
-        for parameter in self.canonical_parameters:
-            setattr(self, parameter, arg_dict[parameter])
-
-    def axes(self):
-        return self.x_axis, self.y_axis
-
-    def graph(self):
-        return self.graph_function(
-            self.x_axis,
-            self.y_axis,
-            self.marker_properties,
-            self.graph_display_dict,
-            self.axis_display_dict,
-            self.text,
-            self.customdata,
-            self.label_ids,
-            self.zoom,
-            self.x_errors,
-            self.y_errors,
-            self.x_title,
-            self.y_title,
-        )
-
-    def settings(self):
-        return {
-            parameter: getattr(self, parameter)
-            for parameter in self.setting_parameters
-        }
-
-    canonical_parameters = (
-        "x_axis",
-        "y_axis",
-        "marker_properties",
-        "text",
-        # customdata is typically a list of the pks of the spectra in axis
-        # order
-        "customdata",
-        "search_ids",
-        "search_parameters",
-        "x_settings",
-        "y_settings",
-        "marker_settings",
-        "graph_function",
-        "highlight_parameters",
-        "highlight_ids",
-        "scale_to",
-        "average_filters",
-        "graph_display_dict",
-        "axis_display_dict",
-        "label_ids",
-        "zoom",
-        "x_errors",
-        "y_errors",
-        "x_title",
-        "y_title",
-        "main_graph_bounds",
-    )
-
-    setting_parameters = (
-        "search_parameters",
-        "highlight_parameters",
-        "x_settings",
-        "y_settings",
-        "marker_settings",
-        "graph_display_dict",
-        "axis_display_dict",
-    )
-
-
-def describe_current_graph(cget):
-    """
-    note this this relies on cached 'globals' from recalculate_graph
-    and update_queryset! if this turns out to be an excessively ugly flow
-    control solution, we could instead turn it into a callback that dynamically
-    monitors state of the same objects they monitor the state of...but that
-    parallel structure seems worse.
-    """
-    return {
-        parameter: cget(parameter) for parameter in SPlot.canonical_parameters
-    }
-
-
 def load_values_into_search_div(search_file, spec_model, cset):
     """makes a search tab with preset values from a saved search."""
-    search = pd.read_csv(search_file).iloc[0]
-    row_dict = search.to_dict()
+    with open(search_file) as save_csv:
+        search = {
+            k: literal_eval(v)
+            for k, v in next(csv.DictReader(save_csv))
+        }
     # TODO: somewhat bad smell, might mean something is wrong in control flow
-    if "highlight parameters" in row_dict.keys():
-        cset("highlight_parameters", row_dict["highlight_parameters"])
-    if "search_parameters" in row_dict.keys():
-        cset(
-            "search_parameter_index",
-            len(literal_eval(row_dict["search_parameters"])),
-        )
+    if search["highlight_parameters"] is not None:
+        cset("highlight_parameters", search["highlight_parameters"])
+    if search["search_parameters"] is not None:
+        cset("search_parameter_index", len(search["search_parameters"]))
     else:
         cset("search_parameter_index", 0)
-    return search_div(spec_model, row_dict)
+    return search_div(spec_model, search)
 
 
 def pretty_print_search_params(search_parameters):
@@ -759,6 +666,14 @@ def halt_to_debounce_palette_update(trigger, marker_settings, cget):
         == marker_settings["palette-name-drop.value"]
     ):
         raise PreventUpdate
+
+
+def save_palette_memory(marker_settings, cget, cset):
+    palette = re_get(marker_settings, "palette-name-drop.value")
+    palette_type = plotly_colorscale_type(palette)
+    palette_memory = cget("palette_memory")
+    palette_memory[palette_type] = palette
+    cset("palette_memory", palette_memory)
 
 
 def halt_for_inappropriate_palette_type(marker_settings, spec_model):

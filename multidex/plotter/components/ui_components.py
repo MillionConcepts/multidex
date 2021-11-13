@@ -1,15 +1,13 @@
 """factory functions for dash UI components"""
-from ast import literal_eval
-from functools import partial
 import random
-from typing import Mapping, Optional, Iterable, Callable, Union
+from typing import Mapping, Optional, Iterable, Union
 
-from dash import dcc, html
+import plotly.graph_objects as go
+from dash import dcc
 from dash import html
 from dash.html import Div
-import plotly.graph_objects as go
 
-from multidex_utils import get_if, none_to_empty
+from multidex_utils import none_to_empty
 from plotter.colors import generate_palette_options
 from plotter.styles.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
@@ -26,7 +24,7 @@ def scale_to_drop(model, element_id, value=None):
     return dcc.Dropdown(
         id=element_id,
         className="medium-drop",
-        options=[{"label": "None", "value": "None"}]
+        options=[{"label": "none", "value": "none"}]
         + [
             {"label": filt + " " + str(wave) + "nm", "value": filt}
             for filt, wave in model.virtual_filters.items()
@@ -39,21 +37,11 @@ def scale_to_drop(model, element_id, value=None):
 def scale_controls_container(
     spec_model,
     id_prefix,
-    scale_value=None,
-    r_star_value=None,
-    average_value=None,
+    scale_value="none",
+    r_star_value="none",
+    average_value="",
     error_value="none",
 ):
-    # TODO: this is a messy way to handle weird cases in loading.
-    #  it should be cleaned up.
-    if scale_value is None:
-        scale_value = "None"
-    if r_star_value is None:
-        r_star_value = "None"
-    if average_value in [None, False, ""]:
-        average_value = ""
-    else:
-        average_value = "average"
     scale_container = html.Div(
         id=id_prefix + "-scale-controls-container-div",
         className="scale-controls-container",
@@ -184,14 +172,9 @@ def marker_color_drop(
     """
     dropdown for selecting color scales / solid colors given a scale type
     """
-    if scale_type is None:
-        scale_type = "qualitative"
-    if value is None:
-        if allow_none is False:
-            value = "Bold"
-        else:
-            value = "none"
-    options, value = generate_palette_options(scale_type, value, None, allow_none)
+    options, value = generate_palette_options(
+        scale_type, value, None, allow_none
+    )
     return dcc.Dropdown(
         id=element_id,
         className="filter-drop medium-drop",
@@ -251,11 +234,6 @@ def axis_value_drop(spec_model, element_id, value=None, label_content=None):
         {"label": option["label"], "value": option["value"]}
         for option in spec_model.graphable_properties()
     ]
-    if not value:
-        if "marker" in element_id:
-            value = "feature"
-        else:
-            value = "ratio"
     return html.Div(
         className="axis-title-text",
         id=element_id + "-container",
@@ -309,8 +287,6 @@ def component_drop(element_id, value, label_content=None, options=None):
             {"label": str(component_ix + 1), "value": component_ix}
             for component_ix in range(8)
         ]
-    if not value:
-        value = 0
     if label_content is None:
         label_content = "component #"
     return html.Div(
@@ -449,23 +425,26 @@ def model_range_display(element_id: str, index: int) -> html.Span:
 
 
 def search_parameter_div(
-    index: int, searchable_fields: Iterable[str], preset_parameter=None
+    index: int, searchable_fields: Iterable[str], preset=None
 ) -> html.Div:
-    get_r = partial(get_if, preset_parameter is not None, preset_parameter)
+    if preset is None:
+        preset = {}
     children = [
         html.Label(children=["search field"], className="axis-title-text"),
-        field_drop(searchable_fields, "field-search", index, get_r("field")),
+        field_drop(
+            searchable_fields, "field-search", index, preset.get("field")
+        ),
         model_options_drop(
             "term-search",
             index,
-            value=get_r("term"),
+            value=preset.get("term"),
             className="medium-drop term-search",
         ),
         html.Div(
             className="tooltipped",
             children=[
                 model_range_display("number-range-display", index),
-                model_range_entry("number-search", index, preset_parameter),
+                model_range_entry("number-search", index, preset),
             ],
         ),
     ]
@@ -485,24 +464,22 @@ def search_parameter_div(
     )
 
 
-def search_container_div(spec_model, preset_parameters):
+def search_container_div(spec_model, preset):
     search_container = html.Div(
         id="search-controls-container",
         className="search-controls-container",
     )
-    # list was 'serialized' to string to put it in a single df cell
-    if preset_parameters is None:
-        preset_parameters = "None"  # doing a slightly goofy thing here
     searchable_fields = spec_model.searchable_fields()
     # TODO: may no longer need None
-    if literal_eval(preset_parameters) not in (None, []):
+    # list was 'serialized' to string to put it in a single csv field
+    if not preset:
         search_container.children = [
-            search_parameter_div(ix, searchable_fields, parameter)
-            for ix, parameter in enumerate(literal_eval(preset_parameters))
+            search_parameter_div(0, searchable_fields)
         ]
     else:
         search_container.children = [
-            search_parameter_div(0, searchable_fields)
+            search_parameter_div(ix, searchable_fields, parameter)
+            for ix, parameter in enumerate(preset)
         ]
     return search_container
 
@@ -550,13 +527,13 @@ def save_search_input(element_id):
 
 
 def axis_controls_container(
-    axis: str, spec_model, get_r: Callable, filter_options
+    axis: str, spec_model, settings: Mapping, filter_options
 ) -> Div:
     children = [
         axis_value_drop(
             spec_model,
             "graph-option-" + axis,
-            value=get_r("graph-option-" + axis + ".value"),
+            value=settings["graph-option-" + axis + ".value"],
             label_content=axis + " axis",
         ),
         html.Div(
@@ -565,27 +542,27 @@ def axis_controls_container(
                 filter_drop(
                     spec_model,
                     "filter-1-" + axis,
-                    value=get_r("filter-1-" + axis + ".value"),
+                    value=settings["filter-1-" + axis + ".value"],
                     label_content="left",
                     options=filter_options,
                 ),
                 filter_drop(
                     spec_model,
                     "filter-3-" + axis,
-                    value=get_r("filter-3-" + axis + ".value"),
+                    value=settings["filter-3-" + axis + ".value"],
                     label_content="center",
                     options=filter_options,
                 ),
                 filter_drop(
                     spec_model,
                     "filter-2-" + axis,
-                    value=get_r("filter-2-" + axis + ".value"),
+                    value=settings["filter-2-" + axis + ".value"],
                     label_content="right",
                     options=filter_options,
                 ),
                 component_drop(
                     "component-" + axis,
-                    value=get_r("component-" + axis + ".value"),
+                    value=settings["component-" + axis + ".value"],
                     label_content="component #",
                 ),
             ],
@@ -667,13 +644,9 @@ def marker_outline_div(outline_color) -> Div:
     )
 
 
-def marker_clip_div(get_r: Callable) -> Div:
-    high = get_r("color-clip-bound-high")
-    if high is None:
-        high = 100
-    low = get_r("color-clip-bound-low")
-    if low is None:
-        low = 0
+def marker_clip_div(settings: Mapping) -> Div:
+    high = int(settings["color-clip-bound-high"])
+    low = int(settings["color-clip-bound-low"])
     return html.Div(
         [
             html.Label(
@@ -709,16 +682,10 @@ def marker_clip_div(get_r: Callable) -> Div:
     )
 
 
-def marker_options_div(get_r: Callable) -> Div:
-    marker_symbol = get_r("marker-symbol-drop.value")
-    if marker_symbol is None:
-        marker_symbol = "circle"
-    outline_color = get_r("marker-outline-radio.value")
-    if outline_color is None:
-        outline_color = "rgba(0,0,0,1)"
-    marker_size = get_r("marker-size-radio.value")
-    if marker_size is None:
-        marker_size = 11
+def marker_options_div(settings: Mapping) -> Div:
+    marker_symbol = settings["marker-symbol-drop.value"]
+    outline_color = settings["marker-outline-radio.value"]
+    marker_size = settings["marker-size-radio.value"]
     return html.Div(
         id="marker-options-div",
         style={
@@ -771,8 +738,8 @@ def highlight_size_div(highlight_size: str) -> Div:
     )
 
 
-def marker_color_symbol_div(get_r: Callable) -> Div:
-    palette_type = get_r("palette-type-drop.value")
+def marker_color_symbol_div(settings: Mapping) -> Div:
+    palette_type = settings["palette-type-drop.value"]
     return html.Div(
         id="marker-color-symbol-container",
         style={"display": "flex", "flexDirection": "column", "width": "8rem"},
@@ -785,21 +752,21 @@ def marker_color_symbol_div(get_r: Callable) -> Div:
             ),
             marker_color_drop(
                 "palette-name-drop",
-                value=get_r("palette-name-drop.value"),
-                scale_type=get_r("palette-type-drop.value"),
+                value=settings["palette-name-drop.value"],
+                scale_type=settings["palette-type-drop.value"],
             ),
             marker_coloring_type_div(palette_type),
         ],
     )
 
 
-def search_controls_div(spec_model, get_r: Callable) -> html.Div:
+def search_controls_div(spec_model, settings: Mapping) -> html.Div:
     return html.Div(
         style={"display": "flex", "flexDirection": "row"},
         children=[
             search_container_div(
                 spec_model,
-                get_r("search_parameters"),
+                settings["search_parameters"],
             ),
             html.Div(
                 className="search-button-container",
@@ -820,18 +787,11 @@ def search_controls_div(spec_model, get_r: Callable) -> html.Div:
     )
 
 
-def display_controls_div(get_r: Callable) -> html.Div:
-    if get_r("plot_bgcolor") is None:
-        bg_color = css_variables["dark-tint-0"]
+def display_controls_div(settings: Mapping) -> html.Div:
+    if settings["showgrid"] is False:
+        gridcolor = False
     else:
-        bg_color = get_r("plot_bgcolor")
-    # TODO: these inconsistent variable names smell bad
-    if get_r("showgrid") is None:
-        gridlines_color = css_variables["dark-tint-0"]
-    elif get_r("showgrid") is False:
-        gridlines_color = False
-    else:
-        gridlines_color = get_r("gridcolor")
+        gridcolor = settings["gridcolor"]
     return html.Div(
         children=[
             html.Label(
@@ -847,7 +807,7 @@ def display_controls_div(get_r: Callable) -> html.Div:
                     {"label": "light", "value": css_variables["dark-tint-0"]},
                     {"label": "dark", "value": css_variables["dark-tint-2"]},
                 ],
-                value=bg_color,
+                value=settings["plot_bgcolor"],
             ),
             html.Label(
                 children=["gridlines"],
@@ -864,7 +824,7 @@ def display_controls_div(get_r: Callable) -> html.Div:
                     {"label": "light", "value": css_variables["dark-tint-0"]},
                     {"label": "dark", "value": css_variables["dark-tint-2"]},
                 ],
-                value=gridlines_color,
+                value=gridcolor,
             ),
             html.Button("clear labels", id="clear-labels"),
         ]
@@ -908,19 +868,11 @@ def highlight_options_div(size, color, symbol) -> html.Div:
     )
 
 
-def highlight_controls_div(get_r: Callable) -> html.Div:
-    status = get_r("highlight-toggle.value")
-    if status is None:
-        status = "off"
-    size = get_r("highlight-size-radio.value")
-    if size is None:
-        size = 1
-    symbol = get_r("highlight-symbol.value")
-    if symbol is None:
-        symbol = "none"
-    color = get_r("highlight-color.value")
-    if color is None:
-        color = "none"
+def highlight_controls_div(settings: Mapping) -> html.Div:
+    status = settings["highlight-toggle.value"]
+    size = settings["highlight-size-radio.value"]
+    symbol = settings["highlight-symbol.value"]
+    color = settings["highlight-color.value"]
     return html.Div(
         children=[
             html.Div(
@@ -944,17 +896,17 @@ def highlight_controls_div(get_r: Callable) -> html.Div:
                         id="highlight-description",
                         className="info-text",
                         style={"maxWidth": "12rem"},
-                        children="no highlight presently set."
+                        children="no highlight presently set.",
                     ),
                 ],
             ),
             highlight_options_div(size, color, symbol),
         ],
-        style = {"display": "flex", "flexDirection": "row"}
+        style={"display": "flex", "flexDirection": "row"},
     )
 
 
-def scale_control_div(spec_model, get_r: Callable) -> html.Div:
+def scale_control_div(spec_model, settings: Mapping) -> html.Div:
     return html.Div(
         children=[
             html.Div(
@@ -982,8 +934,8 @@ def scale_control_div(spec_model, get_r: Callable) -> html.Div:
             scale_controls_container(
                 spec_model,
                 "main-graph",
-                scale_value=get_r("scale_to"),
-                average_value=get_r("average_filters"),
+                scale_value=settings["scale_to"],
+                average_value=settings["average_filters"],
                 # TODO: fix init issue, need extra layer somewhere
                 r_star_value="r-star",
             ),

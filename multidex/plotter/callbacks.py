@@ -8,7 +8,7 @@ import json
 import os
 from ast import literal_eval
 from copy import deepcopy
-from itertools import cycle
+from itertools import cycle, chain
 from pathlib import Path
 
 import dash
@@ -32,6 +32,7 @@ from plotter.components.graph_components import (
     failed_scatter_graph,
 )
 from plotter.components.ui_components import parse_model_quant_entry
+from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
 from plotter.graph import (
     load_values_into_search_div,
     add_dropdown,
@@ -57,7 +58,7 @@ from plotter.graph import (
     get_axis_option_props,
     halt_to_debounce_palette_update,
     halt_for_inappropriate_palette_type,
-    branch_highlight_df,
+    branch_highlight_df, save_palette_memory,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.spectrum_ops import data_df_from_queryset
@@ -241,7 +242,6 @@ def update_main_graph(
     cget,
     cset,
     spec_model,
-    record_settings=True,
 ):
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
@@ -285,6 +285,8 @@ def update_main_graph(
     #  quant with a qual palette selected will trigger two draws. not
     #  high-priority fix, performance-only.
     halt_to_debounce_palette_update(ctx, marker_settings, cget)
+    if trigger == "palette-name-drop.value":
+        save_palette_memory(marker_settings, cget, cset)
     graph_display_dict, axis_display_dict = format_display_settings(
         pickctx(ctx, graph_display_inputs)
     )
@@ -365,22 +367,15 @@ def update_main_graph(
         zoom = None
     # for functions that (perhaps asynchronously) fetch the state of the
     # graph. this is another perhaps ugly flow control thing!
-    if record_settings:
-        for parameter in (
-            "x_settings",
-            "y_settings",
-            "marker_settings",
-            "highlight_settings",
-            "marker_properties",
-            "highlight_marker_dict",
-            "graph_display_dict",
-            "axis_display_dict",
-            "x_title",
-            "y_title",
-            "get_errors",
-            "bounds_string",
-        ):
-            cset(parameter, locals()[parameter])
+    for parameter in (
+        "x_settings",
+        "y_settings",
+        "marker_settings",
+        "highlight_settings",
+        "get_errors",
+        "bounds_string",
+    ):
+        cset(parameter, locals()[parameter])
 
     return (
         main_scatter_graph(
@@ -651,21 +646,16 @@ def populate_color_dropdowns(
     palette_value: str,
     *,
     cget,
+    cset,
 ) -> tuple[list[dict], str]:
     """
     show or hide scale/solid color dropdowns & populate color scale options
     per coloring type dropdown selection.
     """
-    # TODO: load from some external defaults
     palette_memory = cget("palette_memory")
     if palette_memory is None:
-        palette_memory = {
-            "sequential": "Plasma",
-            "diverging": "delta_r",
-            "solid": "hotpink",
-            "cyclical": "IceFire",
-            "qualitative": "Bold",
-        }
+        palette_memory = DEFAULT_SETTINGS_DICTIONARY["palette_memory"]
+        cset("palette_memory", palette_memory)
     if palette_type_value not in [
         option["value"] for option in palette_type_options
     ]:
@@ -678,7 +668,6 @@ def populate_color_dropdowns(
     # scale selected
     if palette_value_output == palette_value:
         raise PreventUpdate
-    palette_memory[palette_type_value] = palette_value_output
     return palette_options_output, palette_value_output
 
 
@@ -760,46 +749,40 @@ def save_search_state(
     """
     if save_name is None:
         raise PreventUpdate
-    state_variable_names = [
-        *cget("x_settings").keys(),
-        *cget("y_settings").keys(),
-        *cget("marker_settings").keys(),
-        *cget("graph_display_dict").keys(),
-        *cget("axis_display_dict").keys(),
+    dict_things = (
+        "x_settings",
+        "y_settings",
+        "marker_settings",
+        "highlight_settings",
+    )
+    string_things = (
         "search_parameters",
         "highlight_parameters",
         "scale_to",
         "average_filters",
         "r_star",
-        "errors",
-    ]
-    state_variable_values = [
-        *cget("x_settings").values(),
-        *cget("y_settings").values(),
-        *cget("marker_settings").values(),
-        *cget("graph_display_dict").values(),
-        *cget("axis_display_dict").values(),
-        str(cget("search_parameters")),
-        str(cget("highlight_parameters")),
-        str(cget("scale_to")),
-        cget("average_filters"),
-        cget("r_star"),
-        cget("errors"),
-    ]
-    state_line = pd.DataFrame(
-        {
-            parameter: value
-            for parameter, value in zip(
-                state_variable_names, state_variable_values
-            )
-        },
-        index=[0],
     )
-    state_line["name"] = save_name
+    state = {
+        k: f"{v}"
+        for k, v in chain.from_iterable(
+            cget(thing).items() for thing in dict_things
+        )
+    }
+    state |= {thing: f"{cget(thing)}" for thing in string_things}
+    state["name"] = save_name
+    # things we want to be able to load as dictionaries
+    literal_things = ("search_parameters", "highlight_parameters")
+    # escape everything appropriately for re-loading as string / other literal
+    for key in state.keys():
+        if key not in literal_things:
+            state[key] = f'""{key}""'
+        else:
+            state[key] = f'"{key}"'
     save_name = save_name + ".csv"
     os.makedirs(search_path, exist_ok=True)
-    # noinspection PyTypeChecker
-    state_line.to_csv(Path(search_path, save_name), index=False)
+    with open(Path(search_path, save_name), "w+") as save_csv:
+        save_csv.write(",".join(state.keys()) + "\n")
+        save_csv.write(",".join(state.values()) + "\n")
     return trigger_value + 1
 
 

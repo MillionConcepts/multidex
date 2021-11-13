@@ -25,7 +25,6 @@ def style_data(
     y_title=None,
     marker_axis_type=None,
     marker_property_dict=None,
-    errors=None,
     zoom=None,
 ):
     axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
@@ -156,7 +155,6 @@ def main_scatter_graph(
         y_title,
         marker_axis_type,
         marker_property_dict,
-        errors,
         zoom,
     )
     return fig
