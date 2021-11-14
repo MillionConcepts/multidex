@@ -438,7 +438,7 @@ def update_search_ids(
     _search_n_clicks,
     _load_trigger_index,
     allow_null_selections,
-    global_logical_quantifier,
+    logical_quantifier,
     fields,
     terms,
     quant_search_entries,
@@ -463,24 +463,29 @@ def update_search_ids(
         ]
     except ValueError:
         raise PreventUpdate
-    search_list = [
+    parameters = [
         {"field": field, "term": term, **entry}
         for field, term, entry in zip(fields, terms, entries)
         if not_blank(field) and (not_blank(term) or not_blank(entry))
     ]
-
+    # save search parameters for graph description
+    cset("search_parameters", parameters)
+    null_list = [
+        True if checkbox == "allow null" else False
+        for checkbox in allow_null_selections
+    ]
     # if the search parameters have changed or if it's a new load, make a
     # new id list and trigger graph update using copy.deepcopy here to
     # avoid passing doubly-ingested input back after the check although on
-    # the other hand it should be memoized -- but still but yes seriously it
-    # should be memoized
+    # the other hand, TODO, maybe: it should be memoized
     search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
-    search = handle_graph_search(search_df, deepcopy(search_list), spec_model)
+    search = handle_graph_search(
+        search_df, parameters, null_list, logical_quantifier, spec_model
+    )
+    # place primary keys of spectra found by search in global cache
     cset("search_ids", search)
-    # save search parameters for graph description
-    cset("search_parameters", search_list)
+    # ring bell signifying that we are done
     return search_trigger_dummy_value + 1
-    # raise PreventUpdate
 
 
 def change_calc_input_visibility(calc_type, *, spec_model):

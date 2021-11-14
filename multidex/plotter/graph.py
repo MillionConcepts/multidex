@@ -427,7 +427,9 @@ def non_blank_search_parameters(parameters):
     ]
 
 
-def handle_graph_search(search_df, parameters, spec_model):
+def handle_graph_search(
+    search_df, parameters, null_list, logical_quantifier, spec_model
+) -> list[int]:
     """
     dispatcher / manager for user-issued searches within the graph interface.
     fills fields from model definition and feeds resultant list to a general-
@@ -446,10 +448,16 @@ def handle_graph_search(search_df, parameters, spec_model):
     # toss out blank strings, etc. -- they do not restrict the search
     parameters = non_blank_search_parameters(parameters)
     # do we have any actual constraints? if not, return the entire data set
+    # for AND or nothing for OR
     if not parameters:
-        return list(search_df.index)
+        if logical_quantifier == "AND":
+            return list(search_df.index)
+        if logical_quantifier == "OR":
+            return []
     # otherwise, actually perform a search
-    return df_multiple_field_search(search_df, parameters)
+    return df_multiple_field_search(
+        search_df, parameters, null_list, logical_quantifier
+    )
 
 
 def add_dropdown(children, spec_model, cget, cset):
@@ -514,14 +522,10 @@ def make_mspec_browse_image_components(mspec: "MSpec", static_image_url):
         image_div_children.append(
             html.Img(
                 src=filename,
-                style={
-                    "maxWidth": "55%",
-                    "maxHeight": "55%",
-                },
+                style={"maxWidth": "55%", "maxHeight": "55%"},
                 id="spec-image-" + eye,
             )
         )
-
     return html.Div(children=image_div_children)
 
 
