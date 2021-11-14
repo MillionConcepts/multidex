@@ -37,7 +37,7 @@ def scale_to_drop(model, element_id, value=None):
     )
 
 
-def scale_controls_container(
+def spec_controls_div(
     spec_model,
     id_prefix,
     scale_value="none",
@@ -452,24 +452,6 @@ def search_parameter_div_drop_elements(index, searchable_fields, preset):
     ]
 
 
-def search_parameter_div_option_elements(index):
-    """
-    all per-parameter click elements but the add/remove button, which
-    differs between first and subsequent parameter divs
-    """
-    return [
-        html.Button("add new", id="add-param"),
-        # TODO: restore from save
-        dcc.Checklist(
-            style={"marginLeft": "1rem"},
-            id={"type": "param-logic-options", "index": index},
-            className="info-text",
-            options=[{"label": "allow null", "value": "allow null"}],
-            value=[],
-        ),
-    ]
-
-
 def search_parameter_div(
     index: int, searchable_fields: Iterable[str], preset=None
 ) -> html.Div:
@@ -485,10 +467,17 @@ def search_parameter_div(
             id={"type": "remove-param", "index": index},
             children="remove",
         )
+    checklist = dcc.Checklist(
+            style={"marginLeft": "1rem"},
+            id={"type": "param-logic-options", "index": index},
+            className="info-text",
+            options=[{"label": "allow null", "value": "allow null"}],
+            value=[],
+        )
     children.append(
         html.Div(
             style={"display": "flex", "flexDirection": "row"},
-            children=[button] + search_parameter_div_option_elements(index),
+            children=[button, checklist]
         )
     )
     return html.Div(
@@ -558,7 +547,7 @@ def save_search_input():
     )
 
 
-def axis_controls_container(
+def axis_controls_div(
     axis: str, spec_model, settings: Mapping, filter_options
 ) -> Div:
     children = [
@@ -945,7 +934,7 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
     )
 
 
-def scale_control_div(spec_model, settings: Mapping) -> html.Div:
+def scale_controls_div(spec_model, settings: Mapping) -> html.Div:
     return html.Div(
         children=[
             html.Div(
@@ -970,7 +959,7 @@ def scale_control_div(spec_model, settings: Mapping) -> html.Div:
                     "marginLeft": "0.3rem",
                 },
             ),
-            scale_controls_container(
+            spec_controls_div(
                 spec_model,
                 "main-graph",
                 scale_value=settings["scale_to"],
@@ -1028,17 +1017,17 @@ def graph_controls_div(
             *collapse(
                 "control-container-x",
                 "x axis",
-                axis_controls_container("x", spec_model, settings, filts),
+                axis_controls_div("x", spec_model, settings, filts),
             ),
             *collapse(
                 "control-container-y",
                 "y axis",
-                axis_controls_container("y", spec_model, settings, filts),
+                axis_controls_div("y", spec_model, settings, filts),
             ),
             *collapse(
                 "control-container-marker",
                 "m axis",
-                axis_controls_container("marker", spec_model, settings, filts),
+                axis_controls_div("marker", spec_model, settings, filts),
             ),
             *collapse(
                 "color-controls",
@@ -1053,10 +1042,7 @@ def graph_controls_div(
                 off=True,
             ),
             *collapse(
-                "marker-clip",
-                "m clip",
-                marker_clip_div(settings),
-                off=True,
+                "marker-clip", "m clip", marker_clip_div(settings), off=True,
             ),
             *collapse(
                 "highlight-controls",
@@ -1074,13 +1060,13 @@ def graph_controls_div(
             *collapse(
                 "numeric-controls",
                 "scaling",
-                scale_control_div(spec_model, settings),
+                scale_controls_div(spec_model, settings),
                 off=True,
             ),
             *collapse(
                 "spec-controls",
                 "spectrum",
-                scale_controls_container(
+                spec_controls_div(
                     spec_model,
                     "main-spec",
                     spectrum_scale,
@@ -1091,14 +1077,9 @@ def graph_controls_div(
                 off=True,
             ),
             *collapse("load-panel", "load", load_search_drop(), off=True),
+            *collapse("save-panel", "save", save_div(), off=True),
             *collapse(
-                "save-panel",
-                "save",
-                html.Div([save_search_input(), save_div()]),
-                off=True,
-            ),
-            *collapse(
-                "graph-display-panel",
+                "display-controls",
                 "display",
                 display_controls_div(settings),
                 off=True,
