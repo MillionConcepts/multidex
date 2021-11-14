@@ -5,11 +5,12 @@ callback registry: register functions from plotter.callbacks with app i/o
 from dash.dependencies import Input, Output, State, MATCH, ALL
 
 from plotter.application.structure import (
-    Y_INPUTS,
-    MARKER_INPUTS,
-    GRAPH_DISPLAY_INPUTS,
     FILTER_DROPDOWN_OUTPUTS,
-    X_INPUTS, HIGHLIGHT_INPUTS,
+    GRAPH_DISPLAY_INPUTS,
+    HIGHLIGHT_INPUTS,
+    MARKER_INPUTS,
+    X_INPUTS,
+    Y_INPUTS,
 )
 
 
@@ -38,9 +39,15 @@ def register_trigger_search_update(app, configured_function):
 
 def register_allow_qualitative_palettes(app, configured_function):
     app.callback(
-        [Output("palette-type-drop", "options"), Output("palette-type-drop", "value")],
+        [
+            Output("palette-type-drop", "options"),
+            Output("palette-type-drop", "value"),
+        ],
         [Input("graph-option-marker", "value")],
-        [State("palette-type-drop", "options"), State("palette-type-drop", "value")]
+        [
+            State("palette-type-drop", "options"),
+            State("palette-type-drop", "value"),
+        ],
     )(configured_function)
 
 
@@ -119,9 +126,6 @@ def register_toggle_panel_visibility(app, configured_function):
     )(configured_function)
 
 
-
-
-
 # change visibility of search filter inputs
 # based on whether a 'quantitative' or 'qualitative'
 # search field is selected
@@ -165,7 +169,7 @@ def register_update_search_ids(app, configured_function):
             Input({"type": "submit-search", "index": ALL}, "n_clicks"),
             Input({"type": "load-trigger", "index": 0}, "value"),
             Input({"type": "param-logic-options", "index": ALL}, "value"),
-            Input("logical-quantifier-radio", "value")
+            Input("logical-quantifier-radio", "value"),
         ],
         [
             State({"type": "field-search", "index": ALL}, "value"),
@@ -348,15 +352,6 @@ def register_hide_spec_print(app):
         ),
         [Input("fire-on-load", "children")],
     )
-
-    # from dash.dependencies import Output, Input
-    # app.clientside_callback(
-    #     ClientsideFunction(namespace="clientside",
-    #     function_name="make_draggable"),
-    #     Output("marker-options", "data-drag"),
-    #     [Input("marker-options", "id")]
-    # )
-
 
 # debug printer
 # app.callback(
