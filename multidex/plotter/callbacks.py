@@ -471,8 +471,8 @@ def update_search_ids(
     # save search parameters for graph description
     cset("search_parameters", parameters)
     null_list = [
-        True if checkbox == "allow null" else False
-        for checkbox in allow_null_selections
+        True if "allow null" in checklist else False
+        for checklist in allow_null_selections
     ]
     # if the search parameters have changed or if it's a new load, make a
     # new id list and trigger graph update using copy.deepcopy here to
