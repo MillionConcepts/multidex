@@ -5,7 +5,7 @@ import json
 import re
 from functools import partial, reduce
 from inspect import signature
-from operator import and_, gt, ge, lt, le, or_, contains
+from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
 from typing import (
     Callable,
@@ -15,15 +15,15 @@ from typing import (
     Mapping,
     Union,
     Optional,
+    Sequence,
 )
 
-from cytoolz import keyfilter
 import dash
-from dash import html
 import numpy as np
 import pandas as pd
+from cytoolz import keyfilter
+from dash import html
 from dash.dependencies import Input, Output
-from django.db.models import Q
 from toolz import merge, isiterable
 
 if TYPE_CHECKING:
@@ -82,9 +82,8 @@ def none_to_quote_unquote_none(
 
 def arbitrarily_hash_strings(strings: Iterable[str]) -> dict:
     unique_string_values = sorted(list(set(strings)), reverse=True)
-    return {
-        string: ix for ix, string in enumerate(unique_string_values)
-    }
+    return {string: ix for ix, string in enumerate(unique_string_values)}
+
 
 # django utility functions
 
@@ -354,169 +353,6 @@ def none_to_empty(thing: Any) -> Any:
 
 
 # ## search functions
-
-
-# some of the following functions hit the database multiple times during
-# evaluation.
-# this is necessary to allow flexibly loose and strict phrasal searches.
-# it potentially reduces efficiency a great deal and is terrain for
-# optimization
-# if and when required.
-
-
-def flexible_query(
-    queryset: "QuerySet", field: "str", value: Any
-) -> "QuerySet":
-    """
-    little search function that checks exact and loose phrases.
-    have to hit the database to do this, so less efficient than using
-    others that don't
-    """
-    # allow exact phrase searches
-    query = field + "__iexact"
-    if queryset.filter(**{query: value}):
-        return queryset.filter(**{query: value})
-    # otherwise treat multiple words as an 'or' search",
-    query = field + "__icontains"
-    filters = [queryset.filter(**{query: word}) for word in value.split(" ")]
-    return reduce(or_, filters)
-
-
-def inflexible_query(
-    queryset: "QuerySet", field: "str", value: Any
-) -> "QuerySet":
-    """little search function that checks only exact phrases"""
-    query = field + "__iexact"
-    return queryset.filter(**{query: value})
-
-
-def term_search(
-    queryset: "QuerySet", field: "str", value: Any, inflexible=False
-) -> "QuerySet":
-    """
-    model, string, string or number or whatever -> queryset
-    search for strings or whatever within a field of a model.
-    """
-    # toss out "any" searches
-    if str(value).lower() == "any":
-        return queryset
-    # allow inexact phrase matching?
-    search_function = flexible_query
-    if inflexible:
-        search_function = inflexible_query
-    return search_function(queryset, field, value)
-
-
-def value_fetch_search(
-    queryset: "QuerySet", field: "str", value_list: Iterable
-) -> "QuerySet":
-    """
-    queryset, field of underlying model, list of values -> queryset
-    simply return queryset of objects with any of those values
-    in that field. strict, for the moment.
-    """
-    # note that the case-insensitive 'iexact' match method of django
-    # queryset objects
-    # is in fact _more_ sensitive wrt type; it will not match a float
-    # representation of an
-    # int
-    queries = [Q(**{field + "__exact": item}) for item in value_list]
-    return queryset.filter(reduce(or_, queries))
-
-
-def interval_search(
-    queryset: "QuerySet",
-    field: str,
-    interval_begin: Any = None,
-    interval_end: Any = None,
-    strictly: bool = False,
-) -> "QuerySet":
-    """
-    interval_begin and interval_end must be of types for which
-    the elements of the set of the chosen attribute of the elements of queryset
-    possess a complete ordering exposed to django queryset API (probably
-    defined in terms of
-    standard python comparison operators). in most cases, you
-    will probably want these to be the same type, and to share a type with
-    the attributes of the objects in question.
-
-    if both interval_begin and interval_end are defined, returns
-    all entries > begin and < end.
-    if only interval_begin is defined: all entries > begin.
-    if only interval_end is defined: all entries < end.
-    if neither: trivially returns the queryset.
-
-    the idea of this function is to attempt to perform searches with somewhat
-    convoluted Python but a single SQL query. it could be _further_
-    generalized to
-    tuples of attributes that bound a convex space, most simply interval
-    beginnings
-    and endings of their own (start and stop times, for instance)
-    """
-    if strictly:
-        less_than_operator = "__lt"
-        greater_than_operator = "__gt"
-    else:
-        less_than_operator = "__lte"
-        greater_than_operator = "__gte"
-
-    # these variables are queries defined by the ordering on this attribute.
-    greater_than_begin = Q(**{field + greater_than_operator: interval_begin})
-    less_than_end = Q(**{field + less_than_operator: interval_end})
-
-    # select only entries with attribute greater than interval_begin (if
-    # defined)
-    # and less than interval_end (if defined)
-    queries = [Q()]
-    if interval_begin:
-        queries.append(greater_than_begin)
-    if interval_end:
-        queries.append(less_than_end)
-    return queryset.filter(reduce(and_, queries))
-
-
-def multiple_field_search(
-    queryset: "QuerySet", parameters: Iterable
-) -> "QuerySet":
-    """
-    dispatcher that handles multiple search parameters and returns a queryset.
-    accepts options in dictionaries to search 'numerical' intervals
-    or stringlike terms.
-    """
-    results = []
-    for parameter in parameters:
-        # do a relations-on-orderings search if requested
-        if parameter.get("value_type") == "quant":
-            if "value_list" in parameter.keys():
-                search_result = value_fetch_search(
-                    queryset, parameter["field"], parameter["value_list"]
-                )
-            else:
-                search_result = interval_search(
-                    queryset,
-                    parameter["field"],
-                    # begin and end and strictly are optional
-                    parameter.get("begin"),
-                    parameter.get("end"),
-                    parameter.get("strictly"),
-                )
-            results.append(search_result)
-        # otherwise just look for term matches;
-        # "or" them within a category
-        else:
-            param_results = []
-            for term in parameter["term"]:
-                param_result = term_search(
-                    queryset,
-                    parameter["field"],
-                    term,
-                    parameter.get("flexible"),
-                )
-                param_results.append(param_result)
-            results.append(reduce(or_, param_results))
-    return reduce(and_, results)
-
-
 def df_flexible_query(
     metadata_df: pd.DataFrame, field: "str", value: Any
 ) -> pd.DataFrame.index:
@@ -594,8 +430,40 @@ def df_value_fetch_search(
     return metadata_df.loc[metadata_df[field].isin(value_list)].index
 
 
+def df_quant_field_search(search_df, parameter):
+    if "value_list" in parameter.keys():
+        return df_value_fetch_search(
+            search_df, parameter["field"], parameter["value_list"]
+        )
+    else:
+        return df_interval_search(
+            search_df,
+            parameter["field"],
+            # begin and end and strictly are optional
+            parameter.get("begin"),
+            parameter.get("end"),
+            parameter.get("strictly"),
+        )
+
+
+def df_qual_field_search(search_df, parameter):
+    param_results = []
+    for term in parameter["term"]:
+        param_result = df_term_search(
+            search_df,
+            parameter["field"],
+            term,
+            parameter.get("flexible"),
+        )
+        param_results.append(param_result)
+    return reduce(pd.Index.union, param_results)
+
+
 def df_multiple_field_search(
-    search_df: pd.DataFrame, parameters: Iterable
+    search_df: pd.DataFrame,
+    parameters: Sequence,
+    null_list: Sequence,
+    logical_quantifier: str,
 ) -> list:
     """
     dispatcher that handles multiple search parameters and returns a queryset.
@@ -603,37 +471,26 @@ def df_multiple_field_search(
     or stringlike terms.
     """
     results = []
-    for parameter in parameters:
+    for parameter, null in zip(parameters, null_list):
         # do a relations-on-orderings search if requested
         if parameter.get("value_type") == "quant":
-            if "value_list" in parameter.keys():
-                search_result = df_value_fetch_search(
-                    search_df, parameter["field"], parameter["value_list"]
-                )
-            else:
-                search_result = df_interval_search(
-                    search_df,
-                    parameter["field"],
-                    # begin and end and strictly are optional
-                    parameter.get("begin"),
-                    parameter.get("end"),
-                    parameter.get("strictly"),
-                )
-            results.append(search_result)
+            search_result = df_quant_field_search(search_df, parameter)
         # otherwise just look for term matches;
         # "or" them within a category
         else:
-            param_results = []
-            for term in parameter["term"]:
-                param_result = df_term_search(
-                    search_df,
-                    parameter["field"],
-                    term,
-                    parameter.get("flexible"),
-                )
-                param_results.append(param_result)
-            results.append(reduce(pd.Index.union, param_results))
-    return list(reduce(pd.Index.intersection, results))
+            search_result = df_qual_field_search(search_df, parameter)
+        # allow all missing values if requested
+        if null is True:
+            search_result = pd.Index.union(
+                search_result,
+                search_df.loc[search_df[parameter["field"]].isna()].index
+            )
+        results.append(search_result)
+    if logical_quantifier == "AND":
+        index_logic_method = pd.Index.intersection
+    else:
+        index_logic_method = pd.Index.union
+    return list(reduce(index_logic_method, results))
 
 
 def fetch_css_variables(css_file: str = DEFAULT_CSS_PATH) -> dict[str, str]:
@@ -666,20 +523,6 @@ def model_metadata_df(
         value_list.append(dict_function(obj))
         id_list.append(obj.id)
     return pd.DataFrame(value_list, index=id_list)
-
-
-# not currently used
-def regex_keyfilter(regex: str, dictionary: Mapping) -> dict:
-    return {
-        key: value
-        for key, value in dictionary.items()
-        if re.search(regex, key)
-    }
-
-
-def dedict(dictionary: Mapping) -> Any:
-    assert len(dictionary) == 1
-    return dictionary[list(dictionary)[0]]
 
 
 # TODO: these kinds of printing rules probably need to go on individual
