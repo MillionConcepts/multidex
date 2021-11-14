@@ -3,19 +3,18 @@ these are intended principally as function prototypes. they are partially
 defined and/or passed to callback decorators in order to generate flow control
 within the app. they should rarely, if ever, be called in these generic forms.
 """
+from ast import literal_eval
 import csv
 import datetime as dt
+from itertools import cycle, chain
 import json
 import os
-from ast import literal_eval
-from copy import deepcopy
-from itertools import cycle, chain
 from pathlib import Path
 
 import dash
+from dash.exceptions import PreventUpdate
 import numpy as np
 import pandas as pd
-from dash.exceptions import PreventUpdate
 
 from multidex_utils import (
     triggered_by,
