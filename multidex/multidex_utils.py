@@ -462,7 +462,7 @@ def df_qual_field_search(search_df, parameter):
 def df_multiple_field_search(
     search_df: pd.DataFrame,
     parameters: Sequence,
-    null_list: Sequence,
+    logic_options: Sequence[Mapping],
     logical_quantifier: str,
 ) -> list:
     """
@@ -471,7 +471,7 @@ def df_multiple_field_search(
     or stringlike terms.
     """
     results = []
-    for parameter, null in zip(parameters, null_list):
+    for parameter, options in zip(parameters, logic_options):
         # do a relations-on-orderings search if requested
         if parameter.get("value_type") == "quant":
             search_result = df_quant_field_search(search_df, parameter)
@@ -480,11 +480,16 @@ def df_multiple_field_search(
         else:
             search_result = df_qual_field_search(search_df, parameter)
         # allow all missing values if requested
-        if null is True:
+        if options["null"] is True:
             search_result = pd.Index.union(
                 search_result,
                 search_df.loc[search_df[parameter["field"]].isna()].index
             )
+        # take complement if requested
+        if options["invert"] is True:
+            search_result = pd.Index([
+                ix for ix in search_df.index if ix not in search_result
+            ])
         results.append(search_result)
     if logical_quantifier == "AND":
         index_logic_method = pd.Index.intersection

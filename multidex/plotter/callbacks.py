@@ -436,7 +436,7 @@ def update_search_options(
 def update_search_ids(
     _search_n_clicks,
     _load_trigger_index,
-    allow_null_selections,
+    logic_option_checklists,
     logical_quantifier,
     fields,
     terms,
@@ -469,9 +469,12 @@ def update_search_ids(
     ]
     # save search parameters for graph description
     cset("search_parameters", parameters)
-    null_list = [
-        True if "allow null" in checklist else False
-        for checklist in allow_null_selections
+    logic_options = [
+        {
+            "null": "null" in checklist,
+            "invert": "invert" in checklist
+        }
+        for checklist in logic_option_checklists
     ]
     # if the search parameters have changed or if it's a new load, make a
     # new id list and trigger graph update using copy.deepcopy here to
@@ -479,7 +482,11 @@ def update_search_ids(
     # the other hand, TODO, maybe: it should be memoized
     search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
     search = handle_graph_search(
-        search_df, parameters, null_list, logical_quantifier, spec_model
+        search_df,
+        parameters,
+        logic_options,
+        logical_quantifier,
+        spec_model
     )
     # place primary keys of spectra found by search in global cache
     cset("search_ids", search)

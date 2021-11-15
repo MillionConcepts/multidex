@@ -303,9 +303,7 @@ def make_markers(
             metadata_df.loc[id_list][props["value"]].values,
             props["value"],
         )
-    palette_type = get_scale_type(
-        re_get(settings, "palette-name-drop.value")
-    )
+    palette_type = get_scale_type(re_get(settings, "palette-name-drop.value"))
     if palette_type is None:
         # solid color case
         color = re_get(settings, "palette-name-drop.value")
@@ -428,7 +426,11 @@ def non_blank_search_parameters(parameters):
 
 
 def handle_graph_search(
-    search_df, parameters, null_list, logical_quantifier, spec_model
+    search_df,
+    parameters,
+    logic_options,
+    logical_quantifier,
+    spec_model,
 ) -> list[int]:
     """
     dispatcher / manager for user-issued searches within the graph interface.
@@ -456,7 +458,7 @@ def handle_graph_search(
             return []
     # otherwise, actually perform a search
     return df_multiple_field_search(
-        search_df, parameters, null_list, logical_quantifier
+        search_df, parameters, logic_options, logical_quantifier
     )
 
 

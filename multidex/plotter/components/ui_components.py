@@ -471,7 +471,10 @@ def search_parameter_div(
             style={"marginLeft": "1rem"},
             id={"type": "param-logic-options", "index": index},
             className="info-text",
-            options=[{"label": "allow null", "value": "allow null"}],
+            options=[
+                {"label": "null", "value": "null"},
+                {"label": "flip", "value": "invert"}
+            ],
             value=[],
         )
     children.append(
