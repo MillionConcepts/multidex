@@ -34,7 +34,7 @@ from plotter.components.graph_components import (
 from plotter.components.ui_components import parse_model_quant_entry
 from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
 from plotter.graph import (
-    load_values_into_search_div,
+    load_state_into_application,
     add_dropdown,
     remove_dropdown,
     clear_search,
@@ -58,7 +58,8 @@ from plotter.graph import (
     get_axis_option_props,
     halt_to_debounce_palette_update,
     halt_for_inappropriate_palette_type,
-    branch_highlight_df, save_palette_memory,
+    branch_highlight_df,
+    save_palette_memory,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.spectrum_ops import data_df_from_queryset
@@ -102,7 +103,7 @@ def handle_load(
     if not load_trigger_index:
         load_trigger_index = 0
     load_trigger_index = load_trigger_index + 1
-    loaded_div = load_values_into_search_div(selected_file, spec_model, cset)
+    loaded_div = load_state_into_application(selected_file, spec_model, cset)
     # this cache parameter is for semi-asynchronous flow control of the
     # load process without having to literally
     # have one dispatch callback function for the entire app
@@ -436,7 +437,7 @@ def update_search_options(
 def update_search_ids(
     _search_n_clicks,
     _load_trigger_index,
-    logic_option_checklists,
+    options,
     logical_quantifier,
     fields,
     terms,
@@ -462,31 +463,30 @@ def update_search_ids(
         ]
     except ValueError:
         raise PreventUpdate
-    parameters = [
-        {"field": field, "term": term, **entry}
-        for field, term, entry in zip(fields, terms, entries)
-        if not_blank(field) and (not_blank(term) or not_blank(entry))
-    ]
-    # save search parameters for graph description
+    parameters = []
+    for field, terms, entry, option in zip(fields, terms, entries, options):
+        # must have a selected field (e.g., feature, sol) and either a qual
+        # ("terms") or quant ("entry") value for that field
+        if not (not_blank(field) and (not_blank(terms) or not_blank(entry))):
+            continue
+        parameters.append(
+            {
+                "field": field,
+                "terms": terms,
+                **entry,
+                "null": "null" in option,
+                "invert": "invert" in option,
+            }
+        )
+    # save search settings for applicatio-n state save
     cset("search_parameters", parameters)
-    logic_options = [
-        {
-            "null": "null" in checklist,
-            "invert": "invert" in checklist
-        }
-        for checklist in logic_option_checklists
-    ]
-    # if the search parameters have changed or if it's a new load, make a
-    # new id list and trigger graph update using copy.deepcopy here to
-    # avoid passing doubly-ingested input back after the check although on
-    # the other hand, TODO, maybe: it should be memoized
+    cset("logical_quantifier", logical_quantifier)
+    # make a new id list and trigger graph update
+    # TODO, maybe: this is very cheap now, but could more efficiently
+    #  be memoized and/or refuse to update if nothing has meaningfully changed
     search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
     search = handle_graph_search(
-        search_df,
-        parameters,
-        logic_options,
-        logical_quantifier,
-        spec_model
+        search_df, parameters, logical_quantifier, spec_model
     )
     # place primary keys of spectra found by search in global cache
     cset("search_ids", search)
@@ -571,32 +571,43 @@ def populate_saved_search_drop(*_triggers, search_path):
 def handle_highlight_save(
     _load_trigger, _save_button, trigger_value, *, cget, cset, spec_model
 ):
-    # TODO: fix this
     ctx = dash.callback_context
     if "load-trigger" in str(ctx.triggered):
         # main highlight parameters are currently restored
         # in make_loaded_search_tab()
         search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
-        params = cget("highlight_parameters")
-        if params is not None:
-            params = literal_eval(str(params))
+        saved_highlight_parameters = cget("highlight_parameters")
+        if saved_highlight_parameters is not None:
+            logical_quantifier = saved_highlight_parameters[
+                "logical_quantifier"
+            ]
+            params = literal_eval(
+                str(saved_highlight_parameters["search_parameters"])
+            )
             cset(
                 "highlight_ids",
-                handle_graph_search(search_df, params, spec_model),
+                handle_graph_search(
+                    search_df,
+                    params,
+                    logical_quantifier,
+                    spec_model,
+                ),
             )
         else:
             cset("highlight_ids", search_df.index.to_list())
-        cset("highlight_parameters", params)
+            logical_quantifier = cget("logical_quantifier")
+            params = []
     else:
-        highlight_ids = cget("highlight_ids")
-        search_ids = cget("search_ids")
-        if np.all(highlight_ids == search_ids):
-            raise PreventUpdate
-        cset("highlight_ids", search_ids)
-        cset("highlight_parameters", cget("search_parameters"))
+        cset("highlight_ids", cget("search_ids"))
+        params = cget("search_parameters")
+        logical_quantifier = cget("logical_quantifier")
+    highlight_parameters = {
+        "search_parameters": params,
+        "logical_quantifier": logical_quantifier,
+    }
+    cset("highlight_parameters", highlight_parameters)
     return (
-        "saved highlight: "
-        + pretty_print_search_params(cget("highlight_parameters")),
+        pretty_print_search_params(params, logical_quantifier),
         trigger_value + 1,
     )
 
@@ -754,7 +765,7 @@ def toggle_averaged_filters(
     ]
 
 
-def save_search_state(
+def save_application_state(
     _n_clicks, save_name, trigger_value, *, search_path, cget
 ):
     """
@@ -769,10 +780,12 @@ def save_search_state(
         "marker_settings",
         "highlight_settings",
         "graph_display_settings",
-        "axis_display_settings"
+        "axis_display_settings",
     )
     string_things = (
         "search_parameters",
+        "logic_options",
+        "logical_quantifier",
         "highlight_parameters",
         "scale_to",
         "average_filters",
@@ -786,14 +799,16 @@ def save_search_state(
     }
     state |= {thing: f"{cget(thing)}" for thing in string_things}
     state["name"] = save_name
-    # things we want to be able to load as dictionaries
-    literal_things = ("search_parameters", "highlight_parameters")
-    # escape everything appropriately for re-loading as string / other literal
+    # things we want to be able to load as lists/dicts/etc
+    structured_things = (
+        "search_parameters",
+        "logic_options",
+        "highlight_parameters",
+    )
+    # escape everything else appropriately for loading as string literals
     for key in state.keys():
-        if key not in literal_things:
+        if key not in structured_things:
             state[key] = f'"{state[key]}"'
-        # else:
-            # state[key] = f'"{state[key]}"'
     save_name = save_name + ".csv"
     os.makedirs(search_path, exist_ok=True)
     with open(Path(search_path, save_name), "w+") as save_csv:

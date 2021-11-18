@@ -14,6 +14,7 @@ DEFAULT_SETTINGS_DICTIONARY = {
     "highlight-color-drop.value": "none",
     "scale_to": "none",
     "r_star": "r-star",
+    "logical_quantifier": "AND",
     "graph-option-x.value": "ratio",
     "graph-option-y.value": "ratio",
     "graph-option-marker.value": "feature",

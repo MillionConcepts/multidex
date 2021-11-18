@@ -14,14 +14,16 @@ from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
 from plotter.types import SpectrumModel
 
 
-def search_div(spec_model: SpectrumModel, settings: Optional[Mapping] = None):
+def primary_app_div(
+    spec_model: SpectrumModel, settings: Optional[Mapping] = None
+):
     """
-    generates the primary search panel.
+    generates the primary application div.
     """
     if settings is None:
         settings = DEFAULT_SETTINGS_DICTIONARY
     # TODO: this feels bad
-    if DEFAULT_SETTINGS_DICTIONARY["average_filters"] is True:
+    if DEFAULT_SETTINGS_DICTIONARY.get("average_filters") is True:
         filts = [
             {"label": filt, "value": filt}
             for filt in spec_model.canonical_averaged_filters
@@ -52,11 +54,7 @@ def search_div(spec_model: SpectrumModel, settings: Optional[Mapping] = None):
             id="main-container",
         ),
     ]
-    return html.Div(
-        children=search_children,
-        # as opposed to regular DOM id
-        id="search-div",
-    )
+    return html.Div(children=search_children, id="search-div")
 
 
 def multidex_body(spec_model):
@@ -98,7 +96,7 @@ def multidex_body(spec_model):
                     ),
                 ],
             ),
-            search_div(spec_model),
+            primary_app_div(spec_model),
             # hidden divs for async triggers, dummy outputs, etc
             trigger_div("main-graph-scale", 1),
             trigger_div("search", 2),

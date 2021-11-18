@@ -38,7 +38,7 @@ from plotter.colors import get_palette_from_scale_name, get_scale_type
 from plotter.components.ui_components import (
     search_parameter_div,
 )
-from plotter.layout import search_div
+from plotter.layout import primary_app_div
 from plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain_variance,
@@ -417,7 +417,7 @@ def spectrum_values_range(metadata_df, field):
 
 
 def non_blank_search_parameters(parameters):
-    entry_keys = ["term", "begin", "end", "value_list"]
+    entry_keys = ["terms", "begin", "end", "value_list"]
     return [
         parameter
         for parameter in parameters
@@ -428,7 +428,6 @@ def non_blank_search_parameters(parameters):
 def handle_graph_search(
     search_df,
     parameters,
-    logic_options,
     logical_quantifier,
     spec_model,
 ) -> list[int]:
@@ -457,9 +456,7 @@ def handle_graph_search(
         if logical_quantifier == "OR":
             return []
     # otherwise, actually perform a search
-    return df_multiple_field_search(
-        search_df, parameters, logic_options, logical_quantifier
-    )
+    return df_multiple_field_search(search_df, parameters, logical_quantifier)
 
 
 def add_dropdown(children, spec_model, cget, cset):
@@ -564,33 +561,34 @@ def make_zspec_browse_image_components(
     )
 
 
-def load_values_into_search_div(search_file, spec_model, cset):
-    """makes a search tab with preset values from a saved search."""
+def load_state_into_application(search_file, spec_model, cset):
+    """loads saved application state into the primary application panel."""
     with open(search_file) as save_csv:
-        search = next(csv.DictReader(save_csv))
-        search = {k: literal_eval(v) for k, v in search.items()}
+        settings = next(csv.DictReader(save_csv))
+        settings = {k: literal_eval(v) for k, v in settings.items()}
     # TODO: somewhat bad smell, might mean something is wrong in control flow
-    if search["highlight_parameters"] is not None:
-        cset("highlight_parameters", search["highlight_parameters"])
-    if search["search_parameters"] is not None:
-        cset("search_parameter_index", len(search["search_parameters"]))
+    if settings["highlight_parameters"] is not None:
+        cset("highlight_parameters", settings["highlight_parameters"])
+    if settings["search_parameters"] is not None:
+        cset("search_parameter_index", len(settings["search_parameters"]))
     else:
         cset("search_parameter_index", 0)
-    return search_div(spec_model, search)
+    return primary_app_div(spec_model, settings)
 
 
-def pretty_print_search_params(search_parameters):
+def pretty_print_search_params(parameters, logical_quantifier):
     string_list = []
-    if not search_parameters:
+    if not parameters:
         return ""
-    for param in search_parameters:
+    for param in parameters:
         if "begin" in param.keys() or "end" in param.keys():
-            string_list.append(
-                f"{param['field']}: {param.get('begin')} -- {param.get('end')}"
+            description = (
+                f"{param['field']} from "
+                f"{param.get('begin')} to {param.get('end')}"
             )
         else:
-            if param.get("term"):
-                term_list = param["term"]
+            if param.get("terms"):
+                term_list = param["terms"]
             else:
                 term_list = param["value_list"]
             term_list = [
@@ -598,12 +596,19 @@ def pretty_print_search_params(search_parameters):
                 for term in term_list
             ]
             if len(term_list) > 1:
-                term_string = ", ".join([str(term) for term in term_list])
+                term_string = (
+                    f"in ({', '.join([str(term) for term in term_list])})"
+                )
             else:
-                term_string = str(term_list[0])
-            string_list.append(f"{param['field']}: {term_string}")
+                term_string = f"== {term_list[0]}"
+            description = f"{param['field']} {term_string}"
+        if param.get("null") is True:
+            description += " (NULL is True)"
+        if param.get("invert") is True:
+            description = "NOT " + description
+        string_list.append(description)
     if len(string_list) > 1:
-        return "; ".join(string_list)
+        return f" {logical_quantifier} ".join(string_list)
     return string_list[0]
 
 
