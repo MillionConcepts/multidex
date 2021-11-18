@@ -60,7 +60,9 @@ def find_ingest_files(path: Path, recursive: bool = False):
         context_files = filter(looks_like_context, map(str, path.iterdir()))
     else:
         marslab_files = [str(path)]
-        context_files = filter(looks_like_context, map(str, path.parent.iterdir()))
+        context_files = filter(
+            looks_like_context, map(str, path.parent.iterdir())
+        )
     return marslab_files, context_files
 
 
@@ -103,14 +105,34 @@ def match_obs_images(marslab_file, context_df):
     return obs_images, context_matches.index
 
 
+def save_thumb(filename, row):
+    print("writing " + filename)
+    try:
+        with open(filename, "wb") as file:
+            file.write(row["buffer"].getbuffer())
+        return True, None
+    except KeyboardInterrupt:
+        raise
+    except Exception as ex:
+        print(f"failed on {filename}: {type(ex)}: {ex}")
+        return False, ex
+
 def save_relevant_thumbs(context_df):
     to_save = context_df.loc[context_df["save"] == True]
     thumb_path = THUMB_PATH
+    results = []
     for _, row in to_save.iterrows():
         filename = thumb_path + row["stem"] + "-" + row["eye"] + "-thumb.jpg"
-        print("writing " + filename)
-        with open(filename, "wb") as file:
-            file.write(row["buffer"].getbuffer())
+        success, ex = save_thumb(filename, row)
+        results.append(
+            {
+                "file": row["path"],
+                "filetype": "thumb",
+                "status": success,
+                "exception": ex,
+            }
+        )
+    return results
 
 
 def process_marslab_row(row, marslab_file, obs_images):
@@ -149,7 +171,10 @@ def ingest_marslab_file(marslab_file, context_df):
     frame = pd.read_csv(marslab_file)
     if frame["INSTRUMENT"].iloc[0] != "ZCAM":
         print("skipping non-ZCAM file: " + marslab_file)
-        return False, context_df
+        return False, "does not appear to be a ZCAM file", context_df
+    if frame["COLOR"].eq("-").all():
+        print(f"no spectra in {marslab_file}, skipping")
+        return False, "no spectra in file", context_df
     print("ingesting spectra from " + Path(marslab_file).name)
     if context_df is not None:
         obs_images, match_index = match_obs_images(marslab_file, context_df)
@@ -167,18 +192,21 @@ def ingest_marslab_file(marslab_file, context_df):
         raise
     except Exception as ex:
         print("failed on " + marslab_file + " reformat: " + str(ex))
-        return False, context_df
+        return False, ex, context_df
     colors = []
     for _, row in frame.iterrows():
         row_color = process_marslab_row(row, marslab_file, obs_images)
         if row_color is not None:
             colors.append(row_color)
     print("successfully ingested " + ", ".join(colors))
-    return True, context_df
+    return True, None, context_df
 
 
 def ingest_multidex(
-    path_or_file, *, recursive: "r" = False, skip_thumbnails: "t" = False
+    path_or_file,
+    *,
+    recursive: "r" = False,
+    skip_thumbnails: "t" = False,
 ):
     """
     ingests zcam -marslab.csv files and context image thumbnails generated
@@ -199,14 +227,21 @@ def ingest_multidex(
         context_df = process_context_files(context_files)
     else:
         context_df = None
-    successfully_ingested_marslab_files = []
-    for marslab_file in marslab_files:
-        successful, context_df = ingest_marslab_file(marslab_file, context_df)
-        if successful:
-            successfully_ingested_marslab_files.append(marslab_file)
+    results = []
+    for file in marslab_files:
+        success, ex, context_df = ingest_marslab_file(file, context_df)
+        results.append(
+            {
+                "file": file,
+                "filetype": "marslab",
+                "status": success,
+                "exception": ex,
+            }
+        )
     if not skip_thumbnails:
         print("making thumbnails")
         nailpipe = default_thumbnailer()
         context_df = context_df.loc[context_df["save"]].copy()
         context_df["buffer"] = context_df["path"].apply(nailpipe.execute)
-    save_relevant_thumbs(context_df)
+    thumb_results = save_relevant_thumbs(context_df)
+    return results + thumb_results
