@@ -271,7 +271,7 @@ def register_update_spectrum_graph(app, configured_function):
     )(configured_function)
 
 
-def register_save_search_state(app, configured_function):
+def register_save_application_state(app, configured_function):
     app.callback(
         Output({"type": "save-trigger", "index": 0}, "value"),
         [Input("save-search-save-button", "n_clicks")],

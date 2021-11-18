@@ -439,7 +439,7 @@ def search_parameter_div_drop_elements(index, searchable_fields, preset):
         model_options_drop(
             "term-search",
             index,
-            value=preset.get("term"),
+            value=preset.get("terms"),
             className="medium-drop term-search",
         ),
         html.Div(
@@ -467,6 +467,10 @@ def search_parameter_div(
             id={"type": "remove-param", "index": index},
             children="remove",
         )
+    checklist_values = []
+    for option in ("null", "invert"):
+        if preset.get(option) is True:
+            checklist_values.append(option)
     checklist = dcc.Checklist(
             style={"marginLeft": "1rem"},
             id={"type": "param-logic-options", "index": index},
@@ -475,7 +479,7 @@ def search_parameter_div(
                 {"label": "null", "value": "null"},
                 {"label": "flip", "value": "invert"}
             ],
-            value=[],
+            value=checklist_values
         )
     children.append(
         html.Div(
@@ -490,22 +494,20 @@ def search_parameter_div(
     )
 
 
-def search_container_div(spec_model, preset):
+def search_container_div(spec_model, settings):
     search_container = html.Div(
         id="search-controls-container",
         className="search-controls-container",
     )
     searchable_fields = spec_model.searchable_fields()
-    # TODO: may no longer need None
-    # list was 'serialized' to string to put it in a single csv field
-    if not preset:
+    if not settings["search_parameters"]:
         search_container.children = [
             search_parameter_div(0, searchable_fields)
         ]
     else:
         search_container.children = [
             search_parameter_div(ix, searchable_fields, parameter)
-            for ix, parameter in enumerate(preset)
+            for ix, parameter in enumerate(settings["search_parameters"])
         ]
     return search_container
 
@@ -786,10 +788,7 @@ def search_controls_div(spec_model, settings: Mapping) -> html.Div:
     return html.Div(
         style={"display": "flex", "flexDirection": "row"},
         children=[
-            search_container_div(
-                spec_model,
-                settings["search_parameters"],
-            ),
+            search_container_div(spec_model, settings),
             html.Div(
                 className="search-button-container",
                 children=[
@@ -805,7 +804,7 @@ def search_controls_div(spec_model, settings: Mapping) -> html.Div:
                             {"label": "AND", "value": "AND"},
                             {"label": "OR", "value": "OR"},
                         ],
-                        value="AND",
+                        value=settings["logical_quantifier"],
                     ),
                     # hidden trigger for queryset update on dropdown removal
                     html.Button(

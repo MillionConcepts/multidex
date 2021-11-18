@@ -448,21 +448,15 @@ def df_quant_field_search(search_df, parameter):
 
 def df_qual_field_search(search_df, parameter):
     param_results = []
-    for term in parameter["term"]:
-        param_result = df_term_search(
-            search_df,
-            parameter["field"],
-            term,
-            parameter.get("flexible"),
-        )
+    for term in parameter["terms"]:
+        param_result = df_term_search(search_df, parameter["field"], term)
         param_results.append(param_result)
     return reduce(pd.Index.union, param_results)
 
 
 def df_multiple_field_search(
     search_df: pd.DataFrame,
-    parameters: Sequence,
-    logic_options: Sequence[Mapping],
+    parameters: Sequence[Mapping],
     logical_quantifier: str,
 ) -> list:
     """
@@ -471,26 +465,26 @@ def df_multiple_field_search(
     or stringlike terms.
     """
     results = []
-    for parameter, options in zip(parameters, logic_options):
+    for parameter in parameters:
         # do a relations-on-orderings search if requested
         if parameter.get("value_type") == "quant":
-            search_result = df_quant_field_search(search_df, parameter)
+            result = df_quant_field_search(search_df, parameter)
         # otherwise just look for term matches;
         # "or" them within a category
         else:
-            search_result = df_qual_field_search(search_df, parameter)
+            result = df_qual_field_search(search_df, parameter)
         # allow all missing values if requested
-        if options["null"] is True:
-            search_result = pd.Index.union(
-                search_result,
+        if parameter["null"] is True:
+            result = pd.Index.union(
+                result,
                 search_df.loc[search_df[parameter["field"]].isna()].index
             )
         # take complement if requested
-        if options["invert"] is True:
-            search_result = pd.Index([
-                ix for ix in search_df.index if ix not in search_result
+        if parameter["invert"] is True:
+            result = pd.Index([
+                ix for ix in search_df.index if ix not in result
             ])
-        results.append(search_result)
+        results.append(result)
     if logical_quantifier == "AND":
         index_logic_method = pd.Index.intersection
     else:
