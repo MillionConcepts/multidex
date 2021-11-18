@@ -571,6 +571,7 @@ def populate_saved_search_drop(*_triggers, search_path):
 def handle_highlight_save(
     _load_trigger, _save_button, trigger_value, *, cget, cset, spec_model
 ):
+    # TODO: fix this
     ctx = dash.callback_context
     if "load-trigger" in str(ctx.triggered):
         # main highlight parameters are currently restored
