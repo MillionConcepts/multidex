@@ -8,7 +8,7 @@ import numpy as np
 from fs.osfs import OSFS
 import pandas as pd
 
-from ingest.zcam.thumbpipe import default_thumbnailer
+from zcam_thumbpipe import default_thumbnailer
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -201,7 +201,7 @@ def ingest_marslab_file(marslab_file, context_df):
     return True, None, context_df
 
 
-def ingest_marslab_files(
+def perform_ingest(
     path_or_file,
     *,
     recursive: "r" = False,
