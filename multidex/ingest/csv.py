@@ -4,7 +4,6 @@ does not handle images at the moment.
 """
 
 import os
-import warnings
 
 import django
 import pandas as pd
@@ -20,7 +19,7 @@ from plotter.models import INSTRUMENT_MODEL_MAPPING
 
 # TODO: how do I track full file provenance? It would be great if there were
 #  a PRODUCT_ID or similar for the original CSVs...
-def ingest_csv(csv_fn, instrument_code, dry_run=False):
+def perform_ingest(csv_fn, instrument_code, dry_run=False):
     frame = pd.read_csv(csv_fn)
     if "UNITS" in frame.columns:
         if "R*" in frame["UNITS"].values:
