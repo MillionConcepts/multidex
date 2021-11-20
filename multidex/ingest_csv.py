@@ -2,9 +2,9 @@
 
 from clize import run
 
-import ingest.visor.cli
+import ingest.csv.cli
 
 
 # tell clize to handle command line call
 if __name__ == '__main__':
-    run(ingest.visor.cli.ingest_visor_files)
+    run(ingest.csv.cli.ingest_csv)

@@ -41,8 +41,10 @@ class ZSpec(XSpec):
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 
+    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
+
     def roi_hex_code(self) -> str:
-        return MERSPECT_M20_COLOR_MAPPINGS[self.color]
+        return self.color_mappings[self.color]
 
     def overlay_browse_file_info(self, image_directory: str) -> dict:
         files = self.image_files()
@@ -56,15 +58,17 @@ class ZSpec(XSpec):
 
 class MSpec(XSpec):
     # large-to-small taxonomic categories for rock clusters
+    group = models.CharField("Group", **B_N_I, max_length=50)
     formation = models.CharField("Formation", **B_N_I, max_length=50)
     member = models.CharField("Member", **B_N_I, max_length=50)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
     float = models.CharField("floating vs. in-place", **B_N_I, max_length=15)
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
+    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
 
     def roi_hex_code(self) -> str:
-        return MERSPECT_MSL_COLOR_MAPPINGS[self.color]
+        return self.color_mappings[self.color]
 
     # TODO: hacky?
     #  yes, it absolutely is. Deprecate this completely, just fold direct

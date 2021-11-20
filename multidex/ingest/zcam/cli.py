@@ -1,4 +1,3 @@
-import datetime as dt
 import os
 import re
 from operator import attrgetter
@@ -143,7 +142,7 @@ def process_marslab_row(row, marslab_file, obs_images):
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
         "images": obs_images,
-        "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
+        # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
         "min_count": row[row.index.str.contains("count")].astype(float).min(),
     }
     try:
@@ -202,7 +201,7 @@ def ingest_marslab_file(marslab_file, context_df):
     return True, None, context_df
 
 
-def ingest_multidex(
+def ingest_marslab_files(
     path_or_file,
     *,
     recursive: "r" = False,

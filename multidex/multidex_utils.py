@@ -26,6 +26,8 @@ from dash import html
 from dash.dependencies import Input, Output
 from toolz import merge, isiterable
 
+from plotter.spectrum_ops import data_df_from_queryset
+
 if TYPE_CHECKING:
     from dash.development.base_component import Component
     from django.db.models.query import QuerySet
@@ -508,12 +510,15 @@ def fetch_css_variables(css_file: str = DEFAULT_CSS_PATH) -> dict[str, str]:
 
 # TODO: this can be made more efficient using idiomatic django cursor calls
 def model_metadata_df(
-    model: Any, relation_names: Optional[list[str]] = None
+    model: Any,
+    relation_names: Optional[list[str]] = None,
+    dict_function: Optional[Callable] = None
 ) -> pd.DataFrame:
-    try:
-        dict_function = getattr(model, "metadata_dict")
-    except AttributeError:
-        dict_function = modeldict
+    if dict_function is None:
+        try:
+            dict_function = getattr(model, "metadata_dict")
+        except AttributeError:
+            dict_function = modeldict
     if relation_names is None:
         relation_names = []
     value_list = []
@@ -542,3 +547,9 @@ def insert_wavelengths_into_text(text: str, spec_model: "Model") -> str:
         text = re.sub(filt, filt + " (" + str(wavelength) + "nm)", text)
     text = re.sub(r"_", r" ", text)
     return text
+
+
+def directory_of(path: Path) -> str:
+    if path.is_dir():
+        return str(path)
+    return str(path.parent)

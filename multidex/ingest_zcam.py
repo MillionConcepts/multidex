@@ -10,4 +10,4 @@ import ingest.zcam.cli
 
 # tell clize to handle command line call
 if __name__ == '__main__':
-    run(ingest.zcam.cli.ingest_multidex)
+    run(ingest.zcam.cli.ingest_marslab_files)
