@@ -22,7 +22,9 @@
 /multidex/plotter/application/assets/browse/mcam/*.jpg
 /multidex/plotter/application/assets/browse/zcam/*.jpg
 /multidex/data/*CAM*.sqlite3
+/multidex/data/*.csv
 *scratch*.ipynb
 *test.json
 /multidex/notetaking_attempt_1/
 !missing.jpg
+*.tar.gz
