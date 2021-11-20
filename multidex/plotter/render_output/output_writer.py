@@ -66,21 +66,24 @@ def apply_output_image_style(fig):
     colorbar_dict = COLORBAR_SETTINGS.copy()
     # again, hacky to use typesetting as layout, but...
 
-    if len(marker.colorbar.title.text) > 12:
-        colorbar_dict["title"]["side"] = "right"
-        colorbar_dict["title"][
-            "text"
-        ] = f"<br><br><br> &nbsp;{marker.colorbar.title.text}"
+    coloraxis = next(fig.select_coloraxes())
+    if coloraxis:
+        if "colorbar" in coloraxis:
+            colorbar = coloraxis.colorbar
+            if len(colorbar.title.text) > 12:
+                colorbar.title.side = "right"
+                colorbar.title.text = f"<br><br><br> &nbsp;{coloraxis.colorbar.title.text}"
 
-    else:
-        colorbar_dict["title"]["side"] = "top"
-        colorbar_dict["title"][
-            "text"
-        ] = f"{marker.colorbar.title.text}<br> &nbsp;"
+            else:
+                colorbar.title.side = "top"
+                colorbar.title.text = f"{coloraxis.colorbar.title.text}<br> &nbsp;"
+            colorbar.tickvals = coloraxis.colorbar.tickvals
+            coloraxis["colorbar"] = colorbar
+            fig.update_coloraxes(coloraxis)
 
     # more breaks for longer ticks?
     marker_dict = (
-        MARKER_SETTINGS | {"size": marker_size} | {"colorbar": colorbar_dict}
+        MARKER_SETTINGS | {"size": marker_size}
     )
     fig.update_traces(marker=marker_dict)
     return fig
