@@ -794,7 +794,8 @@ def branch_highlight_df(
 def dump_model_table(
     spec_model_code: str,
     filename: str,
-    r_star: bool = True,
+    r_star: bool = False,
+    include_lab_spectra: bool = False,
     dict_function: Optional[Callable] = None
 ):
     spec_model = INSTRUMENT_MODEL_MAPPING[spec_model_code]
@@ -807,4 +808,6 @@ def dump_model_table(
         metadata = metadata.rename(columns={"SOIL_LOCATION": "SOIL LOCATION"})
     metadata["UNITS"] = "R*" if r_star is True else "IOF"
     output = pd.concat([metadata, data], axis=1).sort_values(by="SCLK")
+    if include_lab_spectra is False:
+        output = output.loc[output["feature"] != "lab spectrum"]
     output.to_csv(filename, index=None)
