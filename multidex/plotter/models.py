@@ -65,7 +65,7 @@ class MSpec(XSpec):
     float = models.CharField("floating vs. in-place", **B_N_I, max_length=15)
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
-    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
+    color_mappings = MERSPECT_MSL_COLOR_MAPPINGS | {"black": "#000000"}
 
     def roi_hex_code(self) -> str:
         return self.color_mappings[self.color]
