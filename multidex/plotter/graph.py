@@ -31,7 +31,7 @@ from multidex_utils import (
     df_multiple_field_search,
     re_get,
     djget,
-    insert_wavelengths_into_text,
+    insert_wavelengths_into_text, model_metadata_df,
 )
 from plotter import spectrum_ops
 from plotter.colors import get_palette_from_scale_name, get_scale_type
@@ -39,10 +39,12 @@ from plotter.components.ui_components import (
     search_parameter_div,
 )
 from plotter.layout import primary_app_div
+from plotter.models import INSTRUMENT_MODEL_MAPPING
 from plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain_variance,
 )
+from plotter.spectrum_ops import data_df_from_queryset
 from plotter.styles.graph_style import COLORBAR_SETTINGS
 from plotter.types import SpectrumModel, SpectrumModelInstance
 
@@ -169,7 +171,9 @@ def perform_spectrum_op(
     # as arguments, and have arguments in an order corresponding to
     # the inputs. also drop precalculated perperties -- a bit kludgey.
     queryset_df = (
-        filter_df.loc[id_list].drop(["filter_avg", "err_avg"], axis=1).copy()
+        filter_df.loc[id_list]
+        .drop(["filter_avg", "err_avg", "rel_err_avg"], axis=1)
+        .copy()
     )
     filt_args = [
         re_get(settings, "filter-" + str(ix))
@@ -511,18 +515,16 @@ def make_mspec_browse_image_components(mspec: "MSpec", static_image_url):
     """
     image_div_children = []
     images = literal_eval(mspec.images)
-    for eye in ["left", "right"]:
-        try:
-            eye_images = keyfilter(lambda key: eye in key, images)
-            assert len(eye_images) >= 1
-            filename = static_image_url + list(eye_images.values())[0]
-        except AssertionError:
-            filename = static_image_url + "missing.jpg"
+    for side in ["left", "right"]:
+        eye_image = images.get(f"{side}eye_roi_image")
+        if eye_image is None:
+            eye_image = "missing.jpg"
+        filename = static_image_url + eye_image
         image_div_children.append(
             html.Img(
                 src=filename,
                 style={"maxWidth": "55%", "maxHeight": "55%"},
-                id="spec-image-" + eye,
+                id=f"spec-image-{side}",
             )
         )
     return html.Div(children=image_div_children)
@@ -786,3 +788,23 @@ def branch_highlight_df(
         highlight_settings, base_marker_size
     )
     return graph_df, highlight_df, highlight_marker_dict
+
+
+# TODO: does this actually go here?
+def dump_model_table(
+    spec_model_code: str,
+    filename: str,
+    r_star: bool = True,
+    dict_function: Optional[Callable] = None
+):
+    spec_model = INSTRUMENT_MODEL_MAPPING[spec_model_code]
+    data = data_df_from_queryset(spec_model.objects.all(), r_star=r_star)
+    metadata = model_metadata_df(spec_model, dict_function=dict_function)
+    data.columns = [column.upper() for column in data.columns]
+    metadata.columns = [column.upper() for column in metadata.columns]
+    # TODO: dumb hack, make this end-to-end smoother
+    if "SOIL_LOCATION" in metadata.columns:
+        metadata = metadata.rename(columns={"SOIL_LOCATION": "SOIL LOCATION"})
+    metadata["UNITS"] = "R*" if r_star is True else "IOF"
+    output = pd.concat([metadata, data], axis=1).sort_values(by="SCLK")
+    output.to_csv(filename, index=None)
