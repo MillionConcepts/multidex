@@ -1,22 +1,20 @@
 """
-these functions are partially defined and/or passed to callback
-decorators in order to generate flow control within a dash app.
+these are intended principally as function prototypes. they are partially
+defined and/or passed to callback decorators in order to generate flow control
+within the app. they should rarely, if ever, be called in these generic forms.
 """
-import datetime as dt
-import json
-import os
-import re
 
 from ast import literal_eval
-from copy import deepcopy
-from itertools import cycle
+import csv
+import datetime as dt
+from itertools import cycle, chain
+import json
+import os
 from pathlib import Path
-from typing import Tuple
 
 import dash
-import numpy as np
-import pandas as pd
 from dash.exceptions import PreventUpdate
+import pandas as pd
 
 from multidex_utils import (
     triggered_by,
@@ -27,21 +25,22 @@ from multidex_utils import (
     field_values,
     not_blank,
 )
-from plotter.render_output.output_writer import save_main_scatter_plot
-from plotter.components.ui_components import parse_model_quant_entry
+from plotter.colors import generate_palette_options
 from plotter.components.graph_components import (
     main_scatter_graph,
     spectrum_line_graph,
     failed_scatter_graph,
 )
+from plotter.components.ui_components import parse_model_quant_entry
+from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
 from plotter.graph import (
-    load_values_into_search_div,
+    load_state_into_application,
     add_dropdown,
     remove_dropdown,
     clear_search,
     truncate_id_list_for_missing_properties,
     make_axis,
-    make_marker_properties,
+    make_markers,
     format_display_settings,
     spectrum_values_range,
     handle_graph_search,
@@ -55,8 +54,14 @@ from plotter.graph import (
     halt_for_ineffective_highlight_toggle,
     add_or_remove_label,
     explicitly_set_graph_bounds,
-    parse_main_graph_bounds_string, get_axis_option_props,
+    parse_main_graph_bounds_string,
+    get_axis_option_props,
+    halt_to_debounce_palette_update,
+    halt_for_inappropriate_palette_type,
+    branch_highlight_df,
+    save_palette_memory,
 )
+from plotter.render_output.output_writer import save_main_scatter_plot
 from plotter.spectrum_ops import data_df_from_queryset
 
 
@@ -79,13 +84,14 @@ def handle_load(
     """
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
-    if trigger == '.':
+    if trigger == ".":
         if default_settings_checked is True:
             raise PreventUpdate
         try:
             selected_file = next(
-                str(search) for search in Path(search_path).iterdir()
-                if search.stem.lower() == 'default'
+                str(search)
+                for search in Path(search_path).iterdir()
+                if search.stem.lower() == "default"
             )
         except (StopIteration, FileNotFoundError):
             raise PreventUpdate
@@ -97,7 +103,7 @@ def handle_load(
     if not load_trigger_index:
         load_trigger_index = 0
     load_trigger_index = load_trigger_index + 1
-    loaded_div = load_values_into_search_div(selected_file, spec_model, cset)
+    loaded_div = load_state_into_application(selected_file, spec_model, cset)
     # this cache parameter is for semi-asynchronous flow control of the
     # load process without having to literally
     # have one dispatch callback function for the entire app
@@ -163,7 +169,7 @@ def update_spectrum_graph(
     *,
     spec_model,
 ):
-    if scale_to != "None":
+    if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     average_filters = True if average_input_value == ["average"] else False
     if not event_data:
@@ -194,12 +200,9 @@ def update_data_df(
         average_filters = True
     else:
         average_filters = False
-    if scale_to not in ["None", None]:
+    if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
-    if "r-star" in r_star:
-        r_star = True
-    else:
-        r_star = False
+    r_star = r_star == "r_star"
     cset(
         "data_df",
         data_df_from_queryset(
@@ -209,7 +212,7 @@ def update_data_df(
             r_star=r_star,
         ),
     )
-    if scale_to != "None":
+    if scale_to != "none":
         scale_to_string = "_".join(scale_to)
     else:
         scale_to_string = scale_to
@@ -221,25 +224,46 @@ def update_data_df(
     return scale_trigger_count + 1
 
 
+# TODO: this is somewhat nasty. is there a cleaner way to do this?
+#  flow control becomes really hard if we break the function up.
+#  it requires triggers spread across multiple divs or cached globals
+#  and is much uglier than even this. dash's restriction on callbacks to a
+#  single output makes it even worse. probably the best thing to do
+#  in the long run is to treat this basically as a dispatch function.
 def update_main_graph(
     *args,
     x_inputs,
     y_inputs,
     marker_inputs,
+    highlight_inputs,
     graph_display_inputs,
     cget,
     cset,
     spec_model,
-    record_settings=True,
 ):
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
     # handle explicit bounds changes
     if trigger == "main-graph-bounds.value":
         return explicitly_set_graph_bounds(ctx)
-
     bounds_string = parse_main_graph_bounds_string(ctx)
-
+    try:
+        color_clip = [
+            ctx.inputs["color-clip-bound-low.value"],
+            ctx.inputs["color-clip-bound-high.value"],
+        ]
+        if len(color_clip) != 2:
+            raise ValueError("need two numbers in this field to do things")
+        if color_clip[0] > color_clip[1]:
+            raise ValueError("refusing to clip backwards")
+    except (AttributeError, TypeError, ValueError):
+        # don't change anything if they're in the middle of messing around
+        # with the color clip
+        if "color-clip-bound" in trigger:
+            raise PreventUpdate
+        # but if they have changed some other input with an invalid color clip
+        # string in the dialog, render as if there were no color clip at all.
+        color_clip = []
     # handle label addition / removal
     label_ids = cget("label_ids")
     # TODO: performance increase is possible here by just returning the graph
@@ -251,17 +275,25 @@ def update_main_graph(
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
-    halt_for_ineffective_highlight_toggle(ctx, marker_settings)
-
-    graph_display_dict, axis_display_dict = format_display_settings(
+    highlight_settings = pickctx(ctx, highlight_inputs)
+    highlight_ids = cget("highlight_ids")
+    halt_for_ineffective_highlight_toggle(ctx, highlight_settings)
+    halt_for_inappropriate_palette_type(marker_settings, spec_model)
+    # TODO: this isn't quite enough, in the sense that a swap from qual to
+    #  quant with a qual palette selected will trigger two draws. not
+    #  high-priority fix, performance-only.
+    halt_to_debounce_palette_update(ctx, marker_settings, cget)
+    if trigger == "palette-name-drop.value":
+        save_palette_memory(marker_settings, cget, cset)
+    graph_display_settings, axis_display_settings = format_display_settings(
         pickctx(ctx, graph_display_inputs)
     )
 
-    data_df, metadata_df, highlight_ids, search_ids = retrieve_graph_data(cget)
+    data_df, metadata_df, search_ids = retrieve_graph_data(cget)
     if not search_ids:
         return (
             failed_scatter_graph(
-                "no spectra match search parameters", graph_display_dict
+                "no spectra match search parameters", graph_display_settings
             ),
             {},
         )
@@ -270,12 +302,13 @@ def update_main_graph(
         if (props["type"] == "decomposition") and len(search_ids) <= 8:
             return (
                 failed_scatter_graph(
-                    "too few spectra for PCA", graph_display_dict
+                    "too few spectra for PCA", graph_display_settings
                 ),
                 {},
             )
     get_errors = ctx.inputs["main-graph-error.value"]
     filters_are_averaged = "average" in ctx.states["main-graph-average.value"]
+
     truncated_ids = truncate_id_list_for_missing_properties(
         x_settings | y_settings | marker_settings,
         search_ids,
@@ -289,7 +322,7 @@ def update_main_graph(
         return (
             failed_scatter_graph(
                 "matching spectra lack requested properties",
-                graph_display_dict
+                graph_display_settings,
             ),
             {},
         )
@@ -299,8 +332,8 @@ def update_main_graph(
         data_df,
         metadata_df,
         get_errors,
-        highlight_ids,
         filters_are_averaged,
+        color_clip,
     ]
     graph_df = pd.DataFrame({"customdata": truncated_ids})
     # storing these separately because the API for error bars is annoying
@@ -308,16 +341,23 @@ def update_main_graph(
     graph_df["x"], errors["x"], x_title = make_axis(x_settings, *graph_content)
     graph_df["y"], errors["y"], y_title = make_axis(y_settings, *graph_content)
     # similarly for marker properties
-    marker_properties, marker_axis_type = make_marker_properties(
+    marker_properties, color, coloraxis, marker_axis_type = make_markers(
         marker_settings, *graph_content
     )
-
-    # storing this to set draw order for highlights
-    graph_df["size"] = marker_properties["marker"]["size"]
+    # place color in graph df column so it works properly with split highlights
+    graph_df["color"] = color
     graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
-
+    # now that graph dataframe is constructed, split & style highlights to be
+    # drawn as separate trace (or get None, {}) if no highlight is active)
+    graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
+        graph_df,
+        highlight_ids,
+        highlight_settings,
+        base_marker_size=marker_properties["marker"]["size"],
+    )
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
+    # TODO: cleanly prevent these from unsetting autoscale on load
     if ("marker" in trigger) or ("click" in trigger):
         layout = ctx.states["main-graph.figure"]["layout"]
         zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
@@ -325,34 +365,33 @@ def update_main_graph(
         zoom = None
     # for functions that (perhaps asynchronously) fetch the state of the
     # graph. this is another perhaps ugly flow control thing!
-    if record_settings:
-        for parameter in (
-            "x_settings",
-            "y_settings",
-            "marker_settings",
-            "marker_properties",
-            "graph_display_dict",
-            "axis_display_dict",
-            "x_title",
-            "y_title",
-            "get_errors",
-            "bounds_string",
-        ):
-            cset(parameter, locals()[parameter])
+    for parameter in (
+        "x_settings",
+        "y_settings",
+        "marker_settings",
+        "highlight_settings",
+        "graph_display_settings",
+        "axis_display_settings",
+        "get_errors",
+        "bounds_string",
+    ):
+        cset(parameter, locals()[parameter])
 
     return (
         main_scatter_graph(
             graph_df,
+            highlight_df,
             errors,
             marker_properties,
-            graph_display_dict,
-            axis_display_dict,
+            marker_axis_type,
+            coloraxis,
+            highlight_marker_dict,
+            graph_display_settings,
+            axis_display_settings,
             label_ids,
             x_title,
             y_title,
             zoom,
-            marker_axis_type
-            # bounds_string, # TODO: are we passing this ever or no?
         ),
         {},
     )
@@ -384,7 +423,8 @@ def update_search_options(
             search_text = ""
         return [
             [{"label": "any", "value": "any"}],
-            "min/max: " + str(spectrum_values_range(search_df, field))
+            "min/max: "
+            + str(spectrum_values_range(search_df, field))
             + """ e.g., '100--200' or '100, 105, 110'""",
             search_text,
         ]
@@ -397,6 +437,8 @@ def update_search_options(
 def update_search_ids(
     _search_n_clicks,
     _load_trigger_index,
+    options,
+    logical_quantifier,
     fields,
     terms,
     quant_search_entries,
@@ -421,30 +463,35 @@ def update_search_ids(
         ]
     except ValueError:
         raise PreventUpdate
-    search_list = [
-        {"field": field, "term": term, **entry}
-        for field, term, entry in zip(fields, terms, entries)
-        if not_blank(field) and (not_blank(term) or not_blank(entry))
-    ]
-
-    # if the search parameters have changed or if it's a new load, make a
-    # new id list and trigger graph update using copy.deepcopy here to
-    # avoid passing doubly-ingested input back after the check although on
-    # the other hand it should be memoized -- but still but yes seriously it
-    # should be memoized
+    parameters = []
+    for field, terms, entry, option in zip(fields, terms, entries, options):
+        # must have a selected field (e.g., feature, sol) and either a qual
+        # ("terms") or quant ("entry") value for that field
+        if not (not_blank(field) and (not_blank(terms) or not_blank(entry))):
+            continue
+        parameters.append(
+            {
+                "field": field,
+                "terms": terms,
+                **entry,
+                "null": "null" in option,
+                "invert": "invert" in option,
+            }
+        )
+    # save search settings for applicatio-n state save
+    cset("search_parameters", parameters)
+    cset("logical_quantifier", logical_quantifier)
+    # make a new id list and trigger graph update
+    # TODO, maybe: this is very cheap now, but could more efficiently
+    #  be memoized and/or refuse to update if nothing has meaningfully changed
     search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
-    search = handle_graph_search(search_df, deepcopy(search_list), spec_model)
-    # TODO: remove this cruft if in fact it remains so
-    # ctx = dash.callback_context
-    # if (
-    #     set(search) != set(cget("search_ids"))
-    #     or "load-trigger" in ctx.triggered[0]["prop_id"]
-    # ):
+    search = handle_graph_search(
+        search_df, parameters, logical_quantifier, spec_model
+    )
+    # place primary keys of spectra found by search in global cache
     cset("search_ids", search)
-    # save search parameters for graph description
-    cset("search_parameters", search_list)
+    # ring bell signifying that we are done
     return search_trigger_dummy_value + 1
-    # raise PreventUpdate
 
 
 def change_calc_input_visibility(calc_type, *, spec_model):
@@ -463,6 +510,7 @@ def change_calc_input_visibility(calc_type, *, spec_model):
             for x in range(3)
         ] + [{"display": "none"}]
     elif props["type"] == "decomposition":
+        # noinspection PyTypeChecker
         return [{"display": "none"} for _ in range(3)] + [
             {"display": "flex", "flexDirection": "column"}
         ]
@@ -505,9 +553,7 @@ def update_spectrum_images(
         return make_zspec_browse_image_components(
             spectrum, image_directory, static_image_url
         )
-    return make_mspec_browse_image_components(
-        spectrum, image_directory, static_image_url
-    )
+    return make_mspec_browse_image_components(spectrum, static_image_url)
 
 
 def populate_saved_search_drop(*_triggers, search_path):
@@ -530,26 +576,38 @@ def handle_highlight_save(
         # main highlight parameters are currently restored
         # in make_loaded_search_tab()
         search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
-        params = cget("highlight_parameters")
-        if params is not None:
-            params = literal_eval(str(params))
+        saved_highlight_parameters = cget("highlight_parameters")
+        if saved_highlight_parameters is not None:
+            logical_quantifier = saved_highlight_parameters[
+                "logical_quantifier"
+            ]
+            params = literal_eval(
+                str(saved_highlight_parameters["search_parameters"])
+            )
             cset(
                 "highlight_ids",
-                handle_graph_search(search_df, params, spec_model),
+                handle_graph_search(
+                    search_df,
+                    params,
+                    logical_quantifier,
+                    spec_model,
+                ),
             )
         else:
             cset("highlight_ids", search_df.index.to_list())
-        cset("highlight_parameters", params)
+            logical_quantifier = cget("logical_quantifier")
+            params = []
     else:
-        highlight_ids = cget("highlight_ids")
-        search_ids = cget("search_ids")
-        if np.all(highlight_ids == search_ids):
-            raise PreventUpdate
-        cset("highlight_ids", search_ids)
-        cset("highlight_parameters", cget("search_parameters"))
+        cset("highlight_ids", cget("search_ids"))
+        params = cget("search_parameters")
+        logical_quantifier = cget("logical_quantifier")
+    highlight_parameters = {
+        "search_parameters": params,
+        "logical_quantifier": logical_quantifier,
+    }
+    cset("highlight_parameters", highlight_parameters)
     return (
-        "saved highlight: "
-        + pretty_print_search_params(cget("highlight_parameters")),
+        pretty_print_search_params(params, logical_quantifier),
         trigger_value + 1,
     )
 
@@ -575,20 +633,73 @@ def toggle_panel_visibility(
     return panel_style, arrow_style, text_style
 
 
-def toggle_color_drop_visibility(type_selection: str) -> Tuple[dict, dict]:
+def allow_qualitative_palettes(
+    marker_option: str,
+    existing_palette_type_options,
+    existing_palette_type_value,
+    *,
+    spec_model,
+):
+    palette_types = ["sequential", "solid", "diverging", "cyclical"]
+    marker_value_type = keygrab(
+        spec_model.graphable_properties(), "value", marker_option
+    )["value_type"]
+    if marker_value_type == "qual":
+        palette_types.append("qualitative")
+    options = [
+        {"label": palette_type, "value": palette_type}
+        for palette_type in palette_types
+    ]
+    # don't trigger a bunch of stuff unnecessarily
+    if options == existing_palette_type_options:
+        raise PreventUpdate
+    # always set a valid option
+    if existing_palette_type_value not in palette_types:
+        if "qualitative" in palette_types:
+            palette_type_value = "qualitative"
+        else:
+            palette_type_value = "sequential"
+    else:
+        palette_type_value = existing_palette_type_value
+    return options, palette_type_value
+
+
+# TODO: "gray" is overloaded between sequential + solid -- maybe "grey"
+def populate_color_dropdowns(
+    palette_type_value: str,
+    palette_type_options: list[dict],
+    palette_value: str,
+    *,
+    cget,
+    cset,
+) -> tuple[list[dict], str]:
     """
-    just show or hide scale/solid color dropdowns per coloring type radio
-    button selection. very unsophisticated for now.
+    show or hide scale/solid color dropdowns & populate color scale options
+    per coloring type dropdown selection.
     """
-    if type_selection == "solid":
-        return {"display": "none"}, {"display": "block"}
-    return {"display": "block"}, {"display": "none"}
+    palette_memory = cget("palette_memory")
+    if palette_memory is None:
+        palette_memory = DEFAULT_SETTINGS_DICTIONARY["palette_memory"]
+        cset("palette_memory", palette_memory)
+    if palette_type_value not in [
+        option["value"] for option in palette_type_options
+    ]:
+        palette_type_value = "sequential"
+    remembered_value = palette_memory[palette_type_value]
+    palette_options_output, palette_value_output = generate_palette_options(
+        palette_type_value, palette_value, remembered_value
+    )
+    # e.g., switch from qual to quant marker option but with a sequential
+    # scale selected
+    if palette_value_output == palette_value:
+        raise PreventUpdate
+    return palette_options_output, palette_value_output
 
 
 # TODO: This should be reading from something in marslab.compat probably
 def export_graph_csv(_clicks, selected, *, cget, spec_model):
     ctx = dash.callback_context
-    if ctx.triggered[0]['value'] is None:
+    if ctx.triggered[0]["value"] is None:
         raise PreventUpdate
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("data_df").copy()
@@ -604,9 +715,9 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
             columns={"SOIL_LOCATION": "SOIL LOCATION"}
         )
     if cget("r_star") is True:
-        metadata_df['UNITS'] = 'R*'
+        metadata_df["UNITS"] = "R*"
     else:
-        metadata_df['UNITS'] = 'IOF'
+        metadata_df["UNITS"] = "IOF"
     output_df = (
         pd.concat(
             [metadata_df, filter_df],
@@ -654,7 +765,7 @@ def toggle_averaged_filters(
     ]
 
 
-def save_search_state(
+def save_application_state(
     _n_clicks, save_name, trigger_value, *, search_path, cget
 ):
     """
@@ -663,45 +774,47 @@ def save_search_state(
     """
     if save_name is None:
         raise PreventUpdate
-    state_variable_names = [
-        *cget("x_settings").keys(),
-        *cget("y_settings").keys(),
-        *cget("marker_settings").keys(),
-        *cget("graph_display_dict").keys(),
-        *cget("axis_display_dict").keys(),
+    dict_things = (
+        "x_settings",
+        "y_settings",
+        "marker_settings",
+        "highlight_settings",
+        "graph_display_settings",
+        "axis_display_settings",
+    )
+    string_things = (
         "search_parameters",
+        "logic_options",
+        "logical_quantifier",
         "highlight_parameters",
         "scale_to",
         "average_filters",
         "r_star",
-        "errors",
-    ]
-    state_variable_values = [
-        *cget("x_settings").values(),
-        *cget("y_settings").values(),
-        *cget("marker_settings").values(),
-        *cget("graph_display_dict").values(),
-        *cget("axis_display_dict").values(),
-        str(cget("search_parameters")),
-        str(cget("highlight_parameters")),
-        str(cget("scale_to")),
-        cget("average_filters"),
-        cget("r_star"),
-        cget("errors"),
-    ]
-    state_line = pd.DataFrame(
-        {
-            parameter: value
-            for parameter, value in zip(
-                state_variable_names, state_variable_values
-            )
-        },
-        index=[0],
     )
-    state_line["name"] = save_name
+    state = {
+        k: f"{v}"
+        for k, v in chain.from_iterable(
+            cget(thing).items() for thing in dict_things
+        )
+    }
+    state |= {thing: f"{cget(thing)}" for thing in string_things}
+    state["name"] = save_name
+    # things we want to be able to load as lists/dicts/etc
+    structured_things = (
+        "search_parameters",
+        "logic_options",
+        "highlight_parameters",
+    )
+    # escape everything else appropriately for loading as string literals
+    for key in state.keys():
+        if key not in structured_things:
+            state[key] = f'"{state[key]}"'
     save_name = save_name + ".csv"
     os.makedirs(search_path, exist_ok=True)
-    state_line.to_csv(Path(search_path, save_name), index=False)
+    with open(Path(search_path, save_name), "w+") as save_csv:
+        writer = csv.DictWriter(save_csv, fieldnames=tuple(state.keys()))
+        writer.writeheader()
+        writer.writerow(state)
     return trigger_value + 1
 
 

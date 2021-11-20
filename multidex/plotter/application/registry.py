@@ -5,11 +5,12 @@ callback registry: register functions from plotter.callbacks with app i/o
 from dash.dependencies import Input, Output, State, MATCH, ALL
 
 from plotter.application.structure import (
-    Y_INPUTS,
-    MARKER_INPUTS,
-    GRAPH_DISPLAY_INPUTS,
     FILTER_DROPDOWN_OUTPUTS,
+    GRAPH_DISPLAY_INPUTS,
+    HIGHLIGHT_INPUTS,
+    MARKER_INPUTS,
     X_INPUTS,
+    Y_INPUTS,
 )
 
 
@@ -36,6 +37,36 @@ def register_trigger_search_update(app, configured_function):
     )(configured_function)
 
 
+def register_allow_qualitative_palettes(app, configured_function):
+    app.callback(
+        [
+            Output("palette-type-drop", "options"),
+            Output("palette-type-drop", "value"),
+        ],
+        [Input("graph-option-marker", "value")],
+        [
+            State("palette-type-drop", "options"),
+            State("palette-type-drop", "value"),
+        ],
+    )(configured_function)
+
+
+def register_populate_color_dropdowns(app, configured_function):
+    app.callback(
+        [
+            Output("palette-name-drop", "options"),
+            Output("palette-name-drop", "value"),
+        ],
+        [
+            Input("palette-type-drop", "value"),
+            Input("palette-type-drop", "options"),
+        ],
+        [
+            State("palette-name-drop", "value"),
+        ],
+    )(configured_function)
+
+
 def register_update_main_graph(app, configured_function):
     # trigger redraw of main graph on new search, axis calculation change, etc
     app.callback(
@@ -45,6 +76,7 @@ def register_update_main_graph(app, configured_function):
             *X_INPUTS,
             *Y_INPUTS,
             *MARKER_INPUTS,
+            *HIGHLIGHT_INPUTS,
             *GRAPH_DISPLAY_INPUTS,
             Input({"type": "search-trigger", "index": ALL}, "value"),
             Input({"type": "main-graph-scale-trigger", "index": 0}, "value"),
@@ -83,7 +115,7 @@ def register_toggle_panel_visibility(app, configured_function):
         ],
         [
             Input({"type": "collapse-div", "index": MATCH}, "n_clicks"),
-            Input("collapse-all", "n_clicks")
+            Input("collapse-all", "n_clicks"),
         ],
         [
             State({"type": "collapsible-panel", "index": MATCH}, "style"),
@@ -91,16 +123,6 @@ def register_toggle_panel_visibility(app, configured_function):
             State({"type": "collapse-text", "index": MATCH}, "style"),
         ],
         prevent_initial_call=True,
-    )(configured_function)
-
-
-def register_toggle_color_drop_visibility(app, configured_function):
-    app.callback(
-        [
-            Output("color-scale", "style"),
-            Output("color-solid", "style"),
-        ],
-        [Input("coloring-type", "value")],
     )(configured_function)
 
 
@@ -146,6 +168,8 @@ def register_update_search_ids(app, configured_function):
         [
             Input({"type": "submit-search", "index": ALL}, "n_clicks"),
             Input({"type": "load-trigger", "index": 0}, "value"),
+            Input({"type": "param-logic-options", "index": ALL}, "value"),
+            Input("logical-quantifier-radio", "value"),
         ],
         [
             State({"type": "field-search", "index": ALL}, "value"),
@@ -188,6 +212,7 @@ def register_control_search_dropdowns(app, configured_function):
             Output("search-controls-container", "children"),
             Output({"type": "submit-search", "index": 1}, "n_clicks"),
         ],
+        # TODO: avoid redrawing graph on add-param click
         [
             Input("add-param", "n_clicks"),
             Input("clear-search", "n_clicks"),
@@ -206,7 +231,7 @@ def register_handle_load(app, configured_function):
         [
             Output("search-div", "children"),
             Output({"type": "load-trigger", "index": 0}, "value"),
-            Output("default-settings-checked-div", "children")
+            Output("default-settings-checked-div", "children"),
         ],
         [
             Input("load-search-load-button", "n_clicks"),
@@ -214,7 +239,7 @@ def register_handle_load(app, configured_function):
         [
             State("load-search-drop", "value"),
             State({"type": "load-trigger", "index": 0}, "value"),
-            State("default-settings-checked-div", "children")
+            State("default-settings-checked-div", "children"),
         ],
     )(configured_function)
 
@@ -246,7 +271,7 @@ def register_update_spectrum_graph(app, configured_function):
     )(configured_function)
 
 
-def register_save_search_state(app, configured_function):
+def register_save_application_state(app, configured_function):
     app.callback(
         Output({"type": "save-trigger", "index": 0}, "value"),
         [Input("save-search-save-button", "n_clicks")],
@@ -303,11 +328,9 @@ def register_record_graph_size_and_trigger_save(app):
             return JSON.stringify(info_object)
         }
         """,
-        Output(
-            "graph-size-record-div", "children"
-        ),
+        Output("graph-size-record-div", "children"),
         [Input("export-image", "n_clicks")],
-        prevent_initial_call=True
+        prevent_initial_call=True,
     )
 
 
@@ -315,9 +338,9 @@ def register_drag_spec_print(app):
     app.clientside_callback(
         """function() {makeDraggable('spec-print-handle', 'spec-print-div')}""",
         Output(
-            'fake-output-for-callback-with-only-side-effects-2', 'children'
+            "fake-output-for-callback-with-only-side-effects-2", "children"
         ),
-        [Input('fire-on-load', 'children')]
+        [Input("fire-on-load", "children")],
     )
 
 
@@ -325,18 +348,10 @@ def register_hide_spec_print(app):
     app.clientside_callback(
         """function() {makeHider('spec-print-handle', 'spec-print')}""",
         Output(
-            'fake-output-for-callback-with-only-side-effects-3', 'children'
+            "fake-output-for-callback-with-only-side-effects-3", "children"
         ),
-        [Input('fire-on-load', 'children')]
+        [Input("fire-on-load", "children")],
     )
-
-    # from dash.dependencies import Output, Input
-    # app.clientside_callback(
-    #     ClientsideFunction(namespace="clientside",
-    #     function_name="make_draggable"),
-    #     Output("marker-options", "data-drag"),
-    #     [Input("marker-options", "id")]
-    # )
 
 # debug printer
 # app.callback(

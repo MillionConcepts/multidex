@@ -1,5 +1,6 @@
 """dash components that are graphs and associated helper functions"""
 
+from copy import deepcopy
 from typing import Mapping, Optional
 
 import numpy as np
@@ -16,55 +17,28 @@ from plotter.styles.graph_style import (
 )
 
 
-def plot_and_style_data(
-    axis_display_settings,
-    errors,
+def style_data(
     fig,
-    graph_df,
-    marker_property_dict,
-    x_title,
-    y_title,
-    marker_axis_type
+    graph_display_settings,
+    axis_display_settings=None,
+    x_title=None,
+    y_title=None,
+    marker_axis_type=None,
+    marker_property_dict=None,
+    zoom=None,
 ):
-    fig.add_trace(
-        go.Scatter(
-            x=graph_df["x"],
-            y=graph_df["y"],
-            hovertext=graph_df["text"],
-            customdata=graph_df["customdata"],
-            mode="markers + text",
-            marker={"color": "black", "size": 8},
-        )
-    )
     axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
     # noinspection PyTypeChecker
     fig.update_xaxes(axis_display_dict | {"title_text": x_title})
     fig.update_yaxes(axis_display_dict | {"title_text": y_title})
-    fig.update_traces(**marker_property_dict)
+    # fig.update_traces(**marker_property_dict)
     if (
-            (marker_axis_type == "qual")
-            # don't try to discretize solid colors
-            and not isinstance(marker_property_dict['marker']['color'], str)
+        (marker_axis_type == "qual")
+        # don't try to discretize solid colors
+        and not isinstance(marker_property_dict["marker"]["color"], str)
     ):
         fig = discretize_color_representations(fig)
-    for axis in ["x", "y"]:
-        if errors[axis] is None:
-            fig.update_traces({"error_" + axis: {"visible": False}})
-        else:
-            fig.update_traces(
-                {
-                    "error_" + axis: errors[axis]
-                    | {
-                        "visible": True,
-                        "color": "rgba(0,0,0,0.3)",
-                    }
-                }
-            )
-
-
-def apply_graph_style(fig, graph_display_settings, zoom):
-    display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
-    fig.update_layout(display_dict)
+    apply_canvas_style(fig, graph_display_settings)
     if zoom is not None:
         fig.update_layout(
             {
@@ -74,17 +48,39 @@ def apply_graph_style(fig, graph_display_settings, zoom):
         )
 
 
+def draw_errors_on_figure(fig, errors):
+    for axis in ["x", "y"]:
+        key = f"error_{axis}"
+        if errors[axis] is None:
+            value = {"visible": False}
+        else:
+            value = errors[axis] | {
+                "visible": True,
+                "color": "rgba(0,0,0,0.3)",
+            }
+        fig.update_traces({key: value})
+    return fig
+
+
+def apply_canvas_style(fig, graph_display_settings):
+    display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
+    fig.update_layout(display_dict)
+
+
 def main_scatter_graph(
     graph_df: pd.DataFrame,
+    highlight_df: Optional[pd.DataFrame],
     errors: Mapping,
     marker_property_dict: Mapping,
+    marker_axis_type: str,
+    coloraxis: dict,
+    highlight_marker_dict: Mapping,
     graph_display_settings: Mapping,
     axis_display_settings: Mapping,
     label_ids: list[int],
     x_title: str = None,
     y_title: str = None,
     zoom: Optional[tuple[list[float, float]]] = None,
-    marker_axis_type="quant"
 ) -> go.Figure:
     """
     main graph component. this function creates the Plotly figure; data
@@ -98,42 +94,69 @@ def main_scatter_graph(
     #  using the update_layout pattern, for speed
 
     fig = go.Figure()
-
-    # sort points by marker size so that we can draw highlighted points
-    # last, and thus at a higher 'z-axis'
-    if len(graph_df["size"].unique()) > 1:
-        errors, graph_df, marker_property_dict = sort_by_marker_size(
-            errors, graph_df, marker_property_dict
-        )
     # the click-to-label annotations
     draw_floating_labels(fig, graph_df, label_ids)
     # and the scattered points and their error bars
-    plot_and_style_data(
-        axis_display_settings,
-        errors,
+    # last-mile thing here to keep separate from highlight -- TODO: silly?
+    marker_property_dict["marker"]["color"] = graph_df["color"].values
+    fig.update_coloraxes(coloraxis)
+    fig.add_trace(
+        go.Scatter(
+            x=graph_df["x"],
+            y=graph_df["y"],
+            hovertext=graph_df["text"],
+            # suppresses trace hoverover
+            hovertemplate="%{hovertext}<extra></extra>",
+            customdata=graph_df["customdata"],
+            mode="markers + text",
+            # marker={"color": "black", "size": 8},
+            showlegend=False,
+            **marker_property_dict,
+        )
+    )
+
+    if highlight_df is not None:
+        draw_floating_labels(fig, highlight_df, label_ids)
+        # TODO: ...why are we doing this here?
+        full_marker_dict = dict(deepcopy(marker_property_dict))
+        full_marker_dict["marker"] = (
+            full_marker_dict["marker"] | highlight_marker_dict
+        )
+        if "color" not in highlight_marker_dict:
+            # just treat it like the graph df
+            full_marker_dict["marker"]["color"] = highlight_df["color"].values
+        fig.add_trace(
+            go.Scatter(
+                x=highlight_df["x"],
+                y=highlight_df["y"],
+                hovertext=highlight_df["text"],
+                customdata=highlight_df["customdata"],
+                # suppresses trace display in hoverover
+                hovertemplate="%{hovertext}<extra></extra>",
+                mode="markers + text",
+                showlegend=False,
+                **full_marker_dict,
+            )
+        )
+    fig = draw_errors_on_figure(fig, errors)
+    # last-step canvas stuff: set bounds, gridline color, titles, etc.
+    style_data(
         fig,
-        graph_df,
-        marker_property_dict,
+        graph_display_settings,
+        axis_display_settings,
         x_title,
         y_title,
-        marker_axis_type
+        marker_axis_type,
+        marker_property_dict,
+        zoom,
     )
-    apply_graph_style(fig, graph_display_settings, None)
-    if zoom is not None:
-        fig.update_layout(
-            {
-                "xaxis": {"range": [zoom[0][0], zoom[0][1]]},
-                "yaxis": {"range": [zoom[1][0], zoom[1][1]]},
-            }
-        )
     return fig
 
 
 def failed_scatter_graph(message: str, graph_display_settings: Mapping):
     fig = go.Figure()
     fig.add_annotation(text=message, **SEARCH_FAILURE_MESSAGE_SETTINGS)
-    apply_graph_style(fig, graph_display_settings, None)
-    # fig.to_image()
+    apply_canvas_style(fig, graph_display_settings)
     return fig
 
 

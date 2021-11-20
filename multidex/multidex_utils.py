@@ -5,7 +5,7 @@ import json
 import re
 from functools import partial, reduce
 from inspect import signature
-from operator import and_, gt, ge, lt, le, or_, contains
+from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
 from typing import (
     Callable,
@@ -15,16 +15,18 @@ from typing import (
     Mapping,
     Union,
     Optional,
+    Sequence,
 )
 
-from cytoolz import keyfilter
 import dash
-from dash import html
 import numpy as np
 import pandas as pd
+from cytoolz import keyfilter
+from dash import html
 from dash.dependencies import Input, Output
-from django.db.models import Q
 from toolz import merge, isiterable
+
+from plotter.spectrum_ops import data_df_from_queryset
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component
@@ -76,16 +78,13 @@ def none_to_quote_unquote_none(
         if element is not None:
             de_noned_list.append(element)
         else:
-            de_noned_list.append("None")
+            de_noned_list.append("none")
     return de_noned_list
 
 
-def arbitrarily_hash_strings(strings: Iterable[str]) -> tuple[dict, list[int]]:
+def arbitrarily_hash_strings(strings: Iterable[str]) -> dict:
     unique_string_values = sorted(list(set(strings)), reverse=True)
-    arbitrary_hash = {
-        string: ix for ix, string in enumerate(unique_string_values)
-    }
-    return arbitrary_hash, [arbitrary_hash[string] for string in strings]
+    return {string: ix for ix, string in enumerate(unique_string_values)}
 
 
 # django utility functions
@@ -178,7 +177,7 @@ def columns(dataframe: pd.DataFrame) -> list[np.ndarray]:
 
 
 def dict_to_paragraphs(
-        dictionary, style=None, ordering=None, filterfalse=True
+    dictionary, style=None, ordering=None, filterfalse=True
 ):
     """
     parses dictionary to list of dash <p> components
@@ -192,6 +191,7 @@ def dict_to_paragraphs(
     if ordering is None:
         ordering = []
     from cytoolz import valfilter
+
     if filterfalse is True:
         dictionary = valfilter(lambda x: x not in (False, None), dictionary)
     ordered_grafs = [
@@ -210,14 +210,6 @@ def dict_to_paragraphs(
 def pickitems(dictionary: Mapping, some_list: Iterable) -> dict:
     """items of dict where key is in some_list"""
     return keyfilter(in_me(some_list), dictionary)
-
-
-# TODO: What am I actually doing here? not what I say I am, for sure.
-def pickcomps(comp_dictionary, id_list):
-    """items of dictionary of dash components where id is in id_list"""
-    return pickitems(
-        comp_dictionary, [comp.component_id for comp in comp_dictionary]
-    )
 
 
 def comps_to_strings(component_list: Iterable["Component"]) -> list[str]:
@@ -324,15 +316,6 @@ def in_me(container: Iterable) -> Callable:
 
 
 # ## generic
-
-
-def get_if(boolean: bool, dictionary: Mapping, key: Any) -> Any:
-    """return dictionary[key] iff boolean; otherwise return None"""
-    if boolean:
-        return dictionary.get(key)
-    return None
-
-
 def get_parameters(func: Callable) -> list[str]:
     return [param.name for param in signature(func).parameters.values()]
 
@@ -372,169 +355,6 @@ def none_to_empty(thing: Any) -> Any:
 
 
 # ## search functions
-
-
-# some of the following functions hit the database multiple times during
-# evaluation.
-# this is necessary to allow flexibly loose and strict phrasal searches.
-# it potentially reduces efficiency a great deal and is terrain for
-# optimization
-# if and when required.
-
-
-def flexible_query(
-    queryset: "QuerySet", field: "str", value: Any
-) -> "QuerySet":
-    """
-    little search function that checks exact and loose phrases.
-    have to hit the database to do this, so less efficient than using
-    others that don't
-    """
-    # allow exact phrase searches
-    query = field + "__iexact"
-    if queryset.filter(**{query: value}):
-        return queryset.filter(**{query: value})
-    # otherwise treat multiple words as an 'or' search",
-    query = field + "__icontains"
-    filters = [queryset.filter(**{query: word}) for word in value.split(" ")]
-    return reduce(or_, filters)
-
-
-def inflexible_query(
-    queryset: "QuerySet", field: "str", value: Any
-) -> "QuerySet":
-    """little search function that checks only exact phrases"""
-    query = field + "__iexact"
-    return queryset.filter(**{query: value})
-
-
-def term_search(
-    queryset: "QuerySet", field: "str", value: Any, inflexible=False
-) -> "QuerySet":
-    """
-    model, string, string or number or whatever -> queryset
-    search for strings or whatever within a field of a model.
-    """
-    # toss out "any" searches
-    if str(value).lower() == "any":
-        return queryset
-    # allow inexact phrase matching?
-    search_function = flexible_query
-    if inflexible:
-        search_function = inflexible_query
-    return search_function(queryset, field, value)
-
-
-def value_fetch_search(
-    queryset: "QuerySet", field: "str", value_list: Iterable
-) -> "QuerySet":
-    """
-    queryset, field of underlying model, list of values -> queryset
-    simply return queryset of objects with any of those values
-    in that field. strict, for the moment.
-    """
-    # note that the case-insensitive 'iexact' match method of django
-    # queryset objects
-    # is in fact _more_ sensitive wrt type; it will not match a float
-    # representation of an
-    # int
-    queries = [Q(**{field + "__exact": item}) for item in value_list]
-    return queryset.filter(reduce(or_, queries))
-
-
-def interval_search(
-    queryset: "QuerySet",
-    field: str,
-    interval_begin: Any = None,
-    interval_end: Any = None,
-    strictly: bool = False,
-) -> "QuerySet":
-    """
-    interval_begin and interval_end must be of types for which
-    the elements of the set of the chosen attribute of the elements of queryset
-    possess a complete ordering exposed to django queryset API (probably
-    defined in terms of
-    standard python comparison operators). in most cases, you
-    will probably want these to be the same type, and to share a type with
-    the attributes of the objects in question.
-
-    if both interval_begin and interval_end are defined, returns
-    all entries > begin and < end.
-    if only interval_begin is defined: all entries > begin.
-    if only interval_end is defined: all entries < end.
-    if neither: trivially returns the queryset.
-
-    the idea of this function is to attempt to perform searches with somewhat
-    convoluted Python but a single SQL query. it could be _further_
-    generalized to
-    tuples of attributes that bound a convex space, most simply interval
-    beginnings
-    and endings of their own (start and stop times, for instance)
-    """
-    if strictly:
-        less_than_operator = "__lt"
-        greater_than_operator = "__gt"
-    else:
-        less_than_operator = "__lte"
-        greater_than_operator = "__gte"
-
-    # these variables are queries defined by the ordering on this attribute.
-    greater_than_begin = Q(**{field + greater_than_operator: interval_begin})
-    less_than_end = Q(**{field + less_than_operator: interval_end})
-
-    # select only entries with attribute greater than interval_begin (if
-    # defined)
-    # and less than interval_end (if defined)
-    queries = [Q()]
-    if interval_begin:
-        queries.append(greater_than_begin)
-    if interval_end:
-        queries.append(less_than_end)
-    return queryset.filter(reduce(and_, queries))
-
-
-def multiple_field_search(
-    queryset: "QuerySet", parameters: Iterable
-) -> "QuerySet":
-    """
-    dispatcher that handles multiple search parameters and returns a queryset.
-    accepts options in dictionaries to search 'numerical' intervals
-    or stringlike terms.
-    """
-    results = []
-    for parameter in parameters:
-        # do a relations-on-orderings search if requested
-        if parameter.get("value_type") == "quant":
-            if "value_list" in parameter.keys():
-                search_result = value_fetch_search(
-                    queryset, parameter["field"], parameter["value_list"]
-                )
-            else:
-                search_result = interval_search(
-                    queryset,
-                    parameter["field"],
-                    # begin and end and strictly are optional
-                    parameter.get("begin"),
-                    parameter.get("end"),
-                    parameter.get("strictly"),
-                )
-            results.append(search_result)
-        # otherwise just look for term matches;
-        # "or" them within a category
-        else:
-            param_results = []
-            for term in parameter["term"]:
-                param_result = term_search(
-                    queryset,
-                    parameter["field"],
-                    term,
-                    parameter.get("flexible"),
-                )
-                param_results.append(param_result)
-            results.append(reduce(or_, param_results))
-    return reduce(and_, results)
-
-
 def df_flexible_query(
     metadata_df: pd.DataFrame, field: "str", value: Any
 ) -> pd.DataFrame.index:
@@ -576,48 +396,33 @@ def df_term_search(
 
 def df_interval_search(
     metadata_df: pd.DataFrame,
-    field: str,
+    column: str,
     interval_begin: Any = None,
     interval_end: Any = None,
     strictly: bool = False,
 ) -> pd.DataFrame.index:
     """
-    interval_begin and interval_end must be of types for which
-    the elements of the set of the chosen attribute of the elements of queryset
-    possess a complete ordering exposed to pandas
+    interval_begin and interval_end must be of types for which the elements of
+    column from metadata_df possess a complete ordering exposed to pandas.
     if both interval_begin and interval_end are defined, returns
     all entries > begin and < end.
     if only interval_begin is defined: all entries > begin.
     if only interval_end is defined: all entries < end.
-    if neither: trivially returns the index.)
+    if neither: trivially return the index.
     """
     if strictly:
-        less_than = lt
-        greater_than = gt
+        less_than, greater_than = (lt, gt)
     else:
-        less_than = le
-        greater_than = ge
-
-    # these variables are queries defined by the ordering on this attribute.
-    greater_than_begin = (
-        metadata_df[field]
-        .loc[greater_than(metadata_df[field], interval_begin)]
-        .index
-    )
-    less_than_end = (
-        metadata_df[field]
-        .loc[less_than(metadata_df[field], interval_end)]
-        .index
-    )
-
-    # select only entries with attribute greater than interval_begin (if
-    # defined)
-    # and less than interval_end (if defined)
+        less_than, greater_than = (le, ge)
     indices = [metadata_df.index]
-    if interval_begin:
-        indices.append(greater_than_begin)
-    if interval_end:
-        indices.append(less_than_end)
+    for relation, bound in zip(
+        (greater_than, less_than), (interval_begin, interval_end)
+    ):
+        if bound is None:
+            continue
+        indices.append(
+            metadata_df[column].loc[relation(metadata_df[column], bound)].index
+        )
     return reduce(pd.Index.intersection, indices)
 
 
@@ -627,8 +432,34 @@ def df_value_fetch_search(
     return metadata_df.loc[metadata_df[field].isin(value_list)].index
 
 
+def df_quant_field_search(search_df, parameter):
+    if "value_list" in parameter.keys():
+        return df_value_fetch_search(
+            search_df, parameter["field"], parameter["value_list"]
+        )
+    else:
+        return df_interval_search(
+            search_df,
+            parameter["field"],
+            # begin and end and strictly are optional
+            parameter.get("begin"),
+            parameter.get("end"),
+            parameter.get("strictly"),
+        )
+
+
+def df_qual_field_search(search_df, parameter):
+    param_results = []
+    for term in parameter["terms"]:
+        param_result = df_term_search(search_df, parameter["field"], term)
+        param_results.append(param_result)
+    return reduce(pd.Index.union, param_results)
+
+
 def df_multiple_field_search(
-    search_df: pd.DataFrame, parameters: Iterable
+    search_df: pd.DataFrame,
+    parameters: Sequence[Mapping],
+    logical_quantifier: str,
 ) -> list:
     """
     dispatcher that handles multiple search parameters and returns a queryset.
@@ -639,34 +470,28 @@ def df_multiple_field_search(
     for parameter in parameters:
         # do a relations-on-orderings search if requested
         if parameter.get("value_type") == "quant":
-            if "value_list" in parameter.keys():
-                search_result = df_value_fetch_search(
-                    search_df, parameter["field"], parameter["value_list"]
-                )
-            else:
-                search_result = df_interval_search(
-                    search_df,
-                    parameter["field"],
-                    # begin and end and strictly are optional
-                    parameter.get("begin"),
-                    parameter.get("end"),
-                    parameter.get("strictly"),
-                )
-            results.append(search_result)
+            result = df_quant_field_search(search_df, parameter)
         # otherwise just look for term matches;
         # "or" them within a category
         else:
-            param_results = []
-            for term in parameter["term"]:
-                param_result = df_term_search(
-                    search_df,
-                    parameter["field"],
-                    term,
-                    parameter.get("flexible"),
-                )
-                param_results.append(param_result)
-            results.append(reduce(pd.Index.union, param_results))
-    return list(reduce(pd.Index.intersection, results))
+            result = df_qual_field_search(search_df, parameter)
+        # allow all missing values if requested
+        if parameter["null"] is True:
+            result = pd.Index.union(
+                result,
+                search_df.loc[search_df[parameter["field"]].isna()].index
+            )
+        # take complement if requested
+        if parameter["invert"] is True:
+            result = pd.Index([
+                ix for ix in search_df.index if ix not in result
+            ])
+        results.append(result)
+    if logical_quantifier == "AND":
+        index_logic_method = pd.Index.intersection
+    else:
+        index_logic_method = pd.Index.union
+    return list(reduce(index_logic_method, results))
 
 
 def fetch_css_variables(css_file: str = DEFAULT_CSS_PATH) -> dict[str, str]:
@@ -685,12 +510,15 @@ def fetch_css_variables(css_file: str = DEFAULT_CSS_PATH) -> dict[str, str]:
 
 # TODO: this can be made more efficient using idiomatic django cursor calls
 def model_metadata_df(
-    model: Any, relation_names: Optional[list[str]] = None
+    model: Any,
+    relation_names: Optional[list[str]] = None,
+    dict_function: Optional[Callable] = None
 ) -> pd.DataFrame:
-    try:
-        dict_function = getattr(model, "metadata_dict")
-    except AttributeError:
-        dict_function = modeldict
+    if dict_function is None:
+        try:
+            dict_function = getattr(model, "metadata_dict")
+        except AttributeError:
+            dict_function = modeldict
     if relation_names is None:
         relation_names = []
     value_list = []
@@ -699,20 +527,6 @@ def model_metadata_df(
         value_list.append(dict_function(obj))
         id_list.append(obj.id)
     return pd.DataFrame(value_list, index=id_list)
-
-
-# not currently used
-def regex_keyfilter(regex: str, dictionary: Mapping) -> dict:
-    return {
-        key: value
-        for key, value in dictionary.items()
-        if re.search(regex, key)
-    }
-
-
-def dedict(dictionary: Mapping) -> Any:
-    assert len(dictionary) == 1
-    return dictionary[list(dictionary)[0]]
 
 
 # TODO: these kinds of printing rules probably need to go on individual
@@ -733,3 +547,9 @@ def insert_wavelengths_into_text(text: str, spec_model: "Model") -> str:
         text = re.sub(filt, filt + " (" + str(wavelength) + "nm)", text)
     text = re.sub(r"_", r" ", text)
     return text
+
+
+def directory_of(path: Path) -> str:
+    if path.is_dir():
+        return str(path)
+    return str(path.parent)

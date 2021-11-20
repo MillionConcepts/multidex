@@ -1,37 +1,29 @@
-from functools import partial
 from typing import Optional, Mapping
 
 from dash import dcc
 from dash import html
 
-from multidex_utils import get_if
 from plotter.components.ui_components import (
-    collapse,
-    axis_controls_container,
-    marker_color_symbol_div,
-    marker_options_div,
-    highlight_controls_div,
-    search_controls_div,
-    scale_control_div,
-    scale_controls_container,
-    load_search_drop,
-    save_search_input,
-    display_controls_div,
     main_graph,
     dynamic_spec_div,
     trigger_div,
+    fake_output_divs,
+    graph_controls_div,
 )
+from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
+from plotter.types import SpectrumModel
 
 
-# primary search panel
-def search_div(
-    spec_model: "Spectrum", restore_dictionary: Optional[Mapping] = None
+def primary_app_div(
+    spec_model: SpectrumModel, settings: Optional[Mapping] = None
 ):
-    # are we restoring from saved settings? if so, this function gets them;
-    # if not, this function politely acts as None
-    # TODO: refactor this horror to load from an external set of defaults
-    get_r = partial(get_if, restore_dictionary is not None, restore_dictionary)
-    if get_r("average_filters"):
+    """
+    generates the primary application div.
+    """
+    if settings is None:
+        settings = DEFAULT_SETTINGS_DICTIONARY
+    # TODO: this feels bad
+    if DEFAULT_SETTINGS_DICTIONARY.get("average_filters") is True:
         filts = [
             {"label": filt, "value": filt}
             for filt in spec_model.canonical_averaged_filters
@@ -46,117 +38,12 @@ def search_div(
     else:
         spectrum_scale = None
     search_children = [
-        html.Div(
-            className="graph-controls-container",
-            children=[
-                *collapse(
-                    "control-container-x",
-                    "x axis",
-                    axis_controls_container("x", spec_model, get_r, filts),
-                ),
-                *collapse(
-                    "control-container-y",
-                    "y axis",
-                    axis_controls_container("y", spec_model, get_r, filts),
-                ),
-                *collapse(
-                    "control-container-marker",
-                    "m axis",
-                    axis_controls_container(
-                        "marker", spec_model, get_r, filts
-                    ),
-                ),
-                *collapse(
-                    "color-controls",
-                    "m style",
-                    marker_color_symbol_div(get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "marker-options",
-                    "m options",
-                    marker_options_div(get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "highlight-controls",
-                    "highlight",
-                    highlight_controls_div(get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "search-controls",
-                    "search",
-                    search_controls_div(spec_model, get_r),
-                ),
-                # TODO: at least the _nomenclature_ of these two separate
-                #  'scaling' divs should be clarified
-                *collapse(
-                    "numeric-controls",
-                    "scaling",
-                    scale_control_div(spec_model, get_r),
-                    off=True,
-                ),
-                *collapse(
-                    "spec-controls",
-                    "spectrum",
-                    scale_controls_container(
-                        spec_model,
-                        "main-spec",
-                        spectrum_scale,
-                        "r-star",
-                        "average",
-                        "error",
-                    ),
-                    off=True,
-                ),
-                *collapse(
-                    "load-panel",
-                    "load",
-                    load_search_drop("load-search"),
-                    off=True,
-                ),
-                *collapse(
-                    "save-panel",
-                    "save",
-                    html.Div(
-                        [
-                            save_search_input("save-search"),
-                            html.Div(
-                                style={
-                                    "display": "flex",
-                                    "flexDirection": "row",
-                                    "marginTop": "0.5rem",
-                                },
-                                children=[
-                                    html.Button(
-                                        "CSV",
-                                        id="export-csv",
-                                        style={"marginRight": "0.8rem"},
-                                    ),
-                                    html.Button(
-                                        "image",
-                                        id="export-image",
-                                    ),
-                                ],
-                            ),
-                        ]
-                    ),
-                    off=True,
-                ),
-                *collapse(
-                    "graph-display-panel",
-                    "display",
-                    display_controls_div(get_r),
-                    off=True,
-                ),
-            ],
-        ),
+        graph_controls_div(spec_model, settings, filts, spectrum_scale),
         html.Div(
             style={
                 "display": "flex",
                 "flexDirection": "row",
-                "height": "85vh",
+                "height": "83vh",
             },
             children=[
                 main_graph(
@@ -167,11 +54,7 @@ def search_div(
             id="main-container",
         ),
     ]
-    return html.Div(
-        children=search_children,
-        # as opposed to regular DOM id
-        id="search-div",
-    )
+    return html.Div(children=search_children, id="search-div")
 
 
 def multidex_body(spec_model):
@@ -213,7 +96,7 @@ def multidex_body(spec_model):
                     ),
                 ],
             ),
-            search_div(spec_model),
+            primary_app_div(spec_model),
             # hidden divs for async triggers, dummy outputs, etc
             trigger_div("main-graph-scale", 1),
             trigger_div("search", 2),
@@ -223,22 +106,7 @@ def multidex_body(spec_model):
             html.Div(
                 id="fire-on-load", children="2", style={"display": "none"}
             ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-0",
-                style={"display": "none"},
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-1",
-                style={"display": "none"},
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-2",
-                style={"display": "none"},
-            ),
-            html.Div(
-                id="fake-output-for-callback-with-only-side-effects-3",
-                style={"display": "none"},
-            ),
+            *fake_output_divs(4),
             html.Div(
                 id="default-settings-checked-div", style={"display": "none"}
             ),
@@ -247,14 +115,10 @@ def multidex_body(spec_model):
                 id="search-load-progress-flag", style={"display": "none"}
             ),
             html.Div(
-                children=[
-                    dcc.Input(
-                        id="search-load-trigger",
-                        value=0
-                    )
-                ],
+                children=[dcc.Input(id="search-load-trigger", value=0)],
                 style={"display": "none"},
             ),
+            # tick-tock
             # dcc.Interval(id="interval1", interval=1000, n_intervals=0),
         ],
         id="multidex",

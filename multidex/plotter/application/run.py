@@ -114,5 +114,5 @@ def initialize_cache_values(cset, spec_model):
             for instant in metadata_df["ltst"].dropna()
         ]
     cset("metadata_df", metadata_df)
-    cset("scale_to", "None")
+    cset("scale_to", "none")
     cset("average_filters", False)

@@ -1,14 +1,18 @@
 import inspect
 from collections.abc import Sequence
 from functools import partial
-from itertools import chain
+from itertools import chain, cycle
 from operator import mul
 from typing import Union
 
+from dustgoggles.structures import dig_for_value
 import matplotlib.colors as mcolors
 import numpy as np
 import plotly.colors as pcolors
+import plotly.graph_objects as go
 from more_itertools import windowed
+
+from plotter.styles.marker_style import SOLID_MARKER_COLORS
 
 PLOTLY_COLOR_MODULES = (
     pcolors.sequential,
@@ -20,22 +24,32 @@ PLOTLY_COLOR_MODULES = (
 
 def get_plotly_colorscales(modules: tuple = PLOTLY_COLOR_MODULES) -> dict:
     return {
-        scale[0]: scale[1]
-        for scale in chain.from_iterable(map(inspect.getmembers, modules))
-        if isinstance(scale[1], Sequence) and not scale[0].startswith("_")
+        # they're all so conveniently named!
+        module.__name__.split(".")[-1]: {
+            scale[0]: scale[1]
+            for scale in inspect.getmembers(module)
+            if isinstance(scale[1], Sequence) and not scale[0].startswith("_")
+        }
+        for module in modules
     }
 
 
-def rgbstring_to_rgb_percent(rgbstring: str) -> tuple[float]:
-    # noinspection PyTypeChecker
-    return tuple(
-        map(
-            partial(mul, 1 / 255),
-            map(
-                int, rgbstring.replace("rgb(", "").replace(")", "").split(",")
-            ),
-        )
+def get_scale_type(
+    scale_name: str, modules: tuple = PLOTLY_COLOR_MODULES
+) -> str:
+    scale_dict = get_plotly_colorscales(modules)
+    for scale_type in scale_dict.keys():
+        if scale_name in scale_dict[scale_type].keys():
+            return scale_type
+
+
+def rgbstring_to_rgb_percent(rgb: str) -> tuple[float]:
+    division = map(
+        partial(mul, 1 / 255),
+        map(int, rgb.replace("rgb(", "").replace(")", "").split(",")),
     )
+    # noinspection PyTypeChecker
+    return tuple(division)
 
 
 def plotly_color_to_percent(
@@ -53,10 +67,8 @@ def scale_to_percents(scale: Sequence[str]) -> tuple[tuple[float]]:
 
 
 def percent_to_plotly_rgb(percent: Sequence[float]) -> str:
-    return (
-        f"rgb("
-        f"{','.join(tuple(map(str, map(round, map(partial(mul, 255), percent)))))})"
-    )
+    rgb = tuple(map(str, map(round, map(partial(mul, 255), percent))))
+    return f"rgb({','.join(rgb)})"
 
 
 def scale_to_plotly_rgb(scale: Sequence[Sequence[float]]) -> tuple[str]:
@@ -65,20 +77,30 @@ def scale_to_plotly_rgb(scale: Sequence[Sequence[float]]) -> tuple[str]:
 
 def get_lut(percent_scale, count):
     interp_points = np.linspace(0, len(percent_scale), count)
-    return (
-        np.array(
-            [
-                np.interp(
-                    interp_points,
-                    np.arange(len(percent_scale)),
-                    percent_scale[:, ix],
-                )
-                for ix in range(3)
-            ]
+    interp_channels = [
+        np.interp(
+            interp_points,
+            np.arange(len(percent_scale)),
+            percent_scale[:, ix],
         )
-        .astype(np.float64)
-        .T
-    )
+        for ix in range(3)
+    ]
+    return np.array(interp_channels).astype(np.float64).T
+
+
+def get_palette_from_scale_name(scale_name, count, qualitative=True):
+    scale = dig_for_value(get_plotly_colorscales(), scale_name)
+    # %rgb representation
+    percents = np.array(scale_to_percents(scale))
+    if qualitative is True:
+        # i.e., take explicit color values from the palette
+        wheel = cycle(percents)
+        # prevent weird behavior from go.Scatter in some cases
+        count = max(count, 2)
+        lut = [next(wheel) for _ in range(count)]
+    else:
+        lut = get_lut(percents, count)
+    return scale_to_plotly_rgb(lut)
 
 
 def make_discrete_scale(percent_scale, count):
@@ -99,24 +121,83 @@ def make_discrete_scale(percent_scale, count):
     )
 
 
-# note we're assuming this just has one -- or one relevant -- trace
-def discretize_color_representations(fig):
-    marker_dict = next(fig.select_traces())["marker"]
-    tickvals = marker_dict["colorbar"]["tickvals"]
-    continuous_scale = [val[1] for val in marker_dict["colorscale"]]
+def discretize_color_representations(fig: go.Figure) -> go.Figure:
+    """
+    convert the first colorbar found in fig (if any) to "discrete"
+    representation (chunky rather than smooth transitions between colors at
+    tick boundaries).
+    """
+    coloraxes, traces = fig.select_coloraxes(), fig.select_traces()
+    # note obnoxiously-slightly-different API syntax for trace and coloraxis
+    for coloraxis in coloraxes:
+        if "colorbar" not in coloraxis:
+            continue
+        coloraxis = discretize_colors(coloraxis)
+        # don't keep doing this (selectors are complicated & not needed here)
+        fig.update_coloraxes(coloraxis)
+        return fig
+    for trace in traces:
+        if "marker" not in trace:
+            continue
+        marker = trace["marker"]
+        if "colorbar" not in marker:
+            continue
+        marker = discretize_colors(marker)
+        fig.update_traces(marker=marker)
+        return fig
+    # no colorbars? FINE
+    return fig
+
+
+def discretize_colors(colorbar_parent):
+    tickvals = colorbar_parent["colorbar"]["tickvals"]
+    # generally indicating explicitly-specified colors per point --
+    # already as discrete as they can get!
+    if ("colorscale" not in colorbar_parent) or (
+        colorbar_parent["colorscale"] is None
+    ):
+        return colorbar_parent
+    continuous_scale = [val[1] for val in colorbar_parent["colorscale"]]
     percent_scale = np.array(scale_to_percents(continuous_scale))
     discrete_scale = make_discrete_scale(percent_scale, len(tickvals) + 1)
-    marker_dict["colorscale"] = discrete_scale
+    colorbar_parent["colorscale"] = discrete_scale
     # don't ask me why they define tick positions like this...
     # first, a special case:
     if len(tickvals) == 2:
-        marker_dict["colorbar"]["tickvals"] = [0.25, 0.75]
-    # and otherwise interpolating to the weird quasi-relative scale they use
+        colorbar_parent["colorbar"]["tickvals"] = [0.25, 0.75]
+    # otherwise, interpolate to the weird quasi-relative scale they use
     else:
-        marker_dict["colorbar"]["tickvals"] = np.interp(
+        colorbar_parent["colorbar"]["tickvals"] = np.interp(
             tickvals,
             tickvals,
             np.linspace(0.5, len(tickvals) - 1.5, len(tickvals)),
         )
-    fig.update_traces(marker=marker_dict)
-    return fig
+    return colorbar_parent
+
+
+def generate_palette_options(
+    scale_value, palette_value, remembered_value, allow_none=False
+):
+    if scale_value == "solid":
+        output_options = list(SOLID_MARKER_COLORS)
+    else:
+        colormaps = get_plotly_colorscales()
+        output_options = [
+            {"label": colormap, "value": colormap}
+            for colormap in colormaps[scale_value].keys()
+        ]
+    # "none" option used for some highlight features
+    if allow_none is True:
+        output_options = [{"label": "none", "value": "none"}] + output_options
+    # fall back to first colormap / color in specified scale type if we've
+    # really swapped scale types or on a clean load
+    if (palette_value is None) or palette_value not in [
+        option["value"] for option in output_options
+    ]:
+        if remembered_value is None:
+            output_value = output_options[0]["value"]
+        else:
+            output_value = remembered_value
+    else:
+        output_value = palette_value
+    return output_options, output_value

@@ -4,6 +4,7 @@ of database models in plotter.models
 """
 
 from ast import literal_eval
+import datetime as dt
 from functools import cache
 from itertools import chain
 from typing import Optional, Sequence
@@ -11,6 +12,8 @@ from typing import Optional, Sequence
 from cytoolz import keyfilter
 from django.db import models
 
+# TODO: ewwwww
+from plotter import __version__
 from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
 from multidex_utils import modeldict
 
@@ -26,10 +29,10 @@ B_N_I = {"blank": True, "null": True, "db_index": True}
 XCAM_SHARED_OBSERVATION_FIELDS = {
     # name of entire sequence or observation
     "name": models.CharField("Name", max_length=100, db_index=True),
-    "sol": models.IntegerField("Sol", db_index=True),
+    "sol": models.IntegerField("Sol", **B_N_I),
     # ltst for first frame of sequence
     "ltst": models.TimeField("Local True Solar Time", **B_N_I),
-    "seq_id": models.CharField("sequence id", max_length=20, db_index=True),
+    "seq_id": models.CharField("sequence id", max_length=20, **B_N_I),
     "rover_elevation": models.FloatField("Rover Elevation", **B_N_I),
     "target_elevation": models.FloatField(
         "Target Elevation", null=True, db_index=True
@@ -53,7 +56,18 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
         "Source CSV Filename", max_length=100, db_index=True
     ),
     "sclk": models.IntegerField("Spacecraft Clock", **B_N_I),
-    "ingest_time": models.CharField("Ingest Time UTC", max_length=25, **B_N_I),
+    "modification_time": models.CharField(
+        "Modification Time UTC", max_length=25, **B_N_I
+    ),
+    # "bucket" field for categorizing lab spectra that might be
+    # ingested into the database.
+    "lab_spectrum_type": models.CharField(
+        "Lab Spectrum Type", max_length=60, **B_N_I
+    ),
+    # identifier for version number of multidex used to ingest spectrum
+    "multidex_version": models.CharField(
+        "MultiDEx Version", max_length=15, **B_N_I
+    ),
 }
 
 # fields that notionally have to do with single-spectrum (i.e., ROI)-level
@@ -64,22 +78,15 @@ XCAM_SINGLE_SPECTRUM_FIELDS = {
         "ROI Color", blank=True, max_length=20, db_index=True
     ),
     "feature": models.CharField("feature category", **B_N_I, max_length=45),
-    # ############################################
-    # ## lithological information -- relevant only to rocks ###
-    # #########################################################
-    # large-to-small taxonomic categories for rock clusters
     "filename": models.CharField(
         "Name of archive CSV file", max_length=50, db_index=True
     ),
-    # ## end lithological ###
     # stringified dict of images associated with the spectrum
     "images": models.TextField(**B_N_I, default="{}"),
 }
 
-
 # TODO: consider flattening these into a dict
 #  using 'value' as keys
-
 # dictionaries defining generalized interface properties
 # for spectrum operation functions (band depth, etc.)
 SPECTRUM_OP_BASE_PROPERTIES = {"type": "method", "value_type": "quant"}
@@ -102,11 +109,6 @@ REDUCTION_OP_BASE_PROPERTIES = {
 }
 
 PCA_INTERFACE_PROPERTIES = [{"function": "PCA", "value": "PCA"}]
-#
-# ICA_INTERFACE_PROPERTIES = [
-#     {"component_ix"}
-# ]
-
 
 # TODO: figure out how to implement decomposition parameter
 #  controls; maybe this doesn't go here, it's a separate interface,
@@ -115,9 +117,7 @@ REDUCTION_OP_INTERFACE_PROPERTIES = PCA_INTERFACE_PROPERTIES
 for op in REDUCTION_OP_INTERFACE_PROPERTIES:
     op |= REDUCTION_OP_BASE_PROPERTIES
 
-
 # TODO: this is ugly as sin, flatten / concatenate this somehow
-
 # dictionary defining generalized interface properties
 # for various XCAM fields
 XCAM_FIELD_INTERFACE_PROPERTIES = (
@@ -166,13 +166,15 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "soil_location", "value_type": "qual"},
     {"value": "soil_color", "value_type": "qual"},
     {"value": "landform_type", "value_type": "qual"},
-    {"value": "odometry", "value_type": "quant"}
+    {"value": "odometry", "value_type": "quant"},
+    {"value": "lab_spectrum_type", "value_type": "qual"}
 )
 
 XCAM_CALCULATED_PROPERTIES = (
     # slightly special cases: these are computed at runtime
     {"value": "filter_avg", "value_type": "quant", "type": "computed"},
     {"value": "err_avg", "value_type": "quant", "type": "computed"},
+    {"value": "rel_err_avg", "value_type": "quant", "type": "computed"},
 )
 for prop in chain.from_iterable(
     [
@@ -204,6 +206,11 @@ class XSpec(models.Model):
 
     # this property is populated in models.py
     field_names = None
+
+    def clean(self, *args, **kwargs):
+        self.modification_time = dt.datetime.utcnow().isoformat()[:-7] + "Z"
+        self.multidex_version = __version__
+        super().clean()
 
     @classmethod
     @cache
@@ -280,7 +287,7 @@ class XSpec(models.Model):
         return keyfilter(lambda x: x in aprops, modeldict(self))
 
     def __str__(self):
-        return "sol" + str(self.sol) + "_" + self.name + "_" + self.seq_id
+        return f"sol {self.sol}_{self.name}_{self.seq_id}"
 
     class Meta:
         abstract = True
