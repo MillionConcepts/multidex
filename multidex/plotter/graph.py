@@ -4,23 +4,22 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
-import csv
-import datetime as dt
 from ast import literal_eval
 from collections.abc import Iterable
 from copy import deepcopy
+import csv
+import datetime as dt
 from functools import reduce
 from itertools import chain, cycle
 from operator import or_
 from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
-import numpy as np
-import pandas as pd
 from dash import html
 from dash.exceptions import PreventUpdate
 from dustgoggles.pivot import split_on
+import numpy as np
+import pandas as pd
 from plotly import graph_objects as go
-from toolz import keyfilter
 
 from multidex_utils import (
     keygrab,
@@ -31,7 +30,8 @@ from multidex_utils import (
     df_multiple_field_search,
     re_get,
     djget,
-    insert_wavelengths_into_text, model_metadata_df,
+    insert_wavelengths_into_text,
+    model_metadata_df,
 )
 from plotter import spectrum_ops
 from plotter.colors import get_palette_from_scale_name, get_scale_type
@@ -638,10 +638,11 @@ def make_scatter_annotations(
     descriptor = meta["feature"].copy()
     no_feature_ix = descriptor.loc[descriptor.isna()].index
     descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
-    text = (
-        "sol" + meta["sol"].astype(str) + " " + meta["name"] + " " + descriptor
-    ).values
-    return text
+    sol = meta["sol"].copy()
+    has_sol = sol.loc[sol.notna()].index
+    sol.loc[has_sol] = "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+    sol.loc[sol.isna()] = ""
+    return (sol + meta["name"] + " " + descriptor).values
 
 
 def retrieve_graph_data(
@@ -796,7 +797,7 @@ def dump_model_table(
     filename: str,
     r_star: bool = False,
     include_lab_spectra: bool = False,
-    dict_function: Optional[Callable] = None
+    dict_function: Optional[Callable] = None,
 ):
     spec_model = INSTRUMENT_MODEL_MAPPING[spec_model_code]
     data = data_df_from_queryset(spec_model.objects.all(), r_star=r_star)

@@ -102,7 +102,6 @@ def initialize_cache_values(cset, spec_model):
         "data_df",
         data_df_from_queryset(spec_model.objects.all()),
     )
-    cset("color_clip", (10, 90))
     # TODO: this is a hack that should be initialized from some property of
     #  the model
     cset("r_star", True)
