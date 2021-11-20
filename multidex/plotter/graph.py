@@ -810,5 +810,5 @@ def dump_model_table(
     metadata["UNITS"] = "R*" if r_star is True else "IOF"
     output = pd.concat([metadata, data], axis=1).sort_values(by="SCLK")
     if include_lab_spectra is False:
-        output = output.loc[output["feature"] != "lab spectrum"]
+        output = output.loc[output["FEATURE"] != "lab spectrum"]
     output.to_csv(filename, index=None)
