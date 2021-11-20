@@ -3,6 +3,7 @@ these are intended principally as function prototypes. they are partially
 defined and/or passed to callback decorators in order to generate flow control
 within the app. they should rarely, if ever, be called in these generic forms.
 """
+
 from ast import literal_eval
 import csv
 import datetime as dt
@@ -13,7 +14,6 @@ from pathlib import Path
 
 import dash
 from dash.exceptions import PreventUpdate
-import numpy as np
 import pandas as pd
 
 from multidex_utils import (
