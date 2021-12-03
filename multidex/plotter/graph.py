@@ -147,7 +147,7 @@ def perform_decomposition(id_list, filter_df, settings, props):
     queryset_df = queryset_df[
         [c for c in queryset_df.columns if "err" not in c]
     ]
-    component_ix = re_get(settings, "component")
+    component_ix = int(re_get(settings, "component"))
     # TODO, maybe: placeholder for other decomposition methods
     # method = props["method"]
     pipeline = default_multidex_pipeline()
@@ -640,7 +640,11 @@ def make_scatter_annotations(
     descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
     sol = meta["sol"].copy()
     has_sol = sol.loc[sol.notna()].index
-    sol.loc[has_sol] = "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+    if len(has_sol) > 0:
+        # + operation throws an error if there is nothing to add to
+        sol.loc[has_sol] = (
+            "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+        )
     sol.loc[sol.isna()] = ""
     return (sol + meta["name"] + " " + descriptor).values
 
