@@ -32,7 +32,6 @@ from plotter.components.graph_components import (
     failed_scatter_graph,
 )
 from plotter.components.ui_components import parse_model_quant_entry
-from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
 from plotter.graph import (
     load_state_into_application,
     add_dropdown,
@@ -77,6 +76,7 @@ def handle_load(
     *,
     spec_model,
     search_path,
+    cget,
     cset,
 ):
     """
@@ -103,11 +103,14 @@ def handle_load(
     if not load_trigger_index:
         load_trigger_index = 0
     load_trigger_index = load_trigger_index + 1
-    loaded_div = load_state_into_application(selected_file, spec_model, cset)
     # this cache parameter is for semi-asynchronous flow control of the
     # load process without having to literally
     # have one dispatch callback function for the entire app
-    cset("load_state", {"update_search_options": True})
+    # TODO: still hacky!
+    cset("loading_state", True)
+    loaded_div = load_state_into_application(
+        selected_file, spec_model, cget, cset
+    )
     return loaded_div, load_trigger_index, True
 
 
@@ -376,7 +379,10 @@ def update_main_graph(
         "bounds_string",
     ):
         cset(parameter, locals()[parameter])
-
+    # TODO: hacky!
+    cset("loading_state", False)
+    print("returning main graph")
+    print(dt.datetime.now().isoformat())
     return (
         main_scatter_graph(
             graph_df,
@@ -639,7 +645,10 @@ def allow_qualitative_palettes(
     existing_palette_type_value,
     *,
     spec_model,
+    cget
 ):
+    if cget("loading_state") is True:
+        existing_palette_type_value = cget("loading_palette_type")
     palette_types = ["sequential", "solid", "diverging", "cyclical"]
     marker_value_type = keygrab(
         spec_model.graphable_properties(), "value", marker_option
@@ -661,6 +670,9 @@ def allow_qualitative_palettes(
             palette_type_value = "sequential"
     else:
         palette_type_value = existing_palette_type_value
+    print(dt.datetime.now().isoformat())
+    print(existing_palette_type_options, existing_palette_type_value)
+    print(options, palette_type_value)
     return options, palette_type_value
 
 
@@ -677,10 +689,9 @@ def populate_color_dropdowns(
     show or hide scale/solid color dropdowns & populate color scale options
     per coloring type dropdown selection.
     """
+    if cget("loading_state") is True:
+        raise PreventUpdate
     palette_memory = cget("palette_memory")
-    if palette_memory is None:
-        palette_memory = DEFAULT_SETTINGS_DICTIONARY["palette_memory"]
-        cset("palette_memory", palette_memory)
     if palette_type_value not in [
         option["value"] for option in palette_type_options
     ]:
@@ -693,6 +704,7 @@ def populate_color_dropdowns(
     # scale selected
     if palette_value_output == palette_value:
         raise PreventUpdate
+    print('bang')
     return palette_options_output, palette_value_output
 
 
