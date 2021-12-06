@@ -82,7 +82,7 @@ def process_marslab_row(row, marslab_file):
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
         "images": [],
-        #"ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
+        # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
         #"min_count": row[row.index.str.contains("count")].astype(float).min(),
     }
     try:
