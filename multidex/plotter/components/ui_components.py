@@ -761,6 +761,7 @@ def highlight_size_div(highlight_size: str) -> Div:
     )
 
 
+# TODO: this is no longer the correct name for this function / object
 def marker_color_symbol_div(settings: Mapping) -> Div:
     palette = settings["palette-name-drop.value"]
     palette_type = get_scale_type(palette)

@@ -29,8 +29,8 @@ def style_data(
 ):
     axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
     # noinspection PyTypeChecker
-    fig.update_xaxes(axis_display_dict | {"title_text": x_title})
-    fig.update_yaxes(axis_display_dict | {"title_text": y_title})
+    fig.update_xaxes(axis_display_dict | {"title_text": x_title, "categoryorder": "category ascending"})
+    fig.update_yaxes(axis_display_dict | {"title_text": y_title, "categoryorder": "category ascending"})
     # fig.update_traces(**marker_property_dict)
     if (
         (marker_axis_type == "qual")

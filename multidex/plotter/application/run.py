@@ -113,6 +113,8 @@ def initialize_cache_values(cset, spec_model):
             instant.hour * 3600 + instant.minute * 60 + instant.second
             for instant in metadata_df["ltst"].dropna()
         ]
+    # TODO: hacky hacky
+    metadata_df["zoom"] = metadata_df["zoom"].astype(float)
     cset("metadata_df", metadata_df)
     cset("scale_to", "none")
     cset("average_filters", False)
