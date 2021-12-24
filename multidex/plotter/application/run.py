@@ -115,7 +115,8 @@ def initialize_cache_values(cset, spec_model):
             for instant in metadata_df["ltst"].dropna()
         ]
     # TODO: hacky hacky
-    metadata_df["zoom"] = metadata_df["zoom"].astype(float)
+    if "zoom" in metadata_df.columns:
+        metadata_df["zoom"] = metadata_df["zoom"].astype(float)
     cset("palette_memory", DEFAULT_SETTINGS_DICTIONARY["palette_memory"])
     cset("metadata_df", metadata_df)
     cset("scale_to", "none")

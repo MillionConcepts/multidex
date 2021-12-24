@@ -381,8 +381,6 @@ def update_main_graph(
         cset(parameter, locals()[parameter])
     # TODO: hacky!
     cset("loading_state", False)
-    print("returning main graph")
-    print(dt.datetime.now().isoformat())
     return (
         main_scatter_graph(
             graph_df,

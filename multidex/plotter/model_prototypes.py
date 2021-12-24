@@ -121,15 +121,17 @@ for op in REDUCTION_OP_INTERFACE_PROPERTIES:
 # dictionary defining generalized interface properties
 # for various XCAM fields
 XCAM_FIELD_INTERFACE_PROPERTIES = (
-    {"value": "target_elevation", "value_type": "quant"},
-    {"value": "rover_elevation", "value_type": "quant"},
+    {"value": "feature", "value_type": "qual"},
+    {"value": "feature_subtype", "value_type": "qual"},
     {"value": "ltst", "value_type": "quant"},
     {"value": "sclk", "value_type": "quant"},
     {"value": "zoom", "value_type": "qual"},
+    {"value": "group", "value_type": "qual"},
     {"value": "formation", "value_type": "qual"},
     {"value": "member", "value_type": "qual"},
+    {"value": "target_elevation", "value_type": "quant"},
+    {"value": "rover_elevation", "value_type": "quant"},
     {"value": "sol", "value_type": "quant"},
-    {"value": "feature", "value_type": "qual"},
     {"value": "color", "value_type": "qual"},
     {"value": "name", "value_type": "qual"},
     {"value": "seq_id", "value_type": "qual"},
@@ -167,7 +169,7 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "soil_color", "value_type": "qual"},
     {"value": "landform_type", "value_type": "qual"},
     {"value": "odometry", "value_type": "quant"},
-    {"value": "lab_spectrum_type", "value_type": "qual"}
+    {"value": "lab_spectrum_type", "value_type": "qual"},
 )
 
 XCAM_CALCULATED_PROPERTIES = (

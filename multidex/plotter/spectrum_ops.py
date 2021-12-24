@@ -117,7 +117,6 @@ def data_df_from_queryset(
         filter_df[[c for c in filter_df.columns if "err" in c]].mean(axis=1), 5
     )
     filter_df["rel_err_avg"] = filter_df["err_avg"] / filter_df["filter_avg"]
-
     return filter_df
 
 
