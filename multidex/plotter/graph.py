@@ -585,8 +585,6 @@ def load_state_into_application(search_file, spec_model, cget, cset):
     # TODO: this is attempting to fix a race condition with
     #  allow_qualitative_palettes. it's messy but _maybe_ necessary?
     cset("loading_palette_type", palette_type)
-    print(dt.datetime.now().isoformat())
-    print("returning loaded div")
     return primary_app_div(spec_model, settings)
 
 

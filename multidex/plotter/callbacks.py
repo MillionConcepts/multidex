@@ -668,9 +668,6 @@ def allow_qualitative_palettes(
             palette_type_value = "sequential"
     else:
         palette_type_value = existing_palette_type_value
-    print(dt.datetime.now().isoformat())
-    print(existing_palette_type_options, existing_palette_type_value)
-    print(options, palette_type_value)
     return options, palette_type_value
 
 
@@ -702,7 +699,6 @@ def populate_color_dropdowns(
     # scale selected
     if palette_value_output == palette_value:
         raise PreventUpdate
-    print('bang')
     return palette_options_output, palette_value_output
 
 
