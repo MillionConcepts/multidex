@@ -598,7 +598,9 @@ def axis_controls_div(
 
 
 def marker_coloring_type_div(coloring_type: str) -> Div:
-    palette_types = ("sequential", "solid", "diverging", "cyclical")
+    palette_types = ["sequential", "solid", "diverging", "cyclical"]
+    if coloring_type == "qualitative":
+        palette_types.append("qualitative")
     return html.Div(
         style={"display": "flex", "flexDirection": "column"},
         children=[
@@ -761,6 +763,7 @@ def highlight_size_div(highlight_size: str) -> Div:
     )
 
 
+# TODO: this is no longer the correct name for this function / object
 def marker_color_symbol_div(settings: Mapping) -> Div:
     palette = settings["palette-name-drop.value"]
     palette_type = get_scale_type(palette)
@@ -779,7 +782,7 @@ def marker_color_symbol_div(settings: Mapping) -> Div:
                 palette=palette,
                 palette_type=palette_type,
             ),
-            marker_coloring_type_div(get_scale_type(palette)),
+            marker_coloring_type_div(palette_type),
         ],
     )
 

@@ -563,11 +563,12 @@ def make_zspec_browse_image_components(
     )
 
 
-def load_state_into_application(search_file, spec_model, cset):
+def load_state_into_application(search_file, spec_model, cget, cset):
     """loads saved application state into the primary application panel."""
     with open(search_file) as save_csv:
         settings = next(csv.DictReader(save_csv))
         settings = {k: literal_eval(v) for k, v in settings.items()}
+
     # TODO: somewhat bad smell, might mean something is wrong in control flow
     if settings["highlight_parameters"] is not None:
         cset("highlight_parameters", settings["highlight_parameters"])
@@ -575,6 +576,15 @@ def load_state_into_application(search_file, spec_model, cset):
         cset("search_parameter_index", len(settings["search_parameters"]))
     else:
         cset("search_parameter_index", 0)
+    # TODO: don't i have an abstraction for this
+    palette_memory = cget("palette_memory")
+    palette = settings["palette-name-drop.value"]
+    palette_type = get_scale_type(palette)
+    palette_memory[palette_type] = palette
+    cset("palette_memory", palette_memory)
+    # TODO: this is attempting to fix a race condition with
+    #  allow_qualitative_palettes. it's messy but _maybe_ necessary?
+    cset("loading_palette_type", palette_type)
     return primary_app_div(spec_model, settings)
 
 

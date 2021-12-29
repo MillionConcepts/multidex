@@ -63,6 +63,11 @@ class MSpec(XSpec):
     member = models.CharField("Member", **B_N_I, max_length=50)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
     float = models.CharField("floating vs. in-place", **B_N_I, max_length=15)
+    feature_subtype = models.CharField(
+        "feature subtype", **B_N_I, max_length=45
+    )
+    rock_class = models.CharField("rock class", **B_N_I, max_length=45)
+    soil_class = models.CharField("soil class", **B_N_I, max_length=45)
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
     color_mappings = MERSPECT_MSL_COLOR_MAPPINGS | {"black": "#000000"}
