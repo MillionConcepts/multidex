@@ -221,12 +221,16 @@ def spectrum_line_graph(
     )
     # TODO: clean input to make this toggleable again
     show_error = True
+    try:
+        color = spectrum.roi_hex_code()
+    except AttributeError:
+        color = "#1777B6" # color for Chem Cam spectra
     scatter = go.Scatter(
         x=x_axis,
         y=y_axis,
         mode="lines+markers",
         text=text,
-        line={"color": spectrum.roi_hex_code()},
+        line={"color": color},
         error_y={"array": y_error, "visible": show_error},
     )
     fig.add_trace(scatter)
