@@ -172,7 +172,7 @@ def update_spectrum_graph(
     *,
     spec_model,
 ):
-    if scale_to != "none" and scale_to is not None: # TODO scale_to is None, not "none"
+    if scale_to != "none" and scale_to is not None:  # TODO scale_to is None, not "none"
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     average_filters = True if average_input_value == ["average"] else False
     if not event_data:
