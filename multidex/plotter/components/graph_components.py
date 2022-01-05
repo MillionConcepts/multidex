@@ -101,7 +101,7 @@ def main_scatter_graph(
     marker_property_dict["marker"]["color"] = graph_df["color"].values
     fig.update_coloraxes(coloraxis)
     fig.add_trace(
-        go.Scatter(
+        go.Scattergl(
             x=graph_df["x"],
             y=graph_df["y"],
             hovertext=graph_df["text"],
@@ -126,7 +126,7 @@ def main_scatter_graph(
             # just treat it like the graph df
             full_marker_dict["marker"]["color"] = highlight_df["color"].values
         fig.add_trace(
-            go.Scatter(
+            go.Scattergl(
                 x=highlight_df["x"],
                 y=highlight_df["y"],
                 hovertext=highlight_df["text"],
@@ -225,7 +225,7 @@ def spectrum_line_graph(
         color = spectrum.roi_hex_code()
     except AttributeError:
         color = "#1777B6" # color for Chem Cam spectra
-    scatter = go.Scatter(
+    scatter = go.Scattergl(
         x=x_axis,
         y=y_axis,
         mode="lines+markers",
