@@ -85,7 +85,7 @@ have the .zip file for the instrument you are working with, uncompress it into
 multidex/plotter/application/assets/browse/$INSTRUMENT_NAME, e.g., 
 multidex/plotter/application/assets/browse/mcam.
 
-## step 5: run multidex
+## step 6: run multidex
 
 Now you can execute MultiDEx by running `python multidex.py INSTRUMENT_CODE`, 
 e.g., `python multidex.py MCAM`. A server should launch at 127.0.0.1:49303.
