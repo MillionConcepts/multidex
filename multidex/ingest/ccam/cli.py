@@ -83,7 +83,7 @@ def process_marslab_row(row, marslab_file):
         "filename": Path(marslab_file).name,
         "images": [],
         # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
-        #"min_count": row[row.index.str.contains("count")].astype(float).min(),
+        # "min_count": row[row.index.str.contains("count")].astype(float).min(),
     }
     try:
         spectrum = CSpec(**metadata)

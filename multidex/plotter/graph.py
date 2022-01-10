@@ -39,7 +39,7 @@ from plotter.components.ui_components import (
     search_parameter_div,
 )
 from plotter.layout import primary_app_div
-from plotter.models import INSTRUMENT_MODEL_MAPPING
+from plotter.models import INSTRUMENT_MODEL_MAPPING, CSpec
 from plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain_variance,
@@ -642,10 +642,13 @@ def spectrum_from_graph_event(
 
 
 def make_scatter_annotations(
-    metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
+    metadata_df: pd.DataFrame, truncated_ids: Sequence[int], spec_model
 ) -> np.ndarray:
     meta = metadata_df.loc[truncated_ids]
     descriptor = meta["feature"].copy()
+    # if ccam, use target instead of feature
+    if spec_model.instrument == 'CCAM':
+        descriptor = meta["target"].copy()
     no_feature_ix = descriptor.loc[descriptor.isna()].index
     descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
     sol = meta["sol"].copy()
