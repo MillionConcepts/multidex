@@ -205,6 +205,11 @@ def spectrum_line_graph(
         filt + ", " + str(spectrum_data[filt]["wave"])
         for filt in spectrum_data
     ]
+    # create y_axis_range based on min y-value. Pin to zero unless there are negative values
+    if min(y_axis) < 0:
+        y_axis_range = [min(y_axis) - 0.05, max(y_axis) + 0.05]
+    else:
+        y_axis_range = [0, min(y_axis) + max(y_axis)]
     fig = go.Figure(
         layout={
             **GRAPH_DISPLAY_DEFAULTS,
@@ -213,7 +218,7 @@ def spectrum_line_graph(
             "yaxis": AXIS_DISPLAY_DEFAULTS
             | {
                 "title_text": "reflectance",
-                "range": [min(0, min(y_axis) - 0.05), max(min(y_axis) + max(y_axis), max(y_axis) + 0.05)],
+                "range": y_axis_range,
                 "title_standoff": 4,
                 "side": "right",
             },
