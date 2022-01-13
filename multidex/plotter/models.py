@@ -10,7 +10,9 @@ from marslab.compat.mertools import (
 
 from marslab.compat.xcam import DERIVED_CAM_DICT
 from plotter.model_prototypes import XSpec, filter_fields_factory, B_N_I
-
+import pandas as pd
+from typing import Sequence
+import numpy as np
 
 class ZSpec(XSpec):
     zoom = models.CharField("Zoom Code", max_length=10, **B_N_I)
@@ -115,6 +117,24 @@ class CSpec(XSpec):
 
     instrument = "CCAM"
     instrument_brief_name = "ChemCam"
+
+    @staticmethod
+    def make_scatter_annotations(
+            metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
+    ) -> np.ndarray:
+        meta = metadata_df.loc[truncated_ids]
+        descriptor = meta["feature"].copy()
+        no_feature_ix = descriptor.loc[descriptor.isna()].index
+        descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
+        sol = meta["sol"].copy()
+        has_sol = sol.loc[sol.notna()].index
+        if len(has_sol) > 0:
+            # + operation throws an error if there is nothing to add to
+            sol.loc[has_sol] = (
+                    "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+            )
+        sol.loc[sol.isna()] = ""
+        return (sol + meta["name"] + " " + descriptor).values
 
 
 ZCAM_COREGISTERED_INSTRUMENTS = (

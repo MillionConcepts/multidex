@@ -11,6 +11,8 @@ from typing import Optional, Sequence
 
 from cytoolz import keyfilter
 from django.db import models
+import pandas as pd
+import numpy as np
 
 # TODO: ewwwww
 from plotter import __version__
@@ -277,6 +279,23 @@ class XSpec(models.Model):
             scale_to=scale_to,
             average_filters=average_filters,
         )
+
+    @staticmethod
+    def make_scatter_annotations(metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
+                                 ) -> np.ndarray:
+        meta = metadata_df.loc[truncated_ids]
+        descriptor = meta["target"].copy()
+        no_feature_ix = descriptor.loc[descriptor.isna()].index
+        descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
+        sol = meta["sol"].copy()
+        has_sol = sol.loc[sol.notna()].index
+        if len(has_sol) > 0:
+            # + operation throws an error if there is nothing to add to
+            sol.loc[has_sol] = (
+                    "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+            )
+        sol.loc[sol.isna()] = ""
+        return (sol + meta["name"] + " " + descriptor).values
 
     def all_filter_waves(self):
         return self.filters | self.virtual_filters

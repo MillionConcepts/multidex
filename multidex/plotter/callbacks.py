@@ -48,7 +48,6 @@ from plotter.graph import (
     pretty_print_search_params,
     spectrum_from_graph_event,
     style_toggle,
-    make_scatter_annotations,
     retrieve_graph_data,
     halt_for_ineffective_highlight_toggle,
     add_or_remove_label,
@@ -349,7 +348,7 @@ def update_main_graph(
     )
     # place color in graph df column so it works properly with split highlights
     graph_df["color"] = color
-    graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids, spec_model)
+    graph_df["text"] = spec_model.make_scatter_annotations(metadata_df, truncated_ids)
     # now that graph dataframe is constructed, split & style highlights to be
     # drawn as separate trace (or get None, {}) if no highlight is active)
     graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
