@@ -213,7 +213,7 @@ def spectrum_line_graph(
             "yaxis": AXIS_DISPLAY_DEFAULTS
             | {
                 "title_text": "reflectance",
-                "range": [0, min(y_axis) + max(y_axis)],
+                "range": [min(0, min(y_axis) - 0.05), max(min(y_axis) + max(y_axis), max(y_axis) + 0.05)],
                 "title_standoff": 4,
                 "side": "right",
             },
