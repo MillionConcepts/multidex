@@ -123,7 +123,7 @@ class CSpec(XSpec):
             metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
     ) -> np.ndarray:
         meta = metadata_df.loc[truncated_ids]
-        descriptor = meta["feature"].copy()
+        descriptor = meta["target"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
         descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
         sol = meta["sol"].copy()

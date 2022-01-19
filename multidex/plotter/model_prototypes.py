@@ -281,8 +281,7 @@ class XSpec(models.Model):
         )
 
     @staticmethod
-    def make_scatter_annotations(metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
-                                 ) -> np.ndarray:
+    def make_scatter_annotations(metadata_df: pd.DataFrame, truncated_ids: Sequence[int]) -> np.ndarray:
         meta = metadata_df.loc[truncated_ids]
         descriptor = meta["target"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
