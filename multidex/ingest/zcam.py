@@ -115,7 +115,8 @@ def find_ingest_files(path: Path, recursive: bool = False):
 
 
 def y_to_bool(df, bool_fields):
-    df.loc[:, bool_fields] = df.loc[:, bool_fields] == "Y"
+    relevant_bool_fields = [c for c in df.columns if c in bool_fields]
+    df.loc[:, relevant_bool_fields] = df.loc[:, relevant_bool_fields] == "Y"
 
 
 ZCAM_BOOL_FIELDS = [
