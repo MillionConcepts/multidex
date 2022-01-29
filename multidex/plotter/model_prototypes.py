@@ -172,6 +172,11 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "landform_type", "value_type": "qual"},
     {"value": "odometry", "value_type": "quant"},
     {"value": "lab_spectrum_type", "value_type": "qual"},
+    {"value": "distance_m", "value_type": "quant"},
+    {"value": "exposure", "value_type": "quant"},
+    {"value": "target_type", "value_type": "qual"},
+    {"value": "temp", "value_type": "quant"},
+    {"value": "target_type_shot_specific", "value_type": "qual"},
 )
 
 XCAM_CALCULATED_PROPERTIES = (
@@ -237,7 +242,7 @@ class XSpec(models.Model):
             ap
             for ap in cls.accessible_properties()
             if prop["value"]
-            not in ("color", "seq_id", "name", "analysis_name")
+            not in ("color", "seq_id", "name", "analysis_name", "target")
         ]
 
     @classmethod
