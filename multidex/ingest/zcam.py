@@ -224,6 +224,9 @@ def ingest_marslab_file(marslab_file, context_df):
     if frame["COLOR"].eq("-").all():
         print(f"no spectra in {marslab_file}, skipping")
         return False, "no spectra in file", context_df
+    # TODO: temporary hack
+    if "TARGET_ELEV" in frame.columns:
+        frame["TARGET_ELEVATION"] = frame["TARGET_ELEV"]
     print("ingesting spectra from " + Path(marslab_file).name)
     if context_df is not None:
         obs_images, match_index = match_obs_images(marslab_file, context_df)

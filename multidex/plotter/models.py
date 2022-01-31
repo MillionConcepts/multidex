@@ -17,8 +17,8 @@ class ZSpec(XSpec):
     # shared target identifier with other instruments, usually null
     target = models.CharField("Target", max_length=60, **B_N_I)
     # rover motion counter for the mast -- for repointed stereo
-    # observations, this is the first RMS in the sequence
-    rms = models.IntegerField("RMS", **B_N_I)
+    # observations, this is the first RSM in the sequence
+    rsm = models.IntegerField("RSM", **B_N_I)
     # timestamp of file if automatically produced by asdf
     file_timestamp = models.CharField(max_length=30, null=True)
     compression = models.CharField("Compression", max_length=40, **B_N_I)
@@ -38,6 +38,14 @@ class ZSpec(XSpec):
     )
     min_count = models.IntegerField("Minimum Pixel Count", **B_N_I)
 
+    # coordinated observations
+    scam = models.CharField("SCAM", **B_N_I, max_length=50)
+    wtsn = models.CharField("WTSN", **B_N_I, max_length=50)
+    srlc_spec = models.CharField("SRLC_SPEC", **B_N_I, max_length=50)
+    pixl = models.CharField("PIXL", **B_N_I, max_length=50)
+    formation = models.CharField("Formation", **B_N_I, max_length=50)
+    member = models.CharField("Member", **B_N_I, max_length=50)
+    outcrop = models.CharField("Member", **B_N_I, max_length=50)
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 
@@ -93,21 +101,6 @@ class MSpec(XSpec):
                 images[image_type + "_size"] = image.size
         return images
 
-
-ZCAM_COREGISTERED_INSTRUMENTS = (
-    "SCAM LIBS",
-    "SCAM VISIR",
-    "SCAM RMI",
-    "SCAM Raman",
-    "PIXL",
-    "SHERLOC",
-    "WATSON",
-)
-for instrument in ZCAM_COREGISTERED_INSTRUMENTS:
-    coreg_field = models.BooleanField(instrument, **B_N_I)
-    coreg_field.contribute_to_class(
-        ZSpec, "_".join(instrument.lower().split(" "))
-    )
 
 # bulk setup for each XCAM instrument
 for spec_model in [ZSpec, MSpec]:
