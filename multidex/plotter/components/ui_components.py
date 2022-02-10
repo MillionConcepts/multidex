@@ -727,7 +727,7 @@ def marker_options_div(settings: Mapping) -> Div:
                 className="info-text",
             ),
             dcc.Dropdown(
-                "marker-symbol-drop",
+                id="marker-symbol-drop",
                 className="medium-drop filter-drop",
                 value=marker_symbol,
                 options=MARKER_SYMBOLS,
@@ -821,8 +821,11 @@ def search_controls_div(spec_model, settings: Mapping) -> html.Div:
 
 
 def display_controls_div(settings: Mapping) -> html.Div:
-    if settings["showgrid"] is False:
-        gridcolor = False
+    if settings["showgrid"] == "False":
+        gridcolor = "#000000"
+    # defensive backwards-compatibility thing
+    elif "gridcolor" not in settings.keys():
+        gridcolor = GRAPH_DISPLAY_DEFAULTS["gridcolor"]
     else:
         gridcolor = settings["gridcolor"]
     return html.Div(
@@ -853,7 +856,7 @@ def display_controls_div(settings: Mapping) -> html.Div:
                 options=[
                     # note: setting value to Python False causes slightly-bad
                     # under-the-hood behavior in React
-                    {"label": "off", "value": "off"},
+                    {"label": "off", "value": "#000000"},
                     {"label": "light", "value": css_variables["dark-tint-0"]},
                     {"label": "dark", "value": css_variables["dark-tint-2"]},
                 ],
@@ -891,7 +894,7 @@ def highlight_options_div(size, color, symbol) -> html.Div:
                 className="info-text",
             ),
             dcc.Dropdown(
-                "highlight-symbol-drop",
+                id="highlight-symbol-drop",
                 className="medium-drop filter-drop",
                 value=symbol,
                 options=[{"label": "none", "value": "none"}]

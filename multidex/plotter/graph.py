@@ -385,11 +385,11 @@ def format_display_settings(settings):
     axis_settings_dict = {}
     if re_get(settings, "graph-bg"):
         settings_dict["plot_bgcolor"] = re_get(settings, "graph-bg")
-    if re_get(settings, "gridlines") == "off":
+    if re_get(settings, "gridlines") == "#000000":
         axis_settings_dict["showgrid"] = False
     else:
         axis_settings_dict["showgrid"] = True
-        axis_settings_dict["gridcolor"] = re_get(settings, "gridlines")
+    axis_settings_dict["gridcolor"] = re_get(settings, "gridlines")
     return settings_dict, axis_settings_dict
 
 

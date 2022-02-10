@@ -25,7 +25,7 @@ from plotter.graph import cache_set, cache_get
 from plotter.models import INSTRUMENT_MODEL_MAPPING
 
 
-def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
+def run_multidex(instrument_code, debug=False, use_notepad_cache=True):
     # initialize the app itself. HTML / react objects and callbacks from them
     # must be described in this object as dash components.
     app = dash.Dash(
