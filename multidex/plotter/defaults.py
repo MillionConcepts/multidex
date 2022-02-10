@@ -7,13 +7,13 @@ from itertools import product
 from plotter.styles.graph_style import css_variables
 
 DEFAULT_SETTINGS_DICTIONARY = {
-    "average_filters": "",
+    "average_filters": "False",
     "highlight-toggle.value": "off",
     "highlight-size-radio.value": 1,
     "highlight-symbol-drop.value": "none",
     "highlight-color-drop.value": "none",
     "scale_to": "none",
-    "r_star": "r-star",
+    "r_star": "True",
     "logical_quantifier": "AND",
     "graph-option-x.value": "ratio",
     "graph-option-y.value": "ratio",

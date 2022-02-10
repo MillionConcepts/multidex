@@ -568,8 +568,20 @@ def load_state_into_application(search_file, spec_model, cget, cset):
     with open(search_file) as save_csv:
         settings = next(csv.DictReader(save_csv))
         settings = {k: literal_eval(v) for k, v in settings.items()}
-
-    # TODO: somewhat bad smell, might mean something is wrong in control flow
+    # TODO: all of this initialization special-case stuff has a somewhat
+    #  bad smell, might mean something is fundamentally wrong in control flow
+    # TODO: should really rectify types across cache, component, and loaded
+    #  values -- although maybe this _is_ the load -> cache conversion step,
+    #  which should just be siloed and made explicit?
+    average_filters = settings["average_filters"] == "True"
+    r_star = settings["r_star"] == "True"
+    cache_data_df(
+        spec_model=spec_model,
+        cset=cset,
+        average_filters=average_filters,
+        r_star=r_star,
+        scale_to=settings["scale_to"],
+    )
     if settings["highlight_parameters"] is not None:
         cset("highlight_parameters", settings["highlight_parameters"])
     if settings["search_parameters"] is not None:
@@ -826,3 +838,22 @@ def dump_model_table(
     if include_lab_spectra is False:
         output = output.loc[output["FEATURE"] != "lab spectrum"]
     output.to_csv(filename, index=None)
+
+
+def cache_data_df(average_filters, cset, r_star, scale_to, spec_model):
+    cset(
+        "data_df",
+        data_df_from_queryset(
+            spec_model.objects.all(),
+            average_filters=average_filters,
+            scale_to=scale_to,
+            r_star=r_star,
+        ),
+    )
+    if scale_to != "none":
+        scale_to_string = "_".join(scale_to)
+    else:
+        scale_to_string = scale_to
+    cset("scale_to", scale_to_string)
+    cset("average_filters", average_filters)
+    cset("r_star", r_star)

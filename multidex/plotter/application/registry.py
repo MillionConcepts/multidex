@@ -189,6 +189,7 @@ def register_toggle_averaged_filters(app, configured_function):
             Input("main-graph-average", "value"),
             # Input('interval1', 'n_intervals')
         ],
+        prevent_initial_call=True
     )(configured_function)
 
 
@@ -201,7 +202,7 @@ def register_update_data_df(app, configured_function):
             Input("main-graph-average", "value"),
             Input("main-graph-r-star", "value"),
         ],
-        [State({"type": "main-graph-scale-trigger", "index": 0}, "value")],
+        [State({"type": "main-graph-scale-trigger", "index": 0}, "value")]
     )(configured_function)
 
 

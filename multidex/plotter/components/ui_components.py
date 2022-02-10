@@ -41,8 +41,8 @@ def spec_controls_div(
     spec_model,
     id_prefix,
     scale_value="none",
-    r_star_value="none",
-    average_value="",
+    r_star=True,
+    average=True,
     error_value="none",
 ):
     scale_container = html.Div(
@@ -66,7 +66,7 @@ def spec_controls_div(
                     id=id_prefix + "-average",
                     className="info-text",
                     options=[{"label": "merge", "value": "average"}],
-                    value=[average_value] if average_value else [],
+                    value=["average"] if average is True else [],
                 ),
                 html.Label(
                     className="info-text",
@@ -85,7 +85,7 @@ def spec_controls_div(
                     options=[
                         {"label": "R*", "value": "r-star"},
                     ],
-                    value=[r_star_value] if r_star_value else [],
+                    value=["r-star"] if r_star else [],
                 ),
                 html.Label(
                     children=["show error"],
@@ -943,6 +943,8 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
 
 
 def scale_controls_div(spec_model, settings: Mapping) -> html.Div:
+    average = settings["average_filters"] == "True"
+    r_star = settings["r_star"] == "True"
     return html.Div(
         children=[
             html.Div(
@@ -971,9 +973,8 @@ def scale_controls_div(spec_model, settings: Mapping) -> html.Div:
                 spec_model,
                 "main-graph",
                 scale_value=settings["scale_to"],
-                average_value=settings["average_filters"],
-                # TODO: fix init issue, need extra layer somewhere
-                r_star_value="r-star",
+                average=average,
+                r_star=r_star,
             ),
         ]
     )
@@ -1078,8 +1079,8 @@ def graph_controls_div(
                     spec_model,
                     "main-spec",
                     spectrum_scale,
-                    "r-star",
-                    "average",
+                    True,
+                    True,
                     "error",
                 ),
                 off=True,

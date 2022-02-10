@@ -58,10 +58,9 @@ from plotter.graph import (
     halt_to_debounce_palette_update,
     halt_for_inappropriate_palette_type,
     branch_highlight_df,
-    save_palette_memory,
+    save_palette_memory, cache_data_df,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
-from plotter.spectrum_ops import data_df_from_queryset
 
 
 def trigger_search_update(_load_trigger, search_trigger):
@@ -199,29 +198,12 @@ def update_data_df(
 ):
     if dash.callback_context.triggered[0]["prop_id"] == ".":
         raise PreventUpdate
-    if "average" in average_filters:
-        average_filters = True
-    else:
-        average_filters = False
+    # TODO: obnoxious component / loading compatibility issue
+    average_filters = bool(average_filters)
     if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
-    r_star = r_star == "r_star"
-    cset(
-        "data_df",
-        data_df_from_queryset(
-            spec_model.objects.all(),
-            average_filters=average_filters,
-            scale_to=scale_to,
-            r_star=r_star,
-        ),
-    )
-    if scale_to != "none":
-        scale_to_string = "_".join(scale_to)
-    else:
-        scale_to_string = scale_to
-    cset("scale_to", scale_to_string)
-    cset("average_filters", average_filters)
-    cset("r_star", r_star)
+    r_star = bool(r_star)
+    cache_data_df(average_filters, cset, r_star, scale_to, spec_model)
     if not scale_trigger_count:
         return 1
     return scale_trigger_count + 1

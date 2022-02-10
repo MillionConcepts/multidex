@@ -23,7 +23,7 @@ def primary_app_div(
     if settings is None:
         settings = DEFAULT_SETTINGS_DICTIONARY
     # TODO: this feels bad
-    if DEFAULT_SETTINGS_DICTIONARY.get("average_filters") is True:
+    if settings.get("average_filters") == "True":
         filts = [
             {"label": filt, "value": filt}
             for filt in spec_model.canonical_averaged_filters
