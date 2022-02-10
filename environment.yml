@@ -2,7 +2,7 @@ name: multidex
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
+  - python>=3.9
   - conda-build
   - rasterio
   - python-levenshtein
@@ -31,9 +31,9 @@ dependencies:
   - pip
   - python-kaleido
   - pip:
-    - "git+https://github.com/MillionConcepts/pdr.git"
-    - "git+https://github.com/MillionConcepts/dustgoggles.git"
-    - "git+https://github.com/MillionConcepts/marslab.git"
+   - "git+https://github.com/MillionConcepts/pdr.git"
+   - "git+https://github.com/MillionConcepts/dustgoggles.git"
+   - "git+https://github.com/MillionConcepts/marslab.git"
 
 
 
