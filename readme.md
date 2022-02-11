@@ -20,6 +20,7 @@ files.
 
 ### known issues
 * the spectra-info dialog is not currently properly draggable on Firefox. A fix is planned.
+* image export does not work on Windows. A fix for this is also planned.
 
 ### licensing notes
 This code carries a BSD 3-Clause license. You can do nearly anything that you want with it. _However_, **some of the 
