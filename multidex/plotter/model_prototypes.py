@@ -177,6 +177,13 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "target_type", "value_type": "qual"},
     {"value": "temp", "value_type": "quant"},
     {"value": "target_type_shot_specific", "value_type": "qual"},
+    {"value": "lmst", "value_type": "quant"},
+    {"value": "instrument_elevation", "value_type": "quant"},
+    {"value": "instrument_azimuth", "value_type": "quant"},
+    {"value": "solar_azimuth", "value_type": "quant"},
+    {"value": "solar_elevation", "value_type": "quant"},
+    {"value": "temp", "value_type": "quant"},
+    {"value": "libs_before", "value_type": "qual"},
 )
 
 XCAM_CALCULATED_PROPERTIES = (
