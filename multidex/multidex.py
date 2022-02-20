@@ -1,6 +1,12 @@
 import os
 
-from clize import run
+try:
+    from clize import run
+except ModuleNotFoundError:
+    raise ImportError(
+        "Unable to perform imports. Did you activate the multidex "
+        "environment?"
+    )
 import django
 
 
