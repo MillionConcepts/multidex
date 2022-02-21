@@ -90,6 +90,9 @@ def process_marslab_row(row, marslab_file):
         metadata['distance_m'] = 5000
     # convert all target types to lower case
     metadata['target_type_shot_specific'] = str.lower(metadata['target_type_shot_specific'])
+    # get sclk from filename
+    sclk = int(metadata['name'].split('_')[1].replace('psv', ''))
+    metadata['sclk'] = sclk
     try:
         spectrum = CSpec(**metadata)
         spectrum.clean()

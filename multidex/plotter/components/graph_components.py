@@ -114,10 +114,9 @@ def main_scatter_graph(
             **marker_property_dict,
         )
     )
-    fig.update_layout(
+    fig.update_layout( # TODO jeff asked for larger font size here. Check with Michael
         hoverlabel=dict(
             font_size=18,
-            font_family="Arial"
         )
     )
 
