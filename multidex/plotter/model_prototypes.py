@@ -184,6 +184,7 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "solar_elevation", "value_type": "quant"},
     {"value": "temp", "value_type": "quant"},
     {"value": "libs_before", "value_type": "qual"},
+    {"value": "raster_location", "value_type": "quant"},
 )
 
 XCAM_CALCULATED_PROPERTIES = (

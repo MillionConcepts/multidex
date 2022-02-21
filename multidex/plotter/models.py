@@ -111,6 +111,7 @@ class CSpec(XSpec):
     temp = models.FloatField("Instrument Temperature (C)", **B_N_I)
     libs_before = models.CharField("LIBS before or after passive", **B_N_I)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
+    raster_location = models.IntegerField("Raster Location #", **B_N_I)
 
     instrument = "CCAM"
     instrument_brief_name = "ChemCam"
@@ -122,16 +123,19 @@ class CSpec(XSpec):
         meta = metadata_df.loc[truncated_ids]
         descriptor = meta["target"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
-        descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
+        descriptor.loc[no_feature_ix] = meta["target"].loc[no_feature_ix]
         sol = meta["sol"].copy()
         has_sol = sol.loc[sol.notna()].index
         if len(has_sol) > 0:
             # + operation throws an error if there is nothing to add to
             sol.loc[has_sol] = (
-                    "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+                    sol.loc[has_sol].apply("{:.0f}".format) + " "
             )
         sol.loc[sol.isna()] = ""
-        return (sol + meta["name"] + " " + descriptor).values
+        raster = meta["raster_location"].copy()
+        has_raster = raster.loc[raster.notna()].index
+        raster.loc[has_raster] = raster.loc[has_raster].apply("{:.0f}".format) + " "
+        return (meta["name"] + "<br>sol: " + sol + "<br>target: " + descriptor + "<br>raster #: " + raster).values
 
 
 ZCAM_COREGISTERED_INSTRUMENTS = (

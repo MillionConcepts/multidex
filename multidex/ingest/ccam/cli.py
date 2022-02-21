@@ -85,17 +85,22 @@ def process_marslab_row(row, marslab_file):
         # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
         # "min_count": row[row.index.str.contains("count")].astype(float).min(),
     }
+    # fix negative distances from darks
+    if metadata['distance_m'] < 0:
+        metadata['distance_m'] = 5000
+    # convert all target types to lower case
+    metadata['target_type_shot_specific'] = str.lower(metadata['target_type_shot_specific'])
     try:
         spectrum = CSpec(**metadata)
         spectrum.clean()
         spectrum.save()
-        row_color = row["color"] + " " + str(row.get("feature"))
+        row_target = str(row.get("target"))
     except KeyboardInterrupt:
         raise
     except Exception as ex:
-        print("failed on " + row["color"] + ": " + str(ex))
+        print("failed on " + row_target + ": " + str(ex))
         return None
-    return row_color
+    return row_target
 
 
 def format_for_multidex(frame):

@@ -114,6 +114,12 @@ def main_scatter_graph(
             **marker_property_dict,
         )
     )
+    fig.update_layout(
+        hoverlabel=dict(
+            font_size=18,
+            font_family="Arial"
+        )
+    )
 
     if highlight_df is not None:
         draw_floating_labels(fig, highlight_df, label_ids)
