@@ -11,6 +11,8 @@ from typing import Optional, Sequence
 
 from cytoolz import keyfilter
 from django.db import models
+import pandas as pd
+import numpy as np
 
 # TODO: ewwwww
 from plotter import __version__
@@ -169,6 +171,19 @@ XCAM_FIELD_INTERFACE_PROPERTIES = (
     {"value": "landform_type", "value_type": "qual"},
     {"value": "odometry", "value_type": "quant"},
     {"value": "lab_spectrum_type", "value_type": "qual"},
+    {"value": "distance_m", "value_type": "quant"},
+    {"value": "exposure", "value_type": "quant"},
+    {"value": "target_type", "value_type": "qual"},
+    {"value": "temp", "value_type": "quant"},
+    {"value": "target_type_shot_specific", "value_type": "qual"},
+    {"value": "lmst", "value_type": "quant"},
+    {"value": "instrument_elevation", "value_type": "quant"},
+    {"value": "instrument_azimuth", "value_type": "quant"},
+    {"value": "solar_azimuth", "value_type": "quant"},
+    {"value": "solar_elevation", "value_type": "quant"},
+    {"value": "temp", "value_type": "quant"},
+    {"value": "libs_before", "value_type": "qual"},
+    {"value": "raster_location", "value_type": "quant"},
 )
 
 XCAM_CALCULATED_PROPERTIES = (
@@ -199,7 +214,7 @@ class XSpec(models.Model):
     abstract class representing an ROI from an XCAM-family instrument
     """
 
-    # four-letter instrument designation: PCAM, MCAM, ZCAM
+    # four-letter instrument designation: PCAM, MCAM, ZCAM, CCAM
     instrument = None
     # brief and full instrument names
     instrument_brief_name = None
@@ -234,7 +249,7 @@ class XSpec(models.Model):
             ap
             for ap in cls.accessible_properties()
             if prop["value"]
-            not in ("color", "seq_id", "name", "analysis_name")
+            not in ("color", "seq_id", "name", "analysis_name", "target")
         ]
 
     @classmethod
@@ -276,6 +291,22 @@ class XSpec(models.Model):
             scale_to=scale_to,
             average_filters=average_filters,
         )
+
+    @staticmethod
+    def make_scatter_annotations(metadata_df: pd.DataFrame, truncated_ids: Sequence[int]) -> np.ndarray:
+        meta = metadata_df.loc[truncated_ids]
+        descriptor = meta["target"].copy()
+        no_feature_ix = descriptor.loc[descriptor.isna()].index
+        descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
+        sol = meta["sol"].copy()
+        has_sol = sol.loc[sol.notna()].index
+        if len(has_sol) > 0:
+            # + operation throws an error if there is nothing to add to
+            sol.loc[has_sol] = (
+                    "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+            )
+        sol.loc[sol.isna()] = ""
+        return (sol + meta["name"] + " " + descriptor).values
 
     def all_filter_waves(self):
         return self.filters | self.virtual_filters

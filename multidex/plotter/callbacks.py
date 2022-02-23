@@ -48,7 +48,6 @@ from plotter.graph import (
     pretty_print_search_params,
     spectrum_from_graph_event,
     style_toggle,
-    make_scatter_annotations,
     retrieve_graph_data,
     halt_for_ineffective_highlight_toggle,
     add_or_remove_label,
@@ -171,7 +170,7 @@ def update_spectrum_graph(
     *,
     spec_model,
 ):
-    if scale_to != "none":
+    if scale_to != "none" and scale_to is not None:  # TODO scale_to is None, not "none"
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     average_filters = True if average_input_value == ["average"] else False
     if not event_data:
@@ -329,9 +328,10 @@ def update_main_graph(
     marker_properties, color, coloraxis, marker_axis_type = make_markers(
         marker_settings, *graph_content
     )
+    color[color == 'inf'] = 0 # TODO want to do this in pre-processing, but don't know the right value. talk to Jeff
     # place color in graph df column so it works properly with split highlights
     graph_df["color"] = color
-    graph_df["text"] = make_scatter_annotations(metadata_df, truncated_ids)
+    graph_df["text"] = spec_model.make_scatter_annotations(metadata_df, truncated_ids)
     # now that graph dataframe is constructed, split & style highlights to be
     # drawn as separate trace (or get None, {}) if no highlight is active)
     graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
@@ -535,6 +535,8 @@ def update_spectrum_images(
     spectrum = spectrum_from_graph_event(event_data, spec_model)
     # TODO: turn this into a dispatch function, if this ends up actually
     #  wanting distinct behavior
+    if spec_model.instrument == "CCAM":
+        return
     if spec_model.instrument == "ZCAM":
         return make_zspec_browse_image_components(
             spectrum, image_directory, static_image_url
