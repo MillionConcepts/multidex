@@ -2,11 +2,12 @@
 basic settings for fresh application load. some of these may be overridden
 very quickly by callbacks and are essentially placeholders.
 """
+import sys
 from itertools import product
 
-from plotter.styles.graph_style import css_variables
+from plotter.config.graph_style import css_variables
 
-DEFAULT_SETTINGS_DICTIONARY = {
+SETTINGS = {
     "average_filters": "False",
     "highlight-toggle.value": "off",
     "highlight-size-radio.value": 1,
@@ -30,20 +31,31 @@ DEFAULT_SETTINGS_DICTIONARY = {
     "color-clip-bound-low.value": 0,
     "search_parameters": [],
     "palette_memory": {
-            "sequential": "Plasma",
-            "diverging": "delta_r",
-            "solid": "hotpink",
-            "cyclical": "IceFire",
-            "qualitative": "Bold",
-        }
+        "sequential": "Plasma",
+        "diverging": "delta_r",
+        "solid": "hotpink",
+        "cyclical": "IceFire",
+        "qualitative": "Bold",
+    },
 }
 
-DEFAULT_SETTINGS_DICTIONARY |= {
+SETTINGS |= {
     f"filter-{ix}-{axis}.value": None
     for ix, axis in product((1, 2, 3), ("x", "y", "marker"))
 }
 
-DEFAULT_SETTINGS_DICTIONARY |= {
-    f"component-{axis}.value": 0 for axis in ("x", "y", "marker")
-}
+SETTINGS |= {f"component-{axis}.value": 0 for axis in ("x", "y", "marker")}
 
+# values given in mappings with variable names of the form
+# X_SETTINGS will override the default values in SETTINGS
+# in instances of MultiDEx launched with instrument code X
+CCAM_SETTINGS = {"graph-option-marker.value": "sol"}
+
+
+def instrument_settings(instrument: str) -> dict:
+    try:
+        return SETTINGS | getattr(
+            sys.modules[__name__], f"{instrument}_SETTINGS"
+        )
+    except AttributeError:
+        return SETTINGS

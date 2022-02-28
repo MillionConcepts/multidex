@@ -12,7 +12,7 @@ import plotly.colors as pcolors
 import plotly.graph_objects as go
 from more_itertools import windowed
 
-from plotter.styles.marker_style import SOLID_MARKER_COLORS
+from plotter.config.marker_style import SOLID_MARKER_COLORS
 
 PLOTLY_COLOR_MODULES = (
     pcolors.sequential,

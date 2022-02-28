@@ -17,7 +17,7 @@ from plotter.application.helpers import (
     configure_flask_cache,
 )
 from plotter.application.structure import STATIC_IMAGE_URL
-from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
+from plotter.config.settings import instrument_settings
 from plotter.spectrum_ops import data_df_from_queryset
 
 from plotter.layout import multidex_body
@@ -117,7 +117,10 @@ def initialize_cache_values(cset, spec_model):
     # TODO: hacky hacky
     if "zoom" in metadata_df.columns:
         metadata_df["zoom"] = metadata_df["zoom"].astype(float)
-    cset("palette_memory", DEFAULT_SETTINGS_DICTIONARY["palette_memory"])
+    cset(
+        "palette_memory",
+        instrument_settings(spec_model.instrument)["palette_memory"]
+    )
     cset("metadata_df", metadata_df)
     cset("scale_to", "none")
     cset("average_filters", False)

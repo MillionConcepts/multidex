@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import wand.image
 
 import plotter.application
-from plotter.styles.output_style import (
+from plotter.config.output_style import (
     BASE_SIZE,
     GRAPH_SETTINGS,
     AXIS_SETTINGS,

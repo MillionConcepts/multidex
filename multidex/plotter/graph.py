@@ -45,7 +45,7 @@ from plotter.reduction import (
     transform_and_explain_variance,
 )
 from plotter.spectrum_ops import data_df_from_queryset
-from plotter.styles.graph_style import COLORBAR_SETTINGS
+from plotter.config.graph_style import COLORBAR_SETTINGS
 from plotter.types import SpectrumModel, SpectrumModelInstance
 
 if TYPE_CHECKING:

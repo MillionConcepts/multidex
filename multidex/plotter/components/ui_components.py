@@ -9,12 +9,12 @@ from dash.html import Div
 
 from multidex_utils import none_to_empty
 from plotter.colors import generate_palette_options, get_scale_type
-from plotter.styles.graph_style import (
+from plotter.config.graph_style import (
     GRAPH_DISPLAY_DEFAULTS,
     GRAPH_CONFIG_SETTINGS,
     css_variables,
 )
-from plotter.styles.marker_style import MARKER_SYMBOLS
+from plotter.config.marker_style import MARKER_SYMBOLS
 
 
 # note that style properties are camelCased rather than hyphenated in

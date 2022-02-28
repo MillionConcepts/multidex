@@ -9,7 +9,7 @@ from plotly import graph_objects as go
 
 from plotter.colors import discretize_color_representations
 from plotter.spectrum_ops import d2r
-from plotter.styles.graph_style import (
+from plotter.config.graph_style import (
     ANNOTATION_SETTINGS,
     GRAPH_DISPLAY_DEFAULTS,
     AXIS_DISPLAY_DEFAULTS,
