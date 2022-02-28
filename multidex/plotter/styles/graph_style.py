@@ -23,6 +23,7 @@ GRAPH_DISPLAY_DEFAULTS = {
     "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
     "plot_bgcolor": css_variables["dark-tint-0"],
     "paper_bgcolor": css_variables["clean-parchment"],
+    "hoverlabel": {"font_size": 17, "font_family": "Fira Mono"}
 }
 
 AXIS_DISPLAY_DEFAULTS = {

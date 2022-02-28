@@ -86,13 +86,6 @@ def main_scatter_graph(
     main graph component. this function creates the Plotly figure; data
     and metadata are filtered and formatted in callbacks.update_main_graph().
     """
-    # TODO: go.Scattergl (WebGL) is noticeably worse-looking than go.Scatter
-    #  (SVG), but go.Scatter may be inadequately performant with all the
-    #  points in the data set. can we optimize a bit? hard with plotly...
-
-    # TODO: refactor to build layout dictionaries first rather than
-    #  using the update_layout pattern, for speed
-
     fig = go.Figure()
     # the click-to-label annotations
     draw_floating_labels(fig, graph_df, label_ids)
@@ -114,7 +107,6 @@ def main_scatter_graph(
             **marker_property_dict,
         )
     )
-    fig.update_layout(hoverlabel=dict(font_size=18))
 
     if highlight_df is not None:
         draw_floating_labels(fig, highlight_df, label_ids)
