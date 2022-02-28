@@ -31,7 +31,7 @@ from multidex_utils import (
     re_get,
     djget,
     insert_wavelengths_into_text,
-    model_metadata_df,
+    model_metadata_df, get_verbose_name,
 )
 from plotter import spectrum_ops
 from plotter.colors import get_palette_from_scale_name, get_scale_type
@@ -39,7 +39,7 @@ from plotter.components.ui_components import (
     search_parameter_div,
 )
 from plotter.layout import primary_app_div
-from plotter.models import INSTRUMENT_MODEL_MAPPING, CSpec
+from plotter.models import INSTRUMENT_MODEL_MAPPING
 from plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain_variance,
@@ -256,7 +256,7 @@ def make_axis(
             get_errors,
         )
     value_series = metadata_df.loc[id_list][props["value"]]
-    return value_series.values, None, axis_option
+    return value_series.values, None, get_verbose_name(axis_option, spec_model)
 
 
 def get_axis_option_props(settings, spec_model):
@@ -305,7 +305,7 @@ def make_markers(
     else:
         property_list, title = (
             metadata_df.loc[id_list][props["value"]].values,
-            props["value"],
+            get_verbose_name(props["value"], spec_model),
         )
     palette_type = get_scale_type(re_get(settings, "palette-name-drop.value"))
     if palette_type is None:

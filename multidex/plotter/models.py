@@ -24,31 +24,31 @@ class ZSpec(XSpec):
     rsm = models.IntegerField("RSM", **B_N_I)
     # timestamp of file if automatically produced by asdf
     file_timestamp = models.CharField(max_length=30, null=True)
-    compression = models.CharField("Compression", max_length=40, **B_N_I)
-    compression_quality = models.IntegerField("Compression Quality", **B_N_I)
-    float = models.CharField("Rock Float Status", max_length=20, **B_N_I)
-    rock_surface = models.CharField("Rock Surface", max_length=50, **B_N_I)
-    grain_size = models.CharField("Grain Size", max_length=20, **B_N_I)
-    soil_location = models.CharField("Soil Location", max_length=50, **B_N_I)
-    soil_color = models.CharField("Soil Color", max_length=25, **B_N_I)
-    morphology = models.CharField("Morphology", max_length=25, **B_N_I)
-    distance = models.CharField("Distance", max_length=20, **B_N_I)
-    location = models.CharField("Location", max_length=60, **B_N_I)
-    landform_type = models.CharField("Landform Type", max_length=25, **B_N_I)
-    workspace = models.CharField("Workspace", max_length=40, **B_N_I)
+    compression = models.CharField("compression", max_length=40, **B_N_I)
+    compression_quality = models.IntegerField("compression quality", **B_N_I)
+    float = models.CharField("floating / in-place", max_length=20, **B_N_I)
+    rock_surface = models.CharField("rock surface", max_length=50, **B_N_I)
+    grain_size = models.CharField("grain size", max_length=20, **B_N_I)
+    soil_location = models.CharField("soil location", max_length=50, **B_N_I)
+    soil_color = models.CharField("soil color", max_length=25, **B_N_I)
+    morphology = models.CharField("morphology", max_length=25, **B_N_I)
+    distance = models.CharField("distance", max_length=20, **B_N_I)
+    location = models.CharField("location", max_length=60, **B_N_I)
+    landform_type = models.CharField("landform type", max_length=25, **B_N_I)
+    workspace = models.CharField("workspace", max_length=40, **B_N_I)
     analysis_name = models.CharField(
-        "analysis / ROI set name", max_length=30, **B_N_I
+        "analysis name", max_length=30, **B_N_I
     )
-    min_count = models.IntegerField("Minimum Pixel Count", **B_N_I)
+    min_count = models.IntegerField("minimum pixel count", **B_N_I)
 
     # coordinated observations
     scam = models.CharField("SCAM", **B_N_I, max_length=50)
     wtsn = models.CharField("WTSN", **B_N_I, max_length=50)
-    srlc_spec = models.CharField("SRLC_SPEC", **B_N_I, max_length=50)
+    srlc_spec = models.CharField("SRLC SPEC", **B_N_I, max_length=50)
     pixl = models.CharField("PIXL", **B_N_I, max_length=50)
-    formation = models.CharField("Formation", **B_N_I, max_length=50)
-    member = models.CharField("Member", **B_N_I, max_length=50)
-    outcrop = models.CharField("Member", **B_N_I, max_length=50)
+    formation = models.CharField("formation", **B_N_I, max_length=50)
+    member = models.CharField("member", **B_N_I, max_length=50)
+    outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 
@@ -69,11 +69,11 @@ class ZSpec(XSpec):
 
 class MSpec(XSpec):
     # large-to-small taxonomic categories for rock clusters
-    group = models.CharField("Group", **B_N_I, max_length=50)
-    formation = models.CharField("Formation", **B_N_I, max_length=50)
-    member = models.CharField("Member", **B_N_I, max_length=50)
-    notes = models.CharField("Notes", **B_N_I, max_length=100)
-    float = models.CharField("floating vs. in-place", **B_N_I, max_length=15)
+    group = models.CharField("group", **B_N_I, max_length=50)
+    formation = models.CharField("formation", **B_N_I, max_length=50)
+    member = models.CharField("member", **B_N_I, max_length=50)
+    notes = models.CharField("notes", **B_N_I, max_length=100)
+    float = models.CharField("floating / in-place", **B_N_I, max_length=15)
     feature_subtype = models.CharField(
         "feature subtype", **B_N_I, max_length=45
     )

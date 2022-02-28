@@ -553,3 +553,9 @@ def directory_of(path: Path) -> str:
     if path.is_dir():
         return str(path)
     return str(path.parent)
+
+
+def get_verbose_name(field_name, model):
+    return next(
+        filter(lambda f: f.name == field_name, model._meta.fields)
+    ).verbose_name

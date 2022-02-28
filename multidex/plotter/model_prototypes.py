@@ -30,47 +30,47 @@ B_N_I = {"blank": True, "null": True, "db_index": True}
 
 XCAM_SHARED_OBSERVATION_FIELDS = {
     # name of entire sequence or observation
-    "name": models.CharField("Name", max_length=100, db_index=True),
-    "sol": models.IntegerField("Sol", **B_N_I),
+    "name": models.CharField("name", max_length=100, db_index=True),
+    "sol": models.IntegerField("sol", **B_N_I),
     # ltst for first frame of sequence
-    "ltst": models.TimeField("Local True Solar Time", **B_N_I),
+    "ltst": models.TimeField("local true solar time", **B_N_I),
     "seq_id": models.CharField("sequence id", max_length=20, **B_N_I),
-    "rover_elevation": models.FloatField("Rover Elevation", **B_N_I),
+    "rover_elevation": models.FloatField("rover elevation", **B_N_I),
     "target_elevation": models.FloatField(
-        "Target Elevation", null=True, db_index=True
+        "target elevation", null=True, db_index=True
     ),
-    "target_lat": models.FloatField("Target Latitude", **B_N_I),
-    "target_lon": models.FloatField("Target Longitude", **B_N_I),
-    "tau": models.FloatField("Tau", **B_N_I),
-    "focal_distance": models.FloatField("Focal Distance", **B_N_I),
-    "incidence_angle": models.FloatField("Incidence Angle", **B_N_I),
-    "emission_angle": models.FloatField("Emission Angle", **B_N_I),
-    "phase_angle": models.FloatField("Phase Angle", **B_N_I),
-    "l_s": models.FloatField("Solar Longitude", **B_N_I),
+    "target_lat": models.FloatField("target latitude", **B_N_I),
+    "target_lon": models.FloatField("target longitude", **B_N_I),
+    "tau": models.FloatField("tau", **B_N_I),
+    "focal_distance": models.FloatField("focal distance", **B_N_I),
+    "incidence_angle": models.FloatField("incidence angle", **B_N_I),
+    "emission_angle": models.FloatField("emission angle", **B_N_I),
+    "phase_angle": models.FloatField("phase angle", **B_N_I),
+    "l_s": models.FloatField("solar longitude", **B_N_I),
     # arbitrary number for the site. part of the ROVER_NAV_FRAME
     # coordinate system
-    "site": models.IntegerField("Site", **B_N_I),
+    "site": models.IntegerField("site", **B_N_I),
     # similar
-    "drive": models.IntegerField("Drive", **B_N_I),
+    "drive": models.IntegerField("drive", **B_N_I),
     # planetographic lat/lon
-    "lat": models.FloatField("Latitude", **B_N_I),
-    "lon": models.FloatField("Longitude", **B_N_I),
-    "odometry": models.FloatField("Odometry", **B_N_I),
+    "lat": models.FloatField("rover latitude", **B_N_I),
+    "lon": models.FloatField("rover longitude", **B_N_I),
+    "odometry": models.FloatField("odometry (m)", **B_N_I),
     "filename": models.CharField(
-        "Source CSV Filename", max_length=100, db_index=True
+        "source CSV filename", max_length=100, db_index=True
     ),
-    "sclk": models.FloatField("Spacecraft Clock", **B_N_I),
+    "sclk": models.FloatField("sclk (spacecraft clock)", **B_N_I),
     "modification_time": models.CharField(
-        "Modification Time UTC", max_length=25, **B_N_I
+        "modification time (UTC)", max_length=25, **B_N_I
     ),
     # "bucket" field for categorizing lab spectra that might be
     # ingested into the database.
     "lab_spectrum_type": models.CharField(
-        "Lab Spectrum Type", max_length=60, **B_N_I
+        "lab spectrum type", max_length=60, **B_N_I
     ),
     # identifier for version number of multidex used to ingest spectrum
     "multidex_version": models.CharField(
-        "MultiDEx Version", max_length=15, **B_N_I
+        "MultiDEx version", max_length=15, **B_N_I
     ),
 }
 
@@ -79,12 +79,9 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
 XCAM_SINGLE_SPECTRUM_FIELDS = {
     # color of associated ROI
     "color": models.CharField(
-        "ROI Color", blank=True, max_length=20, db_index=True
+        "ROI color", blank=True, max_length=20, db_index=True
     ),
     "feature": models.CharField("feature category", **B_N_I, max_length=45),
-    "filename": models.CharField(
-        "Name of archive CSV file", max_length=50, db_index=True
-    ),
     # stringified dict of images associated with the spectrum
     "images": models.TextField(**B_N_I, default="{}"),
 }
