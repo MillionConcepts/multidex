@@ -295,7 +295,7 @@ class XSpec(models.Model):
     @staticmethod
     def make_scatter_annotations(metadata_df: pd.DataFrame, truncated_ids: Sequence[int]) -> np.ndarray:
         meta = metadata_df.loc[truncated_ids]
-        descriptor = meta["target"].copy()
+        descriptor = meta["feature"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
         descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
         sol = meta["sol"].copy()
@@ -303,7 +303,7 @@ class XSpec(models.Model):
         if len(has_sol) > 0:
             # + operation throws an error if there is nothing to add to
             sol.loc[has_sol] = (
-                    "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+                "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
             )
         sol.loc[sol.isna()] = ""
         return (sol + meta["name"] + " " + descriptor).values

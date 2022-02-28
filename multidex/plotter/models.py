@@ -14,6 +14,7 @@ import pandas as pd
 from typing import Sequence
 import numpy as np
 
+
 class ZSpec(XSpec):
     zoom = models.CharField("Zoom Code", max_length=10, **B_N_I)
     # shared target identifier with other instruments, usually null
@@ -109,15 +110,16 @@ class CSpec(XSpec):
     type_of_product = models.CharField("Type of Product", **B_N_I, max_length=50)
     distance_m = models.FloatField("Distance (m)", max_length=20, **B_N_I)
     lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
-    exposure = models.CharField("Exposure (ms)", **B_N_I)
-    target_type = models.CharField("Target Type", **B_N_I)
-    target_type_shot_specific = models.CharField("Target Type (shot specific)", **B_N_I)
+    # TODO: should this be numerical?
+    exposure = models.CharField("Exposure (ms)", max_length=50, **B_N_I)
+    target_type = models.CharField("Target Type", max_length=30, **B_N_I)
+    target_type_shot_specific = models.CharField("Target Type (shot specific)", max_length=60, **B_N_I)
     instrument_elevation = models.FloatField("Instrument Elevation (deg)", **B_N_I)
     instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
     solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
     solar_elevation = models.FloatField("Solar Elevation (deg)", **B_N_I)
     temp = models.FloatField("Instrument Temperature (C)", **B_N_I)
-    libs_before = models.CharField("LIBS before or after passive", **B_N_I)
+    libs_before = models.CharField("LIBS before or after passive",  max_length=30, **B_N_I)
     notes = models.CharField("Notes", **B_N_I, max_length=100)
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
 
