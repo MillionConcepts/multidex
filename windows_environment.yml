@@ -18,6 +18,7 @@ dependencies:
   - flask-caching
   - django-extensions
   - more-itertools
+  - markupsafe=2.0.1
   - numpy
   - pandas
   - plotly
