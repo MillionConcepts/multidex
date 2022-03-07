@@ -35,10 +35,10 @@ def configure_flask_cache(cache_subdirectory):
     # memcached or another backend can be implemented for improved speed
     # if it ever matters.
     return {
-        "CACHE_TYPE": "filesystem",
-        "CACHE_DIR": ".cache/" + cache_subdirectory,
+        "CACHE_DIR": f".cache/{cache_subdirectory}",
         "CACHE_DEFAULT_TIMEOUT": 0,
         "CACHE_THRESHOLD": 0,  # important for filesystem backend
+        "CACHE_IGNORE_ERRORS": False
     }
 
 
