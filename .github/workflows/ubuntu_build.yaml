@@ -18,6 +18,7 @@ jobs:
       - name: Set up conda environment
         shell: bash -l {0}
         run: |
+          cd multidex
           python -m pip install -e .
           conda list
       - name: Run Tests
