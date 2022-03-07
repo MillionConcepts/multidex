@@ -187,5 +187,12 @@ for spec_model in [ZSpec, MSpec, CSpec]:
         [field.name for field in spec_model._meta.fields],
     )
 
+
+class TestSpec(XSpec):
+    pass
+
+
 # for automated model selection
-INSTRUMENT_MODEL_MAPPING = MappingProxyType({"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec})
+INSTRUMENT_MODEL_MAPPING = MappingProxyType(
+    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "TEST": TestSpec}
+)

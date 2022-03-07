@@ -22,6 +22,8 @@ dependencies:
   - pandas
   - plotly
   - matplotlib
+  - markupsafe=2.0.1
+  - pytest
   - werkzeug==1.0.1
   - scikit-learn
   - pvl
