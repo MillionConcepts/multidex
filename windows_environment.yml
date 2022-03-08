@@ -5,9 +5,7 @@ dependencies:
   - python=3.9
   - conda-build
   - scikit-learn
-  - rasterio
   - python-levenshtein
-  - gdal
   - fs
   - clize
   - django
@@ -32,7 +30,6 @@ dependencies:
   - pip
   - python-kaleido
   - pip:
-    - "git+https://github.com/MillionConcepts/pdr.git"
     - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
     - wand
