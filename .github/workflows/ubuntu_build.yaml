@@ -12,6 +12,7 @@ jobs:
           environment-file: environment.yml
           activate-environment: multidex
           channels: conda-forge,defaults
+          miniconda-version: latest
           channel-priority: strict
           mamba-version: "*"
           python-version: 3.9
