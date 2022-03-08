@@ -26,5 +26,6 @@ jobs:
         shell: bash -l {0}
         run: |
           cd multidex
+          python manage.py makemigrations
           python manage.py migrate --database TEST
           pytest -rPvv

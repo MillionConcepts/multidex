@@ -5,6 +5,7 @@ dependencies:
   - python=3.9
   - conda-build
   - rasterio
+  - scikit-learn
   - python-levenshtein
   - gdal
   - fs
