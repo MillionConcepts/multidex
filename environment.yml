@@ -4,9 +4,8 @@ channels:
 dependencies:
   - python=3.9
   - conda-build
-  - rasterio
+  - scikit-learn
   - python-levenshtein
-  - gdal
   - fs
   - clize
   - django
@@ -21,18 +20,17 @@ dependencies:
   - numpy
   - pandas
   - plotly
+  - pytest
+  - itsdangerous=2.0.1
   - markupsafe=2.0.1
   - matplotlib
   - werkzeug==1.0.1
-  - scikit-learn
   - pvl
-  - sympy
   - git
   - wand
   - pip
   - python-kaleido
   - pip:
-    - "git+https://github.com/MillionConcepts/pdr.git"
     - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
 
