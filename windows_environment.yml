@@ -21,6 +21,7 @@ dependencies:
   - pandas
   - plotly
   - matplotlib
+  - itsdangerous=2.0.1
   - markupsafe=2.0.1
   - pytest
   - werkzeug==1.0.1
