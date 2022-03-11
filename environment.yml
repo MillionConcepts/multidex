@@ -6,6 +6,9 @@ dependencies:
   - conda-build
   - scikit-learn
   - fs
+  # hopefully temporary. macos-specific issue. see:
+  # https://github.com/conda-forge/fontconfig-feedstock/issues/54
+  - fontconfig=2.13.94
   - clize
   - django
   - pillow
@@ -25,10 +28,10 @@ dependencies:
   - git
   - pip
   - python-kaleido
+  - wand
   - pip:
     - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
-    - wand
 
 
 
