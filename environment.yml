@@ -5,7 +5,6 @@ dependencies:
   - python=3.9
   - conda-build
   - scikit-learn
-  - python-levenshtein
   - fs
   - clize
   - django
@@ -13,7 +12,6 @@ dependencies:
   - dash
   - toolz
   - cytoolz
-  - jupyter
   - flask-caching
   - django-extensions
   - more-itertools
@@ -23,9 +21,7 @@ dependencies:
   - pytest
   - itsdangerous=2.0.1
   - markupsafe=2.0.1
-  - matplotlib
   - werkzeug==1.0.1
-  - pvl
   - git
   - wand
   - pip
