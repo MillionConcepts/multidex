@@ -1,5 +1,5 @@
 name: windows build test
-on: workflow_run
+on: workflow_dispatch
 
 jobs:
   build:
