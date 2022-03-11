@@ -23,12 +23,12 @@ dependencies:
   - markupsafe=2.0.1
   - werkzeug==1.0.1
   - git
-  - wand
   - pip
   - python-kaleido
   - pip:
     - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
+    - wand
 
 
 
