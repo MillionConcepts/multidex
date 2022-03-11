@@ -33,7 +33,5 @@ def test_launch_multidex():
     proc.terminate()
     if successful is False:
         raise ConnectionError("server did not appear to initialize correctly")
-    assert (
-        "fake-output-for-callback-with-only-side-effects" in response_text,
+    assert "fake-output-for-callback-with-only-side-effects" in response_text, \
         "server did not serve expected content"
-    )
