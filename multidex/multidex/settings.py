@@ -86,6 +86,10 @@ DATABASES = {
     "CCAM": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": Path(BASE_DIR, "data", "CCAM.sqlite3"),
+    },
+    "TEST": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(BASE_DIR, "data", "TEST.sqlite3")
     }
 }
 

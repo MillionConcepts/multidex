@@ -147,8 +147,24 @@ class CSpec(XSpec):
         raster.loc[has_raster] = raster.loc[has_raster].apply("{:.0f}".format) + " "
         return (meta["name"] + "<br>sol: " + sol + "<br>target: " + descriptor + "<br>raster #: " + raster).values
 
+
+class TestSpec(XSpec):
+    instrument = "TEST"
+    filters = {"test": 100}
+    virtual_filters = {"test": 100}
+
+
 # bulk setup for each XCAM instrument
-for spec_model in [ZSpec, MSpec, CSpec]:
+for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:
+    # add fields to each model
+    setattr(
+        spec_model,
+        "field_names",
+        [field.name for field in spec_model._meta.fields],
+    )
+    if spec_model.instrument not in DERIVED_CAM_DICT.keys():
+        continue
+
     # mappings from filter name to nominal band centers, in nm
     setattr(
         spec_model,
@@ -179,17 +195,6 @@ for spec_model in [ZSpec, MSpec, CSpec]:
         mean_field, err_field = filter_fields_factory(filt)
         mean_field.contribute_to_class(spec_model, filt.lower())
         err_field.contribute_to_class(spec_model, filt.lower() + "_err")
-
-    # add fields to each model
-    setattr(
-        spec_model,
-        "field_names",
-        [field.name for field in spec_model._meta.fields],
-    )
-
-
-class TestSpec(XSpec):
-    pass
 
 
 # for automated model selection
