@@ -80,6 +80,7 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
                 use_reloader=False,
                 dev_tools_silence_routes_logging=True,
                 port=port,
+                host="127.0.0.1"
             )
             looking_for_port = False
         except OSError:
