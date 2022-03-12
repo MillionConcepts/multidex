@@ -1,5 +1,5 @@
 from multiprocessing import Process
-import os
+from pathlib import Path
 import time
 
 import django
@@ -7,14 +7,14 @@ import requests
 import requests.exceptions
 
 
+def run_multidex():
+    import subprocess
+    start_script = str(Path(Path(__name__).parent.parent, "multidex.py"))
+    subprocess.run(["python", start_script, "TEST"])
+
+
 def test_launch_multidex():
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
-    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-    django.setup()
-    import plotter.application.run
-    proc = Process(
-        target=plotter.application.run.run_multidex, args=("TEST",)
-    )
+    proc = Process(target=run_multidex)
     proc.start()
     attempts = 0
     successful = False
