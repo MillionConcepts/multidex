@@ -30,3 +30,4 @@
 !missing.jpg
 *.tar.gz
 !ZCAM_db_dump.csv
+.coverage
