@@ -9,7 +9,7 @@ import requests.exceptions
 
 def run_multidex():
     import subprocess
-    start_script = str(Path(Path(__name__).parent.parent, "multidex.py"))
+    start_script = str(Path(Path(__file__).parent.parent, "multidex.py"))
     subprocess.run(["python", start_script, "TEST"])
 
 
