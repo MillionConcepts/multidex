@@ -65,11 +65,10 @@ def default_thumbnailer():
     return Composition(steps=steps, parameters=params)
 
 
-
-ASDF_STEM_PATTERN = re.compile(r"SOL\d{4}_zcam\d{5}_RSM\d{1,4}")
+ASDF_STEM_PATTERN = re.compile(r'SOL\d{4}_zcam\d{5}_RSM\d{1,4}(-\w+)?', re.UNICODE)
 ASDF_LEGACY_STEM_PATTERN = re.compile(
     r"SOL\d{4}_SEQIDzcam\d{5}_SITE\d{1,4}_DRIVE\d{1,4}_RMS\d{1,4}_"
-    r"ZOOM\d{1,3}"
+    r"ZOOM\d{1,3}(-\w+)?", re.UNICODE
 )
 
 # TODO: do this better, requires making people install this better
