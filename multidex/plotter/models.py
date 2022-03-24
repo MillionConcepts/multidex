@@ -4,7 +4,7 @@ from types import MappingProxyType
 import pandas as pd
 from typing import Sequence
 import numpy as np
-import PIL
+from PIL import Image
 from django.db import models
 from marslab.compat.mertools import (
     MERSPECT_M20_COLOR_MAPPINGS,
@@ -60,7 +60,7 @@ class ZSpec(XSpec):
         images = {}
         for image_type, filename in files.items():
             images[image_type + "_file"] = filename
-            with PIL.Image.open(Path(image_directory, filename)) as image:
+            with Image.open(Path(image_directory, filename)) as image:
                 images[image_type + "_size"] = image.size
         return images
 
@@ -88,7 +88,7 @@ class MSpec(XSpec):
                 continue
             browse_filename = Path(filename).stem + "_browse.jpg"
             images[image_type + "_file"] = browse_filename
-            with PIL.Image.open(
+            with Image.open(
                     Path(image_directory, browse_filename)
             ) as image:
                 images[image_type + "_size"] = image.size
