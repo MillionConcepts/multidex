@@ -5,15 +5,16 @@ dependencies:
   - python=3.9
   - conda-build
   - scikit-learn
-  - python-levenshtein
   - fs
+  # hopefully temporary. macos-specific issue. see:
+  # https://github.com/conda-forge/fontconfig-feedstock/issues/54
+  - fontconfig=2.13.94
   - clize
   - django
   - pillow
   - dash
   - toolz
   - cytoolz
-  - jupyter
   - flask-caching
   - django-extensions
   - more-itertools
@@ -25,11 +26,10 @@ dependencies:
   - markupsafe=2.0.1
   - matplotlib
   - werkzeug==1.0.1
-  - pvl
   - git
-  - wand
   - pip
   - python-kaleido
+  - wand
   - pip:
     - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"

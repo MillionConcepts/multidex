@@ -1,0 +1,31 @@
+name: windows build test
+on: workflow_dispatch
+
+jobs:
+  build:
+    name: build windows
+    runs-on: "windows-latest"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          environment-file: windows_environment.yml
+          activate-environment: multidex
+          channels: conda-forge,defaults
+          miniconda-version: latest
+          channel-priority: strict
+          mamba-version: "*"
+          python-version: 3.9
+      - name: Set up conda environment
+        shell: bash -l {0}
+        run: |
+          cd multidex
+          python -m pip install -e .
+          conda list
+      - name: Run Tests
+        shell: bash -l {0}
+        run: |
+          cd multidex
+          python manage.py makemigrations
+          python manage.py migrate --database TEST
+          pytest -rPvv

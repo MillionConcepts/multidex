@@ -4,24 +4,24 @@ from dash import dcc
 from dash import html
 
 from plotter.components.ui_components import (
-    main_graph,
     dynamic_spec_div,
-    trigger_div,
     fake_output_divs,
     graph_controls_div,
+    main_graph,
+    trigger_div,
 )
-from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
+from plotter.config.settings import instrument_settings
 from plotter.types import SpectrumModel
 
 
 def primary_app_div(
     spec_model: SpectrumModel, settings: Optional[Mapping] = None
-):
+) -> html.Div:
     """
     generates the primary application div.
     """
     if settings is None:
-        settings = DEFAULT_SETTINGS_DICTIONARY
+        settings = instrument_settings(spec_model.instrument)
     # TODO: this feels bad
     if settings.get("average_filters") == "True":
         filts = [
@@ -30,7 +30,7 @@ def primary_app_div(
         ]
     else:
         filts = None
-    # TODO: dumb hack
+    # TODO: dumb hack, shift into config and make saveable
     if spec_model.instrument == "MCAM":
         spectrum_scale = "L6_R6"
     elif spec_model.instrument == "ZCAM":
@@ -57,7 +57,7 @@ def primary_app_div(
     return html.Div(children=search_children, id="search-div")
 
 
-def multidex_body(spec_model):
+def multidex_body(spec_model: SpectrumModel) -> html.Div:
     """top-level "body" div of application"""
     # noinspection PyTypeChecker
     return html.Div(

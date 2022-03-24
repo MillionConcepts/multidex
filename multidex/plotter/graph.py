@@ -31,7 +31,7 @@ from multidex_utils import (
     re_get,
     djget,
     insert_wavelengths_into_text,
-    model_metadata_df,
+    model_metadata_df, get_verbose_name,
 )
 from plotter import spectrum_ops
 from plotter.colors import get_palette_from_scale_name, get_scale_type
@@ -45,7 +45,7 @@ from plotter.reduction import (
     transform_and_explain_variance,
 )
 from plotter.spectrum_ops import data_df_from_queryset
-from plotter.styles.graph_style import COLORBAR_SETTINGS
+from plotter.config.graph_style import COLORBAR_SETTINGS
 from plotter.types import SpectrumModel, SpectrumModelInstance
 
 if TYPE_CHECKING:
@@ -256,7 +256,7 @@ def make_axis(
             get_errors,
         )
     value_series = metadata_df.loc[id_list][props["value"]]
-    return value_series.values, None, axis_option
+    return value_series.values, None, get_verbose_name(axis_option, spec_model)
 
 
 def get_axis_option_props(settings, spec_model):
@@ -305,7 +305,7 @@ def make_markers(
     else:
         property_list, title = (
             metadata_df.loc[id_list][props["value"]].values,
-            props["value"],
+            get_verbose_name(props["value"], spec_model),
         )
     palette_type = get_scale_type(re_get(settings, "palette-name-drop.value"))
     if palette_type is None:
@@ -537,8 +537,8 @@ def make_zspec_browse_image_components(
 ):
     """
     ZSpec object, size factor (viewport units), image directory ->
-    pair of dash html.Img components containing the rgb and enhanced
-    images associated with that object, pathed to the assets image
+    dash html.Img component containing the natural-color image
+    associated with that object, mapped to the assets image
     route defined in the live app instance -- silly hack rn
     """
     file_info = zspec.overlay_browse_file_info(image_directory)
@@ -651,24 +651,6 @@ def spectrum_from_graph_event(
     return djget(
         spec_model, event_data["points"][0]["customdata"], "id", "get"
     )
-
-
-def make_scatter_annotations(
-    metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
-) -> np.ndarray:
-    meta = metadata_df.loc[truncated_ids]
-    descriptor = meta["feature"].copy()
-    no_feature_ix = descriptor.loc[descriptor.isna()].index
-    descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
-    sol = meta["sol"].copy()
-    has_sol = sol.loc[sol.notna()].index
-    if len(has_sol) > 0:
-        # + operation throws an error if there is nothing to add to
-        sol.loc[has_sol] = (
-            "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
-        )
-    sol.loc[sol.isna()] = ""
-    return (sol + meta["name"] + " " + descriptor).values
 
 
 def retrieve_graph_data(

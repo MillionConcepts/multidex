@@ -7,6 +7,7 @@ import flask.cli
 import pandas as pd
 from dash import dash
 from flask_caching import Cache
+from flask_caching.backends import FileSystemCache
 
 from multidex_utils import qlist, model_metadata_df
 from notetaking import Notepad, Paper
@@ -17,7 +18,7 @@ from plotter.application.helpers import (
     configure_flask_cache,
 )
 from plotter.application.structure import STATIC_IMAGE_URL
-from plotter.defaults import DEFAULT_SETTINGS_DICTIONARY
+from plotter.config.settings import instrument_settings
 from plotter.spectrum_ops import data_df_from_queryset
 
 from plotter.layout import multidex_body
@@ -28,17 +29,19 @@ from plotter.models import INSTRUMENT_MODEL_MAPPING
 def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # initialize the app itself. HTML / react objects and callbacks from them
     # must be described in this object as dash components.
-    app = dash.Dash(
-        __name__,
-    )
+    app = dash.Dash(__name__)
     # random prefix for memory blocks / files shared within this instance
     cache_prefix = str(random.randint(1000000, 9999999))
     if use_notepad_cache is True:
         paper = Paper(f"multidex_{instrument_code.lower()}_{cache_prefix}")
         cache = Notepad(paper.prefix)
     else:
-        cache = Cache()
-        cache.init_app(app.server, config=configure_flask_cache(cache_prefix))
+        cache = FileSystemCache.factory(
+            app.server,
+            config=configure_flask_cache(cache_prefix),
+            args=[],
+            kwargs={}
+        )
     spec_model = INSTRUMENT_MODEL_MAPPING[instrument_code.upper()]
     # active queryset is explicitly stored in global cache, as are
     # many other app runtime values
@@ -77,6 +80,7 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
                 use_reloader=False,
                 dev_tools_silence_routes_logging=True,
                 port=port,
+                host="127.0.0.1"
             )
             looking_for_port = False
         except OSError:
@@ -117,7 +121,10 @@ def initialize_cache_values(cset, spec_model):
     # TODO: hacky hacky
     if "zoom" in metadata_df.columns:
         metadata_df["zoom"] = metadata_df["zoom"].astype(float)
-    cset("palette_memory", DEFAULT_SETTINGS_DICTIONARY["palette_memory"])
+    cset(
+        "palette_memory",
+        instrument_settings(spec_model.instrument)["palette_memory"]
+    )
     cset("metadata_df", metadata_df)
     cset("scale_to", "none")
     cset("average_filters", False)

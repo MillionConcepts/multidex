@@ -9,7 +9,7 @@ from plotly import graph_objects as go
 
 from plotter.colors import discretize_color_representations
 from plotter.spectrum_ops import d2r
-from plotter.styles.graph_style import (
+from plotter.config.graph_style import (
     ANNOTATION_SETTINGS,
     GRAPH_DISPLAY_DEFAULTS,
     AXIS_DISPLAY_DEFAULTS,
@@ -86,13 +86,6 @@ def main_scatter_graph(
     main graph component. this function creates the Plotly figure; data
     and metadata are filtered and formatted in callbacks.update_main_graph().
     """
-    # TODO: go.Scattergl (WebGL) is noticeably worse-looking than go.Scatter
-    #  (SVG), but go.Scatter may be inadequately performant with all the
-    #  points in the data set. can we optimize a bit? hard with plotly...
-
-    # TODO: refactor to build layout dictionaries first rather than
-    #  using the update_layout pattern, for speed
-
     fig = go.Figure()
     # the click-to-label annotations
     draw_floating_labels(fig, graph_df, label_ids)
@@ -205,6 +198,11 @@ def spectrum_line_graph(
         filt + ", " + str(spectrum_data[filt]["wave"])
         for filt in spectrum_data
     ]
+    # create y_axis_range based on min y-value. Pin to zero unless there are negative values
+    if min(y_axis) < 0:
+        y_axis_range = [min(y_axis) - 0.05, max(y_axis) + 0.05]
+    else:
+        y_axis_range = [0, min(y_axis) + max(y_axis)]
     fig = go.Figure(
         layout={
             **GRAPH_DISPLAY_DEFAULTS,
@@ -213,7 +211,7 @@ def spectrum_line_graph(
             "yaxis": AXIS_DISPLAY_DEFAULTS
             | {
                 "title_text": "reflectance",
-                "range": [0, min(y_axis) + max(y_axis)],
+                "range": y_axis_range,
                 "title_standoff": 4,
                 "side": "right",
             },
@@ -221,12 +219,16 @@ def spectrum_line_graph(
     )
     # TODO: clean input to make this toggleable again
     show_error = True
+    try:
+        color = spectrum.roi_hex_code()
+    except AttributeError:
+        color = "#1777B6" # color for Chem Cam spectra
     scatter = go.Scattergl(
         x=x_axis,
         y=y_axis,
         mode="lines+markers",
         text=text,
-        line={"color": spectrum.roi_hex_code()},
+        line={"color": color},
         error_y={"array": y_error, "visible": show_error},
     )
     fig.add_trace(scatter)

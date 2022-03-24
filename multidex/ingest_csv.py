@@ -2,9 +2,9 @@
 
 from clize import run
 
-import ingest.csv
+import ingest.csv2
 
 
 # tell clize to handle command line call
 if __name__ == '__main__':
-    run(ingest.csv.perform_ingest)
+    run(ingest.csv2.perform_ingest)

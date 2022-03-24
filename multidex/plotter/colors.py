@@ -1,18 +1,19 @@
 import inspect
+import re
 from collections.abc import Sequence
 from functools import partial
 from itertools import chain, cycle
+from numbers import Number
 from operator import mul
 from typing import Union
 
 from dustgoggles.structures import dig_for_value
-import matplotlib.colors as mcolors
 import numpy as np
 import plotly.colors as pcolors
 import plotly.graph_objects as go
 from more_itertools import windowed
 
-from plotter.styles.marker_style import SOLID_MARKER_COLORS
+from plotter.config.marker_style import SOLID_MARKER_COLORS
 
 PLOTLY_COLOR_MODULES = (
     pcolors.sequential,
@@ -52,11 +53,90 @@ def rgbstring_to_rgb_percent(rgb: str) -> tuple[float]:
     return tuple(division)
 
 
+# the following function is vendored from matplotlib.colors and carries the
+# matplotlib license. see the bottom of this module for a full copy of this license.
+def to_rgba_no_colorcycle(c, alpha=None):
+    """
+    Convert *c* to an RGBA color, with no support for color-cycle syntax.
+
+    If *alpha* is given, force the alpha value of the returned RGBA tuple
+    to *alpha*. Otherwise, the alpha value from *c* is used, if it has alphaba
+    information, or defaults to 1.
+
+    *alpha* is ignored for the color value ``"none"`` (case-insensitive),
+    which always maps to ``(0, 0, 0, 0)``.
+    """
+    orig_c = c
+    if isinstance(c, str):
+        # hex color in #rrggbb format.
+        match = re.match(r"\A#[a-fA-F0-9]{6}\Z", c)
+        if match:
+            return (tuple(int(n, 16) / 255
+                          for n in [c[1:3], c[3:5], c[5:7]])
+                    + (alpha if alpha is not None else 1.,))
+        # hex color in #rgb format, shorthand for #rrggbb.
+        match = re.match(r"\A#[a-fA-F0-9]{3}\Z", c)
+        if match:
+            return (tuple(int(n, 16) / 255
+                          for n in [c[1]*2, c[2]*2, c[3]*2])
+                    + (alpha if alpha is not None else 1.,))
+        # hex color with alpha in #rrggbbaa format.
+        match = re.match(r"\A#[a-fA-F0-9]{8}\Z", c)
+        if match:
+            color = [int(n, 16) / 255
+                     for n in [c[1:3], c[3:5], c[5:7], c[7:9]]]
+            if alpha is not None:
+                color[-1] = alpha
+            return tuple(color)
+        # hex color with alpha in #rgba format, shorthand for #rrggbbaa.
+        match = re.match(r"\A#[a-fA-F0-9]{4}\Z", c)
+        if match:
+            color = [int(n, 16) / 255
+                     for n in [c[1]*2, c[2]*2, c[3]*2, c[4]*2]]
+            if alpha is not None:
+                color[-1] = alpha
+            return tuple(color)
+        # string gray.
+        try:
+            c = float(c)
+        except ValueError:
+            pass
+        else:
+            if not (0 <= c <= 1):
+                raise ValueError(
+                    f"Invalid string grayscale value {orig_c!r}. "
+                    f"Value must be within 0-1 range")
+            return c, c, c, alpha if alpha is not None else 1.
+        raise ValueError(f"Invalid RGBA argument: {orig_c!r}")
+    # turn 2-D array into 1-D array
+    if isinstance(c, np.ndarray):
+        if c.ndim == 2 and c.shape[0] == 1:
+            c = c.reshape(-1)
+    # tuple color.
+    if not np.iterable(c):
+        raise ValueError(f"Invalid RGBA argument: {orig_c!r}")
+    if len(c) not in [3, 4]:
+        raise ValueError("RGBA sequence should have length 3 or 4")
+    if not all(isinstance(x, Number) for x in c):
+        # Checks that don't work: `map(float, ...)`, `np.array(..., float)` and
+        # `np.array(...).astype(float)` would all convert "0.5" to 0.5.
+        raise ValueError(f"Invalid RGBA argument: {orig_c!r}")
+    # Return a tuple to prevent the cached value from being modified.
+    c = tuple(map(float, c))
+    if len(c) == 3 and alpha is None:
+        alpha = 1
+    if alpha is not None:
+        c = c[:3] + (alpha,)
+    if any(elem < 0 or elem > 1 for elem in c):
+        raise ValueError("RGBA values should be within 0-1 range")
+    return c
+
+
 def plotly_color_to_percent(
     plotly_color: Union[str, tuple[float]]
 ) -> tuple[float]:
     if plotly_color.startswith("#"):
-        return mcolors.to_rgb(plotly_color)
+        return to_rgba_no_colorcycle(plotly_color)
     if plotly_color.startswith("rgb"):
         return rgbstring_to_rgb_percent(plotly_color)
     return plotly_color
@@ -201,3 +281,58 @@ def generate_palette_options(
     else:
         output_value = palette_value
     return output_options, output_value
+
+
+"""
+matplotlib license, applicable to to_rgba_nocolorcycle()
+
+License agreement for matplotlib versions 1.3.0 and later
+=========================================================
+
+1. This LICENSE AGREEMENT is between the Matplotlib Development Team
+("MDT"), and the Individual or Organization ("Licensee") accessing and
+otherwise using matplotlib software in source or binary form and its
+associated documentation.
+
+2. Subject to the terms and conditions of this License Agreement, MDT
+hereby grants Licensee a nonexclusive, royalty-free, world-wide license
+to reproduce, analyze, test, perform and/or display publicly, prepare
+derivative works, distribute, and otherwise use matplotlib
+alone or in any derivative version, provided, however, that MDT's
+License Agreement and MDT's notice of copyright, i.e., "Copyright (c)
+2012- Matplotlib Development Team; All Rights Reserved" are retained in
+matplotlib  alone or in any derivative version prepared by
+Licensee.
+
+3. In the event Licensee prepares a derivative work that is based on or
+incorporates matplotlib or any part thereof, and wants to
+make the derivative work available to others as provided herein, then
+Licensee hereby agrees to include in any such work a brief summary of
+the changes made to matplotlib .
+
+4. MDT is making matplotlib available to Licensee on an "AS
+IS" basis.  MDT MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, MDT MAKES NO AND
+DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
+FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF MATPLOTLIB
+WILL NOT INFRINGE ANY THIRD PARTY RIGHTS.
+
+5. MDT SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF MATPLOTLIB
+ FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR
+LOSS AS A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING
+MATPLOTLIB , OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF
+THE POSSIBILITY THEREOF.
+
+6. This License Agreement will automatically terminate upon a material
+breach of its terms and conditions.
+
+7. Nothing in this License Agreement shall be deemed to create any
+relationship of agency, partnership, or joint venture between MDT and
+Licensee.  This License Agreement does not grant permission to use MDT
+trademarks or trade name in a trademark sense to endorse or promote
+products or services of Licensee, or any third party.
+
+8. By copying, installing or otherwise using matplotlib ,
+Licensee agrees to be bound by the terms and conditions of this License
+Agreement.
+"""

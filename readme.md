@@ -1,4 +1,4 @@
-M/ZCAM multispectral plotter tool. Beta status.
+C/M/ZCAM multispectral plotter tool. Beta status.
 
 ### installation
 See [the installation guide](installation_guide.md).
@@ -23,5 +23,6 @@ files.
 * image export does not work on Windows. A fix for this is also planned.
 
 ### licensing notes
-This code carries a BSD 3-Clause license. You can do nearly anything that you want with it. _However_, **some of the 
-contents of this repository may be subject to the Mars 2020 Team Guidelines, so please act accordingly.**
+This code carries a BSD 3-Clause license. You can do nearly anything that you want with it. _However_, **some content
+in or referenced data by this repository may be subject to the MSL and/or Mars 2020 Team Guidelines, so please act 
+accordingly.**

@@ -1,4 +1,8 @@
-from multidex_utils import fetch_css_variables
+import sys
+from inspect import getmembers
+
+from multidex_utils import fetch_css_variables, patch_settings_from_module
+import plotter.config.user_graph_style
 
 css_variables = fetch_css_variables()
 
@@ -23,6 +27,7 @@ GRAPH_DISPLAY_DEFAULTS = {
     "margin": {"l": 10, "r": 10, "t": 25, "b": 0},
     "plot_bgcolor": css_variables["dark-tint-0"],
     "paper_bgcolor": css_variables["clean-parchment"],
+    "hoverlabel": {"font_size": 17, "font_family": "Fira Mono"}
 }
 
 AXIS_DISPLAY_DEFAULTS = {
@@ -62,3 +67,7 @@ COLORBAR_SETTINGS = {
     # "x": -0.18,
     # "ticklabelposition": "outside top"
 }
+
+patch_settings_from_module(
+    getmembers(sys.modules[__name__]), "plotter.config.user_graph_style"
+)

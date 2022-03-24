@@ -82,6 +82,14 @@ DATABASES = {
     "ZCAM": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": Path(BASE_DIR, "data", "ZCAM.sqlite3"),
+    },
+    "CCAM": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(BASE_DIR, "data", "CCAM.sqlite3"),
+    },
+    "TEST": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(BASE_DIR, "data", "TEST.sqlite3")
     }
 }
 
@@ -111,8 +119,6 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 
 USE_I18N = True
-
-USE_L10N = True
 
 USE_TZ = True
 

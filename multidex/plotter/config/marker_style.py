@@ -3,6 +3,12 @@ possible placeholder module giving options for fixed/solid colors in graph
 right now just a selection of named CSS colors that aren't too light to be
 pointless
 """
+import sys
+from inspect import getmembers
+
+from multidex_utils import patch_settings_from_module
+import plotter.config.user_marker_style
+
 SOLID_MARKER_COLORS = (
     {"label": "aqua", "value": "aqua"},
     {"label": "aquamarine", "value": "aquamarine"},
@@ -293,4 +299,8 @@ MARKER_SYMBOLS = (
     {"label": "arrow-bar-left-open", "value": "arrow-bar-left-open"},
     {"label": "arrow-bar-right", "value": "arrow-bar-right"},
     {"label": "arrow-bar-right-open", "value": "arrow-bar-right-open"},
+)
+
+patch_settings_from_module(
+    getmembers(sys.modules[__name__]), "plotter.config.user_marker_style"
 )
