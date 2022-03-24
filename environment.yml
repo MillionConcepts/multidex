@@ -24,6 +24,7 @@ dependencies:
   - pytest
   - itsdangerous=2.0.1
   - markupsafe=2.0.1
+  - matplotlib
   - werkzeug==1.0.1
   - git
   - pip
