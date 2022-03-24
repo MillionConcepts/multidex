@@ -4,9 +4,10 @@ import datetime as dt
 import json
 import re
 from functools import partial, reduce
-from inspect import signature
+from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
+import sys
 from typing import (
     Callable,
     Iterable,
@@ -559,3 +560,20 @@ def get_verbose_name(field_name, model):
     return next(
         filter(lambda f: f.name == field_name, model._meta.fields)
     ).verbose_name
+
+
+def patch_settings_from_module(settings, module_name):
+    settings = {
+        name: setting for name, setting in settings
+        if "SETTINGS" in name
+    }
+    patches = {
+        name: patch
+        for name, patch
+        in getmembers(
+            sys.modules[module_name], lambda obj: isinstance(obj, Mapping)
+        )
+        if name in settings.keys()
+    }
+    for name, patch in patches.items():
+        settings[name] |= patch

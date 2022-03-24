@@ -1,3 +1,9 @@
+import sys
+from inspect import getmembers
+
+from multidex_utils import patch_settings_from_module
+import plotter.config.user_output_style
+
 GRAPH_SETTINGS = {
     "paper_bgcolor": "white",
     "margin": {"l": 60, "r": 285, "t": 30, "b": 30},
@@ -14,3 +20,8 @@ AXIS_SETTINGS = {
 }
 BASE_SIZE = 1200
 SCATTER_POINT_SCALE = 1.5
+
+
+patch_settings_from_module(
+    getmembers(sys.modules[__name__]), "plotter.config.user_output_style"
+)

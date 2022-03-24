@@ -19,6 +19,7 @@ dependencies:
   - pandas
   - plotly
   - pytest
+  - fontconfig=2.13.94
   - itsdangerous=2.0.1
   - markupsafe=2.0.1
   - werkzeug==1.0.1
