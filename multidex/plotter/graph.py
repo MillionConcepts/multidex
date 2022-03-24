@@ -537,8 +537,8 @@ def make_zspec_browse_image_components(
 ):
     """
     ZSpec object, size factor (viewport units), image directory ->
-    pair of dash html.Img components containing the rgb and enhanced
-    images associated with that object, pathed to the assets image
+    dash html.Img component containing the natural-color image
+    associated with that object, mapped to the assets image
     route defined in the live app instance -- silly hack rn
     """
     file_info = zspec.overlay_browse_file_info(image_directory)

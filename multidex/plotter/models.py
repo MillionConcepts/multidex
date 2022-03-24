@@ -60,8 +60,6 @@ class ZSpec(XSpec):
         images = {}
         for image_type, filename in files.items():
             images[image_type + "_file"] = filename
-            with Image.open(Path(image_directory, filename)) as image:
-                images[image_type + "_size"] = image.size
         return images
 
 
@@ -75,24 +73,6 @@ class MSpec(XSpec):
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
     color_mappings = MERSPECT_MSL_COLOR_MAPPINGS | {"black": "#000000"}
-
-    # TODO: hacky?
-    #  yes, it absolutely is. Deprecate this completely, just fold direct
-    #  object introspection back in, as is currently happening in
-    #  graph.make_mspec_browse_image_components
-    def overlay_browse_file_info(self, image_directory: str) -> dict:
-        files = self.image_files()
-        images = {}
-        for image_type, filename in files.items():
-            if "roi" not in filename.lower():
-                continue
-            browse_filename = Path(filename).stem + "_browse.jpg"
-            images[image_type + "_file"] = browse_filename
-            with Image.open(
-                    Path(image_directory, browse_filename)
-            ) as image:
-                images[image_type + "_size"] = image.size
-        return images
 
 
 class CSpec(RoverSpectrum):
