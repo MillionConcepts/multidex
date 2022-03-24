@@ -102,7 +102,7 @@ class CSpec(RoverSpectrum):
     )
     target_distance = models.FloatField("Distance (m)", max_length=20, **B_N_I)
     lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
-    exposure = models.IntegerField("Exposure (ms)", max_length=50, **B_N_I)
+    exposure = models.IntegerField("Exposure (ms)", **B_N_I)
     target_type = models.CharField("Target Type", max_length=30, **B_N_I)
     target_type_shot_specific = models.CharField(
         "Target Type (shot specific)", max_length=60, **B_N_I
