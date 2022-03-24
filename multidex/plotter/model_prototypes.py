@@ -6,29 +6,29 @@ of database models in plotter.models
 from ast import literal_eval
 import datetime as dt
 from functools import cache
-from itertools import chain
 from typing import Optional, Sequence
 
 from cytoolz import keyfilter
 from django.db import models
+from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
 import pandas as pd
 import numpy as np
 
-# TODO: ewwwww
 from plotter import __version__
-from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
 from multidex_utils import modeldict
+from plotter.field_interface_definitions import (
+    METADATA_PROPERTIES,
+    DYNAMIC_PROPERTIES,
+    UNGRAPHABLE_FIELDS,
+)
 
-# these groupings may not be important, but are harmless at present
-
-# fields that notionally have to do with "observation-" level metadata,
-# however that is defined wrt mission-level divisions
-
-
-# default settings for SQL fields -- just a shorthand
+# default settings for SQL fields -- just a shorthand\
 B_N_I = {"blank": True, "null": True, "db_index": True}
 
-XCAM_SHARED_OBSERVATION_FIELDS = {
+# model / SQL fields that notionally have to do with "observation-" level
+# metadata, however that is defined wrt mission-level divisions
+# these groupings may not be important, but are harmless at present
+SHARED_OBSERVATION_FIELDS = {
     # name of entire sequence or observation
     "name": models.CharField("name", max_length=100, db_index=True),
     "sol": models.IntegerField("sol", **B_N_I),
@@ -36,9 +36,8 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
     "ltst": models.TimeField("local true solar time", **B_N_I),
     "seq_id": models.CharField("sequence id", max_length=20, **B_N_I),
     "rover_elevation": models.FloatField("rover elevation", **B_N_I),
-    "target_elevation": models.FloatField(
-        "target elevation", null=True, db_index=True
-    ),
+    "target_elevation": models.FloatField("target elevation", **B_N_I),
+    "target_distance": models.FloatField("target distance", **B_N_I),
     "target_lat": models.FloatField("target latitude", **B_N_I),
     "target_lon": models.FloatField("target longitude", **B_N_I),
     "tau": models.FloatField("tau", **B_N_I),
@@ -74,151 +73,39 @@ XCAM_SHARED_OBSERVATION_FIELDS = {
     ),
 }
 
-# fields that notionally have to do with single-spectrum (i.e., ROI)-level
-# metadata, however that is defined wrt mission-level divisions
-XCAM_SINGLE_SPECTRUM_FIELDS = {
-    # color of associated ROI
+# fields that notionally have to do with single-spectrum
+# (for imaging spectrometers, ROI)-level metadata, however that is defined
+# wrt mission-level divisions
+SINGLE_SPECTRUM_FIELDS = {
+    # color used to render a spectrum. for XCAM models, corresponds to the
+    # color of the ROI drawn by the original analyst.
     "color": models.CharField(
-        "ROI color", blank=True, max_length=20, db_index=True
+        "spectrum color", blank=True, max_length=20, db_index=True
     ),
     "feature": models.CharField("feature category", **B_N_I, max_length=45),
     # stringified dict of images associated with the spectrum
     "images": models.TextField(**B_N_I, default="{}"),
 }
 
-# TODO: consider flattening these into a dict
-#  using 'value' as keys
-# dictionaries defining generalized interface properties
-# for spectrum operation functions (band depth, etc.)
-SPECTRUM_OP_BASE_PROPERTIES = {"type": "method", "value_type": "quant"}
-SPECTRUM_OP_INTERFACE_PROPERTIES = (
-    {"value": "ref", "arity": 1},
-    {"value": "slope", "arity": 2},
-    {"value": "band_avg", "arity": 2},
-    {"value": "band_max", "arity": 2},
-    {"value": "band_min", "arity": 2},
-    {"value": "ratio", "arity": 2},
-    {"value": "band_depth", "arity": 3},
-)
-
-for op in SPECTRUM_OP_INTERFACE_PROPERTIES:
-    op |= SPECTRUM_OP_BASE_PROPERTIES
-
-REDUCTION_OP_BASE_PROPERTIES = {
-    "value_type": "quant",
-    "type": "decomposition",
-}
-
-PCA_INTERFACE_PROPERTIES = [{"function": "PCA", "value": "PCA"}]
-
-# TODO: figure out how to implement decomposition parameter
-#  controls; maybe this doesn't go here, it's a separate interface,
-#  something like that
-REDUCTION_OP_INTERFACE_PROPERTIES = PCA_INTERFACE_PROPERTIES
-for op in REDUCTION_OP_INTERFACE_PROPERTIES:
-    op |= REDUCTION_OP_BASE_PROPERTIES
-
-# TODO: this is ugly as sin, flatten / concatenate this somehow
-# dictionary defining generalized interface properties
-# for various XCAM fields
-XCAM_FIELD_INTERFACE_PROPERTIES = (
-    {"value": "feature", "value_type": "qual"},
-    {"value": "feature_subtype", "value_type": "qual"},
-    {"value": "ltst", "value_type": "quant"},
-    {"value": "sclk", "value_type": "quant"},
-    {"value": "zoom", "value_type": "qual"},
-    {"value": "group", "value_type": "qual"},
-    {"value": "formation", "value_type": "qual"},
-    {"value": "member", "value_type": "qual"},
-    {"value": "target_elevation", "value_type": "quant"},
-    {"value": "rover_elevation", "value_type": "quant"},
-    {"value": "target_lat", "value_type": "quant"},
-    {"value": "target_lon", "value_type": "quant"},
-    {"value": "sol", "value_type": "quant"},
-    {"value": "color", "value_type": "qual"},
-    {"value": "name", "value_type": "qual"},
-    {"value": "seq_id", "value_type": "qual"},
-    {"value": "tau", "value_type": "quant"},
-    {"value": "lat", "value_type": "quant"},
-    {"value": "lon", "value_type": "quant"},
-    {"value": "focal_distance", "value_type": "quant"},
-    {"value": "emission_angle", "value_type": "quant"},
-    {"value": "incidence_angle", "value_type": "quant"},
-    {"value": "phase_angle", "value_type": "quant"},
-    {"value": "rsm", "value_type": "quant"},
-    {"value": "target", "value_type": "qual"},
-    {"value": "compression", "value_type": "qual"},
-    {"value": "morphology", "value_type": "qual"},
-    {"value": "distance", "value_type": "qual"},
-    {"value": "location", "value_type": "qual"},
-    {"value": "workspace", "value_type": "qual"},
-    {"value": "compression_quality", "value_type": "quant"},
-    {"value": "scam", "value_type": "qual"},
-    {"value": "wtsn", "value_type": "qual"},
-    {"value": "srlc_spec", "value_type": "qual"},
-    {"value": "pixl", "value_type": "qual"},
-    {"value": "outcrop", "value_type": "qual"},
-    {"value": "min_count", "value_type": "quant"},
-    {"value": "analysis_name", "value_type": "qual"},
-    {"value": "float", "value_type": "qual"},
-    {"value": "rock_surface", "value_type": "qual"},
-    {"value": "grain_size", "value_type": "qual"},
-    {"value": "soil_location", "value_type": "qual"},
-    {"value": "soil_color", "value_type": "qual"},
-    {"value": "landform_type", "value_type": "qual"},
-    {"value": "odometry", "value_type": "quant"},
-    {"value": "lab_spectrum_type", "value_type": "qual"},
-    {"value": "distance_m", "value_type": "quant"},
-    {"value": "exposure", "value_type": "quant"},
-    {"value": "target_type", "value_type": "qual"},
-    {"value": "temp", "value_type": "quant"},
-    {"value": "target_type_shot_specific", "value_type": "qual"},
-    {"value": "lmst", "value_type": "quant"},
-    {"value": "instrument_elevation", "value_type": "quant"},
-    {"value": "instrument_azimuth", "value_type": "quant"},
-    {"value": "solar_azimuth", "value_type": "quant"},
-    {"value": "solar_elevation", "value_type": "quant"},
-    {"value": "temp", "value_type": "quant"},
-    {"value": "libs_before", "value_type": "qual"},
-    {"value": "raster_location", "value_type": "quant"},
-)
-
-XCAM_CALCULATED_PROPERTIES = (
-    # slightly special cases: these are computed at runtime
-    {"value": "filter_avg", "value_type": "quant", "type": "computed"},
-    {"value": "err_avg", "value_type": "quant", "type": "computed"},
-    {"value": "rel_err_avg", "value_type": "quant", "type": "computed"},
-)
-for prop in chain.from_iterable(
-    [
-        XCAM_FIELD_INTERFACE_PROPERTIES,
-        SPECTRUM_OP_INTERFACE_PROPERTIES,
-        REDUCTION_OP_INTERFACE_PROPERTIES,
-        XCAM_CALCULATED_PROPERTIES,
-    ]
-):
-    if "label" not in prop.keys():
-        prop["label"] = prop["value"]
-    if "type" not in prop.keys():
-        prop["type"] = "attribute"
-
-
-# ############### actual prototype classes #######################
-
-
-class XSpec(models.Model):
+# ############### prototype classes #######################
+class RoverSpectrum(models.Model):
     """
-    abstract class representing an ROI from an XCAM-family instrument
+    abstract class representing a spectrum extracted from data taken
+    by a rover-borne instrument
     """
 
-    # four-letter instrument designation: PCAM, MCAM, ZCAM, CCAM
+    # instrument designation, currently by convention four letters:
+    # PCAM, MCAM, ZCAM, CCAM
     instrument = None
     # brief and full instrument names
     instrument_brief_name = None
     instrument_full_name = None
 
-    # this property is populated in models.py
+    # these properties are populated dynamically in models.py
     field_names = None
+    filters = {}
+    # TODO: should be removed as a default (needs modifications to marslab)
+    virtual_filters = {}
 
     def clean(self, *args, **kwargs):
         self.modification_time = dt.datetime.utcnow().isoformat()[:-7] + "Z"
@@ -228,35 +115,33 @@ class XSpec(models.Model):
     @classmethod
     @cache
     def accessible_properties(cls):
-        return (
-            list(SPECTRUM_OP_INTERFACE_PROPERTIES)
-            + list(REDUCTION_OP_INTERFACE_PROPERTIES)
-            + list(XCAM_CALCULATED_PROPERTIES)
-            + [
-                fip
-                for fip in XCAM_FIELD_INTERFACE_PROPERTIES
-                if fip["value"] in cls.field_names
-            ]
+        relevant_metadata_properties = filter(
+            lambda record: record["value"] in cls.field_names,
+            METADATA_PROPERTIES,
+        )
+        return tuple(
+            list(relevant_metadata_properties) + list(DYNAMIC_PROPERTIES)
         )
 
     @classmethod
     @cache
     def graphable_properties(cls):
-        return [
-            ap
-            for ap in cls.accessible_properties()
-            if prop["value"]
-            not in ("color", "seq_id", "name", "analysis_name", "target")
-        ]
+        return tuple(
+            filter(
+                lambda prop: prop["value"] not in UNGRAPHABLE_FIELDS,
+                cls.accessible_properties(),
+            )
+        )
 
     @classmethod
     @cache
     def searchable_fields(cls):
-        return [
-            ap
-            for ap in cls.accessible_properties()
-            if (ap["type"] not in ("method", "decomposition"))
-        ]
+        return tuple(
+            filter(
+                lambda prop: prop["type"] not in ("method", "decomposition"),
+                cls.accessible_properties(),
+            )
+        )
 
     def image_files(self):
         images = getattr(self, "images")
@@ -264,6 +149,9 @@ class XSpec(models.Model):
             return {}
         return literal_eval(images)
 
+    # TODO: consider removing potential binocularity as a default.
+    #  that needs to happen at the marslab level. that might also make
+    #  polish_xcam_spectrum less horrifying.
     @cache
     def filter_values(
         self,
@@ -289,8 +177,45 @@ class XSpec(models.Model):
             average_filters=average_filters,
         )
 
+    # TODO: remove as a default
+    def all_filter_waves(self):
+        return self.filters | self.virtual_filters
+
+    def metadata_dict(self) -> dict:
+        """
+        metadata-summarizing function. could be made more efficient.
+        """
+        aprops = [a_prop["value"] for a_prop in self.accessible_properties()]
+        return keyfilter(lambda x: x in aprops, modeldict(self))
+
+    # noinspection PyUnresolvedReferences
+    def __str__(self):
+        return f"sol {self.sol}_{self.name}_{self.seq_id}"
+
+
+    class Meta:
+        abstract = True
+
+
+# add SQL fields to abstract rover spectrum model
+SPECTRUM_FIELDS = SINGLE_SPECTRUM_FIELDS | SHARED_OBSERVATION_FIELDS
+for field_name, cam_field in SPECTRUM_FIELDS.items():
+    cam_field.contribute_to_class(RoverSpectrum, field_name)
+
+
+class XSpec(RoverSpectrum):
+    """
+    abstract class representing a spectrum extracted from data taken
+    by an XCAM-family instrument (MCAM, ZCAM, perhaps PCAM)
+    """
+    formation = models.CharField("formation", **B_N_I, max_length=50)
+    member = models.CharField("member", **B_N_I, max_length=50)
+    float = models.CharField("floating / in-place", **B_N_I, max_length=15)
+
     @staticmethod
-    def make_scatter_annotations(metadata_df: pd.DataFrame, truncated_ids: Sequence[int]) -> np.ndarray:
+    def make_scatter_annotations(
+        metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
+    ) -> np.ndarray:
         meta = metadata_df.loc[truncated_ids]
         descriptor = meta["feature"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
@@ -305,27 +230,12 @@ class XSpec(models.Model):
         sol.loc[sol.isna()] = ""
         return (sol + meta["name"] + " " + descriptor).values
 
-    def all_filter_waves(self):
-        return self.filters | self.virtual_filters
-
-    def metadata_dict(self) -> dict:
-        """
-        metadata-summarizing function. could be made more efficient.
-        """
-        aprops = [a_prop["value"] for a_prop in self.accessible_properties()]
-        return keyfilter(lambda x: x in aprops, modeldict(self))
-
-    def __str__(self):
-        return f"sol {self.sol}_{self.name}_{self.seq_id}"
+    # noinspection PyUnresolvedReferences
+    def roi_hex_code(self) -> str:
+        return self.color_mappings[self.color]
 
     class Meta:
         abstract = True
-
-
-# add SQL fields to abstract xcam model
-XCAM_FIELDS = XCAM_SINGLE_SPECTRUM_FIELDS | XCAM_SHARED_OBSERVATION_FIELDS
-for field_name, cam_field in XCAM_FIELDS.items():
-    cam_field.contribute_to_class(XSpec, field_name)
 
 
 def filter_fields_factory(filter_name):

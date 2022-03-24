@@ -1,24 +1,31 @@
 from pathlib import Path
 from types import MappingProxyType
 
+import pandas as pd
+from typing import Sequence
+import numpy as np
 import PIL
 from django.db import models
 from marslab.compat.mertools import (
     MERSPECT_M20_COLOR_MAPPINGS,
     MERSPECT_MSL_COLOR_MAPPINGS,
 )
-
 from marslab.compat.xcam import DERIVED_CAM_DICT
-from plotter.model_prototypes import XSpec, filter_fields_factory, B_N_I
-import pandas as pd
-from typing import Sequence
-import numpy as np
+
+from plotter.model_prototypes import (
+    XSpec,
+    filter_fields_factory,
+    B_N_I,
+    RoverSpectrum,
+)
 
 
 class ZSpec(XSpec):
     zoom = models.CharField("Zoom Code", max_length=10, **B_N_I)
     # shared target identifier with other instruments, usually null
     target = models.CharField("Target", max_length=60, **B_N_I)
+    # TODO: some of this wants to move up to XCAM after MCAM asdf products
+    #  are ready for ingest
     # rover motion counter for the mast -- for repointed stereo
     # observations, this is the first RSM in the sequence
     rsm = models.IntegerField("RSM", **B_N_I)
@@ -26,7 +33,6 @@ class ZSpec(XSpec):
     file_timestamp = models.CharField(max_length=30, null=True)
     compression = models.CharField("compression", max_length=40, **B_N_I)
     compression_quality = models.IntegerField("compression quality", **B_N_I)
-    float = models.CharField("floating / in-place", max_length=20, **B_N_I)
     rock_surface = models.CharField("rock surface", max_length=50, **B_N_I)
     grain_size = models.CharField("grain size", max_length=20, **B_N_I)
     soil_location = models.CharField("soil location", max_length=50, **B_N_I)
@@ -36,26 +42,18 @@ class ZSpec(XSpec):
     location = models.CharField("location", max_length=60, **B_N_I)
     landform_type = models.CharField("landform type", max_length=25, **B_N_I)
     workspace = models.CharField("workspace", max_length=40, **B_N_I)
-    analysis_name = models.CharField(
-        "analysis name", max_length=30, **B_N_I
-    )
+    analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
     min_count = models.IntegerField("minimum pixel count", **B_N_I)
-
     # coordinated observations
     scam = models.CharField("SCAM", **B_N_I, max_length=50)
     wtsn = models.CharField("WTSN", **B_N_I, max_length=50)
     srlc_spec = models.CharField("SRLC SPEC", **B_N_I, max_length=50)
     pixl = models.CharField("PIXL", **B_N_I, max_length=50)
-    formation = models.CharField("formation", **B_N_I, max_length=50)
-    member = models.CharField("member", **B_N_I, max_length=50)
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 
     color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
-
-    def roi_hex_code(self) -> str:
-        return self.color_mappings[self.color]
 
     def overlay_browse_file_info(self, image_directory: str) -> dict:
         files = self.image_files()
@@ -68,12 +66,7 @@ class ZSpec(XSpec):
 
 
 class MSpec(XSpec):
-    # large-to-small taxonomic categories for rock clusters
     group = models.CharField("group", **B_N_I, max_length=50)
-    formation = models.CharField("formation", **B_N_I, max_length=50)
-    member = models.CharField("member", **B_N_I, max_length=50)
-    notes = models.CharField("notes", **B_N_I, max_length=100)
-    float = models.CharField("floating / in-place", **B_N_I, max_length=15)
     feature_subtype = models.CharField(
         "feature subtype", **B_N_I, max_length=45
     )
@@ -82,9 +75,6 @@ class MSpec(XSpec):
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
     color_mappings = MERSPECT_MSL_COLOR_MAPPINGS | {"black": "#000000"}
-
-    def roi_hex_code(self) -> str:
-        return self.color_mappings[self.color]
 
     # TODO: hacky?
     #  yes, it absolutely is. Deprecate this completely, just fold direct
@@ -99,27 +89,34 @@ class MSpec(XSpec):
             browse_filename = Path(filename).stem + "_browse.jpg"
             images[image_type + "_file"] = browse_filename
             with PIL.Image.open(
-                Path(image_directory, browse_filename)
+                    Path(image_directory, browse_filename)
             ) as image:
                 images[image_type + "_size"] = image.size
         return images
 
 
-class CSpec(XSpec):
+class CSpec(RoverSpectrum):
     target = models.CharField("Target", **B_N_I, max_length=50)
-    type_of_product = models.CharField("Type of Product", **B_N_I, max_length=50)
-    distance_m = models.FloatField("Distance (m)", max_length=20, **B_N_I)
+    type_of_product = models.CharField(
+        "Type of Product", **B_N_I, max_length=50
+    )
+    target_distance = models.FloatField("Distance (m)", max_length=20, **B_N_I)
     lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
     exposure = models.IntegerField("Exposure (ms)", max_length=50, **B_N_I)
     target_type = models.CharField("Target Type", max_length=30, **B_N_I)
-    target_type_shot_specific = models.CharField("Target Type (shot specific)", max_length=60, **B_N_I)
-    instrument_elevation = models.FloatField("Instrument Elevation (deg)", **B_N_I)
+    target_type_shot_specific = models.CharField(
+        "Target Type (shot specific)", max_length=60, **B_N_I
+    )
+    instrument_elevation = models.FloatField(
+        "Instrument Elevation (deg)", **B_N_I
+    )
     instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
     solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
     solar_elevation = models.FloatField("Solar Elevation (deg)", **B_N_I)
     temp = models.FloatField("Instrument Temperature (C)", **B_N_I)
-    libs_before = models.CharField("LIBS before or after passive",  max_length=30, **B_N_I)
-    notes = models.CharField("Notes", **B_N_I, max_length=100)
+    libs_before = models.CharField(
+        "LIBS before or after passive", max_length=30, **B_N_I
+    )
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
 
     instrument = "CCAM"
@@ -137,23 +134,31 @@ class CSpec(XSpec):
         has_sol = sol.loc[sol.notna()].index
         if len(has_sol) > 0:
             # + operation throws an error if there is nothing to add to
-            sol.loc[has_sol] = (
-                    sol.loc[has_sol].apply("{:.0f}".format) + " "
-            )
+            sol.loc[has_sol] = sol.loc[has_sol].apply("{:.0f}".format) + " "
         sol.loc[sol.isna()] = ""
         raster = meta["raster_location"].copy()
         has_raster = raster.loc[raster.notna()].index
-        raster.loc[has_raster] = raster.loc[has_raster].apply("{:.0f}".format) + " "
-        return (meta["name"] + "<br>sol: " + sol + "<br>target: " + descriptor + "<br>raster #: " + raster).values
+        raster.loc[has_raster] = (
+                raster.loc[has_raster].apply("{:.0f}".format) + " "
+        )
+        return (
+                meta["name"]
+                + "<br>sol: "
+                + sol
+                + "<br>target: "
+                + descriptor
+                + "<br>raster #: "
+                + raster
+        ).values
 
 
-class TestSpec(XSpec):
+class TestSpec(RoverSpectrum):
     instrument = "TEST"
     filters = {"test": 100}
     virtual_filters = {"test": 100}
 
 
-# bulk setup for each XCAM instrument
+# bulk setup for each instrument
 for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:
     # add fields to each model
     setattr(
@@ -194,7 +199,6 @@ for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:
         mean_field, err_field = filter_fields_factory(filt)
         mean_field.contribute_to_class(spec_model, filt.lower())
         err_field.contribute_to_class(spec_model, filt.lower() + "_err")
-
 
 # for automated model selection
 INSTRUMENT_MODEL_MAPPING = MappingProxyType(
