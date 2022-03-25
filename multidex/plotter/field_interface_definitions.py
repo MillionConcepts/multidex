@@ -71,7 +71,6 @@ QUANTITATIVE_METADATA_FIELDS = (
     "target_lon",
     "tau",
     "temp",
-    "temp",
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = ("filter_avg", "err_avg", "rel_err_avg")
