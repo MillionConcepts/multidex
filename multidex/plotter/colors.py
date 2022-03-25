@@ -13,7 +13,7 @@ import plotly.colors as pcolors
 import plotly.graph_objects as go
 from more_itertools import windowed
 
-from plotter.config.marker_style import SOLID_MARKER_COLORS
+from plotter.config.marker_style import SOLID_MARKER_COLOR_SETTINGS
 
 PLOTLY_COLOR_MODULES = (
     pcolors.sequential,
@@ -259,7 +259,7 @@ def generate_palette_options(
     scale_value, palette_value, remembered_value, allow_none=False
 ):
     if scale_value == "solid":
-        output_options = list(SOLID_MARKER_COLORS)
+        output_options = list(SOLID_MARKER_COLOR_SETTINGS)
     else:
         colormaps = get_plotly_colorscales()
         output_options = [

@@ -11,8 +11,8 @@ from plotter.colors import discretize_color_representations
 from plotter.spectrum_ops import d2r
 from plotter.config.graph_style import (
     ANNOTATION_SETTINGS,
-    GRAPH_DISPLAY_DEFAULTS,
-    AXIS_DISPLAY_DEFAULTS,
+    GRAPH_DISPLAY_SETTINGS,
+    AXIS_DISPLAY_SETTINGS,
     SEARCH_FAILURE_MESSAGE_SETTINGS,
 )
 
@@ -27,11 +27,18 @@ def style_data(
     marker_property_dict=None,
     zoom=None,
 ):
-    axis_display_dict = AXIS_DISPLAY_DEFAULTS | axis_display_settings
+    axis_display_dict = AXIS_DISPLAY_SETTINGS | axis_display_settings
     # noinspection PyTypeChecker
-    fig.update_xaxes(axis_display_dict | {"title_text": x_title, "categoryorder": "category ascending"})
-    fig.update_yaxes(axis_display_dict | {"title_text": y_title, "categoryorder": "category ascending"})
-    # fig.update_traces(**marker_property_dict)
+    fig.update_xaxes(
+        axis_display_dict | {
+            "title_text": x_title, "categoryorder": "category ascending"
+        }
+    )
+    fig.update_yaxes(
+        axis_display_dict | {
+            "title_text": y_title, "categoryorder": "category ascending"
+        }
+    )
     if (
         (marker_axis_type == "qual")
         # don't try to discretize solid colors
@@ -63,7 +70,7 @@ def draw_errors_on_figure(fig, errors):
 
 
 def apply_canvas_style(fig, graph_display_settings):
-    display_dict = GRAPH_DISPLAY_DEFAULTS | graph_display_settings
+    display_dict = GRAPH_DISPLAY_SETTINGS | graph_display_settings
     fig.update_layout(display_dict)
 
 
@@ -198,18 +205,19 @@ def spectrum_line_graph(
         filt + ", " + str(spectrum_data[filt]["wave"])
         for filt in spectrum_data
     ]
-    # create y_axis_range based on min y-value. Pin to zero unless there are negative values
+    # create y_axis_range based on min y-value. Pin to zero unless there are
+    # negative values
     if min(y_axis) < 0:
         y_axis_range = [min(y_axis) - 0.05, max(y_axis) + 0.05]
     else:
         y_axis_range = [0, min(y_axis) + max(y_axis)]
     fig = go.Figure(
         layout={
-            **GRAPH_DISPLAY_DEFAULTS,
-            "xaxis": AXIS_DISPLAY_DEFAULTS
-            | {"title_text": "wavelength", "title_standoff": 5},
-            "yaxis": AXIS_DISPLAY_DEFAULTS
-            | {
+            **GRAPH_DISPLAY_SETTINGS,
+            "xaxis": AXIS_DISPLAY_SETTINGS
+                     | {"title_text": "wavelength", "title_standoff": 5},
+            "yaxis": AXIS_DISPLAY_SETTINGS
+                     | {
                 "title_text": "reflectance",
                 "range": y_axis_range,
                 "title_standoff": 4,

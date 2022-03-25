@@ -565,7 +565,7 @@ def get_verbose_name(field_name, model):
 def patch_settings_from_module(settings, module_name):
     settings = {
         name: setting for name, setting in settings
-        if "SETTINGS" in name
+        if "SETTING" in name
     }
     patches = {
         name: patch

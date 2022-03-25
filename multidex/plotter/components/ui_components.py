@@ -10,11 +10,11 @@ from dash.html import Div
 from multidex_utils import none_to_empty
 from plotter.colors import generate_palette_options, get_scale_type
 from plotter.config.graph_style import (
-    GRAPH_DISPLAY_DEFAULTS,
+    GRAPH_DISPLAY_SETTINGS,
     GRAPH_CONFIG_SETTINGS,
     css_variables,
 )
-from plotter.config.marker_style import MARKER_SYMBOLS
+from plotter.config.marker_style import MARKER_SYMBOL_SETTINGS
 
 
 # note that style properties are camelCased rather than hyphenated in
@@ -146,7 +146,7 @@ def dynamic_spec_div() -> html.Div:
 
 def main_graph(style) -> dcc.Graph:
     """dash component factory for main graph"""
-    fig = go.Figure(layout={**GRAPH_DISPLAY_DEFAULTS})
+    fig = go.Figure(layout={**GRAPH_DISPLAY_SETTINGS})
     # noinspection PyTypeChecker
     return dcc.Graph(
         id="main-graph",
@@ -159,7 +159,7 @@ def main_graph(style) -> dcc.Graph:
 
 def spec_graph(name: str) -> dcc.Graph:
     """dash component factory for reflectance graphs"""
-    fig = go.Figure(layout={**GRAPH_DISPLAY_DEFAULTS})
+    fig = go.Figure(layout={**GRAPH_DISPLAY_SETTINGS})
     # noinspection PyTypeChecker
     return dcc.Graph(
         id=name,
@@ -730,7 +730,7 @@ def marker_options_div(settings: Mapping) -> Div:
                 id="marker-symbol-drop",
                 className="medium-drop filter-drop",
                 value=marker_symbol,
-                options=MARKER_SYMBOLS,
+                options=MARKER_SYMBOL_SETTINGS,
             ),
         ],
     )
@@ -825,7 +825,7 @@ def display_controls_div(settings: Mapping) -> html.Div:
         gridcolor = "#000000"
     # defensive backwards-compatibility thing
     elif "gridcolor" not in settings.keys():
-        gridcolor = GRAPH_DISPLAY_DEFAULTS["gridcolor"]
+        gridcolor = GRAPH_DISPLAY_SETTINGS["gridcolor"]
     else:
         gridcolor = settings["gridcolor"]
     return html.Div(
@@ -898,7 +898,7 @@ def highlight_options_div(size, color, symbol) -> html.Div:
                 className="medium-drop filter-drop",
                 value=symbol,
                 options=[{"label": "none", "value": "none"}]
-                + list(MARKER_SYMBOLS),
+                + list(MARKER_SYMBOL_SETTINGS),
             ),
         ],
     )

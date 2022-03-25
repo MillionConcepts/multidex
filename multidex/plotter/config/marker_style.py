@@ -9,7 +9,7 @@ from inspect import getmembers
 from multidex_utils import patch_settings_from_module
 import plotter.config.user_marker_style
 
-SOLID_MARKER_COLORS = (
+SOLID_MARKER_COLOR_SETTINGS = (
     {"label": "aqua", "value": "aqua"},
     {"label": "aquamarine", "value": "aquamarine"},
     {"label": "azure", "value": "azure"},
@@ -128,7 +128,7 @@ SOLID_MARKER_COLORS = (
     {"label": "yellowgreen", "value": "yellowgreen"},
 )
 
-MARKER_SYMBOLS = (
+MARKER_SYMBOL_SETTINGS = (
     {"label": "circle", "value": "circle"},
     {"label": "circle-open", "value": "circle-open"},
     {"label": "circle-dot", "value": "circle-dot"},

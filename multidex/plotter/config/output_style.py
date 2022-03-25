@@ -18,8 +18,8 @@ AXIS_SETTINGS = {
     "title": {"font": {"size": 24, "color": "black"}, "standoff": 30},
     "tickfont": {"size": 18, "color": "black"},
 }
-BASE_SIZE = 1200
-SCATTER_POINT_SCALE = 1.5
+BASE_SIZE_SETTING = 1200
+SCATTER_POINT_SCALE_SETTING = 1.5
 
 
 patch_settings_from_module(

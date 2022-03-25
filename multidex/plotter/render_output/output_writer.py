@@ -8,12 +8,12 @@ import wand.image
 
 import plotter.application
 from plotter.config.output_style import (
-    BASE_SIZE,
+    BASE_SIZE_SETTING,
     GRAPH_SETTINGS,
     AXIS_SETTINGS,
     MARKER_SETTINGS,
     COLORBAR_SETTINGS,
-    SCATTER_POINT_SCALE,
+    SCATTER_POINT_SCALE_SETTING,
 )
 
 
@@ -59,9 +59,9 @@ def apply_output_image_style(fig):
     fig.update_yaxes(**AXIS_SETTINGS)
     marker = next(fig.select_traces()).marker
     if isinstance(marker.size, int):
-        marker_size = marker.size * SCATTER_POINT_SCALE
+        marker_size = marker.size * SCATTER_POINT_SCALE_SETTING
     else:
-        marker_size = [SCATTER_POINT_SCALE * size for size in marker.size]
+        marker_size = [SCATTER_POINT_SCALE_SETTING * size for size in marker.size]
     # hacky, but the alternative seems to be editing its transform attribute...
     colorbar_dict = COLORBAR_SETTINGS.copy()
     # again, hacky to use typesetting as layout, but...
@@ -98,8 +98,8 @@ def save_main_scatter_plot(scatter_fig_dict, aspect_ratio, instrument_code):
     scatter_fig = apply_output_image_style(scatter_fig)
     svgtext = scatter_fig.to_image(
         format="svg",
-        width=BASE_SIZE * aspect_ratio,
-        height=BASE_SIZE,
+        width=BASE_SIZE_SETTING * aspect_ratio,
+        height=BASE_SIZE_SETTING,
     ).decode()
     wand_image = inject_fonts_and_reload(svgtext)
     fn_timestamp = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
