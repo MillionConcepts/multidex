@@ -13,16 +13,20 @@ server in multiple tabs or windows. Behavior in this case is undefined. However,
 from the command line, it will open additional servers, incrementing the port number by one each time. Accessing these
 servers separately should be completely safe.
 
+More detailed usage instructions, including a user manual and tutorials, are 
+forthcoming.
+
 ### observational data and metadata
-Monolithic .sqlite3 database files are distributed separately from this application. They go in 
-[multidex/data](multidex/data/) Please contact the repository maintainers if you need and do not have access to these 
-files.
+Monolithic .sqlite3 database files and compressed browse images are 
+distributed separately from this application. Please contact the repository 
+maintainers if you need and do not have access to these files.
 
 ### known issues
 * the spectra-info dialog is not currently properly draggable on Firefox. A fix is planned.
 * image export does not work on Windows. A fix for this is also planned.
 
 ### licensing notes
-This code carries a BSD 3-Clause license. You can do nearly anything that you want with it. _However_, **some content
-in or referenced data by this repository may be subject to the MSL and/or Mars 2020 Team Guidelines, so please act 
-accordingly.**
+This code carries a BSD 3-Clause license. You can do nearly anything that 
+you want with it. _However_, **some data referenced by code in this 
+repository may be subject to the MSL and/or Mars 2020 Team Guidelines, so 
+please act accordingly.**
