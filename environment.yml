@@ -25,7 +25,6 @@ dependencies:
   - itsdangerous=2.0.1
   - markupsafe=2.0.1
   - matplotlib
-  - werkzeug==1.0.1
   - git
   - pip
   - python-kaleido
@@ -33,9 +32,3 @@ dependencies:
   - pip:
     - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
-
-
-
-# TODO: find some way to deal with the posixemulation deprecation in werkzeug -- PR to flask-caching, vendoring?
-
-
