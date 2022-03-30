@@ -1,3 +1,4 @@
+import platform
 import random
 import shutil
 from pathlib import Path
@@ -6,7 +7,6 @@ import flask
 import flask.cli
 import pandas as pd
 from dash import dash
-from flask_caching import Cache
 from flask_caching.backends import FileSystemCache
 
 from multidex_utils import qlist, model_metadata_df
@@ -25,6 +25,8 @@ from plotter.layout import multidex_body
 from plotter.graph import cache_set, cache_get
 from plotter.models import INSTRUMENT_MODEL_MAPPING
 
+from plotter.application.windows_cache_helper import WindowsFileSystemCache
+
 
 def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # initialize the app itself. HTML / react objects and callbacks from them
@@ -36,11 +38,17 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
         paper = Paper(f"multidex_{instrument_code.lower()}_{cache_prefix}")
         cache = Notepad(paper.prefix)
     else:
-        cache = FileSystemCache.factory(
+        if platform.system() == 'Windows':
+            # TODO: hopefully temporary;
+            #  see https://github.com/pallets-eco/flask-caching/issues/309
+            cache_class = WindowsFileSystemCache
+        else:
+            cache_class = FileSystemCache
+        cache = cache_class.factory(
             app.server,
             config=configure_flask_cache(cache_prefix),
             args=[],
-            kwargs={}
+            kwargs={'default_timeout': 0}
         )
     spec_model = INSTRUMENT_MODEL_MAPPING[instrument_code.upper()]
     # active queryset is explicitly stored in global cache, as are
