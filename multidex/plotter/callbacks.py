@@ -43,6 +43,7 @@ from plotter.graph import (
     format_display_settings,
     spectrum_values_range,
     handle_graph_search,
+    make_cspec_browse_image_components,
     make_zspec_browse_image_components,
     make_mspec_browse_image_components,
     pretty_print_search_params,
@@ -535,7 +536,7 @@ def update_spectrum_images(
     # TODO: turn this into a dispatch function, if this ends up actually
     #  wanting distinct behavior
     if spec_model.instrument == "CCAM":
-        return
+        return make_cspec_browse_image_components(spectrum, image_directory, static_image_url)
     if spec_model.instrument == "ZCAM":
         return make_zspec_browse_image_components(
             spectrum, image_directory, static_image_url
