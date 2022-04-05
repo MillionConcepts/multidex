@@ -575,13 +575,14 @@ def make_cspec_browse_image_components(
     """
     image_div_children = []
     img = literal_eval(cspec.images)
-    if img is None or not img:
+    img = img[0]
+    if img is None:
         img = "missing.jpg"
-    filename = static_image_url + "/" + img[0]
+    filename = static_image_url + "/" + img
     image_div_children.append(
             html.Img(
                 src=filename,
-                style={"maxWidth": "70%", "maxHeight": "70%"},
+                style={"maxWidth": "100%", "maxHeight": "100%"},
                 id="spec-image-cspec",
             )
         )
