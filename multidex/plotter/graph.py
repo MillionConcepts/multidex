@@ -563,6 +563,32 @@ def make_zspec_browse_image_components(
     )
 
 
+#  new layout
+def make_cspec_browse_image_components(
+    cspec: "CSpec", image_directory, static_image_url
+):
+    """
+    CSpec object, size factor (viewport units), image directory ->
+    dash html.Img component containing the natural-color image
+    associated with that object, mapped to the assets image
+    route defined in the live app instance -- silly hack rn
+    """
+    image_div_children = []
+    img = literal_eval(cspec.images)
+    img = img[0]
+    if img is None:
+        img = "missing.jpg"
+    filename = static_image_url + "/" + img
+    image_div_children.append(
+            html.Img(
+                src=filename,
+                style={"maxWidth": "100%", "maxHeight": "100%"},
+                id="spec-image-cspec",
+            )
+        )
+    return html.Div(children=image_div_children)
+
+
 def load_state_into_application(search_file, spec_model, cget, cset):
     """loads saved application state into the primary application panel."""
     with open(search_file) as save_csv:
