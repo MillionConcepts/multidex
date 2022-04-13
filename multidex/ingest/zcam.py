@@ -165,7 +165,10 @@ def save_thumb(filename, row):
         print(f"failed on {filename}: {type(ex)}: {ex}")
         return False, ex
 
+
 def save_relevant_thumbs(context_df):
+    if "save" not in context_df.columns:
+        return {}
     to_save = context_df.loc[context_df["save"] == True]
     thumb_path = THUMB_PATH
     results = []
@@ -217,9 +220,26 @@ def format_for_multidex(frame):
 
 def ingest_marslab_file(marslab_file, context_df):
     frame = pd.read_csv(marslab_file)
-    if frame["INSTRUMENT"].iloc[0] != "ZCAM":
-        print("skipping non-ZCAM file: " + marslab_file)
-        return False, "does not appear to be a ZCAM file", context_df
+    if "INSTRUMENT" in frame.columns:
+        # TODO: maybe put the hard version of this check back after getting
+        #  INSTRUMENT into the rc_marslab files
+        if frame["INSTRUMENT"].iloc[0] != "ZCAM":
+            print("skipping non-ZCAM file: " + marslab_file)
+            return False, "does not appear to be a ZCAM file", context_df
+    # don't ingest duplicate copies of rc-file-derived caltarget values
+    if 'FEATURE' in frame.columns:
+        if (frame['FEATURE'] == 'caltarget').all():
+            # TODO: make this nicer
+            sol = ZSpec.objects.filter(
+                sol__iexact=frame['SOL'].iloc[0]
+            )
+            seq_id = sol.filter(seq_id__iexact=frame['SEQ_ID'].iloc[0])
+            geometry = seq_id.filter(
+                incidence_angle__iexact=frame["INCIDENCE_ANGLE"].iloc[0]
+            )
+            if len(geometry) > 0:
+                print(f"dupe caltarget values {marslab_file}, skipping")
+                return False, "dupe caltarget file", context_df
     if frame["COLOR"].eq("-").all():
         print(f"no spectra in {marslab_file}, skipping")
         return False, "no spectra in file", context_df
@@ -236,6 +256,7 @@ def ingest_marslab_file(marslab_file, context_df):
             print("no matching images found")
     else:
         obs_images = {}
+
     # regularize various ways people may have rendered metadata fields
     try:
         frame = format_for_multidex(frame)
@@ -289,10 +310,11 @@ def perform_ingest(
                 "exception": ex,
             }
         )
-    if not skip_thumbnails:
-        print("making thumbnails")
-        nailpipe = default_thumbnailer()
-        context_df = context_df.loc[context_df["save"]].copy()
-        context_df["buffer"] = context_df["path"].apply(nailpipe.execute)
+    if skip_thumbnails:
+        return results
+    print("making thumbnails")
+    nailpipe = default_thumbnailer()
+    context_df = context_df.loc[context_df["save"]].copy()
+    context_df["buffer"] = context_df["path"].apply(nailpipe.execute)
     thumb_results = save_relevant_thumbs(context_df)
     return results + thumb_results

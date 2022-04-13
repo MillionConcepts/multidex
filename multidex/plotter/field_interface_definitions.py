@@ -41,6 +41,11 @@ QUALITATIVE_METADATA_FIELDS = (
     "workspace",
     "wtsn",
     "zoom",
+    # rc properties
+    "rc_seq_id",
+    # caltarget roi only
+    "caltarget_element"
+
 )
 # metadata fields we should treat as quantitative / continuous
 QUANTITATIVE_METADATA_FIELDS = (
@@ -71,6 +76,16 @@ QUANTITATIVE_METADATA_FIELDS = (
     "target_lon",
     "tau",
     "temp",
+    # rc-file fields
+    "rc_sol",
+    "rc_solar_azimuth",
+    "rc_incidence_angle",
+    "rc_azimuth_angle",
+    "rc_emission_angle",
+    "rc_scaling_factor",
+    "rc_uncertainty",
+    # rc data field
+    "azimuth_angle"
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = ("filter_avg", "err_avg", "rel_err_avg")

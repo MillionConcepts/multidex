@@ -1,10 +1,8 @@
-from pathlib import Path
 from types import MappingProxyType
-
-import pandas as pd
 from typing import Sequence
+
 import numpy as np
-from PIL import Image
+import pandas as pd
 from django.db import models
 from marslab.compat.mertools import (
     MERSPECT_M20_COLOR_MAPPINGS,
@@ -50,6 +48,27 @@ class ZSpec(XSpec):
     srlc_spec = models.CharField("SRLC SPEC", **B_N_I, max_length=50)
     pixl = models.CharField("PIXL", **B_N_I, max_length=50)
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
+    # radiometric calibration file metadata fields
+    rc_caltarget_file = models.CharField(
+        "caltarget file", max_length=80, **B_N_I
+    )
+    rc_sol = models.IntegerField("caltarget sol", **B_N_I)
+    rc_seq_id = models.CharField("caltarget seq id", max_length=10, **B_N_I)
+    rc_ltst = models.TimeField("caltarget ltst", **B_N_I)
+    rc_solar_azimuth = models.FloatField("caltarget solar azimuth", **B_N_I)
+    # caltarget geometry based on values at black chip center
+    rc_incidence_angle = models.FloatField(
+        "caltarget incidence angle", **B_N_I
+    )
+    rc_azimuth_angle = models.FloatField("caltarget azimuth angle", **B_N_I)
+    rc_emission_angle = models.FloatField("caltarget emission angle", **B_N_I)
+    rc_scaling_factor = models.FloatField("rad-to-iof scaling factor", **B_N_I)
+    rc_uncertainty = models.FloatField("rc uncertainty", **B_N_I)
+    # value given in rc files -- perhaps temporary
+    azimuth_angle = models.FloatField("azimuth angle (rc)", **B_N_I)
+    caltarget_element = models.CharField(
+        "caltarget_element", max_length=30, **B_N_I
+    )
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 
