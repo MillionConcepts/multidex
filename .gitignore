@@ -21,6 +21,7 @@
 /multidex/plotter/cruft_holder/
 /multidex/plotter/application/assets/browse/mcam/*.jpg
 /multidex/plotter/application/assets/browse/zcam/*.jpg
+/multidex/plotter/application/assets/browse/ccam/*.png
 /multidex/data/*CAM*.sqlite3
 /multidex/data/TEST.sqlite3
 /multidex/data/*.csv
