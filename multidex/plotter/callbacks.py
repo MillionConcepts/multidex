@@ -727,14 +727,13 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
             axis=1,
         )
         .loc[search_ids]
-        # .sort_values(by="SEQ_ID")
     ).reset_index(drop=True)
     axes = cget("graph_contents")
     axes.columns = list(
         map(lambda x: re.sub(r"[%\. ]", "_", x.upper()), axes.columns)
     )
     axes = axes[[c for c in axes.columns if c not in output_df.columns]]
-    output_df = pd.concat([output_df, axes], axis=1)
+    output_df = pd.concat([output_df, axes], axis=1).sort_values(by="SEQ_ID")
     filename_base = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     output_path = Path("exports", "csv", spec_model.instrument.lower())
     os.makedirs(output_path, exist_ok=True)
