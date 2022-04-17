@@ -288,7 +288,7 @@ def component_drop(element_id, value, label_content=None, options=None):
     if options is None:
         options = [
             {"label": str(component_ix + 1), "value": component_ix}
-            for component_ix in range(8)
+            for component_ix in range(6)
         ]
     if label_content is None:
         label_content = "component #"

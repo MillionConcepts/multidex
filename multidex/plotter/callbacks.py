@@ -323,11 +323,18 @@ def update_main_graph(
     graph_df = pd.DataFrame({"customdata": truncated_ids})
     # storing these separately because the API for error bars is annoying
     errors = {}
-    graph_df["x"], errors["x"], x_title = make_axis(x_settings, *graph_content)
-    graph_df["y"], errors["y"], y_title = make_axis(y_settings, *graph_content)
+    # passing cset into these in order to record eigenvectors & variances
+    # for reduction operations. doing this asynchronously is not my favorite
+    # thing in the world, but it _is_ special-case-y.
+    graph_df["x"], errors["x"], x_title = make_axis(
+        x_settings, cset, *graph_content
+    )
+    graph_df["y"], errors["y"], y_title = make_axis(
+        y_settings, cset, *graph_content
+    )
     # similarly for marker properties
     marker_properties, color, coloraxis, marker_axis_type = make_markers(
-        marker_settings, *graph_content
+        marker_settings, cset, *graph_content
     )
     # place color in graph df column so it works properly with split highlights
     graph_df["color"] = color
@@ -716,10 +723,19 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
         .loc[search_ids]
         .sort_values(by="SEQ_ID")
     )
-    filename = dt.datetime.now().strftime("%Y%m%dT%H%M%S") + ".csv"
+
+    filename_base = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     output_path = Path("exports", "csv", spec_model.instrument.lower())
     os.makedirs(output_path, exist_ok=True)
-    output_df.to_csv(Path(output_path, filename), index=None)
+    output_df.to_csv(Path(output_path, filename_base + ".csv"), index=None)
+    if any([
+        "PCA" in cget(f"{axis}_settings").values()
+        for axis in ("x", "y", "marker")
+    ]):
+        cget("eigenvector_df").to_csv(
+            Path(output_path, filename_base + "-eigen.csv")
+        )
+
     # todo: huh?
     return 1
 

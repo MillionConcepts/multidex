@@ -5,15 +5,17 @@ from sklearn.pipeline import Pipeline
 
 
 def transform_df(df, skl_pipeline):
-    transform = skl_pipeline.fit_transform(df)
-    transform = pd.DataFrame(transform)
+    fit_pipeline = skl_pipeline.fit(df)
+    transform = pd.DataFrame(fit_pipeline.transform(df))
     if "reduce" in skl_pipeline.named_steps.keys():
         transform.columns = [
             "PC" + str(column + 1) for column in transform.columns
         ]
+        eigenvectors = fit_pipeline.named_steps['reduce'].components_
     else:
         transform.columns = df.columns
-    return transform
+        eigenvectors = None
+    return transform, eigenvectors
 
 
 def reduction_pipeline(norm, scale, reduce):
@@ -24,7 +26,7 @@ def reduction_pipeline(norm, scale, reduce):
 
 def default_multidex_pipeline():
     return reduction_pipeline(
-        Normalizer(), StandardScaler(), PCA(n_components=8)
+        Normalizer(), StandardScaler(), PCA(n_components=6)
     )
 
 
@@ -34,6 +36,8 @@ def explained_variance_ratios(array):
     return variances / total
 
 
-def transform_and_explain_variance(df, skl_pipeline):
-    transform = transform_df(df, skl_pipeline)
-    return transform, explained_variance_ratios(transform)
+def transform_and_explain(df, skl_pipeline):
+    transform, eigenvectors = transform_df(df, skl_pipeline)
+    ratios = explained_variance_ratios(transform)
+    ratios.name = "explained_variance"
+    return transform, eigenvectors, ratios

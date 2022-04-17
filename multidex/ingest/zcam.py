@@ -1,7 +1,9 @@
 import os
 import re
-from operator import attrgetter
+from functools import reduce
+from operator import attrgetter, and_
 from pathlib import Path
+from typing import Callable
 
 import django.db.models
 import numpy as np
@@ -77,10 +79,16 @@ THUMB_PATH = "plotter/application/assets/browse/zcam/"
 ZSPEC_FIELD_NAMES = list(map(attrgetter("name"), ZSpec._meta.fields))
 
 
-def looks_like_marslab(fn: str) -> bool:
-    return bool(
-        ("marslab" in fn) and not ("extended" in fn) and (fn.endswith(".csv"))
-    )
+def marslab_looker(ingest_rc: bool = False) -> Callable[[str], bool]:
+    def looks_like_marslab(fn: str) -> bool:
+        filts = [
+            ("marslab" in fn), (not ("extended" in fn)), (fn.endswith(".csv"))
+        ]
+        if ingest_rc is False:
+            filts.append((not ("_rc_" in fn)))
+        return reduce(and_, filts)
+
+    return looks_like_marslab
 
 
 def looks_like_context(fn: str) -> bool:
@@ -93,7 +101,10 @@ def directory_of(path: Path) -> str:
     return str(path.parent)
 
 
-def find_ingest_files(path: Path, recursive: bool = False):
+def find_ingest_files(
+    path: Path, recursive: bool = False, ingest_rc: bool = False
+):
+    looks_like_marslab = marslab_looker(ingest_rc)
     if recursive:
         tree = OSFS(directory_of(path))
         marslab_files = map(
@@ -279,6 +290,7 @@ def perform_ingest(
     *,
     recursive: "r" = False,
     skip_thumbnails: "t" = False,
+    ingest_rc: "c" = False
 ):
     """
     ingests zcam -marslab.csv files and context image thumbnails generated
@@ -292,9 +304,13 @@ def perform_ingest(
     param recursive: attempts to ingest all marslab files and context images
         in directory tree, regardless of what specific file you passed it
     param skip_thumbnails: don't process context images or make thumbnails.
+    param ingest_rc: ingest tables of spectra for caltarget observations
+        generated from "rc" (radiometric calibration) files.
     """
     path = Path(path_or_file)
-    marslab_files, context_files = find_ingest_files(path, recursive)
+    marslab_files, context_files = find_ingest_files(
+        path, recursive, ingest_rc
+    )
     if not skip_thumbnails:
         context_df = process_context_files(context_files)
     else:

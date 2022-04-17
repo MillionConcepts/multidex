@@ -42,7 +42,7 @@ from plotter.layout import primary_app_div
 from plotter.models import INSTRUMENT_MODEL_MAPPING
 from plotter.reduction import (
     default_multidex_pipeline,
-    transform_and_explain_variance,
+    transform_and_explain,
 )
 from plotter.spectrum_ops import data_df_from_queryset
 from plotter.config.graph_style import COLORBAR_SETTINGS
@@ -95,6 +95,7 @@ def truncate_id_list_for_missing_properties(
         )
         if model_property["type"] == "decomposition":
             # assuming here for now all decompositions require all filters
+            # TODO: no longer a good assumption
             if filters_are_averaged is True:
                 filters = list(spec_model.canonical_averaged_filters.keys())
             else:
@@ -134,12 +135,22 @@ def deframe(df_or_series):
     return df_or_series
 
 
-def perform_decomposition(id_list, filter_df, settings, props):
-    # TODO: this is fairly inefficient and recomputes the decomposition
-    #  every time any axis is changed. it might be better to cache this.
-    #  at the moment, the performance concerns probably don't really matter,
-    #  though; PCA on these sets is < 250ms per and generally much less.
-    queryset_df = filter_df.loc[id_list]
+# TODO: this is fairly inefficient and recomputes the decomposition
+#  every time any axis is changed. it might be better to cache this.
+#  at the moment, the performance concerns probably don't really matter,
+#  though; PCA on these sets is < 250ms per and generally much less.
+def perform_decomposition(
+    id_list, filter_df, settings, props, spec_model, cset
+):
+    # TODO: this is an operational-timeline hack to permit "cut the
+    #  bayers" behavior. replace this with UI elements permitting
+    #  decomposition op feature selection later.
+    if "permissibly_explanatory_bandpasses" in dir(spec_model):
+        queryset_df = filter_df[
+            spec_model.permissibly_explanatory_bandpasses(filter_df.columns)
+        ].loc[id_list]
+    else:
+        queryset_df = filter_df.loc[id_list]
     # TODO: temporary hack -- don't do PCA on tiny sets
     if len(queryset_df.index) < 8:
         raise ValueError("Won't do PCA on tiny sets.")
@@ -151,9 +162,14 @@ def perform_decomposition(id_list, filter_df, settings, props):
     # TODO, maybe: placeholder for other decomposition methods
     # method = props["method"]
     pipeline = default_multidex_pipeline()
-    transform, explained_variances = transform_and_explain_variance(
+    transform, eigenvectors, explained_variances = transform_and_explain(
         queryset_df, pipeline
     )
+    eigenvectors = pd.DataFrame(eigenvectors)
+    eigenvectors.columns = queryset_df.columns
+    eigenvectors.index = explained_variances.index
+    eigenvector_df = pd.concat([eigenvectors, explained_variances], axis=1)
+    cset("eigenvector_df", eigenvector_df)
     component = list(transform.iloc[:, component_ix].values)
     explained_variance = explained_variances.iloc[component_ix]
     title = "{}{} {}%".format(
@@ -219,6 +235,7 @@ def perform_spectrum_op(
 
 def make_axis(
     settings: dict,
+    cset,
     id_list: Iterable,
     spec_model: Any,
     filter_df: pd.DataFrame,
@@ -241,7 +258,9 @@ def make_axis(
             ]
         else:
             decomp_df = filter_df[list(spec_model.filters.keys())]
-        return perform_decomposition(id_list, decomp_df, settings, props)
+        return perform_decomposition(
+            id_list, decomp_df, settings, props, spec_model, cset
+        )
 
     if props["type"] == "computed":
         return filter_df.loc[id_list, props["value"]].values, None, axis_option
@@ -275,6 +294,7 @@ def get_axis_option_props(settings, spec_model):
 #  it is an unusually large hassle to get inside its svg rendering loop
 def make_markers(
     settings,
+    cset,
     id_list,
     spec_model,
     filter_df,
@@ -288,10 +308,9 @@ def make_markers(
     been processed by truncate_id_list_for_missing_properties
     """
     marker_option, props = get_axis_option_props(settings, spec_model)
-
     if props["type"] == "decomposition":
         property_list, _, title = perform_decomposition(
-            id_list, filter_df, settings, props
+            id_list, filter_df, settings, props, spec_model, cset
         )
     elif props["type"] == "computed":
         property_list, title = (

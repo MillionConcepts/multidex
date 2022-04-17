@@ -85,7 +85,8 @@ QUANTITATIVE_METADATA_FIELDS = (
     "rc_scaling_factor",
     "rc_uncertainty",
     # rc data field
-    "azimuth_angle"
+    "azimuth_angle",
+
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = ("filter_avg", "err_avg", "rel_err_avg")

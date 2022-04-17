@@ -81,6 +81,15 @@ class ZSpec(XSpec):
             images[image_type + "_file"] = filename
         return images
 
+    # filters we are allowed to use for PCA -- implementing this as
+    # a method in order to flexibly handle virtual filters etc.
+    @staticmethod
+    def permissibly_explanatory_bandpasses(filts):
+        # return filts
+        return [
+            f for f in filts if not f.endswith(("R", "G", "B"))
+        ]
+
 
 class MSpec(XSpec):
     group = models.CharField("group", **B_N_I, max_length=50)
