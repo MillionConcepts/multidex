@@ -3,7 +3,7 @@ these are intended principally as function prototypes. they are partially
 defined and/or passed to callback decorators in order to generate flow control
 within the app. they should rarely, if ever, be called in these generic forms.
 """
-
+import re
 from ast import literal_eval
 import csv
 import datetime as dt
@@ -368,6 +368,12 @@ def update_main_graph(
         "bounds_string",
     ):
         cset(parameter, locals()[parameter])
+    # for concatenating with filter_df on export
+    graph_contents = graph_df[['x', 'y', 'color']]
+    graph_contents.columns = (
+        x_title, y_title, coloraxis['colorbar']['title']['text']
+    )
+    cset("graph_contents", graph_contents)
     # TODO: hacky!
     cset("loading_state", False)
     return (
@@ -721,13 +727,18 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
             axis=1,
         )
         .loc[search_ids]
-        .sort_values(by="SEQ_ID")
+        # .sort_values(by="SEQ_ID")
+    ).reset_index(drop=True)
+    axes = cget("graph_contents")
+    axes.columns = list(
+        map(lambda x: re.sub(r"[%\. ]", "_", x.upper()), axes.columns)
     )
-
+    axes = axes[[c for c in axes.columns if c not in output_df.columns]]
+    output_df = pd.concat([output_df, axes], axis=1)
     filename_base = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     output_path = Path("exports", "csv", spec_model.instrument.lower())
     os.makedirs(output_path, exist_ok=True)
-    output_df.to_csv(Path(output_path, filename_base + ".csv"), index=None)
+    output_df.to_csv(Path(output_path, filename_base + ".csv"), index=False)
     if any([
         "PCA" in cget(f"{axis}_settings").values()
         for axis in ("x", "y", "marker")
