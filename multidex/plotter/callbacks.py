@@ -369,10 +369,15 @@ def update_main_graph(
     ):
         cset(parameter, locals()[parameter])
     # for concatenating with filter_df on export
-    graph_contents = graph_df[['x', 'y', 'color']]
-    graph_contents.columns = (
-        x_title, y_title, coloraxis['colorbar']['title']['text']
-    )
+
+    if 'colorbar' in coloraxis.keys():
+        graph_contents = graph_df[['x', 'y', 'color']]
+        graph_contents.columns = (
+            x_title, y_title, coloraxis['colorbar']['title']['text']
+        )
+    else:
+        graph_contents = graph_df[['x', 'y']]
+        graph_contents.columns = (x_title, y_title)
     cset("graph_contents", graph_contents)
     # TODO: hacky!
     cset("loading_state", False)
@@ -730,7 +735,7 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
     ).reset_index(drop=True)
     axes = cget("graph_contents")
     axes.columns = list(
-        map(lambda x: re.sub(r"[%\. ]", "_", x.upper()), axes.columns)
+        map(lambda x: re.sub(r"[%. ]", "_", x.upper()), axes.columns)
     )
     axes = axes[[c for c in axes.columns if c not in output_df.columns]]
     output_df = pd.concat([output_df, axes], axis=1).sort_values(by="SEQ_ID")
