@@ -22,6 +22,7 @@ dependencies:
   - pandas
   - plotly
   - pytest
+  - dustgoggles
   - itsdangerous=2.0.1
   - markupsafe=2.0.1
   - matplotlib
@@ -30,5 +31,4 @@ dependencies:
   - python-kaleido
   - wand
   - pip:
-    - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"

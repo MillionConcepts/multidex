@@ -21,12 +21,12 @@ dependencies:
   - pytest
   - fontconfig=2.13.94
   - itsdangerous=2.0.1
+  - dustgoggles
   - markupsafe=2.0.1
   - matplotlib
   - git
   - pip
   - python-kaleido
   - pip:
-    - "git+https://github.com/MillionConcepts/dustgoggles.git"
     - "git+https://github.com/MillionConcepts/marslab.git"
     - wand
