@@ -60,6 +60,7 @@ def spec_controls_div(
                 "display": "flex",
                 "flexDirection": "column",
                 "marginRight": "0.3rem",
+                "width": "6rem"
             },
             children=[
                 dcc.Checklist(
@@ -472,19 +473,19 @@ def search_parameter_div(
         if preset.get(option) is True:
             checklist_values.append(option)
     checklist = dcc.Checklist(
-            style={"marginLeft": "1rem"},
-            id={"type": "param-logic-options", "index": index},
-            className="info-text",
-            options=[
-                {"label": "null", "value": "null"},
-                {"label": "flip", "value": "invert"}
-            ],
-            value=checklist_values
-        )
+        style={"marginLeft": "1rem"},
+        id={"type": "param-logic-options", "index": index},
+        className="info-text",
+        options=[
+            {"label": "null", "value": "null"},
+            {"label": "flip", "value": "invert"},
+        ],
+        value=checklist_values,
+    )
     children.append(
         html.Div(
             style={"display": "flex", "flexDirection": "row"},
-            children=[button, checklist]
+            children=[button, checklist],
         )
     )
     return html.Div(
@@ -820,7 +821,9 @@ def search_controls_div(spec_model, settings: Mapping) -> html.Div:
     )
 
 
-def display_controls_div(settings: Mapping) -> html.Div:
+def display_controls_div(
+    spec_model: SpectrumModel, settings: Mapping, spectrum_scale: str
+) -> html.Div:
     if settings["showgrid"] == "False":
         gridcolor = "#000000"
     # defensive backwards-compatibility thing
@@ -828,7 +831,7 @@ def display_controls_div(settings: Mapping) -> html.Div:
         gridcolor = GRAPH_DISPLAY_SETTINGS["gridcolor"]
     else:
         gridcolor = settings["gridcolor"]
-    return html.Div(
+    background_div = html.Div(
         children=[
             html.Label(
                 children=["graph background"],
@@ -864,6 +867,27 @@ def display_controls_div(settings: Mapping) -> html.Div:
             ),
             html.Button("clear labels", id="clear-labels"),
         ]
+    )
+    line_control_div = html.Div(
+        children=[
+            html.Label(
+                children=["line graph display options"],
+                className="info-text",
+            ),
+            spec_controls_div(
+                spec_model,
+                "main-spec",
+                spectrum_scale,
+                True,
+                True,
+                "error",
+            ),
+        ],
+        style = {"marginLeft": "0.8rem"}
+    )
+    return html.Div(
+        children=[background_div, line_control_div],
+        style={"display": "flex", "flexDirection": "row"},
     )
 
 
@@ -1051,7 +1075,10 @@ def graph_controls_div(
                 off=True,
             ),
             *collapse(
-                "marker-clip", "m clip", marker_clip_div(settings), off=True,
+                "marker-clip",
+                "m clip",
+                marker_clip_div(settings),
+                off=True,
             ),
             *collapse(
                 "highlight-controls",
@@ -1072,25 +1099,12 @@ def graph_controls_div(
                 scale_controls_div(spec_model, settings),
                 off=True,
             ),
-            *collapse(
-                "spec-controls",
-                "spectrum",
-                spec_controls_div(
-                    spec_model,
-                    "main-spec",
-                    spectrum_scale,
-                    True,
-                    True,
-                    "error",
-                ),
-                off=True,
-            ),
             *collapse("load-panel", "load", load_search_drop(), off=True),
             *collapse("save-panel", "save", save_div(), off=True),
             *collapse(
                 "display-controls",
                 "display",
-                display_controls_div(settings),
+                display_controls_div(spec_model, settings, spectrum_scale),
                 off=True,
             ),
         ],

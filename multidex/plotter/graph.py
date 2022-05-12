@@ -409,6 +409,8 @@ def format_display_settings(settings):
     else:
         axis_settings_dict["showgrid"] = True
     axis_settings_dict["gridcolor"] = re_get(settings, "gridlines")
+    if axis_settings_dict["showgrid"] is False:
+        axis_settings_dict["zeroline"] = False
     return settings_dict, axis_settings_dict
 
 
