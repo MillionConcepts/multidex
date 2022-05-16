@@ -378,6 +378,7 @@ def update_main_graph(
     else:
         graph_contents = graph_df[['x', 'y']]
         graph_contents.columns = (x_title, y_title)
+    graph_contents.index = graph_df['customdata']
     cset("graph_contents", graph_contents)
     # TODO: hacky!
     cset("loading_state", False)
@@ -711,10 +712,6 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
         raise PreventUpdate
     metadata_df = cget("metadata_df").copy()
     filter_df = cget("data_df").copy()
-    if selected is not None:
-        search_ids = [point["customdata"] for point in selected["points"]]
-    else:
-        search_ids = cget("search_ids")
     filter_df.columns = [column.upper() for column in filter_df.columns]
     metadata_df.columns = [column.upper() for column in metadata_df.columns]
     # TODO: dumb hack, make this end-to-end smoother
@@ -726,19 +723,17 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
         metadata_df["UNITS"] = "R*"
     else:
         metadata_df["UNITS"] = "IOF"
-    output_df = (
-        pd.concat(
-            [metadata_df, filter_df],
-            axis=1,
-        )
-        .loc[search_ids]
-    ).reset_index(drop=True)
     axes = cget("graph_contents")
     axes.columns = list(
         map(lambda x: re.sub(r"[%. ]", "_", x.upper()), axes.columns)
     )
+    output_df = pd.concat([metadata_df, filter_df], axis=1).loc[axes.index]
     axes = axes[[c for c in axes.columns if c not in output_df.columns]]
     output_df = pd.concat([output_df, axes], axis=1).sort_values(by="SEQ_ID")
+    if selected is not None:
+        output_df = output_df.loc[
+            [point["customdata"] for point in selected["points"]]
+        ]
     filename_base = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     output_path = Path("exports", "csv", spec_model.instrument.lower())
     os.makedirs(output_path, exist_ok=True)
