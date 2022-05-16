@@ -714,11 +714,6 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
     filter_df = cget("data_df").copy()
     filter_df.columns = [column.upper() for column in filter_df.columns]
     metadata_df.columns = [column.upper() for column in metadata_df.columns]
-    # TODO: dumb hack, make this end-to-end smoother
-    if "SOIL_LOCATION" in metadata_df.columns:
-        metadata_df = metadata_df.rename(
-            columns={"SOIL_LOCATION": "SOIL LOCATION"}
-        )
     if cget("r_star") is True:
         metadata_df["UNITS"] = "R*"
     else:
