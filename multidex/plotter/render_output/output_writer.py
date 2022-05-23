@@ -57,13 +57,15 @@ def apply_output_image_style(fig):
     fig.update_layout(**GRAPH_SETTINGS)
     fig.update_xaxes(**AXIS_SETTINGS)
     fig.update_yaxes(**AXIS_SETTINGS)
-    marker = next(fig.select_traces()).marker
-    if isinstance(marker.size, int):
-        marker_size = marker.size * SCATTER_POINT_SCALE_SETTING
-    else:
-        marker_size = [SCATTER_POINT_SCALE_SETTING * size for size in marker.size]
-    # hacky, but the alternative seems to be editing its transform attribute...
-    colorbar_dict = COLORBAR_SETTINGS.copy()
+    for trace in fig.select_traces():
+        marker = trace.marker
+        if isinstance(marker.size, int):
+            marker_size = marker.size * SCATTER_POINT_SCALE_SETTING
+        else:
+            marker_size = [
+                SCATTER_POINT_SCALE_SETTING * size for size in marker.size
+            ]
+        trace.update(marker=MARKER_SETTINGS | {"size": marker_size})
     # again, hacky to use typesetting as layout, but...
 
     coloraxis = next(fig.select_coloraxes())
@@ -80,12 +82,6 @@ def apply_output_image_style(fig):
             colorbar.tickvals = coloraxis.colorbar.tickvals
             coloraxis["colorbar"] = colorbar
             fig.update_coloraxes(coloraxis)
-
-    # more breaks for longer ticks?
-    marker_dict = (
-        MARKER_SETTINGS | {"size": marker_size}
-    )
-    fig.update_traces(marker=marker_dict)
     return fig
 
 
