@@ -118,7 +118,10 @@ def process_visor_file(visor_fn, instrument_code):
         pass
     model_dict[
         "name"
-    ] = f"{visor_dict['Sample Name']} - {visor_dict['Sample ID']}"
+    ] = (
+        f"{visor_dict['Sample Name'].strip(',')} - "
+        f"{visor_dict['Sample ID'].strip(',')}"
+    )
     model_dict["filename"] = Path(visor_fn).name
     # model_dict["ingest_time"] = dt.datetime.utcnow().isoformat()
     model_dict["feature"] = "lab spectrum"
