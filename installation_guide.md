@@ -41,7 +41,8 @@ there are a multitude of helpful tutorials online. [Here is one.](https://www.yo
 
 Now that you have `conda` installed, you can set up a Python environment
 to use MultiDEx. Open a terminal window: Anaconda Prompt on Windows, Terminal on macOS,
-or your terminal emulator of choice on Linux. 
+or your terminal emulator of choice on Linux. (Windows might name the prompt "Miniconda Prompt" 
+or something instead; just search for "prompt" in the Start Menu.)
 
 On MacOS or Linux, navigate to the directory where you put the repository and run the command:
 `mamba env create -f environment.yml`
