@@ -161,9 +161,11 @@ class CSpec(RoverSpectrum):
 
 
 class TestSpec(RoverSpectrum):
+    """mock spectrum class for tests"""
     instrument = "TEST"
     filters = {"test": 100}
     virtual_filters = {"test": 100}
+    field_names = ()
 
 
 # bulk setup for each instrument
