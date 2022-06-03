@@ -4,13 +4,13 @@
 
 ## step 0: clone the repository to your computer
 
-If you have `git` installed on your computer and are set up with SSH keys 
-in your `git` account, navigate in a terminal emulator to wherever you'd 
-like to place the software and run `git clone git@github.com:MillionConcepts/multidex.git`.
+If you have `git` installed on your computer, navigate in a terminal emulator to wherever you'd 
+like to place the software and run `git clone https://github.com/MillionConcepts/multidex.git`.
 If you don't, and you are on Windows or MacOS, we recommend using 
 [GitHub Desktop](https://desktop.github.com/). Install that program, run it, 
-log in to your account, choose "clone a repository from the Internet," and choose 
-"MillionConcepts/multidex".
+log in to your account, choose "clone a repository from the Internet," click the "URL" tab,
+paste `https://github.com/MillionConcepts/multidex.git` into the 'Repository URL' field,
+and click 'Clone'.
 
 ## step 1: install conda
 
