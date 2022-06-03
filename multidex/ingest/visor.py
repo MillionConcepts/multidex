@@ -82,7 +82,7 @@ def process_visor_file(visor_fn, instrument_code):
         line.strip().split(",", maxsplit=1)
         for line in open(visor_fn).readlines()
     ]
-    visor_dict = {k: v for k, v in visor_lines}
+    visor_dict = {k: v for k, v in filter(lambda l: len(l) > 1, visor_lines)}
     model = INSTRUMENT_MODEL_MAPPING[instrument_code]
     present_filters = set(model.filters).intersection(visor_dict.keys())
     if len(present_filters) == 0:
