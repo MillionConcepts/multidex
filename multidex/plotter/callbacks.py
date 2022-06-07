@@ -369,16 +369,16 @@ def update_main_graph(
     ):
         cset(parameter, locals()[parameter])
     # for concatenating with filter_df on export
-
+    graph_contents_df = pd.concat([graph_df, highlight_df], axis=0)
     if 'colorbar' in coloraxis.keys():
-        graph_contents = graph_df[['x', 'y', 'color']]
+        graph_contents = graph_contents_df[['x', 'y', 'color']]
         graph_contents.columns = (
             x_title, y_title, coloraxis['colorbar']['title']['text']
         )
     else:
-        graph_contents = graph_df[['x', 'y']]
+        graph_contents = graph_contents_df[['x', 'y']]
         graph_contents.columns = (x_title, y_title)
-    graph_contents.index = graph_df['customdata']
+    graph_contents.index = graph_contents_df['customdata']
     cset("graph_contents", graph_contents)
     # TODO: hacky!
     cset("loading_state", False)
