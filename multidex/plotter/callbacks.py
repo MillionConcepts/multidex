@@ -10,11 +10,26 @@ import datetime as dt
 from itertools import cycle, chain
 import json
 import os
+from operator import or_
 from pathlib import Path
 
 import dash
+from cytoolz import complement
 from dash.exceptions import PreventUpdate
 import pandas as pd
+from dustgoggles.func import are_in
+from dustgoggles.pivot import split_on
+
+try:
+    from marslab.compat.xcam import construct_field_ordering, numeric_columns, \
+    integerize
+except ImportError:
+    raise ImportError(
+        "multidex 0.8.2 requires marslab 0.9.81 or higher. "
+        "Please update by running:\n"
+        "pip install --upgrade --force-reinstall git+https://github.com/MillionConcepts/marslab.git\n"
+        "(or your alternative method of choice)."
+    )
 
 from multidex_utils import (
     triggered_by,
@@ -729,6 +744,17 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
         output_df = output_df.loc[
             [point["customdata"] for point in selected["points"]]
         ]
+    ordering = construct_field_ordering(
+        filters=tuple(
+            filter(
+                complement(are_in(("AVG", "ERR"), oper=or_)), filter_df.columns
+            )
+        ),
+        fields=output_df.columns
+    )
+    output_df = output_df[ordering]
+    # TODO: use de-vendored dustgoggles version eventually
+    output_df = integerize(output_df)
     filename_base = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
     output_path = Path("exports", "csv", spec_model.instrument.lower())
     os.makedirs(output_path, exist_ok=True)
