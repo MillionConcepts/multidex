@@ -73,15 +73,20 @@ always have it active whenever you work with MultiDEx.
 ## step 4: put data files in the data directory
 
 The monolithic .sqlite3 database files that actually contain the data are 
-distributed separately from this application. Please contact the repository 
-maintainers if you need and do not have access to these files. Once you have
-these files, place them in the multidex/data subdirectory, which should already
-contain one file, "backend.sqlite3".
+distributed separately from this application. If you are affiliated with the 
+Mars Science Laboratory or Mars 2020 missions and require access to files 
+that contain confidential mission data, please contact the repository 
+maintainers. Otherwise, you may make use of a publicly-available data set:
+MSL Mastcam up to sol 2300.
+[You can find it here.](https://drive.google.com/drive/folders/1478lDoe1fOmQAWO_8Nl77-GX46Iz9Np1)
+
+Once you have retrieved whatever .sqlite3 files you will be using, place them in the 
+multidex/data subdirectory, which should already contain one file, "backend.sqlite3".
 
 ## step 5: put browse images in the browse directory
 
 Browse images are also distributed separately from this application as .zip files. Please contact 
-the repository maintainers if you need and do not have access to these files. Once you
+the repository maintainers if you need and do not have access to a specific set of browse files. Once you
 have the .zip file for the instrument you are working with, uncompress it into 
 multidex/plotter/application/assets/browse/$INSTRUMENT_NAME, e.g., 
 multidex/plotter/application/assets/browse/mcam.

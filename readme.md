@@ -18,8 +18,12 @@ forthcoming.
 
 ### observational data and metadata
 Monolithic .sqlite3 database files and compressed browse images are 
-distributed separately from this application. Please contact the repository 
-maintainers if you need and do not have access to these files.
+distributed separately from this application. There is one publicly-available 
+data set available: MSL Mastcam up to sol 2300. 
+[You can find it here.](https://drive.google.com/drive/folders/1478lDoe1fOmQAWO_8Nl77-GX46Iz9Np1)
+If you are affiliated with the Mars Science Laboratory or Mars 2020 missions and
+require access to MultiDEx files that contain confidential data,
+please contact the repository maintainers.
 
 ### known issues
 * the spectra-info dialog is not currently properly draggable on Firefox. A fix is planned.
