@@ -1,4 +1,3 @@
-import platform
 import random
 import shutil
 from pathlib import Path
@@ -25,8 +24,6 @@ from plotter.layout import multidex_body
 from plotter.graph import cache_set, cache_get
 from plotter.models import INSTRUMENT_MODEL_MAPPING
 
-from plotter.application.windows_cache_helper import WindowsFileSystemCache
-
 
 def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # initialize the app itself. HTML / react objects and callbacks from them
@@ -38,13 +35,7 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
         paper = Paper(f"multidex_{instrument_code.lower()}_{cache_prefix}")
         cache = Notepad(paper.prefix)
     else:
-        if platform.system() == 'Windows':
-            # TODO: hopefully temporary;
-            #  see https://github.com/pallets-eco/flask-caching/issues/309
-            cache_class = WindowsFileSystemCache
-        else:
-            cache_class = FileSystemCache
-        cache = cache_class.factory(
+        cache = FileSystemCache.factory(
             app.server,
             config=configure_flask_cache(cache_prefix),
             args=[],
