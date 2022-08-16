@@ -685,8 +685,8 @@ def clip_input(element_id, value):
 
 
 def marker_clip_div(settings: Mapping) -> Div:
-    high = int(settings["color-clip-bound-high.value"])
-    low = int(settings["color-clip-bound-low.value"])
+    high = float(settings["color-clip-bound-high.value"])
+    low = float(settings["color-clip-bound-low.value"])
     return html.Div(
         children=[
             html.Label(
