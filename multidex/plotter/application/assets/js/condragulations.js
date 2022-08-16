@@ -24,7 +24,8 @@ const unTuck = function () {
 
 const getIntoDrag = function (event) {
     event.preventDefault();
-    event.path.forEach(
+    const composed = event.composedPath();
+    composed.forEach(
         function isItDraggable(element) {
             if (draggables.includes(element.id)) {
                 whatAreWeDragging = element;
