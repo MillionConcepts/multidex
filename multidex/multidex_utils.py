@@ -56,6 +56,18 @@ def seconds_since_beginning_of_day(time: dt.time) -> float:
     ).total_seconds()
 
 
+def seconds_since_beginning_of_day_to_iso(
+    seconds: Optional[int], round_to=0
+) -> Optional[str]:
+    if seconds is None:
+        return None
+    hour = int(seconds // 3600)
+    remainder = seconds - hour * 3600
+    minute = int(remainder // 60)
+    seconds = round(remainder - minute * 60, round_to)
+    return ":".join(map(lambda t: str(t).zfill(2), (hour, minute, seconds)))
+
+
 def first(predicate: Callable, iterable: Iterable) -> Any:
     for item in iterable:
         if predicate(item):
@@ -480,13 +492,13 @@ def df_multiple_field_search(
         if parameter["null"] is True:
             result = pd.Index.union(
                 result,
-                search_df.loc[search_df[parameter["field"]].isna()].index
+                search_df.loc[search_df[parameter["field"]].isna()].index,
             )
         # take complement if requested
         if parameter["invert"] is True:
-            result = pd.Index([
-                ix for ix in search_df.index if ix not in result
-            ])
+            result = pd.Index(
+                [ix for ix in search_df.index if ix not in result]
+            )
         results.append(result)
     if logical_quantifier == "AND":
         index_logic_method = pd.Index.intersection
@@ -513,7 +525,7 @@ def fetch_css_variables(css_file: str = DEFAULT_CSS_PATH) -> dict[str, str]:
 def model_metadata_df(
     model: Any,
     relation_names: Optional[list[str]] = None,
-    dict_function: Optional[Callable] = None
+    dict_function: Optional[Callable] = None,
 ) -> pd.DataFrame:
     if dict_function is None:
         try:
@@ -564,13 +576,11 @@ def get_verbose_name(field_name, model):
 
 def patch_settings_from_module(settings, module_name):
     settings = {
-        name: setting for name, setting in settings
-        if "SETTING" in name
+        name: setting for name, setting in settings if "SETTING" in name
     }
     patches = {
         name: patch
-        for name, patch
-        in getmembers(
+        for name, patch in getmembers(
             sys.modules[module_name], lambda obj: isinstance(obj, Mapping)
         )
         if name in settings.keys()

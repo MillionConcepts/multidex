@@ -21,8 +21,11 @@ from dustgoggles.func import are_in
 from dustgoggles.pivot import split_on
 
 try:
-    from marslab.compat.xcam import construct_field_ordering, numeric_columns, \
-    integerize
+    from marslab.compat.xcam import (
+        construct_field_ordering,
+        numeric_columns,
+        integerize,
+    )
 except ImportError:
     raise ImportError(
         "multidex 0.8.2 requires marslab 0.9.81 or higher. "
@@ -39,6 +42,7 @@ from multidex_utils import (
     keygrab,
     field_values,
     not_blank,
+    seconds_since_beginning_of_day_to_iso,
 )
 from plotter.colors import generate_palette_options
 from plotter.components.graph_components import (
@@ -73,7 +77,8 @@ from plotter.graph import (
     halt_to_debounce_palette_update,
     halt_for_inappropriate_palette_type,
     branch_highlight_df,
-    save_palette_memory, cache_data_df,
+    save_palette_memory,
+    cache_data_df,
 )
 from plotter.render_output.output_writer import save_main_scatter_plot
 
@@ -186,7 +191,9 @@ def update_spectrum_graph(
     *,
     spec_model,
 ):
-    if scale_to != "none" and scale_to is not None:  # TODO scale_to is None, not "none"
+    if (
+        scale_to != "none" and scale_to is not None
+    ):  # TODO scale_to is None, not "none"
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     average_filters = True if average_input_value == ["average"] else False
     if not event_data:
@@ -353,7 +360,9 @@ def update_main_graph(
     )
     # place color in graph df column so it works properly with split highlights
     graph_df["color"] = color
-    graph_df["text"] = spec_model.make_scatter_annotations(metadata_df, truncated_ids)
+    graph_df["text"] = spec_model.make_scatter_annotations(
+        metadata_df, truncated_ids
+    )
     # now that graph dataframe is constructed, split & style highlights to be
     # drawn as separate trace (or get None, {}) if no highlight is active)
     graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
@@ -385,15 +394,17 @@ def update_main_graph(
         cset(parameter, locals()[parameter])
     # for concatenating with filter_df on export
     graph_contents_df = pd.concat([graph_df, highlight_df], axis=0)
-    if 'colorbar' in coloraxis.keys():
-        graph_contents = graph_contents_df[['x', 'y', 'color']]
+    if "colorbar" in coloraxis.keys():
+        graph_contents = graph_contents_df[["x", "y", "color"]]
         graph_contents.columns = (
-            x_title, y_title, coloraxis['colorbar']['title']['text']
+            x_title,
+            y_title,
+            coloraxis["colorbar"]["title"]["text"],
         )
     else:
-        graph_contents = graph_contents_df[['x', 'y']]
+        graph_contents = graph_contents_df[["x", "y"]]
         graph_contents.columns = (x_title, y_title)
-    graph_contents.index = graph_contents_df['customdata']
+    graph_contents.index = graph_contents_df["customdata"]
     cset("graph_contents", graph_contents)
     # TODO: hacky!
     cset("loading_state", False)
@@ -570,7 +581,9 @@ def update_spectrum_images(
     # TODO: turn this into a dispatch function, if this ends up actually
     #  wanting distinct behavior
     if spec_model.instrument == "CCAM":
-        return make_cspec_browse_image_components(spectrum, image_directory, static_image_url)
+        return make_cspec_browse_image_components(
+            spectrum, image_directory, static_image_url
+        )
     if spec_model.instrument == "ZCAM":
         return make_zspec_browse_image_components(
             spectrum, image_directory, static_image_url
@@ -661,7 +674,7 @@ def allow_qualitative_palettes(
     existing_palette_type_value,
     *,
     spec_model,
-    cget
+    cget,
 ):
     if cget("loading_state") is True:
         existing_palette_type_value = cget("loading_palette_type")
@@ -733,6 +746,11 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
         metadata_df["UNITS"] = "R*"
     else:
         metadata_df["UNITS"] = "IOF"
+    for time_field in ("LTST", "LMST"):
+        if time_field in metadata_df.columns:
+            metadata_df[time_field] = metadata_df[time_field].map(
+                seconds_since_beginning_of_day_to_iso
+            )
     axes = cget("graph_contents")
     axes.columns = list(
         map(lambda x: re.sub(r"[%. ]", "_", x.upper()), axes.columns)
@@ -750,7 +768,7 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
                 complement(are_in(("AVG", "ERR"), oper=or_)), filter_df.columns
             )
         ),
-        fields=output_df.columns
+        fields=output_df.columns,
     )
     output_df = output_df[ordering]
     # TODO: use de-vendored dustgoggles version eventually
@@ -759,10 +777,12 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
     output_path = Path("exports", "csv", spec_model.instrument.lower())
     os.makedirs(output_path, exist_ok=True)
     output_df.to_csv(Path(output_path, filename_base + ".csv"), index=False)
-    if any([
-        "PCA" in cget(f"{axis}_settings").values()
-        for axis in ("x", "y", "marker")
-    ]):
+    if any(
+        [
+            "PCA" in cget(f"{axis}_settings").values()
+            for axis in ("x", "y", "marker")
+        ]
+    ):
         cget("eigenvector_df").to_csv(
             Path(output_path, filename_base + "-eigen.csv")
         )
