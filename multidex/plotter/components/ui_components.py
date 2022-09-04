@@ -60,7 +60,7 @@ def spec_controls_div(
                 "display": "flex",
                 "flexDirection": "column",
                 "marginRight": "0.3rem",
-                "width": "6rem"
+                "width": "6rem",
             },
             children=[
                 dcc.Checklist(
@@ -527,29 +527,29 @@ def trigger_div(prefix, number_of_triggers):
     )
 
 
-def load_search_drop():
+def state_div():
+    return html.Div(children=[save_state_input(), load_state_input()])
+
+
+def load_state_input():
     return html.Div(
         className="load-button-container",
         children=[
-            html.Label(children=["search name"], htmlFor="load-search-drop"),
-            dcc.Dropdown(id="load-search-drop", className="medium-drop"),
-            html.Button(
-                id="load-search-load-button",
-                children="load",
-            ),
+            dcc.Dropdown(id="load-state-drop", className="medium-drop"),
+            html.Button(id="load-state-button", children="load"),
         ],
     )
 
 
-def save_search_input():
+def save_state_input():
     return html.Div(
         className="save-button-container",
         children=[
-            html.Label(children=["save as"], htmlFor="save-search-name-input"),
-            dcc.Input(id="save-search-name-input", type="text"),
-            html.Button(id="save-search-save-button", children="save"),
+            html.Label(children=["state"], htmlFor="save-state-input"),
+            dcc.Input(id="save-state-input", type="text"),
+            html.Button(id="save-state-button", children="save"),
         ],
-        style={"display": "flex", "flexDirection": "column"},
+        # style={"display": "flex", "flexDirection": "column"},
     )
 
 
@@ -821,9 +821,7 @@ def search_controls_div(spec_model, settings: Mapping) -> html.Div:
     )
 
 
-def display_controls_div(
-    spec_model: SpectrumModel, settings: Mapping, spectrum_scale: str
-) -> html.Div:
+def display_controls_div(settings: Mapping) -> html.Div:
     if settings["showgrid"] == "False":
         gridcolor = "#000000"
     # defensive backwards-compatibility thing
@@ -831,7 +829,7 @@ def display_controls_div(
         gridcolor = GRAPH_DISPLAY_SETTINGS["gridcolor"]
     else:
         gridcolor = settings["gridcolor"]
-    background_div = html.Div(
+    return html.Div(
         children=[
             html.Label(
                 children=["graph background"],
@@ -867,27 +865,6 @@ def display_controls_div(
             ),
             html.Button("clear labels", id="clear-labels"),
         ]
-    )
-    line_control_div = html.Div(
-        children=[
-            html.Label(
-                children=["line graph display options"],
-                className="info-text",
-            ),
-            spec_controls_div(
-                spec_model,
-                "main-spec",
-                spectrum_scale,
-                True,
-                True,
-                "error",
-            ),
-        ],
-        style = {"marginLeft": "0.8rem"}
-    )
-    return html.Div(
-        children=[background_div, line_control_div],
-        style={"display": "flex", "flexDirection": "row"},
     )
 
 
@@ -1014,26 +991,25 @@ def fake_output_divs(n_divs: int) -> list[html.Div]:
     ]
 
 
-def save_div():
+def export_div():
     return html.Div(
-        [
-            save_search_input(),
-            html.Div(
-                style={
-                    "display": "flex",
-                    "flexDirection": "row",
-                    "marginTop": "0.5rem",
-                },
-                children=[
-                    html.Button(
-                        "CSV",
-                        id="export-csv",
-                        style={"marginRight": "0.8rem"},
-                    ),
-                    html.Button("image", id="export-image"),
-                ],
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+            "marginTop": "0.5rem",
+        },
+        children=[
+            html.Label(children=["export"]),
+            html.Button(
+                "CSV",
+                id="export-csv",
+                style={"marginRight": "0.8rem"},
             ),
-        ]
+            dcc.Download(id="csv-export-endpoint"),
+            dcc.Download(id="csv-export-endpoint-2"),
+            html.Button("image", id="export-image"),
+            dcc.Download(id="image-export-endpoint"),
+        ],
     )
 
 
@@ -1063,21 +1039,9 @@ def graph_controls_div(
                 axis_controls_div("marker", spec_model, settings, filts),
             ),
             *collapse(
-                "color-controls",
-                "m style",
-                marker_color_symbol_div(settings),
-                off=True,
-            ),
-            *collapse(
                 "marker-options",
                 "m options",
-                marker_options_div(settings),
-                off=True,
-            ),
-            *collapse(
-                "marker-clip",
-                "m clip",
-                marker_clip_div(settings),
+                marker_div(settings),
                 off=True,
             ),
             *collapse(
@@ -1099,13 +1063,42 @@ def graph_controls_div(
                 scale_controls_div(spec_model, settings),
                 off=True,
             ),
-            *collapse("load-panel", "load", load_search_drop(), off=True),
-            *collapse("save-panel", "save", save_div(), off=True),
+            *collapse("state-panel", "state", state_div(), off=True),
+            *collapse("export-panel", "export", export_div(), off=True),
             *collapse(
                 "display-controls",
                 "display",
-                display_controls_div(spec_model, settings, spectrum_scale),
+                display_controls_div(settings),
                 off=True,
             ),
+            *collapse(
+                "spectrum-panel",
+                "spectrum",
+                spec_controls_div(
+                    spec_model,
+                    "main-spec",
+                    spectrum_scale,
+                    True,
+                    True,
+                    "error",
+                ),
+                off=True,
+            ),
+        ],
+    )
+
+
+def marker_div(settings):
+    return html.Div(
+        id="marker-div",
+        style={
+            "display": "flex",
+            "flexDirection": "row",
+            "marginRight": "0.3rem",
+        },
+        children=[
+            marker_color_symbol_div(settings),
+            marker_options_div(settings),
+            marker_clip_div(settings),
         ],
     )

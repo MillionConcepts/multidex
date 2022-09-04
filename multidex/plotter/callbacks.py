@@ -7,6 +7,7 @@ import re
 from ast import literal_eval
 import csv
 import datetime as dt
+from base64 import b64encode
 from itertools import cycle, chain
 import json
 import os
@@ -16,6 +17,7 @@ from pathlib import Path
 import dash
 from cytoolz import complement
 from dash.exceptions import PreventUpdate
+from dash import dcc
 import pandas as pd
 from dustgoggles.func import are_in
 from dustgoggles.pivot import split_on
@@ -734,7 +736,12 @@ def populate_color_dropdowns(
 
 
 # TODO: This should be reading from something in marslab.compat probably
-def export_graph_csv(_clicks, selected, *, cget, spec_model):
+def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
+    # secondary_data is used only as a placeholder to prevent saving an empty
+    # file -- or re-saving the previous eigenvector file -- if a dataframe
+    # with no eigenvector information is exported. this is somewhat baroque,
+    # and there may be some easier way to simplify it (chaining callbacks or
+    # something)
     ctx = dash.callback_context
     if ctx.triggered[0]["value"] is None:
         raise PreventUpdate
@@ -773,22 +780,25 @@ def export_graph_csv(_clicks, selected, *, cget, spec_model):
     output_df = output_df[ordering]
     # TODO: use de-vendored dustgoggles version eventually
     output_df = integerize(output_df)
-    filename_base = dt.datetime.now().strftime("%Y%m%dT%H%M%S")
-    output_path = Path("exports", "csv", spec_model.instrument.lower())
-    os.makedirs(output_path, exist_ok=True)
-    output_df.to_csv(Path(output_path, filename_base + ".csv"), index=False)
+    filename_base = (
+        f"{spec_model.instrument.lower()}-"
+        f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}"
+    )
+    primary_output = dcc.send_data_frame(
+        output_df.to_csv, filename_base + ".csv", index=False
+    )
     if any(
         [
             "PCA" in cget(f"{axis}_settings").values()
             for axis in ("x", "y", "marker")
         ]
     ):
-        cget("eigenvector_df").to_csv(
-            Path(output_path, filename_base + "-eigen.csv")
+        secondary_output = dcc.send_data_frame(
+            cget("eigenvector_df").to_csv, filename_base + "-eigen.csv"
         )
-
-    # todo: huh?
-    return 1
+    else:
+        secondary_output = placeholder_data
+    return primary_output, secondary_output
 
 
 def toggle_averaged_filters(
@@ -883,4 +893,14 @@ def export_graph_png(clientside_fig_info, fig_dict, *, spec_model):
         raise PreventUpdate
     info = json.loads(clientside_fig_info)
     aspect = info["width"] / info["height"]
-    save_main_scatter_plot(fig_dict, aspect, spec_model.instrument.lower())
+    blob = save_main_scatter_plot(fig_dict, aspect)
+    filename = (
+        f"{spec_model.instrument.lower()}-"
+        f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
+    )
+    return {
+        'content': b64encode(blob).decode('ascii'),
+        'filename': filename,
+        'type': 'image/png',
+        'base64': True
+    }

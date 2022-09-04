@@ -235,10 +235,10 @@ def register_handle_load(app, configured_function):
             Output("default-settings-checked-div", "children"),
         ],
         [
-            Input("load-search-load-button", "n_clicks"),
+            Input("load-state-button", "n_clicks"),
         ],
         [
-            State("load-search-drop", "value"),
+            State("load-state-drop", "value"),
             State({"type": "load-trigger", "index": 0}, "value"),
             State("default-settings-checked-div", "children"),
         ],
@@ -275,9 +275,9 @@ def register_update_spectrum_graph(app, configured_function):
 def register_save_application_state(app, configured_function):
     app.callback(
         Output({"type": "save-trigger", "index": 0}, "value"),
-        [Input("save-search-save-button", "n_clicks")],
+        [Input("save-state-button", "n_clicks")],
         [
-            State("save-search-name-input", "value"),
+            State("save-state-input", "value"),
             State({"type": "save-trigger", "index": 0}, "value"),
         ],
         prevent_initial_call=True,
@@ -286,7 +286,7 @@ def register_save_application_state(app, configured_function):
 
 def register_populate_saved_search_drop(app, configured_function):
     app.callback(
-        Output("load-search-drop", "options"),
+        Output("load-state-drop", "options"),
         [
             Input({"type": "save-trigger", "index": 0}, "value"),
             Input({"type": "load-trigger", "index": 0}, "value"),
@@ -297,20 +297,22 @@ def register_populate_saved_search_drop(app, configured_function):
 
 def register_export_graph_csv(app, configured_function):
     app.callback(
-        Output(
-            "fake-output-for-callback-with-only-side-effects-0", "children"
-        ),
+        [
+            Output("csv-export-endpoint", "data"),
+            Output("csv-export-endpoint-2", "data")
+        ],
         [Input("export-csv", "n_clicks")],
-        [State("main-graph", "selectedData")],
+        [
+            State("main-graph", "selectedData"),
+            State("csv-export-endpoint-2", "data")
+        ],
         prevent_initial_call=True,
     )(configured_function)
 
 
 def register_export_graph_png(app, configured_function):
     app.callback(
-        Output(
-            "fake-output-for-callback-with-only-side-effects-1", "children"
-        ),
+        Output("image-export-endpoint", "data"),
         [Input("graph-size-record-div", "children")],
         [State("main-graph", "figure")],
         prevent_initial_call=True,
@@ -357,5 +359,5 @@ def register_hide_spec_print(app):
 # debug printer
 # app.callback(
 #     Output('fake-output-for-callback-with-only-side-effects-1', 'children'),
-#     [Input('load-search-drop', 'value')]
+#     [Input('load-state-drop', 'value')]
 # )(print_callback)

@@ -151,14 +151,11 @@ button {
     width: 15rem;
 }
 
-.load-button-container, .search-parameter-container {
+.load-button-container, .save-button-container, .search-parameter-container {
     width: 12rem;
     margin-left:0.3rem;
     margin-right:0.3rem;
     margin-top: 0.2rem;
-}
-
-.search-parameter-container .Select-value {
 }
 
 .Select-arrow {
