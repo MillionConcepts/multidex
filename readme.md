@@ -4,17 +4,8 @@ C/M/ZCAM multispectral plotter tool. Beta status.
 See [the installation guide](installation_guide.md).
 
 ### usage
-runtime commands enabling user-facing functionality are currently all included in 
-[multidex.py](multidex/multidex.py). Run this script with a single argument for the instrument whose data 
-you'd like to explore (e.g. `python multidex.py ZCAM`) and a server should launch at 127.0.0.1:49303. Pointing your 
-browser at this server will open the application in your browser. This should work on any platform `conda` works on. 
-Chrome-family browsers will probably be faster than Firefox or Safari. We do not recommend accessing an individual 
-server in multiple tabs or windows. Behavior in this case is undefined. However, if you run the script multiple times
-from the command line, it will open additional servers, incrementing the port number by one each time. Accessing these
-servers separately should be completely safe.
-
-More detailed usage instructions, including a user manual and tutorials, are 
-forthcoming.
+[The MultiDEx User Guide is available here.](https://docs.google.com/document/d/1SeM_QM21UNokkma1ZfUlbFgiB9K69zo30PjEb0q6Cds)
+Video tutorials are forthcoming.
 
 ### observational data and metadata
 Monolithic .sqlite3 database files and compressed browse images are 
