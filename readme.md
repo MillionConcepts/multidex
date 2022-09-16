@@ -1,4 +1,7 @@
-C/M/ZCAM multispectral plotter tool. Beta status.
+The (Multi)spectral (Data) (Ex)plorer is a visualization tool that allows you to perform
+deep, rapid analyses of highly multidimensional data. It is in tactical use on the Mars 
+2020 and Mars Science Laboratory missions, and currently supports ChemCam, Mastcam, and 
+Mastcam-Z data.
 
 ### installation
 See [the installation guide](installation_guide.md).
