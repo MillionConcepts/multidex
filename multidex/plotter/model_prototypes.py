@@ -110,6 +110,13 @@ class RoverSpectrum(models.Model):
     def clean(self, *args, **kwargs):
         self.modification_time = dt.datetime.utcnow().isoformat()[:-7] + "Z"
         self.multidex_version = __version__
+        for filt in self.filters.keys():
+            if getattr(self, filt.lower()) is not None:
+                if getattr(self, f"{filt.lower()}_err") is None:
+                    setattr(self, f"{filt.lower()}_err", 0)
+        # noinspection PyUnresolvedReferences
+        if self.incidence_angle is None:
+            self.incidence_angle = 0
         super().clean()
 
     @classmethod
@@ -191,7 +198,6 @@ class RoverSpectrum(models.Model):
     # noinspection PyUnresolvedReferences
     def __str__(self):
         return f"sol {self.sol}_{self.name}_{self.seq_id}"
-
 
     class Meta:
         abstract = True
