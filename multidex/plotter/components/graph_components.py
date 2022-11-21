@@ -194,7 +194,7 @@ def spectrum_line_graph(
     )
     x_axis = [filt_value["wave"] for filt_value in spectrum_data.values()]
     y_axis = [filt_value["mean"] for filt_value in spectrum_data.values()]
-    y_error = [filt_value["err"] for filt_value in spectrum_data.values()]
+    y_error = [filt_value["std"] for filt_value in spectrum_data.values()]
     # TODO: this definitely shouldn't be happening here
     if r_star:
         if spectrum.incidence_angle:

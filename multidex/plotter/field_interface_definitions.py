@@ -20,27 +20,22 @@ QUALITATIVE_METADATA_FIELDS = (
     "grain_size",
     "group",
     "lab_spectrum_type",
-    "landform_type",
     "libs_before",
     "location",
     "member",
-    "morphology",
     "name",
     "notes",
     "outcrop",
     "pixl",
     "rock_class",
-    "rock_surface",
     "scam",
     "seq_id",
     "soil_class",
     "soil_color",
-    "soil_location",
     "srlc_spec",
     "target",
     "target_type",
     "target_type_shot_specific",
-    "workspace",
     "wtsn",
     "zoom",
     # rc properties
@@ -91,7 +86,7 @@ QUANTITATIVE_METADATA_FIELDS = (
 
 )
 # properties computed at runtime from metadata
-CALCULATED_FIELDS = ("filter_avg", "err_avg", "rel_err_avg")
+CALCULATED_FIELDS = ("filter_avg", "std_avg", "rel_std_avg")
 
 
 # assemble property records: these statements should not need to be modified

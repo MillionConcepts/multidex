@@ -32,8 +32,8 @@ def perform_ingest(csv_fn, instrument_code, *, dry_run=False, quiet=False):
         "INGEST_TIME",
         "MULTIDEX_VERSION",
         "FILTER_AVG",
-        "ERR_AVG",
-        "REL_ERR_AVG",
+        "STD_AVG",
+        "REL_STD_AVG",
     ]
     for col in undesirable_columns:
         if col in frame.columns:

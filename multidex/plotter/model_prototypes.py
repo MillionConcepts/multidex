@@ -112,8 +112,8 @@ class RoverSpectrum(models.Model):
         self.multidex_version = __version__
         for filt in self.filters.keys():
             if getattr(self, filt.lower()) is not None:
-                if getattr(self, f"{filt.lower()}_err") is None:
-                    setattr(self, f"{filt.lower()}_err", 0)
+                if getattr(self, f"{filt.lower()}_std") is None:
+                    setattr(self, f"{filt.lower()}_std", 0)
         # noinspection PyUnresolvedReferences
         if self.incidence_angle is None:
             self.incidence_angle = 0
@@ -248,8 +248,8 @@ def filter_fields_factory(filter_name):
     """
     return a pair of django model fields associated with a particular
     spectral filter -- one for mean measurement value and one for
-    variance / stdev / etc
+    stdev
     """
     mean = models.FloatField(filter_name.lower() + " mean", **B_N_I)
-    err = models.FloatField(filter_name.lower() + " error", **B_N_I)
-    return mean, err
+    std = models.FloatField(filter_name.lower() + " stdev", **B_N_I)
+    return mean, std

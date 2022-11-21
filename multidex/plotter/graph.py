@@ -156,7 +156,7 @@ def perform_decomposition(
         raise ValueError("Won't do PCA on tiny sets.")
     # drop errors
     queryset_df = queryset_df[
-        [c for c in queryset_df.columns if "err" not in c]
+        [c for c in queryset_df.columns if "std" not in c]
     ]
     component_ix = int(re_get(settings, "component"))
     # TODO, maybe: placeholder for other decomposition methods
@@ -188,7 +188,7 @@ def perform_spectrum_op(
     # the inputs. also drop precalculated perperties -- a bit kludgey.
     queryset_df = (
         filter_df.loc[id_list]
-        .drop(["filter_avg", "err_avg", "rel_err_avg"], axis=1)
+        .drop(["filter_avg", "std_avg", "rel_std_avg"], axis=1)
         .copy()
     )
     filt_args = [
