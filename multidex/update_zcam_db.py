@@ -20,17 +20,17 @@ ASDF_CLIENT_SECRET = (
     "/home/michael/Desktop/silencio/secrets/google_client_secrets.json"
 )
 LOGFILE = f"zcam_db_{calendar_stamp()}.log"
-LOCAL_MSPEC_ROOT = "/datascratch/zcam_mspec_sync/"
-DRIVE_MSPEC_ROOT = "110wJGkFyqx9cWZJjLs08lYntTRskKFOh"
-MULTIDEX_ROOT = Path("/home/ubuntu/multidex/multidex")
+LOCAL_MSPEC_ROOT = "/datascratch/zcam_data/zcam_mspec_sync/"
+DRIVE_MSPEC_ROOT = "1WuvGtj3DAxH2yDALAmqm-HqkQmI-M-17"
+MULTIDEX_ROOT = Path("/home/michael/multidex/multidex")
 LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
 LOCAL_THUMB_PATH = Path(
     MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
 )
+SHARED_DRIVE_ID = "0APqiZpxj6EYeUk9PVA"
 DJANGO_MANAGE_PATH = Path("manage.py")
-DRIVE_DB_FOLDER = "1P-7d3F6Ho0qh6fjqR6-_Vqf2a2LVDLzw"
+DRIVE_DB_FOLDER = "1uuZfEIY4tvpQH6oKZPuH94RcBJ78EYbX"
 # test folder in zcam_debug
-# DRIVE_DB_FOLDER = "1KGwIVB9yW6I9NYsrVxeUlV_eluKG9nJv"
 MDEX_FILE_PATTERN = re.compile(r"(marslab_SOL)|(context_image)")
 
 
@@ -62,6 +62,7 @@ def make_asdf_pydrive_client_3():
         ASDF_CLIENT_SECRET, scope
     )
     return DriveBot(creds)
+
 
 def rebuild_database(ingest_rc):
     if os.path.exists(LOCAL_DB_PATH):
@@ -198,12 +199,14 @@ def sync_mspec_tree():
         f"{DRIVE_MSPEC_ROOT} to {LOCAL_MSPEC_ROOT}"
     )
     scanner = DriveScanner(
-        bot, query=(
+        bot,
+        query=(
             "name contains 'marslab' "
             "or name contains 'context_image' "
             "or name contains '.fits.' "
             "or mimeType = 'application/vnd.google-apps.folder'"
-        )
+        ),
+        shared_drive_id=SHARED_DRIVE_ID
     )
     scanner.get()
     tree = scanner.get_file_trees()[DRIVE_MSPEC_ROOT]
