@@ -87,6 +87,7 @@ SINGLE_SPECTRUM_FIELDS = {
     "images": models.TextField(**B_N_I, default="{}"),
 }
 
+
 # ############### prototype classes #######################
 class RoverSpectrum(models.Model):
     """
@@ -174,7 +175,7 @@ class RoverSpectrum(models.Model):
             filt: getattr(self, filt.lower()) for filt in self.filters.keys()
         }
         spectrum |= {
-            filt + "_ERR": getattr(self, filt.lower() + "_err")
+            filt + "_STD": getattr(self, filt.lower() + "_std")
             for filt in self.filters.keys()
         }
         return polish_xcam_spectrum(

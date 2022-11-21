@@ -56,7 +56,7 @@ def jpeg_buffer(image):
 
 
 def default_thumbnailer():
-    params = {"crop": {"bounds": (20, 20, 122, 5)}, "thumb": {"scale": 2}}
+    inserts = {"crop": {"bounds": (20, 20, 122, 5)}, "thumb": {"scale": 2}}
     steps = {
         "load": Image.open,
         "flatten": remove_alpha,
@@ -64,14 +64,13 @@ def default_thumbnailer():
         "thumb": thumber,
         "write": jpeg_buffer,
     }
-    return Composition(steps=steps, parameters=params)
+    return Composition(steps=steps, inserts=inserts)
 
 
-ASDF_STEM_PATTERN = re.compile(r'SOL\d{4}_zcam\d{5}_RSM\d{1,4}(-\w+)?', re.UNICODE)
-ASDF_LEGACY_STEM_PATTERN = re.compile(
-    r"SOL\d{4}_SEQIDzcam\d{5}_SITE\d{1,4}_DRIVE\d{1,4}_RMS\d{1,4}_"
-    r"ZOOM\d{1,3}(-\w+)?", re.UNICODE
+ASDF_STEM_PATTERN = re.compile(
+    r'SOL\d{4}_zcam\d{5}_RSM\d{1,4}(-\w+)?', re.UNICODE
 )
+
 
 # TODO: do this better, requires making people install this better
 THUMB_PATH = "plotter/application/assets/browse/zcam/"
@@ -147,10 +146,9 @@ def process_context_files(context_files):
 
 
 def asdf_stemmer(asdf_fn: str):
-    for pattern in (ASDF_STEM_PATTERN, ASDF_LEGACY_STEM_PATTERN):
-        stem = re.search(pattern, asdf_fn)
-        if stem is not None:
-            return stem.group(0)
+    stem = re.search(ASDF_STEM_PATTERN, asdf_fn)
+    if stem is not None:
+        return stem.group(0)
     return None
 
 
