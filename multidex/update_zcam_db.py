@@ -20,9 +20,9 @@ ASDF_CLIENT_SECRET = (
     "/home/michael/Desktop/silencio/secrets/google_client_secrets.json"
 )
 LOGFILE = f"zcam_db_{calendar_stamp()}.log"
-LOCAL_MSPEC_ROOT = "/datascratch/zcam_data/zcam_mspec_sync/"
+LOCAL_MSPEC_ROOT = "/home/ubuntu/zcam_data"
 DRIVE_MSPEC_ROOT = "1WuvGtj3DAxH2yDALAmqm-HqkQmI-M-17"
-MULTIDEX_ROOT = Path("/home/michael/multidex/multidex")
+MULTIDEX_ROOT = Path("/home/ubuntu/multidex")
 LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
 LOCAL_THUMB_PATH = Path(
     MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
@@ -89,105 +89,6 @@ def log_exception(message: str, ex: Exception):
 def csvify(sequence):
     return ",".join([str(item) for item in sequence])
 
-
-def update_mdex_from_drive(
-    local_only=False,
-    force_rebuild=False,
-    shutdown_on_completion=False,
-    ingest_rc=False,
-    upload=True
-):
-    bot = make_asdf_pydrive_client()
-    if local_only is False:
-        try:
-            saved_files = sync_mspec_tree()
-        except Exception as ex:
-            log_exception("sync with Google Drive failed", ex)
-            return
-    else:
-        saved_files = []
-    folder_suffix = ""
-    if len(saved_files) == 0:
-        log(f"{stamp()}: no new files found in Drive")
-        if force_rebuild is True or (local_only is True):
-            log(
-                f"{stamp()}: force_rebuild or local_only passed, "
-                f"rebuilding db anyway"
-            )
-        else:
-            folder_suffix = " [no updates]"
-    log(f"{stamp()}: sync complete; {len(saved_files)} files downloaded")
-    log(f"{stamp()}: building {LOCAL_DB_PATH} from {LOCAL_MSPEC_ROOT}")
-    try:
-        ingest_results = rebuild_database(ingest_rc)
-    except Exception as ex:
-        log_exception("database rebuild failed", ex)
-        return
-    if len(ingest_results) == 0:
-        log(f"{stamp()}: unusual error: no files ingested")
-        return
-    log(f"{stamp()}: database build complete")
-    log("BEGIN FILE MANIFEST")
-    # log paths relative to tree root rather than local drive root
-    for file in ingest_results:
-        file["file"] = file["file"].replace(LOCAL_MSPEC_ROOT + "/", "")
-    with open(LOGFILE, "a+") as logfile:
-        logfile.write(f"{csvify(ingest_results[0].keys())}\n")
-        for result in ingest_results:
-            logfile.write(f"{csvify(result.values())}\n")
-    log("END FILE MANIFEST")
-    try:
-        log(f"{stamp()}: dumping database as CSV")
-        from plotter.graph import dump_model_table
-        dump_model_table("ZCAM", f"ZCAM_db_dump.csv")
-    except Exception as ex:
-        log_exception("db dump failed", ex)
-    try:
-        log(f"{stamp()}: adding lab spectra to database")
-        import ingest.csv2
-        ingest.csv2.perform_ingest(
-            "data/lab_spectra_zcam_multidex.csv", "ZCAM"
-        )
-    except Exception as ex:
-        log_exception("lab spectra ingest failed", ex)
-    # TODO, maybe: lazy but sort of whatever
-    log(f"{stamp()}: compressing thumbnails")
-    sh.tar(
-        "cf",
-        str(Path(os.getcwd(), "zcam_thumbs.tar")),
-        "-C",
-        LOCAL_THUMB_PATH,
-        "."
-    )
-    if upload is False:
-        log(f"{stamp()}: upload=False, terminating")
-        if shutdown_on_completion is True:
-            sh.sudo("shutdown", "now")
-        return
-    try:
-        # TODO: implement these methods for drivebot3
-        log(f"{stamp()}: creating build folder on Drive")
-        output_folder = bot.cd(f"{stamp()}{folder_suffix}", DRIVE_DB_FOLDER)
-    except Exception as ex:
-        log_exception("couldn't create Drive folder", ex)
-        return
-    try:
-        log(f"{stamp()}: transferring db file to Drive")
-        bot.cp(LOCAL_DB_PATH, output_folder)
-        log(f"{stamp()}: transferring db dump to Drive")
-        bot.cp("ZCAM_db_dump.csv", output_folder)
-        log(f"{stamp()}: compressing thumbnails and transferring to drive")
-        sh.igzip("-f", "zcam_thumbs.tar")
-        bot.cp("zcam_thumbs.tar.gz", output_folder)
-    except Exception as ex:
-        log_exception("file transfer failed", ex)
-    log(f"{stamp()}: transferring log to Drive")
-    try:
-        bot.cp(LOGFILE, output_folder)
-    except Exception as ex:
-        log_exception(f"{stamp()}: log transfer failed", ex)
-    if shutdown_on_completion is True:
-        sh.sudo("shutdown", "now")
 
 
 def sync_mspec_tree():
@@ -280,6 +181,106 @@ def sync_mspec_tree():
                     f"couldn't sync {path}: {type(ex)}: {ex}"
                 )
     return saved_files
+
+
+def update_mdex_from_drive(
+    local_only=False,
+    force_rebuild=False,
+    shutdown_on_completion=False,
+    ingest_rc=False,
+    upload=True
+):
+    if local_only is False:
+        try:
+            saved_files = sync_mspec_tree()
+        except Exception as ex:
+            log_exception("sync with Google Drive failed", ex)
+            return
+    else:
+        saved_files = []
+    folder_suffix = ""
+    if len(saved_files) == 0:
+        log(f"{stamp()}: no new files found in Drive")
+        if force_rebuild is True or (local_only is True):
+            log(
+                f"{stamp()}: force_rebuild or local_only passed, "
+                f"rebuilding db anyway"
+            )
+        else:
+            folder_suffix = " [no updates]"
+    log(f"{stamp()}: sync complete; {len(saved_files)} files downloaded")
+    log(f"{stamp()}: building {LOCAL_DB_PATH} from {LOCAL_MSPEC_ROOT}")
+    try:
+        ingest_results = rebuild_database(ingest_rc)
+    except Exception as ex:
+        log_exception("database rebuild failed", ex)
+        return
+    if len(ingest_results) == 0:
+        log(f"{stamp()}: unusual error: no files ingested")
+        return
+    log(f"{stamp()}: database build complete")
+    log("BEGIN FILE MANIFEST")
+    # log paths relative to tree root rather than local drive root
+    for file in ingest_results:
+        file["file"] = file["file"].replace(LOCAL_MSPEC_ROOT + "/", "")
+    with open(LOGFILE, "a+") as logfile:
+        logfile.write(f"{csvify(ingest_results[0].keys())}\n")
+        for result in ingest_results:
+            logfile.write(f"{csvify(result.values())}\n")
+    log("END FILE MANIFEST")
+    try:
+        log(f"{stamp()}: dumping database as CSV")
+        from plotter.graph import dump_model_table
+        dump_model_table("ZCAM", f"ZCAM_db_dump.csv")
+    except Exception as ex:
+        log_exception("db dump failed", ex)
+    try:
+        log(f"{stamp()}: adding lab spectra to database")
+        import ingest.csv2
+        ingest.csv2.perform_ingest(
+            "data/lab_spectra_zcam_multidex.csv", "ZCAM"
+        )
+    except Exception as ex:
+        log_exception("lab spectra ingest failed", ex)
+    # TODO, maybe: lazy but sort of whatever
+    log(f"{stamp()}: compressing thumbnails")
+    sh.tar(
+        "cf",
+        str(Path(os.getcwd(), "zcam_thumbs.tar")),
+        "-C",
+        LOCAL_THUMB_PATH,
+        "."
+    )
+    if upload is False:
+        log(f"{stamp()}: upload=False, terminating")
+        if shutdown_on_completion is True:
+            sh.sudo("shutdown", "now")
+        return
+    try:
+        bot = make_asdf_pydrive_client()
+        # TODO: implement these methods for drivebot3
+        log(f"{stamp()}: creating build folder on Drive")
+        output_folder = bot.cd(f"{stamp()}{folder_suffix}", DRIVE_DB_FOLDER)
+    except Exception as ex:
+        log_exception("couldn't create Drive folder", ex)
+        return
+    try:
+        log(f"{stamp()}: transferring db file to Drive")
+        bot.cp(LOCAL_DB_PATH, output_folder)
+        log(f"{stamp()}: transferring db dump to Drive")
+        bot.cp("ZCAM_db_dump.csv", output_folder)
+        log(f"{stamp()}: compressing thumbnails and transferring to drive")
+        sh.igzip("-f", "zcam_thumbs.tar")
+        bot.cp("zcam_thumbs.tar.gz", output_folder)
+    except Exception as ex:
+        log_exception("file transfer failed", ex)
+    log(f"{stamp()}: transferring log to Drive")
+    try:
+        bot.cp(LOGFILE, output_folder)
+    except Exception as ex:
+        log_exception(f"{stamp()}: log transfer failed", ex)
+    if shutdown_on_completion is True:
+        sh.sudo("shutdown", "now")
 
 
 if __name__ == "__main__":

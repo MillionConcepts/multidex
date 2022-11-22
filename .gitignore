@@ -29,6 +29,7 @@
 *test.json
 /multidex/notetaking_attempt_1/
 !missing.jpg
+*.tar
 *.tar.gz
-!ZCAM_db_dump.csv
+*_db_dump.csv
 .coverage
