@@ -209,7 +209,7 @@ def sync_mspec_tree():
         shared_drive_id=SHARED_DRIVE_ID
     )
     scanner.get()
-    tree = scanner.get_file_trees()[DRIVE_MSPEC_ROOT]
+    tree = scanner.get_file_trees()[SHARED_DRIVE_ID]
     directories, files = scanner.make_manifest()
     in_filesystem = files.loc[
         files['id'].isin(tree.keys())
@@ -223,7 +223,7 @@ def sync_mspec_tree():
         directories['id'].isin(relevant_files['parents'].unique())]
     drive_paths = set(
         tree[folder_id] for folder_id in relevant_directories['id'])
-    sol_paths = {path for path in drive_paths if re.match(r"\d{4}", path)}
+    sol_paths = {path for path in drive_paths if re.match(r".*/\d{4}", path)}
     new_paths = sol_paths
     while any(filter(lambda p: '/' in p, new_paths)):
         new_paths = [str(Path(path).parent) for path in new_paths]
