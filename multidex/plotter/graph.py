@@ -113,6 +113,9 @@ def truncate_id_list_for_missing_properties(
             )
         elif model_property["type"] == "computed":
             filt_args.append([axis_option])
+        # allow null to be used as a category of color
+        elif ("marker" in suffix) and (model_property["value_type"] == "qual"):
+            continue
         else:
             metadata_args.append(axis_option)
     if filt_args:
@@ -336,9 +339,8 @@ def make_markers(
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
         colormap = re_get(settings, "palette-name-drop.value")
         if props["value_type"] == "qual":
-            string_hash = arbitrarily_hash_strings(
-                none_to_quote_unquote_none(property_list)
-            )
+            property_list = none_to_quote_unquote_none(property_list)
+            string_hash = arbitrarily_hash_strings(property_list)
             # TODO: compute this one step later so that we can avoid
             #  including entirely-highlighted things in colorbar
             color = [string_hash[prop] for prop in property_list]
