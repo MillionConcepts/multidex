@@ -35,16 +35,10 @@ class ZSpec(XSpec):
     compression = models.CharField("compression", max_length=40, **B_N_I)
     compression_quality = models.IntegerField("compression quality", **B_N_I)
     grain_size = models.CharField("grain size", max_length=20, **B_N_I)
-    soil_color = models.CharField("soil color", max_length=25, **B_N_I)
     distance = models.CharField("distance", max_length=20, **B_N_I)
     location = models.CharField("location", max_length=60, **B_N_I)
     analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
     min_count = models.IntegerField("minimum pixel count", **B_N_I)
-    # coordinated observations
-    scam = models.CharField("SCAM", **B_N_I, max_length=50)
-    wtsn = models.CharField("WTSN", **B_N_I, max_length=50)
-    srlc_spec = models.CharField("SRLC SPEC", **B_N_I, max_length=50)
-    pixl = models.CharField("PIXL", **B_N_I, max_length=50)
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
     # radiometric calibration file metadata fields
     rc_caltarget_file = models.CharField(
