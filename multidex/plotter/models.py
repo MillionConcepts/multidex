@@ -19,6 +19,9 @@ from plotter.model_prototypes import (
 
 
 class ZSpec(XSpec):
+    feature_subtype = models.CharField(
+        "feature subtype", **B_N_I, max_length=45
+    )
     zoom = models.CharField("Zoom Code", max_length=10, **B_N_I)
     # shared target identifier with other instruments, usually null
     target = models.CharField("Target", max_length=60, **B_N_I)
@@ -31,22 +34,11 @@ class ZSpec(XSpec):
     file_timestamp = models.CharField(max_length=30, null=True)
     compression = models.CharField("compression", max_length=40, **B_N_I)
     compression_quality = models.IntegerField("compression quality", **B_N_I)
-    rock_surface = models.CharField("rock surface", max_length=50, **B_N_I)
     grain_size = models.CharField("grain size", max_length=20, **B_N_I)
-    soil_location = models.CharField("soil location", max_length=50, **B_N_I)
-    soil_color = models.CharField("soil color", max_length=25, **B_N_I)
-    morphology = models.CharField("morphology", max_length=25, **B_N_I)
     distance = models.CharField("distance", max_length=20, **B_N_I)
     location = models.CharField("location", max_length=60, **B_N_I)
-    landform_type = models.CharField("landform type", max_length=25, **B_N_I)
-    workspace = models.CharField("workspace", max_length=40, **B_N_I)
     analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
     min_count = models.IntegerField("minimum pixel count", **B_N_I)
-    # coordinated observations
-    scam = models.CharField("SCAM", **B_N_I, max_length=50)
-    wtsn = models.CharField("WTSN", **B_N_I, max_length=50)
-    srlc_spec = models.CharField("SRLC SPEC", **B_N_I, max_length=50)
-    pixl = models.CharField("PIXL", **B_N_I, max_length=50)
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
     # radiometric calibration file metadata fields
     rc_caltarget_file = models.CharField(
@@ -252,7 +244,7 @@ for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:
     for filt in DERIVED_CAM_DICT[spec_model.instrument]["filters"].keys():
         mean_field, err_field = filter_fields_factory(filt)
         mean_field.contribute_to_class(spec_model, filt.lower())
-        err_field.contribute_to_class(spec_model, filt.lower() + "_err")
+        err_field.contribute_to_class(spec_model, filt.lower() + "_std")
 
     # add fields to each model
     setattr(

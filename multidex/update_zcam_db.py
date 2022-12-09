@@ -20,17 +20,17 @@ ASDF_CLIENT_SECRET = (
     "/home/michael/Desktop/silencio/secrets/google_client_secrets.json"
 )
 LOGFILE = f"zcam_db_{calendar_stamp()}.log"
-LOCAL_MSPEC_ROOT = "/datascratch/zcam_mspec_sync/"
-DRIVE_MSPEC_ROOT = "110wJGkFyqx9cWZJjLs08lYntTRskKFOh"
-MULTIDEX_ROOT = Path("/home/ubuntu/multidex/multidex")
+LOCAL_MSPEC_ROOT = "/home/ubuntu/zcam_data"
+DRIVE_MSPEC_ROOT = "1WuvGtj3DAxH2yDALAmqm-HqkQmI-M-17"
+MULTIDEX_ROOT = Path("/home/ubuntu/multidex")
 LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
 LOCAL_THUMB_PATH = Path(
     MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
 )
+SHARED_DRIVE_ID = "0APqiZpxj6EYeUk9PVA"
 DJANGO_MANAGE_PATH = Path("manage.py")
-DRIVE_DB_FOLDER = "1P-7d3F6Ho0qh6fjqR6-_Vqf2a2LVDLzw"
+DRIVE_DB_FOLDER = "1uuZfEIY4tvpQH6oKZPuH94RcBJ78EYbX"
 # test folder in zcam_debug
-# DRIVE_DB_FOLDER = "1KGwIVB9yW6I9NYsrVxeUlV_eluKG9nJv"
 MDEX_FILE_PATTERN = re.compile(r"(marslab_SOL)|(context_image)")
 
 
@@ -63,6 +63,7 @@ def make_asdf_pydrive_client_3():
     )
     return DriveBot(creds)
 
+
 def rebuild_database(ingest_rc):
     if os.path.exists(LOCAL_DB_PATH):
         os.unlink(LOCAL_DB_PATH)
@@ -89,6 +90,99 @@ def csvify(sequence):
     return ",".join([str(item) for item in sequence])
 
 
+
+def sync_mspec_tree():
+    from silencio.gdrive3 import DriveScanner
+
+    bot = make_asdf_pydrive_client_3()
+    log(
+        f"{stamp()}: beginning Google Drive sync from "
+        f"{DRIVE_MSPEC_ROOT} to {LOCAL_MSPEC_ROOT}"
+    )
+    scanner = DriveScanner(
+        bot,
+        query=(
+            "name contains 'marslab' "
+            "or name contains 'context_image' "
+            "or name contains '.fits.' "
+            "or mimeType = 'application/vnd.google-apps.folder'"
+        ),
+        shared_drive_id=SHARED_DRIVE_ID
+    )
+    scanner.get()
+    tree = scanner.get_file_trees()[SHARED_DRIVE_ID]
+    directories, files = scanner.make_manifest()
+    in_filesystem = files.loc[
+        files['id'].isin(tree.keys())
+    ]
+    relevant_files = in_filesystem.loc[
+        in_filesystem['name'].str.startswith('marslab_SOL')
+        | in_filesystem['name'].str.startswith('context_')
+        | in_filesystem['name'].str.contains('.fits.')
+    ]
+    relevant_directories = directories.loc[
+        directories['id'].isin(relevant_files['parents'].unique())]
+    drive_paths = set(
+        tree[folder_id] for folder_id in relevant_directories['id'])
+    sol_paths = {path for path in drive_paths if re.match(r".*/\d{4}", path)}
+    new_paths = sol_paths
+    while any(filter(lambda p: '/' in p, new_paths)):
+        new_paths = [str(Path(path).parent) for path in new_paths]
+        sol_paths.update(new_paths)
+    reverse_tree = {v: k for k, v in tree.items()}
+    extant_paths = [
+        path.replace(LOCAL_MSPEC_ROOT, "").strip("/")
+        for path, _, __ in os.walk(LOCAL_MSPEC_ROOT)
+    ]
+    extras = set(extant_paths).difference(set(sol_paths))
+    for extra in filter(None, extras):
+        log(f"deleting {extra} not found in remote")
+        shutil.rmtree(Path(LOCAL_MSPEC_ROOT, extra), ignore_errors=True)
+    saved_files = []
+    for sol_path in sol_paths:
+        if sol_path == '.':
+            continue
+        Path(LOCAL_MSPEC_ROOT, sol_path).mkdir(parents=True, exist_ok=True)
+        folder_id = reverse_tree[sol_path]
+        remote_files = relevant_files.loc[
+            relevant_files['parents'] == folder_id
+        ]
+        uniques = remote_files["name"].unique()
+        for extra in filter(
+            lambda f: (f.name not in uniques and not f.is_dir()),
+            Path(LOCAL_MSPEC_ROOT, sol_path).iterdir()
+        ):
+            log(f"deleting {extra} not found in remote")
+            extra.unlink()
+        for name, files in remote_files.groupby("name"):
+            path = Path(sol_path, name)
+            if len(files) > 1:
+                log(f"refusing to sync duplicates of {path}")
+                continue
+            local = Path(LOCAL_MSPEC_ROOT, path)
+            if local.exists():
+                local_mtime = dt.datetime.fromtimestamp(
+                    os.path.getmtime(local), tz=dt.timezone.utc
+                )
+                remote_mtime = dtp.parse(files['modifiedTime'].iloc[0])
+                if local_mtime > remote_mtime:
+                    log(f"skipping older version of {path}")
+                    continue
+            log(f"copying {path} to local")
+            try:
+                blob = bot.read_file(files['id'].iloc[0])
+                with local.open('wb+') as stream:
+                    stream.write(blob)
+                saved_files.append(path)
+            except KeyboardInterrupt:
+                raise
+            except Exception as ex:
+                log(
+                    f"couldn't sync {path}: {type(ex)}: {ex}"
+                )
+    return saved_files
+
+
 def update_mdex_from_drive(
     local_only=False,
     force_rebuild=False,
@@ -96,7 +190,6 @@ def update_mdex_from_drive(
     ingest_rc=False,
     upload=True
 ):
-    bot = make_asdf_pydrive_client()
     if local_only is False:
         try:
             saved_files = sync_mspec_tree()
@@ -164,6 +257,7 @@ def update_mdex_from_drive(
             sh.sudo("shutdown", "now")
         return
     try:
+        bot = make_asdf_pydrive_client()
         # TODO: implement these methods for drivebot3
         log(f"{stamp()}: creating build folder on Drive")
         output_folder = bot.cd(f"{stamp()}{folder_suffix}", DRIVE_DB_FOLDER)
@@ -187,96 +281,6 @@ def update_mdex_from_drive(
         log_exception(f"{stamp()}: log transfer failed", ex)
     if shutdown_on_completion is True:
         sh.sudo("shutdown", "now")
-
-
-def sync_mspec_tree():
-    from silencio.gdrive3 import DriveScanner
-
-    bot = make_asdf_pydrive_client_3()
-    log(
-        f"{stamp()}: beginning Google Drive sync from "
-        f"{DRIVE_MSPEC_ROOT} to {LOCAL_MSPEC_ROOT}"
-    )
-    scanner = DriveScanner(
-        bot, query=(
-            "name contains 'marslab' "
-            "or name contains 'context_image' "
-            "or name contains '.fits.' "
-            "or mimeType = 'application/vnd.google-apps.folder'"
-        )
-    )
-    scanner.get()
-    tree = scanner.get_file_trees()[DRIVE_MSPEC_ROOT]
-    directories, files = scanner.make_manifest()
-    in_filesystem = files.loc[
-        files['id'].isin(tree.keys())
-    ]
-    relevant_files = in_filesystem.loc[
-        in_filesystem['name'].str.startswith('marslab_SOL')
-        | in_filesystem['name'].str.startswith('context_')
-        | in_filesystem['name'].str.contains('.fits.')
-    ]
-    relevant_directories = directories.loc[
-        directories['id'].isin(relevant_files['parents'].unique())]
-    drive_paths = set(
-        tree[folder_id] for folder_id in relevant_directories['id'])
-    sol_paths = {path for path in drive_paths if re.match(r"\d{4}", path)}
-    new_paths = sol_paths
-    while any(filter(lambda p: '/' in p, new_paths)):
-        new_paths = [str(Path(path).parent) for path in new_paths]
-        sol_paths.update(new_paths)
-    reverse_tree = {v: k for k, v in tree.items()}
-    extant_paths = [
-        path.replace(LOCAL_MSPEC_ROOT, "").strip("/")
-        for path, _, __ in os.walk(LOCAL_MSPEC_ROOT)
-    ]
-    extras = set(extant_paths).difference(set(sol_paths))
-    for extra in filter(None, extras):
-        log(f"deleting {extra} not found in remote")
-        shutil.rmtree(Path(LOCAL_MSPEC_ROOT, extra), ignore_errors=True)
-    saved_files = []
-    for sol_path in sol_paths:
-        if sol_path == '.':
-            continue
-        Path(LOCAL_MSPEC_ROOT, sol_path).mkdir(parents=True, exist_ok=True)
-        folder_id = reverse_tree[sol_path]
-        remote_files = relevant_files.loc[
-            relevant_files['parents'] == folder_id
-        ]
-        uniques = remote_files["name"].unique()
-        for extra in filter(
-            lambda f: (f.name not in uniques and not f.is_dir()),
-            Path(LOCAL_MSPEC_ROOT, sol_path).iterdir()
-        ):
-            log(f"deleting {extra} not found in remote")
-            extra.unlink()
-        for name, files in remote_files.groupby("name"):
-            path = Path(sol_path, name)
-            if len(files) > 1:
-                log(f"refusing to sync duplicates of {path}")
-                continue
-            local = Path(LOCAL_MSPEC_ROOT, path)
-            if local.exists():
-                local_mtime = dt.datetime.fromtimestamp(
-                    os.path.getmtime(local), tz=dt.timezone.utc
-                )
-                remote_mtime = dtp.parse(files['modifiedTime'].iloc[0])
-                if local_mtime > remote_mtime:
-                    log(f"skipping older version of {path}")
-                    continue
-            log(f"copying {path} to local")
-            try:
-                blob = bot.read_file(files['id'].iloc[0])
-                with local.open('wb+') as stream:
-                    stream.write(blob)
-                saved_files.append(path)
-            except KeyboardInterrupt:
-                raise
-            except Exception as ex:
-                log(
-                    f"couldn't sync {path}: {type(ex)}: {ex}"
-                )
-    return saved_files
 
 
 if __name__ == "__main__":

@@ -772,7 +772,7 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
     ordering = construct_field_ordering(
         filters=tuple(
             filter(
-                complement(are_in(("AVG", "ERR"), oper=or_)), filter_df.columns
+                complement(are_in(("AVG", "STD"), oper=or_)), filter_df.columns
             )
         ),
         fields=output_df.columns,

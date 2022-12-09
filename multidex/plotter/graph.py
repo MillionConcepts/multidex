@@ -113,6 +113,9 @@ def truncate_id_list_for_missing_properties(
             )
         elif model_property["type"] == "computed":
             filt_args.append([axis_option])
+        # allow null to be used as a category of color
+        elif ("marker" in suffix) and (model_property["value_type"] == "qual"):
+            continue
         else:
             metadata_args.append(axis_option)
     if filt_args:
@@ -156,7 +159,7 @@ def perform_decomposition(
         raise ValueError("Won't do PCA on tiny sets.")
     # drop errors
     queryset_df = queryset_df[
-        [c for c in queryset_df.columns if "err" not in c]
+        [c for c in queryset_df.columns if "std" not in c]
     ]
     component_ix = int(re_get(settings, "component"))
     # TODO, maybe: placeholder for other decomposition methods
@@ -188,7 +191,7 @@ def perform_spectrum_op(
     # the inputs. also drop precalculated perperties -- a bit kludgey.
     queryset_df = (
         filter_df.loc[id_list]
-        .drop(["filter_avg", "err_avg", "rel_err_avg"], axis=1)
+        .drop(["filter_avg", "std_avg", "rel_std_avg"], axis=1)
         .copy()
     )
     filt_args = [
@@ -336,9 +339,8 @@ def make_markers(
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
         colormap = re_get(settings, "palette-name-drop.value")
         if props["value_type"] == "qual":
-            string_hash = arbitrarily_hash_strings(
-                none_to_quote_unquote_none(property_list)
-            )
+            property_list = none_to_quote_unquote_none(property_list)
+            string_hash = arbitrarily_hash_strings(property_list)
             # TODO: compute this one step later so that we can avoid
             #  including entirely-highlighted things in colorbar
             color = [string_hash[prop] for prop in property_list]

@@ -90,7 +90,7 @@ def data_df_from_queryset(
             ).items()
         }
         err_dict = {
-            filt + "_err": value["err"]
+            filt + "_std": value["std"]
             for filt, value in spectrum.filter_values(
                 average_filters=average_filters, scale_to=scale_to
             ).items()
@@ -108,15 +108,15 @@ def data_df_from_queryset(
             filter_df[column] = filter_df[column] / theta_i
     filter_df.index = id_list
     filter_df["filter_avg"] = np.round(
-        filter_df[[c for c in filter_df.columns if "err" not in c]].mean(
+        filter_df[[c for c in filter_df.columns if "std" not in c]].mean(
             axis=1
         ),
         5,
     )
-    filter_df["err_avg"] = np.round(
-        filter_df[[c for c in filter_df.columns if "err" in c]].mean(axis=1), 5
+    filter_df["std_avg"] = np.round(
+        filter_df[[c for c in filter_df.columns if "std" in c]].mean(axis=1), 5
     )
-    filter_df["rel_err_avg"] = filter_df["err_avg"] / filter_df["filter_avg"]
+    filter_df["rel_std_avg"] = filter_df["std_avg"] / filter_df["filter_avg"]
     return filter_df
 
 
@@ -128,7 +128,7 @@ def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):
     directly by user-facing functions.
     """
     mean_columns = [
-        column for column in filter_df.columns if not column.endswith("_err")
+        column for column in filter_df.columns if not column.endswith("_std")
     ]
     mean_df = filter_df[mean_columns].copy()
     band_df = mean_df[
@@ -141,7 +141,7 @@ def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):
         ]
     ]
     if errors:
-        error_df = filter_df[[column + "_err" for column in band_df.columns]]
+        error_df = filter_df[[column + "_std" for column in band_df.columns]]
         error_df.columns = [
             spec_model().all_filter_waves()[column]
             for column in band_df.columns
@@ -162,7 +162,7 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
     directly by user-facing functions.
     """
     mean_columns = [
-        column for column in filter_df.columns if not column.endswith("_err")
+        column for column in filter_df.columns if not column.endswith("_std")
     ]
     mean_df = filter_df[mean_columns].copy()
     band_df = mean_df[
@@ -175,7 +175,7 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
         ]
     ]
     if errors:
-        error_df = filter_df[[column + "_err" for column in band_df.columns]]
+        error_df = filter_df[[column + "_std" for column in band_df.columns]]
         error_df.columns = [
             spec_model().all_filter_waves()[column]
             for column in band_df.columns
@@ -190,7 +190,7 @@ def band(filter_df, spec_model, wave_1, wave_2, errors=False):
 
 def ref(filter_df, _spec_model, filt, errors=False):
     if errors:
-        return filter_df[filt], filter_df[filt + "_err"]
+        return filter_df[filt], filter_df[filt + "_std"]
     return filter_df[filt], None
 
 
@@ -255,7 +255,7 @@ def ratio(filter_df, _spec_model, filt_1, filt_2, errors=False):
     """
     band_df = filter_df[[filt_1, filt_2]].T
     if errors:
-        error_df = filter_df[[filt_1 + "_err", filt_2 + "_err"]].T
+        error_df = filter_df[[filt_1 + "_std", filt_2 + "_std"]].T
     else:
         error_df = None
     return spectops.ratio(band_df, error_df, None)
@@ -268,7 +268,7 @@ def slope(filter_df, spec_model, filt_1, filt_2, errors=False):
     """
     band_df = filter_df[[filt_1, filt_2]].T
     if errors:
-        error_df = filter_df[[filt_1 + "_err", filt_2 + "_err"]].T
+        error_df = filter_df[[filt_1 + "_std", filt_2 + "_std"]].T
     else:
         error_df = None
     filter_waves = spec_model().all_filter_waves()
@@ -297,7 +297,7 @@ def band_depth(
     band_df = filter_df[[filt_left, filt_right, filt_middle]].T
     if errors:
         error_df = filter_df[
-            [filt_left + "_err", filt_right + "_err", filt_middle + "_err"]
+            [filt_left + "_std", filt_right + "_std", filt_middle + "_std"]
         ].T
     else:
         error_df = None

@@ -36,12 +36,6 @@ SHARED_OBSERVATION_FIELDS = {
     "ltst": models.TimeField("local true solar time", **B_N_I),
     "seq_id": models.CharField("sequence id", max_length=20, **B_N_I),
     "rover_elevation": models.FloatField("rover elevation", **B_N_I),
-    "target_elevation": models.FloatField("target elevation", **B_N_I),
-    "target_distance": models.FloatField("target distance", **B_N_I),
-    "target_lat": models.FloatField("target latitude", **B_N_I),
-    "target_lon": models.FloatField("target longitude", **B_N_I),
-    "tau": models.FloatField("tau", **B_N_I),
-    "focal_distance": models.FloatField("focal distance", **B_N_I),
     "incidence_angle": models.FloatField("incidence angle", **B_N_I),
     "emission_angle": models.FloatField("emission angle", **B_N_I),
     "phase_angle": models.FloatField("phase angle", **B_N_I),
@@ -87,6 +81,7 @@ SINGLE_SPECTRUM_FIELDS = {
     "images": models.TextField(**B_N_I, default="{}"),
 }
 
+
 # ############### prototype classes #######################
 class RoverSpectrum(models.Model):
     """
@@ -110,6 +105,13 @@ class RoverSpectrum(models.Model):
     def clean(self, *args, **kwargs):
         self.modification_time = dt.datetime.utcnow().isoformat()[:-7] + "Z"
         self.multidex_version = __version__
+        for filt in self.filters.keys():
+            if getattr(self, filt.lower()) is not None:
+                if getattr(self, f"{filt.lower()}_std") is None:
+                    setattr(self, f"{filt.lower()}_std", 0)
+        # noinspection PyUnresolvedReferences
+        if self.incidence_angle is None:
+            self.incidence_angle = 0
         super().clean()
 
     @classmethod
@@ -167,7 +169,7 @@ class RoverSpectrum(models.Model):
             filt: getattr(self, filt.lower()) for filt in self.filters.keys()
         }
         spectrum |= {
-            filt + "_ERR": getattr(self, filt.lower() + "_err")
+            filt + "_STD": getattr(self, filt.lower() + "_std")
             for filt in self.filters.keys()
         }
         return polish_xcam_spectrum(
@@ -191,7 +193,6 @@ class RoverSpectrum(models.Model):
     # noinspection PyUnresolvedReferences
     def __str__(self):
         return f"sol {self.sol}_{self.name}_{self.seq_id}"
-
 
     class Meta:
         abstract = True
@@ -242,8 +243,8 @@ def filter_fields_factory(filter_name):
     """
     return a pair of django model fields associated with a particular
     spectral filter -- one for mean measurement value and one for
-    variance / stdev / etc
+    stdev
     """
     mean = models.FloatField(filter_name.lower() + " mean", **B_N_I)
-    err = models.FloatField(filter_name.lower() + " error", **B_N_I)
-    return mean, err
+    std = models.FloatField(filter_name.lower() + " stdev", **B_N_I)
+    return mean, std
