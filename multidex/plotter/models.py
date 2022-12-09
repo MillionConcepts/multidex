@@ -160,6 +160,56 @@ class CSpec(RoverSpectrum):
         ).values
 
 
+class SSpec(RoverSpectrum):
+    target = models.CharField("Target", **B_N_I, max_length=50)
+    type_of_product = models.CharField(
+        "Type of Product", **B_N_I, max_length=50
+    )
+    # target_distance = models.FloatField("Distance (m)", max_length=20, **B_N_I)
+    lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
+    exposure = models.IntegerField("Exposure (ms)", **B_N_I)
+    target_type = models.CharField("Target Type", max_length=30, **B_N_I)
+    instrument_elevation = models.FloatField(
+        "Instrument Elevation (deg)", **B_N_I
+    )
+    instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
+    solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
+    solar_elevation = models.FloatField("Solar Elevation (deg)", **B_N_I)
+    raster_location = models.IntegerField("Raster Location #", **B_N_I)
+
+    instrument = "SCAM"
+    instrument_brief_name = "SuperCam"
+
+    @staticmethod
+    def make_scatter_annotations(
+            metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
+    ) -> np.ndarray:
+        meta = metadata_df.loc[truncated_ids]
+        descriptor = meta["target"].copy()
+        no_feature_ix = descriptor.loc[descriptor.isna()].index
+        descriptor.loc[no_feature_ix] = meta["target"].loc[no_feature_ix]
+        sol = meta["sol"].copy()
+        has_sol = sol.loc[sol.notna()].index
+        if len(has_sol) > 0:
+            # + operation throws an error if there is nothing to add to
+            sol.loc[has_sol] = sol.loc[has_sol].apply("{:.0f}".format) + " "
+        sol.loc[sol.isna()] = ""
+        raster = meta["raster_location"].copy()
+        has_raster = raster.loc[raster.notna()].index
+        raster.loc[has_raster] = (
+                raster.loc[has_raster].apply("{:.0f}".format) + " "
+        )
+        return (
+                meta["name"]
+                + "<br>sol: "
+                + sol
+                + "<br>target: "
+                + descriptor
+                + "<br>raster #: "
+                + raster
+        ).values
+
+
 class TestSpec(RoverSpectrum):
     """mock spectrum class for tests"""
     instrument = "TEST"
@@ -169,7 +219,7 @@ class TestSpec(RoverSpectrum):
 
 
 # bulk setup for each instrument
-for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:
+for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:
     if spec_model.instrument not in DERIVED_CAM_DICT.keys():
         continue
 
@@ -213,5 +263,5 @@ for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:
 
 # for automated model selection
 INSTRUMENT_MODEL_MAPPING = MappingProxyType(
-    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "TEST": TestSpec}
+    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "SCAM": SSpec, "TEST": TestSpec}
 )
