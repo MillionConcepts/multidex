@@ -191,7 +191,7 @@ class SSpec(RoverSpectrum):
         raster.loc[has_raster] = (
                 raster.loc[has_raster].apply("{:.0f}".format) + " "
         )
-        return (
+        text = (
                 meta["name"]
                 + "<br>sol: "
                 + sol
@@ -200,6 +200,7 @@ class SSpec(RoverSpectrum):
                 + "<br>raster #: "
                 + raster
         ).values
+        return text
 
 
 class TestSpec(RoverSpectrum):
