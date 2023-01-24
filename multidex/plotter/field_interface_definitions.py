@@ -41,7 +41,9 @@ QUALITATIVE_METADATA_FIELDS = (
     # rc properties
     "rc_seq_id",
     # caltarget roi only
-    "caltarget_element"
+    "caltarget_element",
+    # supercam
+    "red_rows"
 
 )
 # metadata fields we should treat as quantitative / continuous
@@ -83,6 +85,12 @@ QUANTITATIVE_METADATA_FIELDS = (
     "rc_uncertainty",
     # rc data field
     "azimuth_angle",
+    # supsercam
+    "uv_rows",
+    "vio_rows",
+    "rsm_azimuth",
+    "rsm_elevation",
+    "t_integ_real"
 
 )
 # properties computed at runtime from metadata
