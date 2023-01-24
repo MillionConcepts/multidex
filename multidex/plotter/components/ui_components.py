@@ -469,7 +469,7 @@ def search_parameter_div(
             children="remove",
         )
     checklist_values = []
-    for option in ("null", "invert"):
+    for option in ("null", "invert", "contains"):
         if preset.get(option) is True:
             checklist_values.append(option)
     checklist = dcc.Checklist(
@@ -479,6 +479,7 @@ def search_parameter_div(
         options=[
             {"label": "null", "value": "null"},
             {"label": "flip", "value": "invert"},
+            {"label": "contains", "value": "contains"},
         ],
         value=checklist_values,
     )
