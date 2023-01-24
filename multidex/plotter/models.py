@@ -157,17 +157,20 @@ class SSpec(RoverSpectrum):
     type_of_product = models.CharField(
         "Type of Product", **B_N_I, max_length=50
     )
-    # target_distance = models.FloatField("Distance (m)", max_length=20, **B_N_I)
     lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
-    exposure = models.IntegerField("Exposure (ms)", **B_N_I)
     target_type = models.CharField("Target Type", max_length=30, **B_N_I)
-    instrument_elevation = models.FloatField(
-        "Instrument Elevation (deg)", **B_N_I
-    )
+    instrument_elevation = models.FloatField("Instrument Elevation (deg)", **B_N_I)
     instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
     solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
     solar_elevation = models.FloatField("Solar Elevation (deg)", **B_N_I)
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
+    rsm_azimuth = models.FloatField("RSM Azimuth (deg)", **B_N_I)
+    rsm_elevation = models.FloatField("RSM Elevation (deg)", **B_N_I)
+    tau = models.FloatField("Tau", **B_N_I)
+    uv_rows = models.IntegerField("UV Rows")
+    vio_rows = models.IntegerField("VIO Rows")
+    red_rows = models.TextField("Red Rows")
+    t_integ_real = models.FloatField("Integration Time (real)")
 
     instrument = "SCAM"
     instrument_brief_name = "SuperCam"
@@ -177,30 +180,9 @@ class SSpec(RoverSpectrum):
             metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
     ) -> np.ndarray:
         meta = metadata_df.loc[truncated_ids]
-        descriptor = meta["target"].copy()
-        no_feature_ix = descriptor.loc[descriptor.isna()].index
-        descriptor.loc[no_feature_ix] = meta["target"].loc[no_feature_ix]
-        sol = meta["sol"].copy()
-        has_sol = sol.loc[sol.notna()].index
-        if len(has_sol) > 0:
-            # + operation throws an error if there is nothing to add to
-            sol.loc[has_sol] = sol.loc[has_sol].apply("{:.0f}".format) + " "
-        sol.loc[sol.isna()] = ""
-        raster = meta["raster_location"].copy()
-        has_raster = raster.loc[raster.notna()].index
-        raster.loc[has_raster] = (
-                raster.loc[has_raster].apply("{:.0f}".format) + " "
-        )
-        text = (
+        return (
                 meta["name"]
-                + "<br>sol: "
-                + sol
-                + "<br>target: "
-                + descriptor
-                + "<br>raster #: "
-                + raster
         ).values
-        return text
 
 
 class TestSpec(RoverSpectrum):

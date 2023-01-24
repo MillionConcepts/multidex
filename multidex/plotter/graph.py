@@ -591,7 +591,7 @@ def make_cspec_browse_image_components(
     cspec: "CSpec", image_directory, static_image_url
 ):
     """
-    CSpec object, size factor (viewport units), image directory ->
+    CSpec or SPec object, size factor (viewport units), image directory ->
     dash html.Img component containing the natural-color image
     associated with that object, mapped to the assets image
     route defined in the live app instance -- silly hack rn
