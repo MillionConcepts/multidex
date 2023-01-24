@@ -24,7 +24,7 @@ def looks_like_cspec(fn: str) -> bool:
 
 
 def looks_like_context(fn: str) -> bool:
-    return fn.endswith(".png") and ("ccam" in fn) and ("pixmap" not in fn)
+    return fn.endswith(".jpg") and ("ccam" in fn) and ("pixmap" not in fn)
 
 
 def directory_of(path: Path) -> str:
