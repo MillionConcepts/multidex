@@ -1,6 +1,7 @@
 import os
 from operator import attrgetter
 from pathlib import Path
+import shutil
 
 import django.db.models
 import numpy as np
@@ -15,7 +16,7 @@ django.setup()
 from plotter.models import SSpec
 
 SSPEC_FIELD_NAMES = list(map(attrgetter("name"), SSpec._meta.fields))
-
+THUMB_PATH = "plotter/application/assets/browse/scam/"
 
 def looks_like_sspec(fn: str) -> bool:
     return bool(
@@ -24,7 +25,7 @@ def looks_like_sspec(fn: str) -> bool:
 
 
 def looks_like_context(fn: str) -> bool:
-    return fn.endswith(".png") and ("scam" in fn) and ("pixmap" not in fn)
+    return fn.endswith(".jpg") and ("scam" in fn) and ("pixmap" not in fn)
 
 
 def directory_of(path: Path) -> str:
@@ -64,7 +65,7 @@ SCAM_BOOL_FIELDS = [
 
 def process_context_files(context_files):
     context_df = pd.DataFrame(context_files, columns=["path"])
-    context_df["save"] = False
+    context_df["save"] = True
     return context_df
 
 
@@ -78,7 +79,7 @@ def process_marslab_row(row, marslab_file, context_df):
     if context_df is not None:
         sol = row['sol']
         seq_id = row['seq_id']
-        img_file = '{sol:04d}_crm_{seq_id}'.format(sol=sol, seq_id=seq_id)
+        img_file = os.path.join('{sol:05d}'.format(sol=sol), seq_id.split('SCAM')[1])
         context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]
         obs_image = None
 
@@ -95,25 +96,49 @@ def process_marslab_row(row, marslab_file, context_df):
         # "min_count": row[row.index.str.contains("count")].astype(float).min(),
     }
 
-    # fix negative distances from darks
-    # if metadata['target_distance'] < 0:
-    #     metadata['target_distance'] = 5000
-    # convert all target types to lower case
-    # metadata['target_type_shot_specific'] = str.lower(metadata['target_type_shot_specific'])
-    # get sclk from filename
-    # sclk = int(metadata['name'].split('_')[1].replace('psv', ''))
-    # metadata['sclk'] = sclk
     try:
+        row_target = str(row.get("target"))
         spectrum = SSpec(**metadata)
         spectrum.clean()
         spectrum.save()
-        row_target = str(row.get("target"))
     except KeyboardInterrupt:
         raise
     except Exception as ex:
         print("failed on " + row_target + ": " + str(ex))
         return None
     return row_target
+
+
+def save_thumb(filename, row):
+    print("writing " + filename)
+    try:
+        shutil.copy(row['path'], filename)
+        return True, None
+    except KeyboardInterrupt:
+        raise
+    except Exception as ex:
+        print(f"failed on {filename}: {type(ex)}: {ex}")
+        return False, ex
+
+
+def save_relevant_thumbs(context_df):
+    if "save" not in context_df.columns:
+        return {}
+    to_save = context_df.loc[context_df["save"] == True]
+    thumb_path = THUMB_PATH
+    results = []
+    for _, row in to_save.iterrows():
+        filename = os.path.join(thumb_path, os.path.basename(row["path"]))
+        success, ex = save_thumb(filename, row)
+        results.append(
+            {
+                "file": row["path"],
+                "filetype": "thumb",
+                "status": success,
+                "exception": ex,
+            }
+        )
+    return results
 
 
 def format_for_multidex(frame):
@@ -167,6 +192,7 @@ def ingest_multidex(
     sspec_files, context_files = find_ingest_files(path, recursive)
     if not skip_thumbnails:
         context_df = process_context_files(context_files)
+        # save_relevant_thumbs(context_df)
     else:
         context_df = None
     successfully_ingested_sspec_files = []
