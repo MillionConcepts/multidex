@@ -509,6 +509,7 @@ def update_search_ids(
                 **entry,
                 "null": "null" in option,
                 "invert": "invert" in option,
+                "contains": "contains" in option,
             }
         )
     # save search settings for applicatio-n state save
@@ -583,6 +584,10 @@ def update_spectrum_images(
     # TODO: turn this into a dispatch function, if this ends up actually
     #  wanting distinct behavior
     if spec_model.instrument == "CCAM":
+        return make_cspec_browse_image_components(
+            spectrum, image_directory, static_image_url
+        )
+    if spec_model.instrument == "SCAM":
         return make_cspec_browse_image_components(
             spectrum, image_directory, static_image_url
         )
