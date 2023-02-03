@@ -17,10 +17,10 @@ def calendar_stamp():
 
 
 ASDF_CLIENT_SECRET = (
-    "/home/michael/Desktop/silencio/secrets/google_client_secrets.json"
+    "/home/ubuntu/silencio/secrets/google_client_secrets.json"
 )
 LOGFILE = f"zcam_db_{calendar_stamp()}.log"
-LOCAL_MSPEC_ROOT = "/home/ubuntu/zcam_data"
+LOCAL_MSPEC_ROOT = "/home/ubuntu/zcam_data/zcam_mspec_sync/"
 DRIVE_MSPEC_ROOT = "1WuvGtj3DAxH2yDALAmqm-HqkQmI-M-17"
 MULTIDEX_ROOT = Path("/home/ubuntu/multidex")
 LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
@@ -30,7 +30,6 @@ LOCAL_THUMB_PATH = Path(
 SHARED_DRIVE_ID = "0APqiZpxj6EYeUk9PVA"
 DJANGO_MANAGE_PATH = Path("manage.py")
 DRIVE_DB_FOLDER = "1uuZfEIY4tvpQH6oKZPuH94RcBJ78EYbX"
-# test folder in zcam_debug
 MDEX_FILE_PATTERN = re.compile(r"(marslab_SOL)|(context_image)")
 
 
@@ -102,10 +101,11 @@ def sync_mspec_tree():
     scanner = DriveScanner(
         bot,
         query=(
-            "name contains 'marslab' "
+            "(name contains 'marslab' "
             "or name contains 'context_image' "
             "or name contains '.fits.' "
-            "or mimeType = 'application/vnd.google-apps.folder'"
+            "or mimeType = 'application/vnd.google-apps.folder')"
+            "and trashed=false"
         ),
         shared_drive_id=SHARED_DRIVE_ID
     )
