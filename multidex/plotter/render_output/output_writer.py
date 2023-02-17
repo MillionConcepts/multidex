@@ -81,6 +81,7 @@ def apply_output_image_style(fig):
                 colorbar.title.side = "top"
                 colorbar.title.text = f"{coloraxis.colorbar.title.text}<br> &nbsp;"
             colorbar.tickvals = coloraxis.colorbar.tickvals
+            colorbar.update(COLORBAR_SETTINGS)
             coloraxis["colorbar"] = colorbar
             fig.update_coloraxes(coloraxis)
     return fig
@@ -93,9 +94,9 @@ def save_main_scatter_plot(scatter_fig_dict, aspect_ratio):
     """
     scatter_fig = go.Figure(scatter_fig_dict)
     scatter_fig = apply_output_image_style(scatter_fig)
-    svgtext = scatter_fig.to_image(
-        format="svg",
+    return scatter_fig.to_image(
+        format="png",
         width=BASE_SIZE_SETTING * aspect_ratio,
         height=BASE_SIZE_SETTING,
-    ).decode()
-    return inject_fonts_and_reload(svgtext).make_blob('png')
+        engine="kaleido"
+    )
