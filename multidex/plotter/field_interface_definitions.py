@@ -90,7 +90,10 @@ QUANTITATIVE_METADATA_FIELDS = (
     "vio_rows",
     "rsm_azimuth",
     "rsm_elevation",
-    "t_integ_real"
+    "t_integ_real",
+    "p1400",
+    "p1900",
+    "p2300"
 
 )
 # properties computed at runtime from metadata
