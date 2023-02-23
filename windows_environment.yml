@@ -1,0 +1,27 @@
+name: multidex
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - clize
+  - conda-build
+  - cytoolz
+  - dash
+  - django
+  - django-extensions
+  - dustgoggles
+  - flask-caching
+  - fs
+  - git
+  - marslab
+  - matplotlib
+  - more-itertools
+  - pandas
+  - pillow
+  - pip
+  - numpy
+  - plotly
+  - pytest
+  - scikit-learn
+  - pip:
+      - kaleido==0.1.0post1
