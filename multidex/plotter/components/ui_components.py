@@ -477,8 +477,9 @@ def search_parameter_div(
         id={"type": "param-logic-options", "index": index},
         className="info-text",
         options=[
+            # added new line to flip label to push contains to next line, not sure if there was a better way
             {"label": "null", "value": "null"},
-            {"label": "flip", "value": "invert"},
+            {"label": "flip\n", "value": "invert"},
             {"label": "contains", "value": "contains"},
         ],
         value=checklist_values,
