@@ -401,6 +401,8 @@ def df_contains_term_search(
         if str(value).lower() == "any":
             return metadata_df.index
 
+        # TODO needed to replace NoneType in order for the next step to work. Just replaced it with 'x' for now.
+        #  Not sure what the best option is. There must be some way to just avoid the Nones
         metadata_df = metadata_df.fillna(value='x')
         matches = metadata_df[field].str.contains(value)
         return metadata_df[field].loc[matches].index

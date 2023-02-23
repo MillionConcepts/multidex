@@ -118,6 +118,7 @@ class CSpec(RoverSpectrum):
         "LIBS before or after passive", max_length=30, **B_N_I
     )
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
+    group_name = models.CharField("Group", **B_N_I)
 
     instrument = "CCAM"
     instrument_brief_name = "ChemCam"
@@ -171,6 +172,9 @@ class SSpec(RoverSpectrum):
     vio_rows = models.IntegerField("VIO Rows")
     red_rows = models.TextField("Red Rows")
     t_integ_real = models.FloatField("Integration Time (real)")
+    p1400 = models.FloatField("P1400")
+    p1900 = models.FloatField("P1900")
+    p2300 = models.FloatField("P2300")
 
     instrument = "SCAM"
     instrument_brief_name = "SuperCam"
