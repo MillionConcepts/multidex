@@ -40,27 +40,25 @@ there are a multitude of helpful tutorials online. [Here is one.](https://www.yo
 ## step 2: create conda environment
 
 Now that you have `conda` installed, you can set up a Python environment
-to use MultiDEx. Open a terminal window: Anaconda Prompt on Windows, Terminal on macOS,
-or your terminal emulator of choice on Linux. (Windows might name the prompt "Miniconda Prompt" 
-or something instead; just search for "prompt" in the Start Menu.)
+to use MultiDEx. Open a terminal window: Anaconda Prompt on Windows, 
+Terminal on macOS, or your terminal emulator of choice on Linux. (Windows 
+might name the prompt "Miniconda Prompt" or something else instead; just 
+search for "prompt" in the Start Menu and don't pick Windows Command Prompt.)
 
-On MacOS or Linux, navigate to the directory where you put the repository and run the command:
+Now, navigate to the directory where you downloaded the repository and run 
+the command:
+
 `mamba env create -f environment.yml`
-
-On Windows, you will need to install ImageMagick separately. 
-[You can get it here.](https://download.imagemagick.org/ImageMagick/download/binaries/ImageMagick-7.0.10-62-Q16-HDRI-x64-dll.exe) 
-When installing ImageMagick, **you must click the "install development headers and libraries 
-for C and C++" box in the installer.** If you do not do this, the Wand library will be unable 
-to find your installation of ImageMagick. After installing ImageMagick, run 
-`mamba env create -f windows_environment.yml`.
-
-## step 3: activate conda environment
 
 Say yes at the prompts and let the installation finish. Then run:
 
 `mamba env list`
 
-You should see `multidex` in the list of environments. Now run:
+You should see `multidex` in the list of environments.
+
+## step 3: activate conda environment
+
+Next, run:
 
 `conda activate multidex`
 

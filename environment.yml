@@ -3,26 +3,24 @@ channels:
   - conda-forge
 dependencies:
   - python=3.10
-  - conda-build
-  - scikit-learn
-  - fs
   - clize
-  - django
-  - pillow
-  - dash
-  - toolz
+  - conda-build
   - cytoolz
-  - flask-caching
+  - dash
+  - django
   - django-extensions
+  - dustgoggles
+  - flask-caching
+  - fs
+  - git
+  - marslab
+  - matplotlib
   - more-itertools
-  - numpy
   - pandas
+  - pillow
+  - pip
+  - numpy
   - plotly
   - pytest
-  - dustgoggles
-  - matplotlib
-  - git
-  - pip
   - python-kaleido
-  - wand
-  - marslab
+  - scikit-learn
