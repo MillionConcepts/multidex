@@ -121,6 +121,7 @@ class CSpec(RoverSpectrum):
     group_name = models.CharField("Group", **B_N_I)
     formation = models.CharField("Formation", **B_N_I)
     member = models.CharField("Member", **B_N_I)
+    tau = models.FloatField("tau", **B_N_I)
 
     instrument = "CCAM"
     instrument_brief_name = "ChemCam"
