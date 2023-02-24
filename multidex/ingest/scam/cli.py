@@ -150,7 +150,7 @@ def format_for_multidex(frame):
 
 
 def ingest_sspec_file(sspec_file, context_df):
-    frame = pd.read_csv(sspec_file)
+    frame = pd.read_csv(sspec_file, index_col=False)
     if frame["INSTRUMENT"].iloc[0] != "SCAM":
         print("skipping non-SCAM file: " + sspec_file)
         return False, context_df
