@@ -6,6 +6,9 @@ import django.db.models
 import numpy as np
 from fs.osfs import OSFS
 import pandas as pd
+import warnings
+
+warnings.filterwarnings("error")
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -83,7 +86,11 @@ def process_marslab_row(row, marslab_file, context_df):
         obs_image = None
 
         if len(context_matches.index) > 1:
-            print("more than one!")
+            print("more than one image for this spectra?!  " + img_file)
+            # try adding the target name
+            target = row['target']
+            img_file = '{sol:04d}_crm_{seq_id}_{target}'.format(sol=sol, seq_id=seq_id, target=target)
+            context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]
         if not context_matches.empty:
             for record in context_matches[["path"]].to_dict(orient="records"):
                 obs_image = os.path.basename(record["path"])
@@ -125,7 +132,7 @@ def format_for_multidex(frame):
 
 
 def ingest_cspec_file(cspec_file, context_df):
-    frame = pd.read_csv(cspec_file)
+    frame = pd.read_csv(cspec_file, index_col=False)
     if frame["INSTRUMENT"].iloc[0] != "CCAM":
         print("skipping non-CCAM file: " + cspec_file)
         return False, context_df

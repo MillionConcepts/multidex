@@ -119,6 +119,8 @@ class CSpec(RoverSpectrum):
     )
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
     group_name = models.CharField("Group", **B_N_I)
+    formation = models.CharField("Formation", **B_N_I)
+    member = models.CharField("Member", **B_N_I)
 
     instrument = "CCAM"
     instrument_brief_name = "ChemCam"
