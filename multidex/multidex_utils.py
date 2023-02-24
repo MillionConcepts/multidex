@@ -577,7 +577,7 @@ def model_metadata_df(
 # TODO: these kinds of printing rules probably need to go on individual
 #  models for cross-instrument compatibility
 def rearrange_band_depth_for_title(text: str) -> str:
-    filts = re.split(r"([L|R]?\d[RGB]?)", text, maxsplit=0)
+    filts = re.split(r"([L|R]?\d+[RGB]?)", text, maxsplit=0)
     return (
         f"{filts[0]}{filts[5]}, " f"shoulders at {filts[1]} and " f"{filts[3]}"
     )
