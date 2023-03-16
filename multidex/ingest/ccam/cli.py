@@ -8,7 +8,7 @@ from fs.osfs import OSFS
 import pandas as pd
 import warnings
 
-warnings.filterwarnings("error")
+# warnings.filterwarnings("error")
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
