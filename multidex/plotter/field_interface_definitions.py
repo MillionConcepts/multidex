@@ -44,8 +44,8 @@ QUALITATIVE_METADATA_FIELDS = (
     "caltarget_element",
     # supercam
     "red_rows"
+    )
 
-)
 # metadata fields we should treat as quantitative / continuous
 QUANTITATIVE_METADATA_FIELDS = (
     "compression_quality",
@@ -85,7 +85,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "rc_uncertainty",
     # rc data field
     "azimuth_angle",
-    # supsercam
+    # supercam
     "uv_rows",
     "vio_rows",
     "rsm_azimuth",
@@ -93,7 +93,9 @@ QUANTITATIVE_METADATA_FIELDS = (
     "t_integ_real",
     "p1400",
     "p1900",
-    "p2300"
+    "p2300",
+    "powerfail",
+    "saturation"
 
 )
 # properties computed at runtime from metadata

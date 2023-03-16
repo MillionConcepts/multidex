@@ -107,6 +107,7 @@ class CSpec(RoverSpectrum):
     target_type_shot_specific = models.CharField(
         "Target Type (shot specific)", max_length=60, **B_N_I
     )
+    target = models.CharField("Target", **B_N_I)
     instrument_elevation = models.FloatField(
         "Instrument Elevation (deg)", **B_N_I
     )
@@ -118,7 +119,7 @@ class CSpec(RoverSpectrum):
         "LIBS before or after passive", max_length=30, **B_N_I
     )
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
-    group_name = models.CharField("Group", **B_N_I)
+    group = models.CharField("Group", **B_N_I)
     formation = models.CharField("Formation", **B_N_I)
     member = models.CharField("Member", **B_N_I)
     tau = models.FloatField("tau", **B_N_I)
@@ -178,6 +179,10 @@ class SSpec(RoverSpectrum):
     p1400 = models.FloatField("P1400")
     p1900 = models.FloatField("P1900")
     p2300 = models.FloatField("P2300")
+    formation = models.CharField("Formation", **B_N_I)
+    member = models.CharField("Member", **B_N_I)
+    powerfail = models.CharField("Power Fail", **B_N_I)
+    saturation = models.CharField("Saturation", **B_N_I)
 
     instrument = "SCAM"
     instrument_brief_name = "SuperCam"
