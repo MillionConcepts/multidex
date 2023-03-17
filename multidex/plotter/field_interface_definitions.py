@@ -43,8 +43,9 @@ QUALITATIVE_METADATA_FIELDS = (
     # caltarget roi only
     "caltarget_element",
     # supercam
-    "red_rows"
-    )
+    "red_rows",
+    "powerfail"
+)
 
 # metadata fields we should treat as quantitative / continuous
 QUANTITATIVE_METADATA_FIELDS = (
@@ -94,7 +95,6 @@ QUANTITATIVE_METADATA_FIELDS = (
     "p1400",
     "p1900",
     "p2300",
-    "powerfail",
     "saturation"
 
 )
