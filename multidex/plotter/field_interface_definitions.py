@@ -95,7 +95,8 @@ QUANTITATIVE_METADATA_FIELDS = (
     "p1400",
     "p1900",
     "p2300",
-    "saturation"
+    "saturation",
+    "focus_position_mm"
 
 )
 # properties computed at runtime from metadata

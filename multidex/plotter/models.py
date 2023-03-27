@@ -183,6 +183,7 @@ class SSpec(RoverSpectrum):
     member = models.CharField("Member", **B_N_I)
     powerfail = models.CharField("Power Fail", **B_N_I)
     saturation = models.CharField("Saturation", **B_N_I)
+    focus_position_mm = models.CharField("Focus Position (mm)")
 
     instrument = "SCAM"
     instrument_brief_name = "SuperCam"
