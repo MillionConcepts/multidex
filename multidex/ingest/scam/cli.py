@@ -77,7 +77,7 @@ def process_marslab_row(row, marslab_file, context_df):
 
     # see if there is a matching image
     if context_df is not None:
-        sol = row['sol']
+        sol = int(row['sol'])
         seq_id = row['seq_id']
         img_file = os.path.join('{sol:05d}'.format(sol=sol), seq_id.split('SCAM')[1])
         context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]

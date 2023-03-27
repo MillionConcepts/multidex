@@ -4,6 +4,7 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
+import os
 from ast import literal_eval
 from collections.abc import Iterable
 from copy import deepcopy
@@ -588,11 +589,11 @@ def make_zspec_browse_image_components(
 
 #  new layout
 def make_cspec_browse_image_components(
-    cspec: "CSpec", image_directory, static_image_url
+    cspec: "CSpec", static_image_url
 ):
     """
     CSpec or SPec object, size factor (viewport units), image directory ->
-    dash html.Img component containing the natural-color image
+    dash html.Img component containing the image
     associated with that object, mapped to the assets image
     route defined in the live app instance -- silly hack rn
     """
@@ -601,7 +602,7 @@ def make_cspec_browse_image_components(
     img = img[0]
     if img is None:
         img = "missing.jpg"
-    filename = static_image_url + "/" + img
+    filename = os.path.join(static_image_url, img)
     image_div_children.append(
             html.Img(
                 src=filename,
