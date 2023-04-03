@@ -44,7 +44,8 @@ QUALITATIVE_METADATA_FIELDS = (
     "caltarget_element",
     # supercam
     "red_rows",
-    "powerfail"
+    "powerfail",
+    "tdb_name"
 )
 
 # metadata fields we should treat as quantitative / continuous
