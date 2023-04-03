@@ -184,6 +184,7 @@ class SSpec(RoverSpectrum):
     powerfail = models.CharField("Power Fail", **B_N_I)
     saturation = models.CharField("Saturation", **B_N_I)
     focus_position_mm = models.CharField("Focus Position (mm)")
+    tdb_name = models.CharField("TDB name", **B_N_I)
 
     instrument = "SCAM"
     instrument_brief_name = "SuperCam"
