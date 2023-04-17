@@ -81,6 +81,10 @@ def process_marslab_row(row, marslab_file, context_df):
         seq_id = row['seq_id']
         img_file = os.path.join('{sol:05d}'.format(sol=sol), seq_id.split('SCAM')[1])
         context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]
+        if context_matches.empty:
+            # some of the newer files have subfolder "scam[seqid]" instead of just seqid
+            img_file = os.path.join('{sol:05d}'.format(sol=sol), 'scam{seqid}'.format(seqid=seq_id.split('SCAM')[1]))
+            context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]
         obs_image = None
 
         if len(context_matches.index) > 1:
@@ -91,9 +95,7 @@ def process_marslab_row(row, marslab_file, context_df):
 
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
-        "images": [obs_image],
-        # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
-        # "min_count": row[row.index.str.contains("count")].astype(float).min(),
+        "images": [obs_image]
     }
 
     try:
@@ -192,7 +194,7 @@ def ingest_multidex(
     sspec_files, context_files = find_ingest_files(path, recursive)
     if not skip_thumbnails:
         context_df = process_context_files(context_files)
-        # save_relevant_thumbs(context_df)
+        save_relevant_thumbs(context_df)
     else:
         context_df = None
     successfully_ingested_sspec_files = []
