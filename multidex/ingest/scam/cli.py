@@ -79,6 +79,7 @@ def process_marslab_row(row, marslab_file, context_df):
         row[filt] = float(row[filt])
 
     # see if there is a matching image
+    obs_image = None
     if context_df is not None:
         sol = int(row['sol'])
         seq_id = row['seq_id']
@@ -88,7 +89,6 @@ def process_marslab_row(row, marslab_file, context_df):
             # some of the newer files have subfolder "scam[seqid]" instead of just seqid
             img_file = os.path.join('{sol:05d}'.format(sol=sol), 'scam{seqid}'.format(seqid=seq_id.split('SCAM')[1]))
             context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]
-        obs_image = None
 
         if len(context_matches.index) > 1:
             print("more than one!")
@@ -129,7 +129,7 @@ def save_thumb(filename, row):
 def save_relevant_thumbs(context_df):
     if "save" not in context_df.columns:
         return {}
-    to_save = context_df.loc[context_df["save"] is True]
+    to_save = context_df.loc[context_df["save"] == True]
     thumb_path = THUMB_PATH
     results = []
     for _, row in to_save.iterrows():
