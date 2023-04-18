@@ -16,7 +16,10 @@ django.setup()
 from plotter.models import SSpec
 
 SSPEC_FIELD_NAMES = list(map(attrgetter("name"), SSpec._meta.fields))
-THUMB_PATH = "plotter/application/assets/browse/scam/"
+ABS_PATH = os.path.dirname(__file__)
+REL_THUMB_PATH = "plotter/application/assets/browse/scam/"
+THUMB_PATH = os.path.join(ABS_PATH, REL_THUMB_PATH)
+
 
 def looks_like_sspec(fn: str) -> bool:
     return bool(
@@ -126,7 +129,7 @@ def save_thumb(filename, row):
 def save_relevant_thumbs(context_df):
     if "save" not in context_df.columns:
         return {}
-    to_save = context_df.loc[context_df["save"] == True]
+    to_save = context_df.loc[context_df["save"] is True]
     thumb_path = THUMB_PATH
     results = []
     for _, row in to_save.iterrows():
