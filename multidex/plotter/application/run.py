@@ -7,6 +7,7 @@ import flask.cli
 import pandas as pd
 from dash import dash
 from flask_caching.backends import FileSystemCache
+from django.db import models
 
 from multidex_utils import qlist, model_metadata_df
 from notetaking import Notepad, Paper
@@ -110,14 +111,24 @@ def initialize_cache_values(cset, spec_model):
     #  the model
     cset("r_star", True)
     metadata_df = model_metadata_df(spec_model)
-    # TODO: this is a hack in place of adding formatted time parsing at
-    #  various places within the application
-    if "ltst" in metadata_df.columns:
-        metadata_df.loc[pd.notna(metadata_df["ltst"]), "ltst"] = [
+    # # TODO: this is a hack in place of adding formatted time parsing at
+    # #  various places within the application
+    # if "ltst" in metadata_df.columns:
+    #     metadata_df.loc[pd.notna(metadata_df["ltst"]), "ltst"] = [
+    #         instant.hour * 3600 + instant.minute * 60 + instant.second
+    #         for instant in metadata_df["ltst"].dropna()
+    #     ]
+    # # TODO: hacky hacky
+    for field in spec_model._meta.get_fields():
+        if not isinstance(field, models.TimeField):
+            continue
+        if field.name not in metadata_df.columns:
+            continue
+        metadata_df.loc[pd.notna(metadata_df[field.name]), field.name] = [
             instant.hour * 3600 + instant.minute * 60 + instant.second
-            for instant in metadata_df["ltst"].dropna()
+            for instant in metadata_df[field.name].dropna()
         ]
-    # TODO: hacky hacky
+
     if "zoom" in metadata_df.columns:
         metadata_df["zoom"] = metadata_df["zoom"].astype(float)
     cset(

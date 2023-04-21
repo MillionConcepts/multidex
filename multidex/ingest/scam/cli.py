@@ -16,9 +16,10 @@ django.setup()
 from plotter.models import SSpec
 
 SSPEC_FIELD_NAMES = list(map(attrgetter("name"), SSpec._meta.fields))
+# set up absolute path to thumbs so this can be run from anywhere
 ABS_PATH = os.path.dirname(__file__)
 REL_THUMB_PATH = "plotter/application/assets/browse/scam/"
-THUMB_PATH = os.path.join(ABS_PATH, REL_THUMB_PATH)
+THUMB_PATH = os.path.join(Path(ABS_PATH).parents[1], REL_THUMB_PATH)
 
 
 def looks_like_sspec(fn: str) -> bool:
