@@ -93,6 +93,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "rsm_azimuth",
     "rsm_elevation",
     "t_integ_real",
+    "p750",
     "p1400",
     "p1900",
     "p2300",

@@ -176,6 +176,7 @@ class SSpec(RoverSpectrum):
     vio_rows = models.IntegerField("VIO Rows")
     red_rows = models.TextField("Red Rows")
     t_integ_real = models.FloatField("Integration Time (real)")
+    p750 = models.FloatField("P750")
     p1400 = models.FloatField("P1400")
     p1900 = models.FloatField("P1900")
     p2300 = models.FloatField("P2300")
