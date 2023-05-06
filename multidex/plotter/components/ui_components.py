@@ -437,6 +437,7 @@ def search_parameter_div_drop_elements(index, searchable_fields, preset):
         field_drop(
             searchable_fields, "field-search", index, preset.get("field")
         ),
+        dcc.Input(id={"type": "free-search", "index": index}, type="search"),
         model_options_drop(
             "term-search",
             index,
@@ -462,23 +463,24 @@ def search_parameter_div(
         index, searchable_fields, preset
     )
     if index == 0:
-        button = html.Button("add new", id="add-param")
+        button = html.Button("add", id="add-param")
     else:
         button = html.Button(
             id={"type": "remove-param", "index": index},
-            children="remove",
+            children="del",
         )
     checklist_values = []
     for option in ("null", "invert"):
         if preset.get(option) is True:
             checklist_values.append(option)
     checklist = dcc.Checklist(
-        style={"marginLeft": "1rem"},
+        style={"marginLeft": "0.1rem"},
         id={"type": "param-logic-options", "index": index},
         className="info-text",
         options=[
             {"label": "null", "value": "null"},
             {"label": "flip", "value": "invert"},
+            {"label": "free", "value": "free"},
         ],
         value=checklist_values,
     )

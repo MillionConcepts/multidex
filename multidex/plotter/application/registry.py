@@ -127,15 +127,19 @@ def register_toggle_panel_visibility(app, configured_function):
 
 
 # change visibility of search filter inputs
-# based on whether a 'quantitative' or 'qualitative'
-# search field is selected
+# based on status of 'free' checkbox and whether 'quantitative' or
+# 'qualitative' search fields are selected
 def register_toggle_search_input_visibility(app, configured_function):
     app.callback(
         [
             Output({"type": "term-search", "index": MATCH}, "style"),
             Output({"type": "number-search", "index": MATCH}, "style"),
+            Output({'type': 'free-search', 'index': MATCH}, 'style'),
         ],
-        [Input({"type": "field-search", "index": MATCH}, "value")],
+        [
+            Input({"type": "field-search", "index": MATCH}, "value"),
+            Input({'type': 'param-logic-options', 'index': MATCH}, 'value')
+        ],
     )(configured_function)
 
 
@@ -174,6 +178,7 @@ def register_update_search_ids(app, configured_function):
         [
             State({"type": "field-search", "index": ALL}, "value"),
             State({"type": "term-search", "index": ALL}, "value"),
+            State({"type": "free-search", "index": ALL}, "value"),
             State({"type": "number-search", "index": ALL}, "value"),
             State({"type": "search-trigger", "index": 0}, "value"),
         ],

@@ -3,11 +3,13 @@
 import datetime as dt
 import json
 import re
+import sys
+from collections import defaultdict
 from functools import partial, reduce
 from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
-import sys
+from string import whitespace, punctuation
 from typing import (
     Callable,
     Iterable,
@@ -19,15 +21,14 @@ from typing import (
     Sequence,
 )
 
+import Levenshtein as lev
 import dash
 import numpy as np
 import pandas as pd
-from cytoolz import keyfilter
+from cytoolz import keyfilter, curry
 from dash import html
 from dash.dependencies import Input, Output
 from toolz import merge, isiterable
-
-from plotter.spectrum_ops import data_df_from_queryset
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component
@@ -471,6 +472,7 @@ def df_qual_field_search(search_df, parameter):
 
 def df_multiple_field_search(
     search_df: pd.DataFrame,
+    tokens: dict,
     parameters: Sequence[Mapping],
     logical_quantifier: str,
 ) -> list:
@@ -481,8 +483,13 @@ def df_multiple_field_search(
     """
     results = []
     for parameter in parameters:
+        # permit free text search
+        if parameter.get('is_free') is True:
+            result = loose_match(
+                parameter['free'], tokens[parameter['field']]
+            )
         # do a relations-on-orderings search if requested
-        if parameter.get("value_type") == "quant":
+        elif parameter.get("value_type") == "quant":
             result = df_quant_field_search(search_df, parameter)
         # otherwise just look for term matches;
         # "or" them within a category
@@ -587,3 +594,44 @@ def patch_settings_from_module(settings, module_name):
     }
     for name, patch in patches.items():
         settings[name] |= patch
+
+
+def tokenize_series(series):
+    return series.str.lower().str.replace(
+        rf"[{punctuation + whitespace}]+", "_", regex=True
+    )
+
+
+def tokenize(text):
+    lowered = text.lower()
+    return re.split(rf"[{punctuation + whitespace}]+", lowered)
+
+
+def make_tokens(metadata):
+    fields = {}
+    for colname, col in metadata.astype(str).items():
+        tokens = tokenize_series(col)
+        lower = col.str.lower().tolist()
+        records = [
+            {'tokens': token, 'text': text, 'ix': ix}
+            for token, text, ix in zip(tokens, lower, col.index)
+        ]
+        fields[colname] = records
+    tokens = {}
+    for rec_name, recs in fields.items():
+        tokens[rec_name] = defaultdict(list)
+        for rec in recs:
+            tokens[rec_name][rec['text']].append(rec['ix'])
+            for token in rec['tokens']:
+                tokens[rec_name][token].append(rec['ix'])
+    return tokens
+
+
+def loose_match(term, tokens, cutoff_distance=2):
+    matches, keys = [], list(tokens.keys())
+    # noinspection PyArgumentList
+    min_distances = tuple(map(curry(lev.distance)(term), tokens))
+    for i, distance in enumerate(min_distances):
+        if distance <= cutoff_distance:
+            matches += tokens[keys[i]]
+    return matches

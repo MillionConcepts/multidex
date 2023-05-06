@@ -454,6 +454,7 @@ def non_blank_search_parameters(parameters):
 
 def handle_graph_search(
     search_df,
+    tokens,
     parameters,
     logical_quantifier,
     spec_model,
@@ -483,7 +484,9 @@ def handle_graph_search(
         if logical_quantifier == "OR":
             return []
     # otherwise, actually perform a search
-    return df_multiple_field_search(search_df, parameters, logical_quantifier)
+    return df_multiple_field_search(
+        search_df, tokens, parameters, logical_quantifier
+    )
 
 
 def add_dropdown(children, spec_model, cget, cset):

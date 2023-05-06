@@ -8,7 +8,7 @@ import pandas as pd
 from dash import dash
 from flask_caching.backends import FileSystemCache
 
-from multidex_utils import qlist, model_metadata_df
+from multidex_utils import qlist, model_metadata_df, make_tokens
 from notetaking import Notepad, Paper
 from plotter.application.helpers import (
     register_everything,
@@ -125,5 +125,6 @@ def initialize_cache_values(cset, spec_model):
         instrument_settings(spec_model.instrument)["palette_memory"]
     )
     cset("metadata_df", metadata_df)
+    cset("tokens", make_tokens(metadata_df))
     cset("scale_to", "none")
     cset("average_filters", False)
