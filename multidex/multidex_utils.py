@@ -485,9 +485,9 @@ def df_multiple_field_search(
     for parameter in parameters:
         # permit free text search
         if parameter.get('is_free') is True:
-            result = loose_match(
-                parameter['free'], tokens[parameter['field']]
-            )
+            result = loose_match(parameter['free'], tokens[parameter['field']])
+            if result is None:
+                result = search_df.index
         # do a relations-on-orderings search if requested
         elif parameter.get("value_type") == "quant":
             result = df_quant_field_search(search_df, parameter)
@@ -628,10 +628,12 @@ def make_tokens(metadata):
 
 
 def loose_match(term, tokens, cutoff_distance=2):
+    if term is None:
+        return None
     matches, keys = [], list(tokens.keys())
     # noinspection PyArgumentList
     min_distances = tuple(map(curry(lev.distance)(term), tokens))
     for i, distance in enumerate(min_distances):
         if distance <= cutoff_distance:
             matches += tokens[keys[i]]
-    return matches
+    return pd.Index(matches)

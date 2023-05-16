@@ -566,6 +566,8 @@ def toggle_search_input_visibility(field, options, *, spec_model):
     """
     if not field:
         raise PreventUpdate
+    if 'free' in options:
+        return [{'display': 'none'}, {'display': 'none'}, {}]
     if (
         keygrab(spec_model.searchable_fields(), "label", field)["value_type"]
         == "quant"
