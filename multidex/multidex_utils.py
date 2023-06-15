@@ -21,6 +21,7 @@ from typing import (
     Sequence,
 )
 
+from dustgoggles.structures import listify
 import Levenshtein as lev
 import dash
 import numpy as np
@@ -354,14 +355,6 @@ def partially_evaluate_from_parameters(
     return partial(func, **pickitems(parameters, get_parameters(func)))
 
 
-def listify(thing: Any) -> list:
-    # TODO: replace this with the dustgoggles version
-    """Always a list, for things that want lists"""
-    if isiterable(thing):
-        return list(thing)
-    return [thing]
-
-
 def none_to_empty(thing: Any) -> Any:
     if thing is None:
         return ""
@@ -490,7 +483,7 @@ def df_multiple_field_search(
                 result = search_df.index
         # do a relations-on-orderings search if requested
         elif parameter.get("value_type") == "quant":
-            result = df_quant_field_search(search_df, parameter)
+             result = df_quant_field_search(search_df, parameter)
         # otherwise just look for term matches;
         # "or" them within a category
         else:
@@ -613,7 +606,7 @@ def make_tokens(metadata):
         tokens = tokenize_series(col)
         lower = col.str.lower().tolist()
         records = [
-            {'tokens': token, 'text': text, 'ix': ix}
+            {'tokens': listify(token), 'text': text, 'ix': ix}
             for token, text, ix in zip(tokens, lower, col.index)
         ]
         fields[colname] = records
@@ -631,9 +624,11 @@ def loose_match(term, tokens, cutoff_distance=2):
     if term is None:
         return None
     matches, keys = [], list(tokens.keys())
-    # noinspection PyArgumentList
-    min_distances = tuple(map(curry(lev.distance)(term), tokens))
-    for i, distance in enumerate(min_distances):
-        if distance <= cutoff_distance:
-            matches += tokens[keys[i]]
+    for word in term.split(","):
+
+        # noinspection PyArgumentList
+        min_distances = tuple(map(curry(lev.distance)(word), tokens))
+        for i, distance in enumerate(min_distances):
+            if distance <= cutoff_distance:
+                matches += tokens[keys[i]]
     return pd.Index(matches)
