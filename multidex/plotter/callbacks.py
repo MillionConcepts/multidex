@@ -151,13 +151,13 @@ def control_search_dropdowns(
     based on requests to add or remove components.
     returns the new list and an incremented value to trigger update_queryset
     """
+    ctx = dash.callback_context
+    index = trigger_index(ctx)
     if search_trigger_clicks is None:
         search_trigger_clicks = 0
     if triggered_by("add-param"):
         drops = add_dropdown(children, spec_model, cget, cset)
     elif triggered_by("remove-param"):
-        ctx = dash.callback_context
-        index = trigger_index(ctx)
         drops = remove_dropdown(index, children, cget, cset)
     elif triggered_by("clear-search"):
         drops = clear_search(cset, spec_model)
@@ -473,8 +473,9 @@ def update_search_ids(
     options,
     logical_quantifier,
     fields,
-    terms,
-    quant_search_entries,
+    term_entries,
+    free_entries,
+    quant_entries,
     search_trigger_dummy_value,
     *,
     cget,
@@ -484,32 +485,38 @@ def update_search_ids(
     """
     updates the spectra displayed in the graph view.
     """
+    # TODO: don't do anything if the callback was triggered by swapping 'free'
     # don't do anything if a blank request is issued
-    if not (fields and (terms or quant_search_entries)):
+
+    if not (fields and (term_entries or quant_entries or free_entries)):
         raise PreventUpdate
-    # construct a list of search parameters from the filled inputs
-    # (ideally totally non-filled inputs would also be rejected by
-    # handle_graph_search)
+    # construct a list of search parameters from filled quant inputs
     try:
-        entries = [
-            parse_model_quant_entry(entry) for entry in quant_search_entries
+        quant_entries = [
+            parse_model_quant_entry(entry) for entry in quant_entries
         ]
     except ValueError:
         raise PreventUpdate
     parameters = []
-    for field, terms, entry, option in zip(fields, terms, entries, options):
+    for field, terms, free, quant, option in zip(
+        fields, term_entries, free_entries, quant_entries, options
+    ):
         # must have a selected field (e.g., feature, sol) and either a qual
-        # ("terms") or quant ("entry") value for that field
-        if not (not_blank(field) and (not_blank(terms) or not_blank(entry))):
+        # ("terms"), quant ("entry"), or free ("free") value for that field
+        if not (
+            not_blank(field)
+            and (not_blank(terms) or not_blank(quant) or not_blank(free))
+        ):
             continue
         parameters.append(
             {
                 "field": field,
                 "terms": terms,
-                **entry,
+                "free": free,
+                **quant,
                 "null": "null" in option,
                 "invert": "invert" in option,
-                "contains": "contains" in option,
+                "is_free": "free" in option,
             }
         )
     # save search settings for applicatio-n state save
@@ -520,7 +527,7 @@ def update_search_ids(
     #  be memoized and/or refuse to update if nothing has meaningfully changed
     search_df = pd.concat([cget("metadata_df"), cget("data_df")], axis=1)
     search = handle_graph_search(
-        search_df, parameters, logical_quantifier, spec_model
+        search_df, cget("tokens"), parameters, logical_quantifier, spec_model
     )
     # place primary keys of spectra found by search in global cache
     cset("search_ids", search)
@@ -551,22 +558,22 @@ def change_calc_input_visibility(calc_type, *, spec_model):
     return [{"display": "none"} for _ in range(4)]
 
 
-def toggle_search_input_visibility(field, *, spec_model):
+def toggle_search_input_visibility(field, options, *, spec_model):
     """
-    toggle between showing and hiding term drop down / number range boxes.
-    right now just returns simple dicts to the dash callback based on the
-    field's value type
-    (quant or qual) as appropriate.
+    toggle display of term dropdown / number / free search inputs.
+    just returns simple dicts to the dash callback based on the
+    field's value type (quant or qual) and free-ness as appropriate.
     """
     if not field:
         raise PreventUpdate
-
+    if 'free' in options:
+        return [{'display': 'none'}, {'display': 'none'}, {}]
     if (
         keygrab(spec_model.searchable_fields(), "label", field)["value_type"]
         == "quant"
     ):
-        return [{"display": "none"}, {}]
-    return [{}, {"display": "none"}]
+        return [{"display": "none"}, {}, {"display": "none"}]
+    return [{}, {"display": "none"}, {"display": "none"}]
 
 
 def update_spectrum_images(
@@ -630,6 +637,7 @@ def handle_highlight_save(
                 "highlight_ids",
                 handle_graph_search(
                     search_df,
+                    cget("tokens"),
                     params,
                     logical_quantifier,
                     spec_model,
