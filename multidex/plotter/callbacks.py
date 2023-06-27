@@ -151,13 +151,13 @@ def control_search_dropdowns(
     based on requests to add or remove components.
     returns the new list and an incremented value to trigger update_queryset
     """
-    ctx = dash.callback_context
-    index = trigger_index(ctx)
     if search_trigger_clicks is None:
         search_trigger_clicks = 0
     if triggered_by("add-param"):
         drops = add_dropdown(children, spec_model, cget, cset)
     elif triggered_by("remove-param"):
+        ctx = dash.callback_context
+        index = trigger_index(ctx)
         drops = remove_dropdown(index, children, cget, cset)
     elif triggered_by("clear-search"):
         drops = clear_search(cset, spec_model)

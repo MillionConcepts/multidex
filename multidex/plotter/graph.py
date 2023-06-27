@@ -445,7 +445,7 @@ def spectrum_values_range(metadata_df, field):
 
 
 def non_blank_search_parameters(parameters):
-    entry_keys = ["terms", "begin", "end", "value_list"]
+    entry_keys = ["terms", "begin", "end", "free", "value_list"]
     return [
         parameter
         for parameter in parameters
