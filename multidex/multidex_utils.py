@@ -384,25 +384,6 @@ def df_inflexible_query(
     return metadata_df.loc[metadata_df[field] == value].index
 
 
-def df_contains_term_search(
-            metadata_df: pd.DataFrame, field: "str", value: Any, inflexible=False
-    ) -> pd.DataFrame.index:
-        """
-        model, string, string or number or whatever -> queryset
-        search for strings or whatever within a field of a model.
-        """
-        # toss out "any" searches
-        if str(value).lower() == "any":
-            return metadata_df.index
-
-        # TODO needed to replace NoneType in order for the next step to work. Just replaced it with 'x' for now.
-        #  Not sure what the best option is. There must be some way to just avoid the Nones
-        metadata_df = metadata_df.fillna(value='x')
-        matches = metadata_df[field].str.contains(value)
-        return metadata_df[field].loc[matches].index
-
-
-
 def df_term_search(
     metadata_df: pd.DataFrame, field: "str", value: Any, inflexible=False
 ) -> pd.DataFrame.index:
@@ -482,14 +463,6 @@ def df_qual_field_search(search_df, parameter):
     return reduce(pd.Index.union, param_results)
 
 
-def df_qual_contains_field_search(search_df, parameter):
-    param_results = []
-    for term in parameter["terms"]:
-        param_result = df_contains_term_search(search_df, parameter["field"], term)
-        param_results.append(param_result)
-    return reduce(pd.Index.union, param_results)
-
-
 def df_multiple_field_search(
     search_df: pd.DataFrame,
     tokens: dict,
@@ -514,12 +487,8 @@ def df_multiple_field_search(
         # otherwise just look for term matches;
         # "or" them within a category
         else:
-            # look for anything that contains these search terms
-            if parameter["contains"] is True:
-                result = df_qual_contains_field_search(search_df, parameter)
-            else:
-                # exact match
-                result = df_qual_field_search(search_df, parameter)
+            # exact match
+            result = df_qual_field_search(search_df, parameter)
         # allow all missing values if requested
         if parameter["null"] is True:
             result = pd.Index.union(
