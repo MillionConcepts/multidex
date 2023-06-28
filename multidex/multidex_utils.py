@@ -621,15 +621,16 @@ def patch_settings_from_module(settings, module_name):
         settings[name] |= patch
 
 
-def tokenize_series(series):
-    return series.str.lower().str.replace(
-        rf"[{punctuation + whitespace}]+", "_", regex=True
-    )
-
-
 def tokenize(text):
     lowered = text.lower()
     return re.split(rf"[{punctuation + whitespace}]+", lowered)
+
+
+def tokenize_series(series):
+    clean = series.str.lower().str.replace(
+        rf"[{punctuation + whitespace}]+", "_", regex=True
+    )
+    return clean.map(tokenize)
 
 
 def make_tokens(metadata):
