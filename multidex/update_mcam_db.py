@@ -106,7 +106,7 @@ def sync_mspec_tree():
             "or name contains '.fits.' "
             "or mimeType = 'application/vnd.google-apps.folder') "
             "and trashed=false "
-            "and not ('_extended' in name)"
+            "and not name contains '_extended_' "
         ),
         shared_drive_id=SHARED_DRIVE_ID
     )

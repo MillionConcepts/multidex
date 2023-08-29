@@ -102,12 +102,12 @@ def sync_mspec_tree():
         bot,
         query=(
             "(name contains 'marslab' "
-            "or (name contains 'context_image') "
-            "or (name contains '.fits.') "
-            "or (mimeType = 'application/vnd.google-apps.folder')) "
-            "and (trashed=false) "
-            "and not ('_rc_' in name) "
-            "and not ('_extended_' in name)"
+            "or name contains 'context_image' "
+            "or name contains '.fits.' "
+            "or mimeType = 'application/vnd.google-apps.folder') "
+            "and trashed=false "
+            "and not name contains '_rc_' "
+            "and not name contains '_extended_' "
         ),
         shared_drive_id=SHARED_DRIVE_ID
     )
