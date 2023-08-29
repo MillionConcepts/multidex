@@ -539,14 +539,14 @@ def make_mspec_browse_image_components(mspec: "MSpec", static_image_url):
     image_div_children = []
     images = literal_eval(mspec.images)
     for side in ["left", "right"]:
-        eye_image = images.get(f"{side}eye_roi_image")
+        eye_image = images.get(side)
         if eye_image is None:
             eye_image = "missing.jpg"
         filename = static_image_url + eye_image
         image_div_children.append(
             html.Img(
                 src=filename,
-                style={"maxWidth": "55%", "maxHeight": "55%"},
+                style={"maxWidth": "70%", "maxHeight": "70%"},
                 id=f"spec-image-{side}",
             )
         )
