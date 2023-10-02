@@ -91,8 +91,8 @@ def process_marslab_row(row, marslab_file, context_df):
             img_file = os.path.join('{sol:05d}'.format(sol=sol), 'scam{seqid}'.format(seqid=seq_id.split('SCAM')[1]))
             context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]
 
-        if len(context_matches.index) > 1:
-            print("more than one!")
+        # if len(context_matches.index) > 1:
+            # print("more than one!")
         if not context_matches.empty:
             for record in context_matches[["path"]].to_dict(orient="records"):
                 obs_image = os.path.basename(record["path"])
