@@ -94,11 +94,12 @@ QUANTITATIVE_METADATA_FIELDS = (
     # rc data field
     "azimuth_angle",
     *[c.lower() for c in ASDF_SPATIAL_COLS],
-    'left_dmag',
-    'right_dmag'
+    *[f"{c.lower()}mag" for c in ASDF_SPATIAL_COLS],
 )
 # properties computed at runtime from metadata
-CALCULATED_FIELDS = ("filter_avg", "std_avg", "rel_std_avg")
+CALCULATED_FIELDS = (
+    "filter_avg", "std_avg", "rel_std_avg", "l_rmad", "r_rmad"
+)
 
 
 # assemble property records: these statements should not need to be modified

@@ -22,6 +22,8 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
+# noinspection PyUnresolvedReferences
+import div0
 from plotter.field_interface_definitions import ASDF_SPATIAL_COLS
 from plotter.models import ZSpec
 

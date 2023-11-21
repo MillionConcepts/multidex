@@ -10,6 +10,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+from scipy.stats import median_abs_deviation
 from sklearn.decomposition import PCA
 
 from marslab import spectops
@@ -117,6 +118,21 @@ def data_df_from_queryset(
         filter_df[[c for c in filter_df.columns if "std" in c]].mean(axis=1), 5
     )
     filter_df["rel_std_avg"] = filter_df["std_avg"] / filter_df["filter_avg"]
+    if queryset.model.__name__ == 'ZSpec':
+        for eye in ('L', 'R'):
+            narrowband = [
+                f for f in queryset.model.filters
+                if f.startswith(eye) and '0' not in f
+            ]
+            narrow = filter_df[narrowband]
+            mad = median_abs_deviation(narrow, axis=1)
+            quartile_high = np.percentile(narrow, 75, axis=1)
+            quartile_low = np.percentile(narrow, 25, axis=1)
+            qscale = (quartile_high - quartile_low) / 2
+            filter_df[f'{eye.lower()}_rmad'] = mad / qscale
+    else:
+        filter_df['l_rmad'] = None
+        filter_df['r_rmad'] = None
     return filter_df
 
 

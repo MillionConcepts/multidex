@@ -170,7 +170,7 @@ for field_name in ASDF_SPATIAL_COLS:
     field = models.FloatField(field_name.lower(), **B_N_I)
     field.contribute_to_class(ZSpec, field_name.lower())
     magfield = models.FloatField(field_name.lower() + "mag", **B_N_I)
-    magfield.contribute_to_class(ZSpec, field_name.lower())
+    magfield.contribute_to_class(ZSpec, field_name.lower() + "mag")
 del field, magfield
 
 # bulk setup for each instrument
