@@ -324,7 +324,7 @@ def ingest_marslab_file(marslab_file, context_df):
     if "TARGET_ELEV" in frame.columns:
         frame["TARGET_ELEVATION"] = frame["TARGET_ELEV"]
     print("ingesting spectra from " + Path(marslab_file).name)
-    if context_df is not None:
+    if (context_df is not None) and ("_rc_" not in marslab_file):
         obs_images, match_index = match_obs_images(marslab_file, context_df)
         if obs_images != {}:
             print(f"found matching images: {obs_images}")
