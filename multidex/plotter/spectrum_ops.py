@@ -130,9 +130,13 @@ def data_df_from_queryset(
             quartile_low = np.percentile(narrow, 25, axis=1)
             qscale = (quartile_high - quartile_low) / 2
             filter_df[f'{eye.lower()}_rmad'] = mad / qscale
+            rel_std = narrow.std(axis=1) / narrow.mean(axis=1)
+            filter_df[f'{eye.lower()}_rstd'] = rel_std
     else:
         filter_df['l_rmad'] = None
         filter_df['r_rmad'] = None
+        filter_df['l_rstd'] = None
+        filter_df['r_rstd'] = None
     return filter_df
 
 

@@ -98,7 +98,13 @@ QUANTITATIVE_METADATA_FIELDS = (
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = (
-    "filter_avg", "std_avg", "rel_std_avg", "l_rmad", "r_rmad"
+    "filter_avg",
+    "std_avg",
+    "rel_std_avg",
+    "l_rmad",
+    "r_rmad",
+    'l_rstd',
+    'r_rstd'
 )
 
 
