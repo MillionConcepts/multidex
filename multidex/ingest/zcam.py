@@ -1,6 +1,8 @@
 import os
 import re
 from functools import reduce
+from itertools import product
+from multiprocessing import Pool
 from operator import attrgetter, and_
 from pathlib import Path
 from typing import Callable
@@ -20,6 +22,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
+from plotter.field_interface_definitions import ASDF_SPATIAL_COLS
 from plotter.models import ZSpec
 
 
@@ -180,19 +183,26 @@ def save_relevant_thumbs(context_df):
         return {}
     to_save = context_df.loc[context_df["save"] == True]
     thumb_path = THUMB_PATH
-    results = []
+    procs = []
+    pool = Pool(4)
     for _, row in to_save.iterrows():
         filename = thumb_path + row["stem"] + "-" + row["eye"] + "-thumb.jpg"
-        success, ex = save_thumb(filename, row)
-        results.append(
+        procs.append(pool.apply_async(save_thumb, (filename, row)))
+    pool.close()
+    pool.join()
+    results = [p.get() for p in procs]
+    pool.terminate()
+    records = []
+    for (success, ex), path in zip(results, to_save['path']):
+        records.append(
             {
-                "file": row["path"],
+                "file": path,
                 "filetype": "thumb",
                 "status": success,
                 "exception": ex,
             }
         )
-    return results
+    return records
 
 
 def process_marslab_row(row, marslab_file, obs_images):
@@ -222,9 +232,66 @@ def process_marslab_row(row, marslab_file, obs_images):
 def format_for_multidex(frame):
     frame.columns = [col.upper().replace(" ", "_") for col in frame.columns]
     y_to_bool(frame, ZCAM_BOOL_FIELDS)
-    frame = frame.replace(["-", "", " "], np.nan)
     frame.columns = [col.lower() for col in frame.columns]
     return frame
+
+
+def spatial_flags(table):
+    flags = []
+    for color in table['COLOR']:
+        spatial = table.loc[
+            table['COLOR'] == color, ASDF_SPATIAL_COLS
+        ].iloc[0]
+        if spatial.isna().any():
+            # generally indicates an ROI drawn completely within a
+            # missing data region
+            flags.append('no_data')
+            continue
+        if (spatial == 0).any():
+            # i think this generally indicates that the ROI overlaps but is
+            # not completely within a missing-data region, or is right on an
+            # edge, so calculation gets screwy. might be other causes. might
+            # need a high bounds check as well, or a looser low bounds check.
+            flags.append("bad")
+            continue
+        dubious_a = False
+        for eye in ('LEFT', 'RIGHT'):
+            if abs(
+                np.log10(spatial[f'{eye}_HW']) - np.log10(spatial[f'{eye}_A'])
+            ) > 1.25:
+                dubious_a = True
+                break
+        if dubious_a is True:
+            flags.append('dubious_a')
+            continue
+        dubious_bounds = False
+        for dim in ('H', 'W'):
+            if abs(
+                spatial[f'LEFT_{dim}'] - spatial[f'RIGHT_{dim}']
+            ) > (spatial[[f'LEFT_{dim}', f'RIGHT_{dim}']].min() * 4):
+                dubious_bounds = True
+                break
+        if dubious_bounds is True:
+            flags.append('dubious_bounds')
+            continue
+        if (spatial > 800).any():
+            flags.append('dubious_size')
+            continue
+        flags.append('ok')
+    return flags
+
+
+def insert_spatial_metadata(table):
+    space = table.copy()
+    if not set(ASDF_SPATIAL_COLS).issubset(space.columns):
+        # asdf found no suitable XYR for this observation
+        space['spatial_flag'] = "no_data"
+    else:
+        space[ASDF_SPATIAL_COLS] = space[ASDF_SPATIAL_COLS].astype(np.float32)
+        space['spatial_flag'] = spatial_flags(space)
+        for c in ASDF_SPATIAL_COLS:
+            space[f'{c}MAG'] = np.log10(space[c]).astype(np.float32)
+    return space
 
 
 def ingest_marslab_file(marslab_file, context_df):
@@ -235,6 +302,7 @@ def ingest_marslab_file(marslab_file, context_df):
         if frame["INSTRUMENT"].iloc[0] != "ZCAM":
             print("skipping non-ZCAM file: " + marslab_file)
             return False, "does not appear to be a ZCAM file", context_df
+    frame = frame.replace(["-", "", " ", "--"], np.nan)
     # don't ingest duplicate copies of rc-file-derived caltarget values
     if 'FEATURE' in frame.columns:
         if (frame['FEATURE'] == 'caltarget').all():
@@ -249,7 +317,7 @@ def ingest_marslab_file(marslab_file, context_df):
             if len(geometry) > 0:
                 print(f"dupe caltarget values {marslab_file}, skipping")
                 return False, "dupe caltarget file", context_df
-    if frame["COLOR"].eq("-").all():
+    if frame["COLOR"].isna().all():
         print(f"no spectra in {marslab_file}, skipping")
         return False, "no spectra in file", context_df
     # TODO: temporary hack
@@ -266,6 +334,7 @@ def ingest_marslab_file(marslab_file, context_df):
     else:
         obs_images = {}
 
+    frame = insert_spatial_metadata(frame)
     # regularize various ways people may have rendered metadata fields
     try:
         frame = format_for_multidex(frame)
@@ -281,6 +350,20 @@ def ingest_marslab_file(marslab_file, context_df):
             colors.append(row_color)
     print("successfully ingested " + ", ".join(colors))
     return True, None, context_df
+
+
+def nailpipe(image_path):
+    return default_thumbnailer().execute(image_path)
+
+
+def make_thumb_blobs(paths):
+    pool = Pool(4)
+    thumbproc = [pool.apply_async(nailpipe, (p,)) for p in paths]
+    pool.close()
+    pool.join()
+    thumb_blobs = [proc.get() for proc in thumbproc]
+    pool.terminate()
+    return thumb_blobs
 
 
 def perform_ingest(
@@ -327,8 +410,8 @@ def perform_ingest(
     if skip_thumbnails:
         return results
     print("making thumbnails")
-    nailpipe = default_thumbnailer()
     context_df = context_df.loc[context_df["save"]].copy()
-    context_df["buffer"] = context_df["path"].apply(nailpipe.execute)
+    context_df['buffer'] = make_thumb_blobs(context_df['path'])
+    print("saving thumbnails")
     thumb_results = save_relevant_thumbs(context_df)
     return results + thumb_results

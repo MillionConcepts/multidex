@@ -1,3 +1,4 @@
+from itertools import product
 from types import MappingProxyType
 from typing import Sequence
 
@@ -10,6 +11,7 @@ from marslab.compat.mertools import (
 )
 from marslab.compat.xcam import DERIVED_CAM_DICT
 
+from plotter.field_interface_definitions import ASDF_SPATIAL_COLS
 from plotter.model_prototypes import (
     XSpec,
     filter_fields_factory,
@@ -40,6 +42,8 @@ class ZSpec(XSpec):
     analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
     min_count = models.IntegerField("minimum pixel count", **B_N_I)
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
+    # spatial data quality flag produced during ingest
+    spatial_flag = models.CharField("spatial_flag", **B_N_I, max_length=15)
     # radiometric calibration file metadata fields
     rc_caltarget_file = models.CharField(
         "caltarget file", max_length=80, **B_N_I
@@ -66,6 +70,7 @@ class ZSpec(XSpec):
 
     color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
 
+    # TODO: check if unused image_directory argument is cruft or oversight
     def overlay_browse_file_info(self, image_directory: str) -> dict:
         files = self.image_files()
         images = {}
@@ -159,6 +164,14 @@ class TestSpec(RoverSpectrum):
     virtual_filters = {"test": 100}
     field_names = ()
 
+
+# "mag" fields are power-of-10 magnitude, computed during multidex ingest
+for field_name in ASDF_SPATIAL_COLS:
+    field = models.FloatField(field_name.lower(), **B_N_I)
+    field.contribute_to_class(ZSpec, field_name.lower())
+    magfield = models.FloatField(field_name.lower() + "mag", **B_N_I)
+    magfield.contribute_to_class(ZSpec, field_name.lower())
+del field, magfield
 
 # bulk setup for each instrument
 for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:

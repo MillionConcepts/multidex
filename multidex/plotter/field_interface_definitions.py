@@ -3,6 +3,15 @@ assemble objects defining interface properties for various metadata fields
 and calculation types. fields must be defined in this module in order to
 be accessible to users for search and plotting.
 """
+from itertools import product
+
+# spatial fields from asdf
+ASDF_SPATIAL_SUFFIXES = ('H', 'W', 'HW', 'A', 'D')
+ASDF_SPATIAL_COLS = [
+    f'{eye}_{suffix}'
+    for eye, suffix in product(('LEFT', 'RIGHT'), ASDF_SPATIAL_SUFFIXES)
+]
+
 # TODO: figure out how to implement decomposition parameter
 #  controls; maybe this doesn't go here, it's a separate interface,
 #  something like that
@@ -38,11 +47,12 @@ QUALITATIVE_METADATA_FIELDS = (
     "target_type_shot_specific",
     "wtsn",
     "zoom",
+    # quality flag computed during index for asdf-generated spatial data
+    "spatial_flag",
     # rc properties
     "rc_seq_id",
     # caltarget roi only
-    "caltarget_element"
-
+    "caltarget_element",
 )
 # metadata fields we should treat as quantitative / continuous
 QUANTITATIVE_METADATA_FIELDS = (
@@ -83,7 +93,9 @@ QUANTITATIVE_METADATA_FIELDS = (
     "rc_uncertainty",
     # rc data field
     "azimuth_angle",
-
+    *[c.lower() for c in ASDF_SPATIAL_COLS],
+    'left_dmag',
+    'right_dmag'
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = ("filter_avg", "std_avg", "rel_std_avg")
