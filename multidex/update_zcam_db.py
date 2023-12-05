@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 
 import dateutil.parser as dtp
+import fire
 from oauth2client.service_account import ServiceAccountCredentials
 from pydrive2.auth import GoogleAuth
 from silencio.gdrive import stamp
@@ -285,4 +286,4 @@ def update_mdex_from_drive(
 
 
 if __name__ == "__main__":
-    run(update_mdex_from_drive)
+    fire.Fire(update_mdex_from_drive)

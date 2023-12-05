@@ -285,4 +285,4 @@ def update_mdex_from_drive(
 
 
 if __name__ == "__main__":
-    run(update_mdex_from_drive)
+    fire.Fire(update_mdex_from_drive)
