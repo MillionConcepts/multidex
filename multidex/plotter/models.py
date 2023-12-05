@@ -40,7 +40,6 @@ class ZSpec(XSpec):
     distance = models.CharField("distance", max_length=20, **B_N_I)
     location = models.CharField("location", max_length=60, **B_N_I)
     analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
-    min_count = models.IntegerField("minimum pixel count", **B_N_I)
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
     # spatial data quality flag produced during ingest
     spatial_flag = models.CharField("spatial_flag", **B_N_I, max_length=15)

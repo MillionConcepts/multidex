@@ -66,11 +66,9 @@ def default_thumbnailer():
     }
     return Composition(steps=steps, inserts=inserts)
 
-
 ASDF_STEM_PATTERN = re.compile(
     r'SOL\d{4}_mcam\d{5}_(\d{1,4}(L|R)_?){1,2}(-\w+)?', re.UNICODE
 )
-
 
 # TODO: do this better, requires making people install this better
 THUMB_PATH = "plotter/application/assets/browse/mcam/"

@@ -212,6 +212,7 @@ class XSpec(RoverSpectrum):
     formation = models.CharField("formation", **B_N_I, max_length=50)
     member = models.CharField("member", **B_N_I, max_length=50)
     float = models.CharField("floating / in-place", **B_N_I, max_length=15)
+    min_count = models.IntegerField("minimum pixel count", **B_N_I)
 
     @staticmethod
     def make_scatter_annotations(
