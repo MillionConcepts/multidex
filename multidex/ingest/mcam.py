@@ -263,8 +263,8 @@ def ingest_marslab_file(marslab_file, context_df):
 def perform_ingest(
     path_or_file,
     *,
-    recursive: "r" = False,
-    skip_thumbnails: "t" = False,
+    recursive: bool = False,
+    skip_thumbnails: bool = False,
 ):
     """
     ingests mcam -marslab.csv files and context image thumbnails generated

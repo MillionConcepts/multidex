@@ -4,8 +4,8 @@ import shutil
 from pathlib import Path
 import re
 
-from clize import run
 import dateutil.parser as dtp
+import fire
 from oauth2client.service_account import ServiceAccountCredentials
 from pydrive2.auth import GoogleAuth
 from silencio.gdrive import stamp
