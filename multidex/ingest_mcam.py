@@ -8,8 +8,6 @@ import fire
 import ingest.mcam
 
 
-# tell clize to handle command line call
-# if __name__ == '__main__':
-#     fire.Fire(ingest.mcam.perform_ingest)
-
-ingest.mcam.perform_ingest("/home/michael/Downloads")
+# tell fire to handle command line call
+if __name__ == '__main__':
+    fire.Fire(ingest.mcam.perform_ingest)
