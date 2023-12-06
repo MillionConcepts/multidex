@@ -100,16 +100,16 @@ class CSpec(RoverSpectrum):
     type_of_product = models.CharField(
         "Type of Product", **B_N_I, max_length=50
     )
-    target_distance = models.FloatField("Distance (m)", max_length=20, **B_N_I)
-    lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
+    target_distance = models.FloatField("Distance (m)", **B_N_I)
+    lmst = models.TimeField("Local Mean Solar Time", max_length=30, **B_N_I)
     exposure = models.IntegerField("Exposure (ms)", **B_N_I)
     target_type = models.CharField("Target Type", max_length=30, **B_N_I)
     target_type_shot_specific = models.CharField(
         "Target Type (shot specific)", max_length=60, **B_N_I
     )
-    target = models.CharField("Target", **B_N_I)
+    target = models.CharField("Target", max_length=60, **B_N_I)
     instrument_elevation = models.FloatField(
-        "Instrument Elevation (deg)", **B_N_I
+        "Instrument Elevation (deg)", max_length=10, **B_N_I
     )
     instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
     solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
@@ -119,9 +119,9 @@ class CSpec(RoverSpectrum):
         "LIBS before or after passive", max_length=30, **B_N_I
     )
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
-    group = models.CharField("Group", **B_N_I)
-    formation = models.CharField("Formation", **B_N_I)
-    member = models.CharField("Member", **B_N_I)
+    group = models.CharField("Group", max_length=45, **B_N_I)
+    formation = models.CharField("Formation", max_length=45, **B_N_I)
+    member = models.CharField("Member", max_length=45, **B_N_I)
     tau = models.FloatField("tau", **B_N_I)
 
     instrument = "CCAM"
@@ -162,7 +162,7 @@ class SSpec(RoverSpectrum):
     type_of_product = models.CharField(
         "Type of Product", **B_N_I, max_length=50
     )
-    lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
+    lmst = models.TimeField("Local Mean Solar Time", max_length=30, **B_N_I)
     target_type = models.CharField("Target Type", max_length=30, **B_N_I)
     instrument_elevation = models.FloatField("Instrument Elevation (deg)", **B_N_I)
     instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
@@ -172,20 +172,20 @@ class SSpec(RoverSpectrum):
     rsm_azimuth = models.FloatField("RSM Azimuth (deg)", **B_N_I)
     rsm_elevation = models.FloatField("RSM Elevation (deg)", **B_N_I)
     tau = models.FloatField("Tau", **B_N_I)
-    uv_rows = models.IntegerField("UV Rows")
-    vio_rows = models.IntegerField("VIO Rows")
-    red_rows = models.TextField("Red Rows")
-    t_integ_real = models.FloatField("Integration Time (real)")
-    p750 = models.FloatField("P750")
-    p1400 = models.FloatField("P1400")
-    p1900 = models.FloatField("P1900")
-    p2300 = models.FloatField("P2300")
-    formation = models.CharField("Formation", **B_N_I)
-    member = models.CharField("Member", **B_N_I)
-    powerfail = models.CharField("Power Fail", **B_N_I)
-    saturation = models.CharField("Saturation", **B_N_I)
-    focus_position_mm = models.CharField("Focus Position (mm)")
-    tdb_name = models.CharField("TDB name", **B_N_I)
+    uv_rows = models.IntegerField("UV Rows", **B_N_I)
+    vio_rows = models.IntegerField("VIO Rows", **B_N_I)
+    red_rows = models.CharField("Red Rows", max_length=10, **B_N_I)
+    t_integ_real = models.FloatField("Integration Time (real)", **B_N_I)
+    p750 = models.FloatField("P750", **B_N_I)
+    p1400 = models.FloatField("P1400", **B_N_I)
+    p1900 = models.FloatField("P1900", **B_N_I)
+    p2300 = models.FloatField("P2300", **B_N_I)
+    formation = models.CharField("Formation", max_length=45, **B_N_I)
+    member = models.CharField("Member", max_length=45, **B_N_I)
+    powerfail = models.CharField("Power Fail", max_length=5, **B_N_I)
+    saturation = models.CharField("Saturation", max_length=10, **B_N_I)
+    focus_position_mm = models.CharField("Focus Position (mm)", max_length=30, **B_N_I)
+    tdb_name = models.CharField("TDB name", max_length=45, **B_N_I)
 
     instrument = "SCAM"
     instrument_brief_name = "SuperCam"
