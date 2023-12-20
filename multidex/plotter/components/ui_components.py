@@ -437,7 +437,11 @@ def search_parameter_div_drop_elements(index, searchable_fields, preset):
         field_drop(
             searchable_fields, "field-search", index, preset.get("field")
         ),
-        dcc.Input(id={"type": "free-search", "index": index}, type="search"),
+        dcc.Input(
+            id={"type": "free-search", "index": index},
+            type="search",
+            value=preset.get("free")
+        ),
         model_options_drop(
             "term-search",
             index,
@@ -470,7 +474,7 @@ def search_parameter_div(
             children="del",
         )
     checklist_values = []
-    for option in ("null", "invert", "contains"):
+    for option in ("null", "invert", "is_free"):
         if preset.get(option) is True:
             checklist_values.append(option)
     checklist = dcc.Checklist(
@@ -481,7 +485,7 @@ def search_parameter_div(
             # added new line to flip label to push contains to next line, not sure if there was a better way
             {"label": "null", "value": "null"},
             {"label": "flip", "value": "invert"},
-            {"label": "free", "value": "free"},
+            {"label": "free", "value": "is_free"},
         ],
         value=checklist_values,
     )

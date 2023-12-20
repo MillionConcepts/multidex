@@ -485,7 +485,6 @@ def update_search_ids(
     """
     updates the spectra displayed in the graph view.
     """
-    # TODO: don't do anything if the callback was triggered by swapping 'free'
     # don't do anything if a blank request is issued
 
     if not (fields and (term_entries or quant_entries or free_entries)):
@@ -516,10 +515,10 @@ def update_search_ids(
                 **quant,
                 "null": "null" in option,
                 "invert": "invert" in option,
-                "is_free": "free" in option,
+                "is_free": "is_free" in option,
             }
         )
-    # save search settings for applicatio-n state save
+    # save search settings for application state save
     cset("search_parameters", parameters)
     cset("logical_quantifier", logical_quantifier)
     # make a new id list and trigger graph update
@@ -566,7 +565,7 @@ def toggle_search_input_visibility(field, options, *, spec_model):
     """
     if not field:
         raise PreventUpdate
-    if 'free' in options:
+    if 'is_free' in options:
         return [{'display': 'none'}, {'display': 'none'}, {}]
     if (
         keygrab(spec_model.searchable_fields(), "label", field)["value_type"]

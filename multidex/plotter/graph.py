@@ -34,6 +34,7 @@ from multidex_utils import (
     insert_wavelengths_into_text,
     model_metadata_df, get_verbose_name,
 )
+import plotter.div0
 from plotter import spectrum_ops
 from plotter.colors import get_palette_from_scale_name, get_scale_type
 from plotter.components.ui_components import (
@@ -446,6 +447,9 @@ def spectrum_values_range(metadata_df, field):
 
 def non_blank_search_parameters(parameters):
     entry_keys = ["terms", "begin", "end", "free", "value_list"]
+    # TODO: free semi-breaks this because it's no longer just an automatic
+    #  distinction between quant and qual; bandaid fixes are in place
+    #  downstream, but it would be better to actually fix it
     return [
         parameter
         for parameter in parameters

@@ -483,9 +483,11 @@ def df_multiple_field_search(
                 result = search_df.index
         # do a relations-on-orderings search if requested
         elif parameter.get("value_type") == "quant":
-             result = df_quant_field_search(search_df, parameter)
+            result = df_quant_field_search(search_df, parameter)
         # otherwise just look for term matches;
         # "or" them within a category
+        elif parameter.get('terms') in ('', []):
+            result = search_df.index
         else:
             # exact match
             result = df_qual_field_search(search_df, parameter)
