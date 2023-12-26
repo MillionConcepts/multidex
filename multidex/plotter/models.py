@@ -183,8 +183,8 @@ class SSpec(RoverSpectrum):
     formation = models.CharField("Formation", max_length=45, **B_N_I)
     member = models.CharField("Member", max_length=45, **B_N_I)
     powerfail = models.CharField("Power Fail", max_length=5, **B_N_I)
-    saturation = models.FloatField("Saturation", max_length=10, **B_N_I)
-    focus_position_mm = models.CharField("Focus Position (mm)", max_length=30, **B_N_I)
+    saturation = models.FloatField("Saturation",**B_N_I)
+    focus_position_mm = models.FloatField("Focus Position (mm)", **B_N_I)
     tdb_name = models.CharField("TDB name", max_length=45, **B_N_I)
 
     instrument = "SCAM"
