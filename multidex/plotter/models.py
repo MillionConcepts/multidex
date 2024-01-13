@@ -182,8 +182,8 @@ class SSpec(RoverSpectrum):
     p2300 = models.FloatField("P2300", **B_N_I)
     formation = models.CharField("Formation", max_length=45, **B_N_I)
     member = models.CharField("Member", max_length=45, **B_N_I)
-    powerfail = models.CharField("Power Fail", max_length=5, **B_N_I)
-    saturation = models.FloatField("Saturation",**B_N_I)
+    powerfail = models.IntegerField("Power Fail", max_length=5, **B_N_I)
+    saturation = models.FloatField("Saturation", **B_N_I)
     focus_position_mm = models.FloatField("Focus Position (mm)", **B_N_I)
     tdb_name = models.CharField("TDB name", max_length=45, **B_N_I)
 
