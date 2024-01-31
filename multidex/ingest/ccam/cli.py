@@ -105,8 +105,11 @@ def process_marslab_row(row, marslab_file, context_df):
     # fix negative distances from darks
     if metadata['target_distance'] < 0:
         metadata['target_distance'] = 5000
+
     # convert all target types to lower case
-    metadata['target_type_shot_specific'] = str.lower(metadata['target_type_shot_specific'])
+    if 'target_type_shot_specific' in metadata:
+        metadata['target_type_shot_specific'] = str.lower(metadata['target_type_shot_specific'])
+
     # get sclk from filename
     sclk = int(metadata['name'].split('_')[1].replace('psv', ''))
     metadata['sclk'] = sclk
