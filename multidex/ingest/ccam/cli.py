@@ -1,4 +1,5 @@
 import os
+import shutil
 from operator import attrgetter
 from pathlib import Path
 
@@ -18,6 +19,11 @@ django.setup()
 from plotter.models import CSpec
 
 CSPEC_FIELD_NAMES = list(map(attrgetter("name"), CSpec._meta.fields))
+
+# set up absolute path to thumbs so this can be run from anywhere
+ABS_PATH = os.path.dirname(__file__)
+REL_THUMB_PATH = "plotter/application/assets/browse/ccam/"
+THUMB_PATH = os.path.join(Path(ABS_PATH).parents[1], REL_THUMB_PATH)
 
 
 def looks_like_cspec(fn: str) -> bool:
@@ -157,6 +163,38 @@ def ingest_cspec_file(cspec_file, context_df):
     return True, context_df
 
 
+def save_thumb(filename, row):
+    print("writing " + filename)
+    try:
+        shutil.copy(row['path'], filename)
+        return True, None
+    except KeyboardInterrupt:
+        raise
+    except Exception as ex:
+        print(f"failed on {filename}: {type(ex)}: {ex}")
+        return False, ex
+
+
+def save_relevant_thumbs(context_df):
+    if "save" not in context_df.columns:
+        return {}
+    to_save = context_df.loc[context_df["save"] == True]
+    thumb_path = THUMB_PATH
+    results = []
+    for _, row in to_save.iterrows():
+        filename = os.path.join(thumb_path, os.path.basename(row["path"]))
+        success, ex = save_thumb(filename, row)
+        results.append(
+            {
+                "file": row["path"],
+                "filetype": "thumb",
+                "status": success,
+                "exception": ex,
+            }
+        )
+    return results
+
+
 def ingest_multidex(
     path_or_file, *, recursive: "r" = False, skip_thumbnails: "t" = False
 ):
@@ -177,6 +215,7 @@ def ingest_multidex(
     cspec_files, context_files = find_ingest_files(path, recursive)
     if not skip_thumbnails:
         context_df = process_context_files(context_files)
+        save_relevant_thumbs(context_df)
     else:
         context_df = None
     successfully_ingested_cspec_files = []
@@ -184,3 +223,5 @@ def ingest_multidex(
         successful, context_df = ingest_cspec_file(cspec_file, context_df)
         if successful:
             successfully_ingested_cspec_files.append(cspec_file)
+
+
