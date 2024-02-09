@@ -73,7 +73,7 @@ CCAM_BOOL_FIELDS = [
 
 def process_context_files(context_files):
     context_df = pd.DataFrame(context_files, columns=["path"])
-    context_df["save"] = False
+    context_df["save"] = True
     return context_df
 
 
@@ -85,7 +85,7 @@ def process_marslab_row(row, marslab_file, context_df):
 
     # see if there is a matching image
     if context_df is not None:
-        sol = row['sol']
+        sol = int(row['sol'])
         seq_id = row['seq_id']
         img_file = '{sol:04d}_crm_{seq_id}'.format(sol=sol, seq_id=seq_id)
         context_matches = context_df.loc[context_df['path'].str.contains(img_file, case=False)]
