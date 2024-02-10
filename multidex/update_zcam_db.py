@@ -155,12 +155,22 @@ def index_drive_data_folders():
     pool = MaybePool(None)
     pool.map(
         _investigate_drive_solfolder,
-        [{'args': (name, id_)} for name, id_ in soldirs.items()]
+        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
     )
     pool.close()
     pool.join()
     solresults = pool.get()
     pool.terminate()
+    exceptions = {
+        sol: e for sol, e in solresults.items() if isinstance(e, Exception)
+    }
+    if len(exceptions) > 0:
+        log("****errors in indexing****")
+        if len(exceptions) > 10:
+            log("truncating list due to length")
+        for ex in exceptions:
+            log(json.dumps(exc_report(ex)))
+        raise ValueError("indexing errors, bailing out")
     manifest = pd.concat(
         list(solresults.values())
     ).sort_values(by='SOL').reset_index(drop=True)
