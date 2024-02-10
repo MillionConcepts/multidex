@@ -18,6 +18,14 @@ from googleapiclient.errors import Error as GoogleError
 from more_itertools import chunked
 from oauth2client.service_account import ServiceAccountCredentials
 
+from ingest.local_settings.zcam import (
+    ASDF_CLIENT_SECRET,
+    LOCAL_MSPEC_ROOT,
+    DRIVE_MSPEC_ROOT,
+    MULTIDEX_ROOT,
+    SHARED_DRIVE_ID,
+    DRIVE_DB_FOLDER,
+)
 
 OBS_TITLE_PATTERN = re.compile(
     r"(?P<SEQ_ID>zcam\d{5}) (?P<NAME>.*?) RSM (?P<RSM>\d+)"
@@ -353,21 +361,6 @@ def update_mdex_from_drive(
 
 
 if __name__ == "__main__":
-    try:
-        from ingest.local_settings.zcam import (
-            ASDF_CLIENT_SECRET,
-            LOCAL_MSPEC_ROOT,
-            DRIVE_MSPEC_ROOT,
-            MULTIDEX_ROOT,
-            SHARED_DRIVE_ID,
-            DRIVE_DB_FOLDER,
-        )
-    except ImportError:
-        raise FileNotFoundError(
-            "please set up your local settings file prior to running this "
-            "script."
-        )
-
     LOGFILE = f"zcam_db_{calendar_stamp()}.log"
     LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
     LOCAL_THUMB_PATH = Path(
