@@ -167,8 +167,12 @@ def index_drive_data_folders():
         [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
     )
     pool.close()
+    i = 0
     while not pool.ready():
-        time.sleep(3)
+        i += 1
+        time.sleep(1)
+        if i % 5 != 0:
+            continue
         done = [r for r in pool.results_ready().values() if r is True]
         log(f"{stamp()}: {len(done)}/{len(soldirs)} sols indexed")
         if pool.ready():
@@ -223,6 +227,16 @@ def _download_chunk_from_drive(rowchunk):
     return success
 
 
+def check_extras(getspecs, local):
+    local = local.loc[local['directory'] == False]
+    # TODO: add mtime
+    rel = local['path'].map(lambda p: Path(p).relative_to(LOCAL_MSPEC_ROOT))
+    extras = local.loc[~rel.isin(getspecs['targets'].to_list())]
+    for _, extra in extras.iterrows():
+        log(f"deleting {extra} not found in remote")
+        Path(extra['path']).unlink()
+
+
 def sync_mspec_tree():
     log(f"{stamp()}: indexing {DRIVE_MSPEC_ROOT} ")
     targets, manifest = index_drive_data_folders()
@@ -240,13 +254,9 @@ def sync_mspec_tree():
             log(f"refusing to sync duplicates of {dupe}")
         getspecs = getspecs.drop_duplicates(subset="target", keep="first")
     local = pd.DataFrame(index_breadth_first(LOCAL_MSPEC_ROOT))
-    local = local.loc[local['directory'] == False]
-    rel = local['path'].map(lambda p: Path(p).relative_to(LOCAL_MSPEC_ROOT))
-    extras = local.loc[~rel.isin(getspecs['targets'].to_list())]
-    for _, extra in extras.iterrows():
-        log(f"deleting {extra} not found in remote")
-        Path(extra['path']).unlink()
-    # TODO: add mtime
+    if len(local) != 0:
+        check_extras(getspecs, local)
+    log(f"{stamp()}: initiating download of {len(getspecs)} files")
     getchunks = chunked((spec for _, spec in getspecs.iterrows()), 20)
     pool = MaybePool(4)
     pool.map(
