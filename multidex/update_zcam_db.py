@@ -1,4 +1,5 @@
 import datetime as dt
+import json
 import os
 from functools import reduce
 from itertools import chain
@@ -92,7 +93,7 @@ def log_exception(message: str, ex: Exception):
         raise
     log(f"{stamp()}: {message}")
     log("****exc_report****")
-    log(exc_report(ex))
+    log(json.dumps(exc_report(ex)))
     log("****end exc_report****")
 
 
