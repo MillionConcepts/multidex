@@ -1,6 +1,7 @@
 import datetime as dt
 import json
 import os
+import time
 from functools import reduce
 from itertools import chain
 from operator import and_
@@ -166,7 +167,13 @@ def index_drive_data_folders():
         [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
     )
     pool.close()
-    pool.join()
+    while not pool.ready():
+        time.sleep(3)
+        done = [r for r in pool.results_ready().values() if r is True]
+        log(f"{stamp()}: {len(done)}/{len(soldirs)} sols indexed")
+        if pool.ready():
+            break
+    log(f"{stamp()}: {len(soldirs)}/{len(soldirs)} sols indexed")
     solresults = pool.get()
     pool.terminate()
     exceptions = {
