@@ -66,10 +66,9 @@ def initialize_database(db_name):
     log(f"init_out\n{initproc.out}")
     log(f"init_err\n{initproc.err}")
     if initproc.returncode() != 0:
-        raise ValueError(
-            "Database did not initialize successfully"
-            + "\n".join(initproc.err)
-        )
+        log("****database did not initialize successfully:****")
+        log('\n'.join(initproc.err))
+        raise ValueError("init fail, bailing out")
 
 
 def make_mspec_drivebot():
@@ -164,7 +163,7 @@ def index_drive_data_folders():
     pool = MaybePool(6)
     pool.map(
         _investigate_drive_solfolder,
-        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
+        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()][-10:]
     )
     pool.close()
     i = 0
@@ -229,9 +228,9 @@ def check_extras(getspecs, local):
     local = local.loc[local['directory'] == False]
     # TODO: add mtime
     rel = local['path'].map(lambda p: Path(p).relative_to(LOCAL_MSPEC_ROOT))
-    extras = local.loc[~rel.isin(getspecs['targets'].to_list())]
+    extras = local.loc[~rel.isin(getspecs['target'].to_list())]
     for _, extra in extras.iterrows():
-        log(f"deleting {extra} not found in remote")
+        log(f"deleting {extra['path']} not found in remote")
         Path(extra['path']).unlink()
 
 
@@ -251,6 +250,9 @@ def sync_mspec_tree():
         for dupe in getspecs.loc[dupepred, "target"]:
             log(f"refusing to sync duplicates of {dupe}")
         getspecs = getspecs.drop_duplicates(subset="target", keep="first")
+    if len(getspecs) == 0:
+        log("nothing to download")
+        return manifest, []
     local = pd.DataFrame(index_breadth_first(LOCAL_MSPEC_ROOT))
     if len(local) != 0:
         check_extras(getspecs, local)
@@ -316,7 +318,11 @@ def update_mdex_from_drive(
     try:
         ingest_results = rebuild_database(ingest_rc)
     except Exception as ex:
-        log_exception("database rebuild failed", ex)
+        if 'bailing' in str(ex):
+            # logging already handled
+            return
+        log("****database build handler failed****")
+        log(json.dumps(exc_report(ex)))
         return
     if len(ingest_results) == 0:
         log(f"{stamp()}: unusual error: no files ingested")
