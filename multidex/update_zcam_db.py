@@ -161,7 +161,7 @@ def index_drive_data_folders():
         name: fid for name, fid in bot.ls(folder_id=DRIVE_MSPEC_ROOT).items()
         if name.isnumeric()
     }
-    pool = MaybePool(None)
+    pool = MaybePool(6)
     pool.map(
         _investigate_drive_solfolder,
         [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
@@ -175,8 +175,6 @@ def index_drive_data_folders():
             continue
         done = [r for r in pool.results_ready().values() if r is True]
         log(f"{stamp()}: {len(done)}/{len(soldirs)} sols indexed")
-        if pool.ready():
-            break
     log(f"{stamp()}: {len(soldirs)}/{len(soldirs)} sols indexed")
     solresults = pool.get()
     pool.terminate()
@@ -265,16 +263,24 @@ def sync_mspec_tree():
     )
     pool.close()
     pool.join()
+    results = pool.get()
+    exceptions = {e for e in results.values() if isinstance(e, Exception)}
+    if len(exceptions) > 0:
+        log("****errors in download****")
+        if len(exceptions) > 10:
+            log("truncating list due to length")
+        for ex in exceptions:
+            log(json.dumps(exc_report(ex)))
+        raise ValueError("indexing errors, bailing out")
     successes = list(
         chain(
-            *[v for v in pool.get().values() if not isinstance(v, Exception)]
+            *[v for v in results.values() if not isinstance(v, Exception)]
         )
     )
     pool.terminate()
     if len(successes) != len(getspecs):
-        print("***warning: some files may not have downloaded, check log***")
-        log("***warning: some files may have downloaded:***")
-        [log(f) for f in set(getspecs['target']).difference(successes)]
+        log("***warning: some files may not have downloaded:***")
+        [log(f.name) for f in set(getspecs['target']).difference(successes)]
         log("***end of list***")
     return manifest, successes
 
