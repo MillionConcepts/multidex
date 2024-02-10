@@ -1,60 +1,66 @@
 import datetime as dt
 import os
 import shutil
+from functools import reduce
+from itertools import chain
+from operator import and_
 from pathlib import Path
 import re
+import sys
 
 import dateutil.parser as dtp
 import fire
+import pandas as pd
+from dustgoggles.structures import MaybePool
+from hostess.directory import index_breadth_first
+from hostess.subutils import runv, run
+from googleapiclient.errors import Error as GoogleError
+from more_itertools import chunked
 from oauth2client.service_account import ServiceAccountCredentials
-from pydrive2.auth import GoogleAuth
 from silencio.gdrive import stamp
-import sh
+
+
+OBS_TITLE_PATTERN = re.compile(
+    r"(?P<SEQ_ID>zcam\d{5}) (?P<NAME>.*?) RSM (?P<RSM>\d+)"
+)
+
+MARSLAB_FN_PATTERN = re.compile(
+    r"(?P<FTYPE>marslab|roi)_((?P<FORMAT>extended|rc)_)?SOL(?P<SOL>\d{4})_"
+    r"(?P<SEQ_ID>\w+)_RSM(?P<RSM>\d+)(-(?P<ANALYSIS_NAME>.+?))?\."
+    r"(?P<EXTENSION>fits\.gz|fits|csv)"
+)
+
+
+def marslab_nameparse(fn):
+    fn = fn.name if isinstance(fn, Path) else fn
+    try:
+        parsed = MARSLAB_FN_PATTERN.search(fn).groupdict()
+    except AttributeError:
+        return {k: None for k in MARSLAB_FN_PATTERN.groupindex}
+    if parsed['FORMAT'] is None and parsed['FTYPE'] == 'marslab':
+        parsed['FORMAT'] = 'compact'
+    return parsed
 
 
 def calendar_stamp():
     return dt.datetime.utcnow().isoformat()[:10].replace("-", "_")
 
 
-ASDF_CLIENT_SECRET = (
-    "/home/ubuntu/silencio/secrets/google_client_secrets.json"
-)
-LOGFILE = f"zcam_db_{calendar_stamp()}.log"
-LOCAL_MSPEC_ROOT = "/home/ubuntu/zcam_data/zcam_mspec_sync/"
-DRIVE_MSPEC_ROOT = "1WuvGtj3DAxH2yDALAmqm-HqkQmI-M-17"
-MULTIDEX_ROOT = Path("/home/ubuntu/multidex")
-LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
-LOCAL_THUMB_PATH = Path(
-    MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
-)
-SHARED_DRIVE_ID = "0APqiZpxj6EYeUk9PVA"
-DJANGO_MANAGE_PATH = Path("manage.py")
-DRIVE_DB_FOLDER = "1uuZfEIY4tvpQH6oKZPuH94RcBJ78EYbX"
-MDEX_FILE_PATTERN = re.compile(r"(marslab_SOL)|(context_image)")
-
-
-# TODO, maybe: sloppy but whatever
 def initialize_database(db_name):
-    # also note that to make this work consistently via ssh you need to
-    # link the env python to path
-    sh.multidex_python(
-        f"{DJANGO_MANAGE_PATH}", "migrate", f"--database={db_name}"
+    initproc = runv(
+        f"{sys.executable} {DJANGO_MANAGE_PATH}", "migrate",
+        f"--database={db_name}"
     )
+    log(f"init_out\n{initproc.out}")
+    log(f"init_err\n{initproc.err}")
+    if initproc.returncode() != 0:
+        raise ValueError(
+            "Database did not initialize successfully"
+            + "\n".join(initproc.err)
+        )
 
 
-# TODO: [endless screaming]
-def make_asdf_pydrive_client():
-    from silencio.gdrive import DriveBot
-    gauth = GoogleAuth()
-    scope = ["https://www.googleapis.com/auth/drive"]
-    gauth.credentials = ServiceAccountCredentials.from_json_keyfile_name(
-        ASDF_CLIENT_SECRET, scope
-    )
-    return DriveBot(gauth)
-
-
-# TODO: [endless screaming]
-def make_asdf_pydrive_client_3():
+def make_mspec_drivebot():
     from silencio.gdrive3 import DriveBot
     scope = ["https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(
@@ -89,100 +95,146 @@ def csvify(sequence):
     return ",".join([str(item) for item in sequence])
 
 
+def _check_correspondence(marslab_files, filtered_parseframe):
+    corrpreds = [
+        marslab_files[k] == filtered_parseframe[k]
+        for k in ('SOL', 'SEQ_ID', 'RSM')
+    ]
+    corresponds = reduce(and_, corrpreds)
+    # noinspection PyUnresolvedReferences
+    if not corresponds.all():
+        misplaced = '\n'.join(marslab_files.loc[~corrpreds, 'name'].tolist())
+        log(
+            f"*****WARNING: some files are possibly misplaced:\n"
+            f"{misplaced}\n*******"
+        )
+        with open("maybe_misplaced.log", "w") as stream:
+            stream.write(misplaced)
+
+
+def _investigate_drive_solfolder(solname, solfolder):
+    bot = make_mspec_drivebot()
+    obsfolders, _top_level_files = bot.manifest(solfolder)
+    datafile_frames = []
+    for _, obsrow in obsfolders.iterrows():
+        try:
+            datafolder = bot.ls(folder_id=obsrow['id'])['data']
+        except (GoogleError, KeyError):
+            continue
+        _datafolders, datafiles = bot.manifest(datafolder)
+        if len(datafiles) == 0:
+            continue
+        try:
+            folderparse = OBS_TITLE_PATTERN.match(obsrow['name']).groupdict()
+            for k, v in folderparse.items():
+                datafiles[k] = v
+        except AttributeError:
+            # nonstandard folder name
+            for k in OBS_TITLE_PATTERN.groupindex:
+                datafiles[k] = None
+        datafile_frames.append(datafiles)
+    if len(datafile_frames) == 0:
+        return []
+    datafile_frame = pd.concat(datafile_frames)
+    datafile_frame['SOL'] = solname
+    return datafile_frame
+
+
+def index_drive_data_folders():
+    bot = make_mspec_drivebot()
+    soldirs = {
+        name: fid for name, fid in bot.ls(folder_id=DRIVE_MSPEC_ROOT).items()
+        if name.isnumeric()
+    }
+    pool = MaybePool(4)
+    pool.map(
+        _investigate_drive_solfolder,
+        [{'args': (name, id_)} for name, id_ in soldirs.items()]
+    )
+    pool.close()
+    pool.join()
+    solresults = pool.get()
+    pool.terminate()
+    manifest = pd.concat(
+        list(solresults.values())
+    ).sort_values(by='SOL').reset_index(drop=True)
+    manifest = manifest.rename(columns={'name': 'fn'})
+    parseframe = pd.DataFrame.from_records(
+        manifest['fn'].map(marslab_nameparse)
+    )
+    filtered_parseframe = parseframe.dropna(subset='FTYPE')
+    marslab_files = manifest.loc[filtered_parseframe.index]
+    _check_correspondence(marslab_files, filtered_parseframe)
+    targets = marslab_files.copy().reset_index(drop=True)
+    targetparse = filtered_parseframe.copy().reset_index(drop=True)
+    for c, s in targetparse.items():
+        targets[c] = s
+    return targets, manifest
+
+
+def _row2path(row):
+    return Path(
+        f"{row['SOL']}/{row['SEQ_ID']} {row['NAME']} RSM {row['RSM']}"
+        f"/{row['fn']}"
+    )
+
+
+def _download_chunk_from_drive(rowchunk):
+    bot, success = make_mspec_drivebot(), []
+    success = []
+    for row in rowchunk:
+        log(f"downloading {row['target']}")
+        target = Path(LOCAL_MSPEC_ROOT) / row['target']
+        target.parent.mkdir(exist_ok=True, parents=True)
+        bot.get(row["file_id"], target)
+        success.append(row['target'])
+    return success
+
 
 def sync_mspec_tree():
-    from silencio.gdrive3 import DriveScanner
-
-    bot = make_asdf_pydrive_client_3()
+    log(f"{stamp()}: indexing {DRIVE_MSPEC_ROOT} ")
+    targets, manifest = index_drive_data_folders()
     log(
         f"{stamp()}: beginning Google Drive sync from "
         f"{DRIVE_MSPEC_ROOT} to {LOCAL_MSPEC_ROOT}"
     )
-    scanner = DriveScanner(
-        bot,
-        query=(
-            "(name contains 'marslab' "
-            "or name contains 'context_image' "
-            "or name contains '.fits.' "
-            "or mimeType = 'application/vnd.google-apps.folder') "
-            "and trashed=false "
-            "and not name contains '_rc_' "
-            "and not name contains '_extended_' "
-        ),
-        shared_drive_id=SHARED_DRIVE_ID
-    )
-    scanner.get()
-    tree = scanner.get_file_trees()[SHARED_DRIVE_ID]
-    directories, files = scanner.make_manifest()
-    in_filesystem = files.loc[
-        files['id'].isin(tree.keys())
+    getspecs = [
+        {'file_id': r['id'], 'target': _row2path(r)}
+        for _, r in targets.iterrows()
     ]
-    relevant_files = in_filesystem.loc[
-        in_filesystem['name'].str.startswith('marslab_SOL')
-        | in_filesystem['name'].str.startswith('context_')
-        | in_filesystem['name'].str.contains('.fits.')
-    ]
-    relevant_directories = directories.loc[
-        directories['id'].isin(relevant_files['parents'].unique())]
-    drive_paths = set(
-        tree[folder_id] for folder_id in relevant_directories['id'])
-    sol_paths = {path for path in drive_paths if re.match(r".*/\d{4}", path)}
-    new_paths = sol_paths
-    while any(filter(lambda p: '/' in p, new_paths)):
-        new_paths = [str(Path(path).parent) for path in new_paths]
-        sol_paths.update(new_paths)
-    reverse_tree = {v: k for k, v in tree.items()}
-    extant_paths = [
-        path.replace(LOCAL_MSPEC_ROOT, "").strip("/")
-        for path, _, __ in os.walk(LOCAL_MSPEC_ROOT)
-    ]
-    extras = set(extant_paths).difference(set(sol_paths))
-    for extra in filter(None, extras):
+    getspecs = pd.DataFrame(getspecs)
+    if (dupepred := getspecs.duplicated(subset="target", keep="first")).any():
+        for dupe in getspecs.loc[dupepred, "target"]:
+            log(f"refusing to sync duplicates of {dupe}")
+        getspecs = getspecs.drop_duplicates(subset="target", keep="first")
+    local = pd.DataFrame(index_breadth_first(LOCAL_MSPEC_ROOT))
+    local = local.loc[local['directory'] == False]
+    rel = local['path'].map(lambda p: Path(p).relative_to(LOCAL_MSPEC_ROOT))
+    extras = local.loc[~rel.isin(getspecs['targets'].to_list())]
+    for _, extra in extras.iterrows():
         log(f"deleting {extra} not found in remote")
-        shutil.rmtree(Path(LOCAL_MSPEC_ROOT, extra), ignore_errors=True)
-    saved_files = []
-    for sol_path in sol_paths:
-        if sol_path == '.':
-            continue
-        Path(LOCAL_MSPEC_ROOT, sol_path).mkdir(parents=True, exist_ok=True)
-        folder_id = reverse_tree[sol_path]
-        remote_files = relevant_files.loc[
-            relevant_files['parents'] == folder_id
-        ]
-        uniques = remote_files["name"].unique()
-        for extra in filter(
-            lambda f: (f.name not in uniques and not f.is_dir()),
-            Path(LOCAL_MSPEC_ROOT, sol_path).iterdir()
-        ):
-            log(f"deleting {extra} not found in remote")
-            extra.unlink()
-        for name, files in remote_files.groupby("name"):
-            path = Path(sol_path, name)
-            if len(files) > 1:
-                log(f"refusing to sync duplicates of {path}")
-                continue
-            local = Path(LOCAL_MSPEC_ROOT, path)
-            if local.exists():
-                local_mtime = dt.datetime.fromtimestamp(
-                    os.path.getmtime(local), tz=dt.timezone.utc
-                )
-                remote_mtime = dtp.parse(files['modifiedTime'].iloc[0])
-                if local_mtime > remote_mtime:
-                    log(f"skipping older version of {path}")
-                    continue
-            log(f"copying {path} to local")
-            try:
-                blob = bot.read_file(files['id'].iloc[0])
-                with local.open('wb+') as stream:
-                    stream.write(blob)
-                saved_files.append(path)
-            except KeyboardInterrupt:
-                raise
-            except Exception as ex:
-                log(
-                    f"couldn't sync {path}: {type(ex)}: {ex}"
-                )
-    return saved_files
+        Path(extra['path']).unlink()
+    # TODO: add mtime
+    getchunks = chunked((spec for _, spec in getspecs.iterrows()), 20)
+    pool = MaybePool(4)
+    pool.map(
+        _download_chunk_from_drive,
+        [{'args': (chunk,) for chunk in getchunks}]
+    )
+    pool.close()
+    pool.join()
+    successes = list(
+        chain(
+            *[v for v in pool.get().values() if not isinstance(v, Exception)]
+        )
+    )
+    pool.terminate()
+    if len(successes) != len(getspecs):
+        print("***warning: some files may not have downloaded, check log***")
+        log("***warning: some files may have downloaded:***")
+        [log(f) for f in set(getspecs['target']).difference(successes)]
+        log("***end of list***")
+    return manifest, successes
 
 
 def update_mdex_from_drive(
@@ -194,7 +246,7 @@ def update_mdex_from_drive(
 ):
     if local_only is False:
         try:
-            saved_files = sync_mspec_tree()
+            manifest, saved_files = sync_mspec_tree()
         except Exception as ex:
             log_exception("sync with Google Drive failed", ex)
             return
@@ -210,7 +262,8 @@ def update_mdex_from_drive(
             )
         else:
             folder_suffix = " [no updates]"
-    log(f"{stamp()}: sync complete; {len(saved_files)} files downloaded")
+    else:
+        log(f"{stamp()}: sync complete; {len(saved_files)} files downloaded")
     log(f"{stamp()}: building {LOCAL_DB_PATH} from {LOCAL_MSPEC_ROOT}")
     try:
         ingest_results = rebuild_database(ingest_rc)
@@ -246,21 +299,18 @@ def update_mdex_from_drive(
         log_exception("lab spectra ingest failed", ex)
     # TODO, maybe: lazy but sort of whatever
     log(f"{stamp()}: compressing thumbnails")
-    sh.tar(
-        "cf",
-        str(Path(os.getcwd(), "zcam_thumbs.tar")),
-        "-C",
-        LOCAL_THUMB_PATH,
-        "."
+    run(
+        f"tar -cf {Path(os.getcwd(), 'zcam_thumbs.tar')} "
+        f"-C {LOCAL_THUMB_PATH} ."
     )
     if upload is False:
         log(f"{stamp()}: upload=False, terminating")
         if shutdown_on_completion is True:
-            sh.sudo("shutdown", "now")
+            run("sudo shutdown now")
         return
     try:
-        bot = make_asdf_pydrive_client()
-        # TODO: implement these methods for drivebot3
+        bot = make_mspec_drivebot()
+
         log(f"{stamp()}: creating build folder on Drive")
         output_folder = bot.cd(f"{stamp()}{folder_suffix}", DRIVE_DB_FOLDER)
     except Exception as ex:
@@ -268,22 +318,47 @@ def update_mdex_from_drive(
         return
     try:
         log(f"{stamp()}: transferring db file to Drive")
-        bot.cp(LOCAL_DB_PATH, output_folder)
+        bot.put(LOCAL_DB_PATH, folder_id=output_folder)
         log(f"{stamp()}: transferring db dump to Drive")
-        bot.cp("ZCAM_db_dump.csv", output_folder)
+        bot.put("ZCAM_db_dump.csv", folder_id=output_folder)
         log(f"{stamp()}: compressing thumbnails and transferring to drive")
-        sh.igzip("-f", "zcam_thumbs.tar")
-        bot.cp("zcam_thumbs.tar.gz", output_folder)
+        run("igzip -f zcam_thumbs.tar")
+        bot.put("zcam_thumbs.tar.gz", folder_id=output_folder)
     except Exception as ex:
         log_exception("file transfer failed", ex)
     log(f"{stamp()}: transferring log to Drive")
     try:
-        bot.cp(LOGFILE, output_folder)
+        bot.put(LOGFILE, folder_id=output_folder)
     except Exception as ex:
         log_exception(f"{stamp()}: log transfer failed", ex)
     if shutdown_on_completion is True:
-        sh.sudo("shutdown", "now")
+        run("sudo shutdown now")
 
 
 if __name__ == "__main__":
+    try:
+        from ingest.local_settings.zcam import (
+            ASDF_CLIENT_SECRET,
+            LOCAL_MSPEC_ROOT,
+            DRIVE_MSPEC_ROOT,
+            MULTIDEX_ROOT,
+            SHARED_DRIVE_ID,
+            DRIVE_DB_FOLDER,
+        )
+    except ImportError:
+        raise FileNotFoundError(
+            "please set up your local settings file prior to running this "
+            "script."
+        )
+
+    LOGFILE = f"zcam_db_{calendar_stamp()}.log"
+    LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
+    LOCAL_THUMB_PATH = Path(
+        MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
+    )
+    DJANGO_MANAGE_PATH = Path("manage.py")
+    MDEX_FILE_PATTERN = re.compile(
+        r"(marslab_SOL)|(context_image)|roi_SOL|\.sel"
+    )
+
     fire.Fire(update_mdex_from_drive)

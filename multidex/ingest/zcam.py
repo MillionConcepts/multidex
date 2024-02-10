@@ -1,21 +1,22 @@
-import os
-import re
 from functools import reduce
-from itertools import product
+import io
 from multiprocessing import Pool
 from operator import attrgetter, and_
+import os
 from pathlib import Path
+import re
 from typing import Callable
 
 import django.db.models
-import numpy as np
-from fs.osfs import OSFS
-import pandas as pd
-
-import io
-
-from PIL import Image
 from dustgoggles.composition import Composition
+from fs.osfs import OSFS
+import numpy as np
+import pandas as pd
+from PIL import Image
+
+
+# NOTE: do not mess with this nontsandard import order. it is necessary to
+#  run this environment setup before touching any django modules.
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -371,9 +372,9 @@ def make_thumb_blobs(paths):
 def perform_ingest(
     path_or_file,
     *,
-    recursive: "r" = False,
-    skip_thumbnails: "t" = False,
-    ingest_rc: "c" = False
+    recursive=False,
+    skip_thumbnails=False,
+    ingest_rc=False
 ):
     """
     ingests zcam -marslab.csv files and context image thumbnails generated

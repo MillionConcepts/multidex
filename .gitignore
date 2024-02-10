@@ -33,3 +33,4 @@
 *.tar.gz
 *_db_dump.csv
 .coverage
+/multidex/ingest/local_settings/
