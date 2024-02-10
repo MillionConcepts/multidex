@@ -63,11 +63,11 @@ def initialize_database(db_name):
         f"{sys.executable} {DJANGO_MANAGE_PATH}", "migrate",
         f"--database={db_name}"
     )
+    initproc.wait()
     log(f"init_out\n{initproc.out}")
     log(f"init_err\n{initproc.err}")
     if initproc.returncode() != 0:
         log("****database did not initialize successfully:****")
-        log('\n'.join(initproc.err))
         raise ValueError("init fail, bailing out")
 
 
@@ -163,7 +163,7 @@ def index_drive_data_folders():
     pool = MaybePool(6)
     pool.map(
         _investigate_drive_solfolder,
-        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()][-10:]
+        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
     )
     pool.close()
     i = 0
@@ -198,11 +198,12 @@ def index_drive_data_folders():
     filtered_parseframe = parseframe.dropna(subset='FTYPE')
     marslab_files = manifest.loc[filtered_parseframe.index]
     _check_correspondence(marslab_files, filtered_parseframe)
-    targets = marslab_files.copy().reset_index(drop=True)
-    targetparse = filtered_parseframe.copy().reset_index(drop=True)
-    for c, s in targetparse.items():
-        targets[c] = s
-    return targets, manifest
+    marslabs = marslab_files.copy().reset_index(drop=True)
+    marsparse = filtered_parseframe.copy().reset_index(drop=True)
+    for c, s in marsparse.items():
+        marslabs[c] = s
+    additional = manifest.loc[manifest['fn'].str.match(r"context_|.*\.sel$")]
+    return marslabs, additional, manifest
 
 
 def _row2path(row):
@@ -224,25 +225,36 @@ def _download_chunk_from_drive(rowchunk):
     return success
 
 
-def check_extras(getspecs, local):
+def check_sync(getspecs, local):
     local = local.loc[local['directory'] == False]
-    # TODO: add mtime
     rel = local['path'].map(lambda p: Path(p).relative_to(LOCAL_MSPEC_ROOT))
     extras = local.loc[~rel.isin(getspecs['target'].to_list())]
     for _, extra in extras.iterrows():
         log(f"deleting {extra['path']} not found in remote")
         Path(extra['path']).unlink()
+    existing = local.loc[rel.isin(getspecs['target'].to_list())]
+    timeskip = set()
+    drive_mtimes = pd.to_datetime(getspecs['time'])
+    tzname = dt.datetime.now().astimezone().tzname()
+    local_mtimes = pd.to_datetime(existing['MTIME']).dt.tz_localize(tzname)
+    for ix in existing.index:
+        omod = drive_mtimes.loc[getspecs['target'] == rel.loc[ix]]
+        if omod.iloc[0] < local_mtimes.loc[ix]:
+            log(f"not copying older version of {rel.loc[ix]}")
+            timeskip.update(omod.index)
+    return getspecs.loc[getspecs.index.difference(timeskip)]
 
 
 def sync_mspec_tree():
     log(f"{stamp()}: indexing {DRIVE_MSPEC_ROOT} ")
-    targets, manifest = index_drive_data_folders()
+    marslabs, additional, manifest = index_drive_data_folders()
+    targets = pd.concat([marslabs, additional])
     log(
         f"{stamp()}: beginning Google Drive sync from "
         f"{DRIVE_MSPEC_ROOT} to {LOCAL_MSPEC_ROOT}"
     )
     getspecs = [
-        {'file_id': r['id'], 'target': _row2path(r)}
+        {'file_id': r['id'], 'target': _row2path(r), 'time': r['modifiedTime']}
         for _, r in targets.iterrows()
     ]
     getspecs = pd.DataFrame(getspecs)
@@ -252,16 +264,16 @@ def sync_mspec_tree():
         getspecs = getspecs.drop_duplicates(subset="target", keep="first")
     if len(getspecs) == 0:
         log("nothing to download")
-        return manifest, []
+        return manifest, [], []
     local = pd.DataFrame(index_breadth_first(LOCAL_MSPEC_ROOT))
     if len(local) != 0:
-        check_extras(getspecs, local)
+        getspecs = check_sync(getspecs, local)
     log(f"{stamp()}: initiating download of {len(getspecs)} files")
     getchunks = chunked((spec for _, spec in getspecs.iterrows()), 20)
     pool = MaybePool(4)
     pool.map(
         _download_chunk_from_drive,
-        [{'args': (chunk,) for chunk in getchunks}]
+        [{'args': (chunk,)} for chunk in getchunks]
     )
     pool.close()
     pool.join()
@@ -353,10 +365,16 @@ def update_mdex_from_drive(
         log_exception("lab spectra ingest failed", ex)
     # TODO, maybe: lazy but sort of whatever
     log(f"{stamp()}: compressing thumbnails")
-    run(
+    tarproc = runv(
         f"tar -cf {Path(os.getcwd(), 'zcam_thumbs.tar')} "
         f"-C {LOCAL_THUMB_PATH} ."
     )
+    tarproc.wait()
+    if tarproc.returncode() != 0:
+        log(f"****thumbnail tar failed, bailing out****")
+        log('\n'.join(tarproc.out))
+        log('\n'.join(tarproc.err))
+        return
     if upload is False:
         log(f"{stamp()}: upload=False, terminating")
         if shutdown_on_completion is True:
