@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
+pd.set_option('future.no_silent_downcasting', True)
 
 # NOTE: do not mess with this nontsandard import order. it is necessary to
 #  run this environment setup before touching any django modules.

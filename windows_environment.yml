@@ -2,7 +2,7 @@ name: multidex
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
+  - python=3.11
   - conda-build
   - cytoolz
   - dash
@@ -16,7 +16,7 @@ dependencies:
   - marslab
   - matplotlib
   - more-itertools
-  - pandas
+  - pandas>=2.2.0
   - pillow
   - pip
   - numpy
