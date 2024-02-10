@@ -9,6 +9,7 @@ import sys
 
 import fire
 import pandas as pd
+from dustgoggles.dynamic import exc_report
 from dustgoggles.structures import MaybePool
 from hostess.directory import index_breadth_first
 from hostess.subutils import runv, run
@@ -89,7 +90,10 @@ def log(line):
 def log_exception(message: str, ex: Exception):
     if isinstance(ex, KeyboardInterrupt):
         raise
-    log(f"{stamp()}: {message},{type(ex)},{ex}")
+    log(f"{stamp()}: {message}")
+    log("****exc_report****")
+    log(exc_report(ex))
+    log("****end exc_report****")
 
 
 def csvify(sequence):
@@ -147,7 +151,7 @@ def index_drive_data_folders():
         name: fid for name, fid in bot.ls(folder_id=DRIVE_MSPEC_ROOT).items()
         if name.isnumeric()
     }
-    pool = MaybePool(4)
+    pool = MaybePool(None)
     pool.map(
         _investigate_drive_solfolder,
         [{'args': (name, id_)} for name, id_ in soldirs.items()]
