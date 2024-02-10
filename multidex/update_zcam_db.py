@@ -1,6 +1,5 @@
 import datetime as dt
 import os
-import shutil
 from functools import reduce
 from itertools import chain
 from operator import and_
@@ -8,7 +7,6 @@ from pathlib import Path
 import re
 import sys
 
-import dateutil.parser as dtp
 import fire
 import pandas as pd
 from dustgoggles.structures import MaybePool
@@ -17,7 +15,6 @@ from hostess.subutils import runv, run
 from googleapiclient.errors import Error as GoogleError
 from more_itertools import chunked
 from oauth2client.service_account import ServiceAccountCredentials
-from silencio.gdrive import stamp
 
 
 OBS_TITLE_PATTERN = re.compile(
@@ -29,6 +26,10 @@ MARSLAB_FN_PATTERN = re.compile(
     r"(?P<SEQ_ID>\w+)_RSM(?P<RSM>\d+)(-(?P<ANALYSIS_NAME>.+?))?\."
     r"(?P<EXTENSION>fits\.gz|fits|csv)"
 )
+
+
+def stamp() -> str:
+    return dt.datetime.utcnow().isoformat()[:19]
 
 
 def marslab_nameparse(fn):
