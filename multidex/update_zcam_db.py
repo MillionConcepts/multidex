@@ -67,7 +67,7 @@ def make_mspec_drivebot():
     creds = ServiceAccountCredentials.from_json_keyfile_name(
         ASDF_CLIENT_SECRET, scope
     )
-    return DriveBot(creds)
+    return DriveBot(creds, shared_drive_id=SHARED_DRIVE_ID)
 
 
 def rebuild_database(ingest_rc):
@@ -358,8 +358,6 @@ if __name__ == "__main__":
         MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
     )
     DJANGO_MANAGE_PATH = Path("manage.py")
-    MDEX_FILE_PATTERN = re.compile(
-        r"(marslab_SOL)|(context_image)|roi_SOL|\.sel"
-    )
+    update_mdex_from_drive(upload=False)
 
-    fire.Fire(update_mdex_from_drive)
+    # fire.Fire(update_mdex_from_drive)
