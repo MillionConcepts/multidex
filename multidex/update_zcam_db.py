@@ -168,7 +168,8 @@ def index_drive_data_folders():
         log("****errors in indexing****")
         if len(exceptions) > 10:
             log("truncating list due to length")
-        for ex in exceptions:
+        for sol, ex in exceptions.items():
+            log(f"**sol {sol}**")
             log(json.dumps(exc_report(ex)))
         raise ValueError("indexing errors, bailing out")
     manifest = pd.concat(
