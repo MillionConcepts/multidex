@@ -19,6 +19,7 @@ dependencies:
   - pandas>=2.2.0
   - pillow
   - pip
+  - pyarrow
   - numpy
   - plotly
   - pytest

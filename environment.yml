@@ -18,6 +18,7 @@ dependencies:
   - more-itertools
   - pandas>=2.2.0
   - pillow
+  - pyarrow
   - pip
   - numpy
   - plotly
