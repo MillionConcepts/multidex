@@ -216,6 +216,8 @@ def dict_to_paragraphs(
         make_paragraph(key, value)
         for key, value in dictionary.items()
         if key not in ordering
+        # TODO: very, very hacky
+        and not re.search(r"_[hwad]+mag$", key)
     ]
     return ordered_grafs + unordered_grafs
 

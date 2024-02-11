@@ -189,9 +189,10 @@ def perform_spectrum_op(
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
     # the inputs. also drop precalculated perperties -- a bit kludgey.
+    allowable = list(chain(*[(f, f"{f}_std") for f in spec_model.filters]))
     queryset_df = (
         filter_df.loc[id_list]
-        .drop(["filter_avg", "std_avg", "rel_std_avg"], axis=1)
+        .drop([c for c in filter_df if c not in allowable], axis=1)
         .copy()
     )
     filt_args = [
