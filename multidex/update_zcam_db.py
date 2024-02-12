@@ -382,9 +382,8 @@ def update_mdex_from_drive(
         return
     try:
         bot = make_mspec_drivebot()
-
         log(f"{stamp()}: creating build folder on Drive")
-        output_folder = bot.cd(f"{stamp()}{folder_suffix}", DRIVE_DB_FOLDER)
+        output_folder = bot.cd(DRIVE_DB_FOLDER, f"{stamp()}{folder_suffix}")
     except Exception as ex:
         log_exception("couldn't create Drive folder", ex)
         return
@@ -414,6 +413,5 @@ if __name__ == "__main__":
         MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
     )
     DJANGO_MANAGE_PATH = Path("manage.py")
-    update_mdex_from_drive(upload=False)
 
-    # fire.Fire(update_mdex_from_drive)
+    fire.Fire(update_mdex_from_drive)
