@@ -135,17 +135,11 @@ class CSpec(RoverSpectrum):
         descriptor = meta["target"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
         descriptor.loc[no_feature_ix] = meta["target"].loc[no_feature_ix]
-        sol = meta["sol"].copy()
-        has_sol = sol.loc[sol.notna()].index
-        if len(has_sol) > 0:
-            # + operation throws an error if there is nothing to add to
-            sol.loc[has_sol] = sol.loc[has_sol].apply("{:.0f}".format) + " "
-        sol.loc[sol.isna()] = ""
-        raster = meta["raster_location"].copy()
-        has_raster = raster.loc[raster.notna()].index
-        raster.loc[has_raster] = (
-                raster.loc[has_raster].apply("{:.0f}".format) + " "
-        )
+        intpat = r"\.\d+|nan"
+        sol = meta["sol"].astype(str).str.replace(intpat, "", regex=True)
+        raster = meta[
+            "raster_location"
+        ].astype(str).str.replace(intpat, "", regex=True)
         return (
                 meta["name"]
                 + "<br>sol: "
