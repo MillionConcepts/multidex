@@ -627,11 +627,9 @@ def loose_match(term, tokens, cutoff_distance=2):
     if term is None:
         return None
     matches, keys = [], list(tokens.keys())
-    for word in term.split(";"):
-
+    for word in set(filter(None, map(str.strip, term.split(";")))):
         # noinspection PyArgumentList
-        min_distances = tuple(map(curry(lev.distance)(word), tokens))
-        for i, distance in enumerate(min_distances):
+        for i, distance in enumerate(map(curry(lev.distance)(word), tokens)):
             if distance <= cutoff_distance:
                 matches += tokens[keys[i]]
     return pd.Index(matches)
