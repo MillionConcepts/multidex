@@ -939,7 +939,11 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
                     html.P(
                         id="highlight-description",
                         className="info-text",
-                        style={"maxWidth": "12rem"},
+                        style={
+                            "maxWidth": "12rem",
+                            "maxHeight": "12rem",
+                            "overflowY": "scroll"
+                        },
                         children="no highlight presently set.",
                     ),
                 ],

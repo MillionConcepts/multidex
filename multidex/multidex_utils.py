@@ -598,41 +598,38 @@ def tokenize(text):
 
 
 def tokenize_series(series):
-    clean = series.str.lower().str.replace(
+    return series.str.lower().str.replace(
         rf"[{punctuation + whitespace}]+", "_", regex=True
-    )
-    return clean.map(tokenize)
+    ).str.split("_")
 
 
 def make_tokens(metadata):
     fields = {}
     for colname, col in metadata.astype(str).items():
-        tokens = tokenize_series(col)
+        coltoks = tokenize_series(col).tolist()
         lower = col.str.lower().tolist()
         records = [
-            {'tokens': listify(token), 'text': text, 'ix': ix}
-            for token, text, ix in zip(tokens, lower, col.index)
+            {'tokens': tokens, 'text': text, 'ix': ix}
+            for tokens, text, ix in zip(coltoks, lower, col.index)
         ]
         fields[colname] = records
-    tokens = {}
+    tokenized = {}
     for rec_name, recs in fields.items():
-        tokens[rec_name] = defaultdict(list)
+        tokenized[rec_name] = defaultdict(list)
         for rec in recs:
-            tokens[rec_name][rec['text']].append(rec['ix'])
+            tokenized[rec_name][rec['text']].append(rec['ix'])
             for token in rec['tokens']:
-                tokens[rec_name][token].append(rec['ix'])
-    return tokens
+                tokenized[rec_name][token].append(rec['ix'])
+    return tokenized
 
 
 def loose_match(term, tokens, cutoff_distance=2):
     if term is None:
         return None
     matches, keys = [], list(tokens.keys())
-    for word in term.split(";"):
-
+    for word in set(filter(None, map(str.strip, term.split(";")))):
         # noinspection PyArgumentList
-        min_distances = tuple(map(curry(lev.distance)(word), tokens))
-        for i, distance in enumerate(min_distances):
+        for i, distance in enumerate(map(curry(lev.distance)(word), tokens)):
             if distance <= cutoff_distance:
                 matches += tokens[keys[i]]
     return pd.Index(matches)

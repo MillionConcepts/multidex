@@ -662,7 +662,9 @@ def pretty_print_search_params(parameters, logical_quantifier):
     if not parameters:
         return ""
     for param in parameters:
-        if "begin" in param.keys() or "end" in param.keys():
+        if param['is_free'] is True:
+            description = f"{param['field']} LIKE {param['free']}"
+        elif "begin" in param.keys() or "end" in param.keys():
             description = (
                 f"{param['field']} from "
                 f"{param.get('begin')} to {param.get('end')}"
