@@ -38,6 +38,11 @@ MARSLAB_FN_PATTERN = re.compile(
     r"(?P<EXTENSION>fits\.gz|fits|csv)"
 )
 
+LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
+LOCAL_THUMB_PATH = Path(
+    MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
+)
+DJANGO_MANAGE_PATH = Path("manage.py")
 
 def stamp() -> str:
     return dt.datetime.utcnow().isoformat()[:19]
@@ -213,7 +218,10 @@ def _row2path(row):
     )
 
 
-def _download_chunk_from_drive(rowchunk):
+def _download_chunk_from_drive(rowchunk, logfile):
+    # TODO: hack for spawning, should rewrite some other way
+    global LOGFILE
+    LOGFILE = logfile
     bot, success = make_mspec_drivebot(), []
     success = []
     for row in rowchunk:
@@ -273,7 +281,7 @@ def sync_mspec_tree():
     pool = MaybePool(4)
     pool.map(
         _download_chunk_from_drive,
-        [{'args': (chunk,)} for chunk in getchunks]
+        [{'args': (chunk, LOGFILE)} for chunk in getchunks]
     )
     pool.close()
     pool.join()
@@ -408,10 +416,5 @@ def update_mdex_from_drive(
 
 if __name__ == "__main__":
     LOGFILE = f"zcam_db_{calendar_stamp()}.log"
-    LOCAL_DB_PATH = Path(MULTIDEX_ROOT, "data/ZCAM.sqlite3")
-    LOCAL_THUMB_PATH = Path(
-        MULTIDEX_ROOT, "plotter/application/assets/browse/zcam"
-    )
-    DJANGO_MANAGE_PATH = Path("manage.py")
 
     fire.Fire(update_mdex_from_drive)
