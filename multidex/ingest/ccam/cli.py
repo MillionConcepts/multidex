@@ -92,7 +92,7 @@ def process_marslab_row(row, marslab_file, context_df):
         obs_image = None
 
         if len(context_matches.index) > 1:
-            print("more than one image for this spectra?!  " + img_file)
+            # print("more than one image for this spectra?!  " + img_file)
             # try adding the target name
             target = row['target']
             img_file = '{sol:04d}_crm_{seq_id}_{target}'.format(sol=sol, seq_id=seq_id, target=target)
