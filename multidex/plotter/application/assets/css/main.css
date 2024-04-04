@@ -220,10 +220,10 @@ button {
     color: #000;
     background: aliceblue;
     position: absolute;
-    top: 0.4rem;
+    top: 6rem;
     z-index: 1;
-    font-size: 0.75rem;
-    max-width: 9.5rem;
+    font-size: 0.95rem;
+    max-width: 18rem;
 }
 
 .tooltipped:hover .tooltiptext {

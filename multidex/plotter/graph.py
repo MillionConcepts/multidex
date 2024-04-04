@@ -143,17 +143,8 @@ def deframe(df_or_series):
 #  at the moment, the performance concerns probably don't really matter,
 #  though; PCA on these sets is < 250ms per and generally much less.
 def perform_decomposition(
-    id_list, filter_df, settings, props, spec_model, cset
+    queryset_df, settings, props, spec_model, cset
 ):
-    # TODO: this is an operational-timeline hack to permit "cut the
-    #  bayers" behavior. replace this with UI elements permitting
-    #  decomposition op feature selection later.
-    if "permissibly_explanatory_bandpasses" in dir(spec_model):
-        queryset_df = filter_df[
-            spec_model.permissibly_explanatory_bandpasses(filter_df.columns)
-        ].loc[id_list]
-    else:
-        queryset_df = filter_df.loc[id_list]
     # TODO: temporary hack -- don't do PCA on tiny sets
     if len(queryset_df.index) < 8:
         raise ValueError("Won't do PCA on tiny sets.")
@@ -172,7 +163,6 @@ def perform_decomposition(
     eigenvectors.columns = queryset_df.columns
     eigenvectors.index = explained_variances.index
     eigenvector_df = pd.concat([eigenvectors, explained_variances], axis=1)
-    cset("eigenvector_df", eigenvector_df)
     component = list(transform.iloc[:, component_ix].values)
     explained_variance = explained_variances.iloc[component_ix]
     title = "{}{} {}%".format(
@@ -180,7 +170,7 @@ def perform_decomposition(
         str(component_ix + 1),
         str(round(explained_variance * 100, 2)),
     )
-    return component, None, title
+    return component, title, eigenvector_df
 
 
 def perform_spectrum_op(
@@ -256,16 +246,15 @@ def make_axis(
     """
     axis_option, props = get_axis_option_props(settings, spec_model)
     if props["type"] == "decomposition":
-        if filters_are_averaged is True:
-            decomp_df = filter_df[
-                list(spec_model.canonical_averaged_filters.keys())
-            ]
-        else:
-            decomp_df = filter_df[list(spec_model.filters.keys())]
-        return perform_decomposition(
-            id_list, decomp_df, settings, props, spec_model, cset
+        return _decompose_for_axis(
+            settings,
+            cset,
+            id_list,
+            spec_model,
+            filter_df,
+            props,
+            filters_are_averaged
         )
-
     if props["type"] == "computed":
         return filter_df.loc[id_list, props["value"]].values, None, axis_option
 
@@ -280,6 +269,37 @@ def make_axis(
         )
     value_series = metadata_df.loc[id_list][props["value"]]
     return value_series.values, None, get_verbose_name(axis_option, spec_model)
+
+
+def _decompose_for_axis(
+    settings,
+    cset,
+    id_list,
+    spec_model,
+    filter_df,
+    props,
+    filters_are_averaged
+):
+    if filters_are_averaged is True:
+        decomp_df = filter_df[
+            list(spec_model.canonical_averaged_filters.keys())
+        ]
+    else:
+        decomp_df = filter_df[list(spec_model.filters.keys())]
+    # TODO: this is an operational-timeline hack to permit "cut the
+    #  bayers" behavior. replace this with UI elements permitting
+    #  decomposition op feature selection later.
+    if "permissibly_explanatory_bandpasses" in dir(spec_model):
+        queryset_df = decomp_df[
+            spec_model.permissibly_explanatory_bandpasses(decomp_df.columns)
+        ].loc[id_list]
+    else:
+        queryset_df = filter_df.loc[id_list]
+    component, title, eigenvector_df = perform_decomposition(
+        queryset_df, settings, props, spec_model, cset
+    )
+    cset("eigenvector_df", eigenvector_df)
+    return component, None, title
 
 
 def get_axis_option_props(settings, spec_model):
@@ -304,17 +324,23 @@ def make_markers(
     filter_df,
     metadata_df,
     _get_errors,
-    _filters_are_averaged,
+    filters_are_averaged,
     color_clip,
 ):
     """
-    this expects an id list that has already
-    been processed by truncate_id_list_for_missing_properties
+    this expects an id list that has already been processed by
+    truncate_id_list_for_missing_properties()
     """
     marker_option, props = get_axis_option_props(settings, spec_model)
     if props["type"] == "decomposition":
-        property_list, _, title = perform_decomposition(
-            id_list, filter_df, settings, props, spec_model, cset
+        property_list, _, title = _decompose_for_axis(
+            settings,
+            cset,
+            id_list,
+            spec_model,
+            filter_df,
+            props,
+            filters_are_averaged
         )
     elif props["type"] == "computed":
         property_list, title = (
@@ -435,13 +461,16 @@ def style_toggle(style, style_property="display", states=("none", "revert")):
     return style
 
 
-def spectrum_values_range(metadata_df, field):
+def spectrum_values_range(metadata_df, field, digits=2):
     """
     returns minimum and maximum values of property within id list of spectra.
     for cueing or aiding searches.
     """
-    values = metadata_df[field]
-    return values.min(), values.max()
+    values = metadata_df[field].dropna()
+    vstats= values.min(), values.max(), *np.quantile(values, (0.25, 0.75))
+    if (values.round() == values).all():
+        return tuple(map(lambda v: int(v), vstats))
+    return tuple(map(lambda v: round(v, digits), vstats))
 
 
 def non_blank_search_parameters(parameters):

@@ -20,19 +20,15 @@ from dash.exceptions import PreventUpdate
 from dash import dcc
 import pandas as pd
 from dustgoggles.func import are_in
-from dustgoggles.pivot import split_on
 
 try:
-    from marslab.compat.xcam import (
-        construct_field_ordering,
-        numeric_columns,
-        integerize,
-    )
+    from marslab.compat.xcam import construct_field_ordering, numeric_columns
 except ImportError:
     raise ImportError(
         "multidex 0.8.2 requires marslab 0.9.81 or higher. "
         "Please update by running:\n"
-        "pip install --upgrade --force-reinstall git+https://github.com/MillionConcepts/marslab.git\n"
+        "pip install --upgrade --force-reinstall "
+        "git+https://github.com/MillionConcepts/marslab.git\n"
         "(or your alternative method of choice)."
     )
 
@@ -40,6 +36,7 @@ from multidex_utils import (
     triggered_by,
     trigger_index,
     dict_to_paragraphs,
+    integerize,
     pickctx,
     keygrab,
     field_values,
@@ -454,11 +451,12 @@ def update_search_options(
             search_text = current_search
         else:
             search_text = ""
+        vmin, vmax, q1, q3 = spectrum_values_range(search_df, field)
+        infix = "~ " if not isinstance(vmin, int) else ""
         return [
             [{"label": "any", "value": "any"}],
-            "min/max: "
-            + str(spectrum_values_range(search_df, field))
-            + """ e.g., '100--200' or '100, 105, 110'""",
+            f"min/max: {infix}{vmin}/{vmax}\n25%/75%: {infix}{q1}/{q3}\n"
+            f"examples:\n100--200 or 100,105,110",
             search_text,
         ]
 
@@ -772,14 +770,13 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
     ordering = construct_field_ordering(
         filters=tuple(
             filter(
-                complement(are_in(("AVG", "STD"), oper=or_)), filter_df.columns
+                complement(are_in(("AVG", "STD", "RMAD"), oper=or_)),
+                filter_df.columns
             )
         ),
         fields=output_df.columns,
     )
-    output_df = output_df[ordering]
-    # TODO: use de-vendored dustgoggles version eventually
-    output_df = integerize(output_df)
+    output_df = integerize(output_df[ordering])
     filename_base = (
         f"{spec_model.instrument.lower()}-"
         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}"
