@@ -25,6 +25,7 @@ import pandas as pd
 from cytoolz import keyfilter
 from dash import html
 from dash.dependencies import Input, Output
+from dustgoggles.pivot import numeric_columns, split_on
 from toolz import merge, isiterable
 
 from plotter.spectrum_ops import data_df_from_queryset
@@ -589,3 +590,17 @@ def patch_settings_from_module(settings, module_name):
     }
     for name, patch in patches.items():
         settings[name] |= patch
+
+
+def integerize(df, inplace=False):
+    if inplace is False:
+        df = df.copy()
+    for column in numeric_columns(df):
+        if pd.api.types.is_integer_dtype(df[column].dtype):
+            continue
+        isna, notna = split_on(df[column], df[column].isna())
+        if not (notna.round() == notna).all():
+            continue
+        df[column] = ""
+        df.loc[notna.index, column] = notna.map("{:.0f}".format)
+    return df
