@@ -239,7 +239,7 @@ def update_mdex_from_drive(
         log(f"{stamp()}: adding lab spectra to database")
         import ingest.csv2
         ingest.csv2.perform_ingest(
-            "data/lab_spectra_mcam_multidex.csv", "MCAM"
+            "simulated_spectra/lab_spectra_mcam_multidex.csv", "MCAM"
         )
     except Exception as ex:
         log_exception("lab spectra ingest failed", ex)
