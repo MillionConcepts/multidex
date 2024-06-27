@@ -610,6 +610,7 @@ def tokenize_series(series):
 
 def make_tokens(metadata):
     fields = {}
+    # TODO: don't tokenize quant fields, waste of time
     for colname, col in metadata.astype(str).items():
         coltoks = tokenize_series(col).tolist()
         lower = col.str.lower().tolist()
