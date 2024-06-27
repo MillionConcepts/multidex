@@ -632,6 +632,10 @@ def loose_match(term, tokens, cutoff_distance=2):
         return None
     matches, keys = [], list(tokens.keys())
     for word in set(filter(None, map(str.strip, term.split(";")))):
+        if re.match(r"[\"'].*?[\"]", word) is not None:
+            if (tokmatch := word.strip("\"'")) in keys:
+                matches += tokens[tokmatch]
+            continue
         # noinspection PyArgumentList
         for i, distance in enumerate(map(curry(lev.distance)(word), tokens)):
             if distance <= cutoff_distance:
