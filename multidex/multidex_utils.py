@@ -1,12 +1,14 @@
 """assorted utility functions for project"""
 
+from collections import defaultdict
 import datetime as dt
 import json
-import re
 from functools import partial, reduce
 from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
+import re
+from string import whitespace, punctuation
 import sys
 from typing import (
     Callable,
@@ -19,16 +21,17 @@ from typing import (
     Sequence,
 )
 
+from dustgoggles.structures import listify
 import dash
 import numpy as np
 import pandas as pd
-from cytoolz import keyfilter
+from cytoolz import curry, keyfilter
 from dash import html
 from dash.dependencies import Input, Output
 from dustgoggles.pivot import numeric_columns, split_on
+import Levenshtein as lev
 from toolz import merge, isiterable
 
-from plotter.spectrum_ops import data_df_from_queryset
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component
@@ -356,14 +359,6 @@ def partially_evaluate_from_parameters(
     return partial(func, **pickitems(parameters, get_parameters(func)))
 
 
-def listify(thing: Any) -> list:
-    # TODO: replace this with the dustgoggles version
-    """Always a list, for things that want lists"""
-    if isiterable(thing):
-        return list(thing)
-    return [thing]
-
-
 def none_to_empty(thing: Any) -> Any:
     if thing is None:
         return ""
@@ -474,6 +469,7 @@ def df_qual_field_search(search_df, parameter):
 
 def df_multiple_field_search(
     search_df: pd.DataFrame,
+    tokens: dict,
     parameters: Sequence[Mapping],
     logical_quantifier: str,
 ) -> list:
@@ -484,12 +480,20 @@ def df_multiple_field_search(
     """
     results = []
     for parameter in parameters:
+        # permit free text search
+        if parameter.get('is_free') is True:
+            result = loose_match(parameter['free'], tokens[parameter['field']])
+            if result is None:
+                result = search_df.index
         # do a relations-on-orderings search if requested
-        if parameter.get("value_type") == "quant":
+        elif parameter.get("value_type") == "quant":
             result = df_quant_field_search(search_df, parameter)
         # otherwise just look for term matches;
         # "or" them within a category
+        elif parameter.get('terms') in ('', []):
+            result = search_df.index
         else:
+            # exact match
             result = df_qual_field_search(search_df, parameter)
         # allow all missing values if requested
         if parameter["null"] is True:
@@ -592,15 +596,45 @@ def patch_settings_from_module(settings, module_name):
         settings[name] |= patch
 
 
-def integerize(df, inplace=False):
-    if inplace is False:
-        df = df.copy()
-    for column in numeric_columns(df):
-        if pd.api.types.is_integer_dtype(df[column].dtype):
-            continue
-        isna, notna = split_on(df[column], df[column].isna())
-        if not (notna.round() == notna).all():
-            continue
-        df[column] = ""
-        df.loc[notna.index, column] = notna.map("{:.0f}".format)
-    return df
+def tokenize(text):
+    lowered = text.lower()
+    return re.split(rf"[{punctuation + whitespace}]+", lowered)
+
+
+def tokenize_series(series):
+    return series.str.lower().str.replace(
+        rf"[{punctuation + whitespace}]+", "_", regex=True
+    ).str.split("_")
+
+
+def make_tokens(metadata):
+    fields = {}
+    for colname, col in metadata.astype(str).items():
+        coltoks = tokenize_series(col).tolist()
+        lower = col.str.lower().tolist()
+        records = [
+            {'tokens': tokens, 'text': text, 'ix': ix}
+            for tokens, text, ix in zip(coltoks, lower, col.index)
+        ]
+        fields[colname] = records
+    tokenized = {}
+    for rec_name, recs in fields.items():
+        tokenized[rec_name] = defaultdict(list)
+        for rec in recs:
+            tokenized[rec_name][rec['text']].append(rec['ix'])
+            for token in rec['tokens']:
+                tokenized[rec_name][token].append(rec['ix'])
+    return tokenized
+
+
+def loose_match(term, tokens, cutoff_distance=2):
+    if term is None:
+        return None
+    matches, keys = [], list(tokens.keys())
+    for word in set(filter(None, map(str.strip, term.split(";")))):
+        # noinspection PyArgumentList
+        for i, distance in enumerate(map(curry(lev.distance)(word), tokens)):
+            if distance <= cutoff_distance:
+                matches += tokens[keys[i]]
+    return pd.Index(matches)
+

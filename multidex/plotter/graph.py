@@ -12,6 +12,7 @@ import datetime as dt
 from functools import reduce
 from itertools import chain, cycle
 from operator import or_
+import os
 from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
 
 from dash import html
@@ -474,7 +475,11 @@ def spectrum_values_range(metadata_df, field, digits=2):
 
 
 def non_blank_search_parameters(parameters):
-    entry_keys = ["terms", "begin", "end", "value_list"]
+    entry_keys = ["terms", "begin", "end", "free", "value_list"]
+    # TODO: free semi-breaks this because it's no longer just an automatic
+    #  distinction between quant and qual; bandaid fixes are in place
+    #  downstream, but it would be better to actually fix it
+    # TODO: is that TODO out of date?
     return [
         parameter
         for parameter in parameters
@@ -484,6 +489,7 @@ def non_blank_search_parameters(parameters):
 
 def handle_graph_search(
     search_df,
+    tokens,
     parameters,
     logical_quantifier,
     spec_model,
@@ -513,7 +519,9 @@ def handle_graph_search(
         if logical_quantifier == "OR":
             return []
     # otherwise, actually perform a search
-    return df_multiple_field_search(search_df, parameters, logical_quantifier)
+    return df_multiple_field_search(
+        search_df, tokens, parameters, logical_quantifier
+    )
 
 
 def add_dropdown(children, spec_model, cget, cset):
@@ -684,7 +692,9 @@ def pretty_print_search_params(parameters, logical_quantifier):
     if not parameters:
         return ""
     for param in parameters:
-        if "begin" in param.keys() or "end" in param.keys():
+        if param['is_free'] is True:
+            description = f"{param['field']} LIKE {param['free']}"
+        elif "begin" in param.keys() or "end" in param.keys():
             description = (
                 f"{param['field']} from "
                 f"{param.get('begin')} to {param.get('end')}"
