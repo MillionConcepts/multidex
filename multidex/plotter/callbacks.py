@@ -426,6 +426,12 @@ def update_main_graph(
     )
 
 
+BASE_PARAM_LOGIC_OPTIONS = [
+    {"label": "null", "value": "null"},
+    {"label": "flip", "value": "invert"}
+]
+
+
 def update_search_options(
     field, _load_trigger_index, current_search, *, cget, spec_model
 ):
@@ -457,11 +463,17 @@ def update_search_options(
             f"min/max: {infix}{vmin}/{vmax}\n25%/75%: {infix}{q1}/{q3}\n"
             f"examples:\n100--200 or 100,105,110",
             search_text,
+            BASE_PARAM_LOGIC_OPTIONS,
         ]
 
     # otherwise, populate the term interface and reset the range display and
     # searches
-    return [field_values(search_df, field), "", ""]
+    return [
+        field_values(search_df, field),
+        "",
+        "",
+        BASE_PARAM_LOGIC_OPTIONS + [{"label": "free", "value": "is_free"}],
+    ]
 
 
 def update_search_ids(
@@ -559,13 +571,13 @@ def toggle_search_input_visibility(field, options, *, spec_model):
     """
     if not field:
         raise PreventUpdate
-    if 'is_free' in options:
-        return [{'display': 'none'}, {'display': 'none'}, {}]
     if (
         keygrab(spec_model.searchable_fields(), "label", field)["value_type"]
         == "quant"
     ):
         return [{"display": "none"}, {}, {"display": "none"}]
+    elif 'is_free' in options:
+        return [{'display': 'none'}, {'display': 'none'}, {}]
     return [{}, {"display": "none"}, {"display": "none"}]
 
 

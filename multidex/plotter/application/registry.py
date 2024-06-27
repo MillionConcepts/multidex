@@ -152,6 +152,7 @@ def register_update_search_options(app, configured_function):
                 {"type": "number-range-display", "index": MATCH}, "children"
             ),
             Output({"type": "number-search", "index": MATCH}, "value"),
+            Output({"type": 'param-logic-options', "index": MATCH}, "options"),
         ],
         [
             Input({"type": "field-search", "index": MATCH}, "value"),

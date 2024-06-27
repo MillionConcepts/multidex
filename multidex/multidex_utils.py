@@ -480,8 +480,9 @@ def df_multiple_field_search(
     """
     results = []
     for parameter in parameters:
+        valtype = parameter.get("value_type")
         # permit free text search
-        if parameter.get('is_free') is True:
+        if parameter.get('is_free') is True and valtype != "quant":
             result = loose_match(parameter['free'], tokens[parameter['field']])
             if result is None:
                 result = search_df.index
