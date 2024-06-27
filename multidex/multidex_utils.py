@@ -632,6 +632,7 @@ def make_tokens(metadata):
 def loose_match(term, tokens, cutoff_distance=2):
     if term is None:
         return None
+    term = term.lower()
     matches, keys = [], list(tokens.keys())
     for word in set(filter(None, map(str.strip, term.split(";")))):
         if re.match(r"[\"'].*?[\"]", word) is not None:
