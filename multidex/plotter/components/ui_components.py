@@ -600,7 +600,7 @@ def axis_controls_div(
                 ),
                 component_drop(
                     "component-" + axis,
-                    value=settings["component-" + axis + ".value"],
+                    value=int(settings["component-" + axis + ".value"]),
                     label_content="component #",
                 ),
             ],
