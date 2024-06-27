@@ -20,7 +20,6 @@ from dash.exceptions import PreventUpdate
 from dash import dcc
 import pandas as pd
 from dustgoggles.func import are_in
-from dustgoggles.pivot import split_on
 
 try:
     from marslab.compat.xcam import (
@@ -37,7 +36,6 @@ from multidex_utils import (
     triggered_by,
     trigger_index,
     dict_to_paragraphs,
-    integerize,
     pickctx,
     keygrab,
     field_values,
