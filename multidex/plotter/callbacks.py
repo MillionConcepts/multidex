@@ -626,6 +626,7 @@ def handle_highlight_save(
                 "highlight_ids",
                 handle_graph_search(
                     search_df,
+                    cget("tokens"),
                     params,
                     logical_quantifier,
                     spec_model,

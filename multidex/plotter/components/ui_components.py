@@ -478,7 +478,12 @@ def search_parameter_div(
         if preset.get(option) is True:
             checklist_values.append(option)
     checklist = dcc.Checklist(
-        style={"marginLeft": "0.1rem"},
+        style={
+            "marginLeft": "0.1rem",
+            "display": "flex",
+            "max-width": "8rem",
+            "flex-wrap": "wrap"
+        },
         id={"type": "param-logic-options", "index": index},
         className="info-text",
         options=[
