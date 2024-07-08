@@ -53,6 +53,7 @@ def re_get(mapping, pattern):
     return None
 
 
+# TODO: similar thing in plotter.application.run should be replaced with this
 def seconds_since_beginning_of_day(time: dt.time) -> float:
     return (
         dt.datetime.combine(dt.date(1, 1, 1), time)

@@ -98,7 +98,6 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
 
 def initialize_cache_values(cset, spec_model):
     cset("spec_model_name", spec_model.instrument_brief_name)
-
     cset("search_ids", qlist(spec_model.objects.all(), "id"))
     cset("highlight_ids", qlist(spec_model.objects.all(), "id"))
     cset("label_ids", [])
@@ -112,14 +111,27 @@ def initialize_cache_values(cset, spec_model):
     metadata_df = model_metadata_df(spec_model)
     # TODO: this is a hack in place of adding formatted time parsing at
     #  various places within the application
-    if "ltst" in metadata_df.columns:
-        metadata_df.loc[pd.notna(metadata_df["ltst"]), "ltst"] = [
+    for c in metadata_df.columns[
+        metadata_df.columns.str.match(r"(rc_)?l[mt]st")
+    ]:
+        if metadata_df[c].dtype.char != "O":
+            # this is a defensive measure in case we decide to ingest times
+            # already expressed as some sort of decimal, like ZCAM
+            # CALTARGET_LTST (which is superfluous because it's just a decimal
+            # form of RC_LTST, but some similarly-formatted field might not be)
+            continue
+        metadata_df.loc[pd.notna(metadata_df[c]), c] = [
             instant.hour * 3600 + instant.minute * 60 + instant.second
-            for instant in metadata_df["ltst"].dropna()
+            for instant in metadata_df[c].dropna()
         ]
-    # TODO: hacky hacky
+    # TODO: these are hacky and should go on models somewhere
     if "zoom" in metadata_df.columns:
         metadata_df["zoom"] = metadata_df["zoom"].astype(float)
+    if {"rc_ltst", "rc_sol", "sol", "ltst"}.issubset(metadata_df.columns):
+        for k, v in spec_model.cal_goodness(
+            metadata_df[['ltst', 'rc_ltst', 'sol', 'rc_sol']]
+        ).items():
+            metadata_df[k] = v
     cset(
         "palette_memory",
         instrument_settings(spec_model.instrument)["palette_memory"]

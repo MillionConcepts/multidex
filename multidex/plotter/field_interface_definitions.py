@@ -71,6 +71,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "odometry",
     "phase_angle",
     "raster_location",
+    "rc_ltst",
     "rover_elevation",
     "rsm",
     "sclk",
@@ -104,7 +105,7 @@ CALCULATED_FIELDS = (
     "l_rmad",
     "r_rmad",
     'l_rstd',
-    'r_rstd'
+    'r_rstd',
 )
 
 

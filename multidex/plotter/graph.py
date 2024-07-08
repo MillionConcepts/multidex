@@ -259,6 +259,14 @@ def make_axis(
     if props["type"] == "computed":
         return filter_df.loc[id_list, props["value"]].values, None, axis_option
 
+    # TODO, maybe: a hack
+    if props["type"] == "non_filter_computed":
+        return (
+            metadata_df.loc[id_list][props["value"]].values,
+            None,
+            props["label"]
+        )
+
     if props["type"] == "method":
         return perform_spectrum_op(
             id_list,
@@ -351,6 +359,12 @@ def make_markers(
     elif props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
+        )
+    # TODO, maybe: a hack
+    elif props["type"] == "non_filter_computed":
+        property_list, title = (
+            metadata_df.loc[id_list][props["value"]].values,
+            props["label"]
         )
     else:
         property_list, title = (

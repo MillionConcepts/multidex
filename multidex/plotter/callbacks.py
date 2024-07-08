@@ -767,11 +767,12 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
         metadata_df["UNITS"] = "R*"
     else:
         metadata_df["UNITS"] = "IOF"
-    for time_field in ("LTST", "LMST"):
-        if time_field in metadata_df.columns:
-            metadata_df[time_field] = metadata_df[time_field].map(
-                seconds_since_beginning_of_day_to_iso
-            )
+    for c in metadata_df.columns[
+        metadata_df.columns.str.match(r"(RC_)?L[MT]ST")
+    ]:
+        metadata_df[c] = metadata_df[c].map(
+            seconds_since_beginning_of_day_to_iso
+        )
     axes = cget("graph_contents")
     axes.columns = list(
         map(lambda x: re.sub(r"[%. ]", "_", x.upper()), axes.columns)

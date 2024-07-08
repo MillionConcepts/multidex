@@ -1,3 +1,4 @@
+from functools import cache
 from itertools import product
 from types import MappingProxyType
 from typing import Sequence
@@ -85,6 +86,49 @@ class ZSpec(XSpec):
         return [
             f for f in filts if not f.endswith(("R", "G", "B"))
         ]
+
+    # TODO: messy
+    @classmethod
+    @cache
+    def accessible_properties(cls):
+        props = super().accessible_properties()
+        rc_qa_props = [
+            {
+                'value': name,
+                'value_type': 'quant',
+                'type': 'non_filter_computed',
+                'label': name
+            }
+            for name in ('rc_goodness', 'rc_ltst_off', 'rc_sol_off')
+        ]
+        return props + tuple(rc_qa_props)
+
+    @staticmethod
+    def cal_goodness(calframe):
+        goodness_series = pd.Series(
+            index=calframe.index, name='rc_goodness', dtype='f4'
+        )
+        ltst_off_series = goodness_series.copy()
+        ltst_off_series.name = 'rc_ltst_off'
+        sol_off_series = goodness_series.copy()
+        sol_off_series.name = 'rc_sol_off'
+        hascal = calframe.loc[calframe.notna().all(axis=1)].astype('f4')
+        goodness = (
+           abs(hascal['sol'] - hascal['rc_sol'])
+           + abs(hascal['ltst'] - hascal['rc_ltst']) / 3600
+        )
+        goodness_series.loc[hascal.index] = np.log((1 / goodness) + 1)
+        ltst_off_series.loc[hascal.index] = (
+            abs(hascal['ltst'] - hascal['rc_ltst'])
+        )
+        sol_off_series.loc[hascal.index] = (
+            abs(hascal['sol'] - hascal['rc_sol'])
+        )
+        return {
+            'rc_goodness': goodness_series,
+            'rc_ltst_off': ltst_off_series,
+            'rc_sol_off': sol_off_series
+        }
 
 
 class MSpec(XSpec):
