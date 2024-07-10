@@ -1,15 +1,15 @@
 """assorted utility functions for project"""
 
-from collections import defaultdict
 import datetime as dt
 import json
+import re
+import sys
+from collections import defaultdict
 from functools import partial, reduce
 from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
-import re
 from string import whitespace, punctuation
-import sys
 from typing import (
     Callable,
     Iterable,
@@ -21,17 +21,14 @@ from typing import (
     Sequence,
 )
 
-from dustgoggles.structures import listify
+import Levenshtein as lev
 import dash
 import numpy as np
 import pandas as pd
 from cytoolz import curry, keyfilter
 from dash import html
 from dash.dependencies import Input, Output
-from dustgoggles.pivot import numeric_columns, split_on
-import Levenshtein as lev
-from toolz import merge, isiterable
-
+from toolz import merge
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component
@@ -51,6 +48,28 @@ def re_get(mapping, pattern):
         if re.search(pattern, key):
             return mapping[key]
     return None
+
+
+def integerize(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocessing function for CSV output.
+
+    Checks all floating-point columns of `df` to see if they are 'actually'
+    integer columns converted to float by numpy/pandas due to the presence of
+    nulls. If so, modifies `df` inplace to replace them with columns of object
+    type that replaces those floats with stringified integer versions (i.e.,
+    removing the superfluous ".0") and replaces all invalid values with "".
+    """
+    for colname, col in df.items():
+        if not pd.api.types.is_float_dtype(col):
+            continue
+        notna = col[~col.isna()]
+        if not (notna.round() == notna).all():
+            continue
+        strings = pd.Series("", index=col.index, dtype=str)
+        strings[notna.index] = notna.astype(str).str.extract(r"(\d+)\.")[0]
+        df[colname] = strings
+    return df
 
 
 # TODO: similar thing in plotter.application.run should be replaced with this

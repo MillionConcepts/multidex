@@ -22,9 +22,7 @@ import pandas as pd
 from dustgoggles.func import are_in
 
 try:
-    from marslab.compat.xcam import (
-        construct_field_ordering, integerize, numeric_columns
-    )
+    from marslab.compat.xcam import construct_field_ordering
 except ImportError:
     raise ImportError(
         "This version of multidex requires marslab 0.9.81 or higher. "
@@ -41,6 +39,7 @@ from multidex_utils import (
     field_values,
     not_blank,
     seconds_since_beginning_of_day_to_iso,
+    integerize
 )
 from plotter.colors import generate_palette_options
 from plotter.components.graph_components import (
@@ -768,7 +767,7 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
     else:
         metadata_df["UNITS"] = "IOF"
     for c in metadata_df.columns[
-        metadata_df.columns.str.match(r"(RC_)?L[MT]ST")
+        metadata_df.columns.str.match(r"(RC_)?L[MT]ST$")
     ]:
         metadata_df[c] = metadata_df[c].map(
             seconds_since_beginning_of_day_to_iso
