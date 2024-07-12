@@ -78,11 +78,12 @@ def looks_like_visor_file(path, instrument_code):
 
 
 def process_visor_file(visor_fn, instrument_code):
-    visor_lines = [
-        line.strip().split(",", maxsplit=1)
-        for line in open(visor_fn).readlines()
-    ]
-    visor_dict = {k: v for k, v in filter(lambda l: len(l) > 1, visor_lines)}
+    with open(visor_fn) as stream:
+        lines = filter(lambda l: len(l) > 1, stream.readlines())
+    lines = tuple(map(lambda l: l.strip().split(','), lines))
+    if len(lines) != 2:
+        raise ValueError(f"Malformatted VISOR file {visor_fn}.")
+    visor_dict = {k: v for k, v in zip(*lines)}
     model = INSTRUMENT_MODEL_MAPPING[instrument_code]
     present_filters = set(model.filters).intersection(visor_dict.keys())
     if len(present_filters) == 0:
@@ -91,11 +92,8 @@ def process_visor_file(visor_fn, instrument_code):
         )
     model_dict = {}
     for filt in present_filters:
-        # VISOR simulated columns for filter rows are:
-        # filter name, wavelength, solar illuminated reflectance, reflectance
-        # only the last is wanted here
-        model_dict[filt.lower()] = float(visor_dict[filt].split(",")[2])
-        model_dict[filt.lower() + "_err"] = 0
+        model_dict[filt.lower()] = float(visor_dict[filt])
+        model_dict[filt.lower() + "_std"] = 0
     # this is a hack for "binocular" instruments with multiple close filters;
     # VISOR doesn't render both of them because it's visually pointless; for
     # MultiDEx, it's not
@@ -113,14 +111,14 @@ def process_visor_file(visor_fn, instrument_code):
             if other in present_filters:
                 continue
             model_dict[other.lower()] = model_dict[filt.lower()]
-            model_dict[other.lower() + "_err"] = 0
+            model_dict[other.lower() + "_std"] = 0
     except AttributeError:
         pass
     model_dict[
         "name"
     ] = (
-        f"{visor_dict['Sample Name'].strip(',')} - "
-        f"{visor_dict['Sample ID'].strip(',')}"
+        f"{visor_dict['NAME'].strip(',')} - "
+        f"{visor_dict['SAMPLE_ID'].strip(',')}"
     )
     model_dict["filename"] = Path(visor_fn).name
     # model_dict["ingest_time"] = dt.datetime.utcnow().isoformat()
@@ -134,8 +132,8 @@ def process_visor_file(visor_fn, instrument_code):
     except KeyboardInterrupt:
         raise
     except Exception as ex:
-        print(f"failed: {type(ex)}({str(ex)})")
-        return None
+        print(f"failed on {visor_fn}: {type(ex)}({str(ex)})")
+        return
     return spectrum
 
 
@@ -151,11 +149,22 @@ def perform_ingest(path_or_file, instrument_code, *, recursive: "r" = False):
         in directory tree, regardless of what specific file you pass it
     """
     path = Path(path_or_file)
-    visor_files, _ = find_ingest_files(
-        path,
-        recursive,
-        partial(looks_like_visor_file, instrument_code=instrument_code),
-    )
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist.")
+    if path.is_file():
+        if not looks_like_visor_file(path, instrument_code):
+            raise ValueError(
+                f"{path} does not appear to be a simulated file for"
+                f"{instrument_code}."
+             )
+        visor_files = [path]
+    else:
+        visor_files, _ = find_ingest_files(
+            path,
+            recursive,
+            partial(looks_like_visor_file, instrument_code=instrument_code),
+        )
     for visor_file in visor_files:
-        process_visor_file(visor_file, instrument_code)
-        print(f"successfully ingested {visor_file}")
+        res = process_visor_file(visor_file, instrument_code)
+        if res is not None:
+            print(f"successfully ingested {visor_file}")
