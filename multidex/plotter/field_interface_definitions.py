@@ -5,13 +5,17 @@ be accessible to users for search and plotting.
 """
 from itertools import product
 
-# spatial fields from asdf
+# spatial / per-ROI photometry fields from asdf
 ASDF_SPATIAL_SUFFIXES = ('H', 'W', 'HW', 'A', 'D')
-ASDF_SPATIAL_COLS = [
+ASDF_CART_COLS = [
     f'{eye}_{suffix}'
     for eye, suffix in product(('LEFT', 'RIGHT'), ASDF_SPATIAL_SUFFIXES)
 ]
-
+ASDF_PHOT_SUFFIXES = ('I', 'E', 'P')
+ASDF_PHOT_COLS = [
+    f'{eye}_{suffix}'
+    for eye, suffix in product(('LEFT', 'RIGHT'), ASDF_PHOT_SUFFIXES)
+]
 # TODO: figure out how to implement decomposition parameter
 #  controls; maybe this doesn't go here, it's a separate interface,
 #  something like that
@@ -94,8 +98,9 @@ QUANTITATIVE_METADATA_FIELDS = (
     "rc_uncertainty",
     # rc data field
     "azimuth_angle",
-    *[c.lower() for c in ASDF_SPATIAL_COLS],
-    *[f"{c.lower()}mag" for c in ASDF_SPATIAL_COLS],
+    *[c.lower() for c in ASDF_CART_COLS],
+    *[f"{c.lower()}mag" for c in ASDF_CART_COLS],
+    *[c.lower() for c in ASDF_PHOT_COLS],
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = (

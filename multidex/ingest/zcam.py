@@ -26,7 +26,7 @@ django.setup()
 
 # noinspection PyUnresolvedReferences
 from plotter import div0
-from plotter.field_interface_definitions import ASDF_SPATIAL_COLS
+from plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
 from plotter.models import ZSpec
 
 
@@ -217,7 +217,6 @@ def process_marslab_row(row, marslab_file, obs_images):
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
         "images": obs_images,
-        # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
         "min_count": row[row.index.str.contains("count")].astype(float).min(),
     }
     try:
@@ -240,60 +239,68 @@ def format_for_multidex(frame):
     return frame
 
 
+def _cart_flagchecks(table, color):
+    cart = table.loc[
+        table['COLOR'] == color, ASDF_CART_COLS
+    ].iloc[0]
+    if cart.isna().any():
+        return "no_data"
+    # TODO, maybe: check for missing eye (rare case)
+    if (cart == 0).any():
+        # i think this generally indicates that the ROI overlaps but is
+        # not completely within a missing-data region, or is right on an
+        # edge, so calculation gets screwy. might be other causes. might
+        # need a high bounds check as well, or a looser low bounds check.
+        return 'bad'
+    dubious_a = False
+    for eye in ('LEFT', 'RIGHT'):
+        if abs(
+            np.log10(cart[f'{eye}_HW']) - np.log10(cart[f'{eye}_A'])
+        ) > 1.25:
+            return 'dubious_a'
+    if dubious_a is True:
+        return 'dubious_a'
+    for dim in ('H', 'W'):
+        if abs(
+            cart[f'LEFT_{dim}'] - cart[f'RIGHT_{dim}']
+        ) > (cart[[f'LEFT_{dim}', f'RIGHT_{dim}']].min() * 4):
+            return 'dubious_bounds'
+    if (cart > 800).any():
+        return 'dubious_size'
+    return 'ok'
+
+
+def _phot_flagchecks(table, color):
+    phot = table.loc[
+        table['COLOR'] == color, ASDF_PHOT_COLS
+    ].iloc[0]
+    if phot.isna().any():
+        return 'no_data'
+    if (phot < 0).any():
+        return 'negative_angles'
+    if (phot > 180).any():
+        return 'dubious_angles'
+    return 'ok'
+
+
 def spatial_flags(table):
-    flags = []
+    cartflags, photflags = [], []
     for color in table['COLOR']:
-        spatial = table.loc[
-            table['COLOR'] == color, ASDF_SPATIAL_COLS
-        ].iloc[0]
-        if spatial.isna().any():
-            # generally indicates an ROI drawn completely within a
-            # missing data region
-            flags.append('no_data')
-            continue
-        if (spatial == 0).any():
-            # i think this generally indicates that the ROI overlaps but is
-            # not completely within a missing-data region, or is right on an
-            # edge, so calculation gets screwy. might be other causes. might
-            # need a high bounds check as well, or a looser low bounds check.
-            flags.append("bad")
-            continue
-        dubious_a = False
-        for eye in ('LEFT', 'RIGHT'):
-            if abs(
-                np.log10(spatial[f'{eye}_HW']) - np.log10(spatial[f'{eye}_A'])
-            ) > 1.25:
-                dubious_a = True
-                break
-        if dubious_a is True:
-            flags.append('dubious_a')
-            continue
-        dubious_bounds = False
-        for dim in ('H', 'W'):
-            if abs(
-                spatial[f'LEFT_{dim}'] - spatial[f'RIGHT_{dim}']
-            ) > (spatial[[f'LEFT_{dim}', f'RIGHT_{dim}']].min() * 4):
-                dubious_bounds = True
-                break
-        if dubious_bounds is True:
-            flags.append('dubious_bounds')
-            continue
-        if (spatial > 800).any():
-            flags.append('dubious_size')
-            continue
-        flags.append('ok')
-    return flags
+        cartflags.append(_cart_flagchecks(table, color))
+        photflags.append(_phot_flagchecks(table, color))
+    return cartflags, photflags
 
 
 def insert_spatial_metadata(table):
     space = table.copy()
-    if not set(ASDF_SPATIAL_COLS).issubset(space.columns):
+    if not (('LEFT_H' in space.columns) or ('RIGHT_H' in space.columns)):
         # asdf found no suitable XYR for this observation
         space['spatial_flag'] = "no_data"
+        space['phot_flag'] = "no_data"
     else:
-        space[ASDF_SPATIAL_COLS] = space[ASDF_SPATIAL_COLS].astype(np.float32)
-        space['spatial_flag'] = spatial_flags(space)
-        for c in ASDF_SPATIAL_COLS:
+        space[ASDF_CART_COLS] = space[ASDF_CART_COLS].astype(np.float32)
+        space['spatial_flag'], space['phot_flag'] = spatial_flags(space)
+        for c in ASDF_CART_COLS:
             space[f'{c}MAG'] = np.log10(space[c]).astype(np.float32)
     return space
 

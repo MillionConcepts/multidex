@@ -12,7 +12,7 @@ from marslab.compat.mertools import (
 )
 from marslab.compat.xcam import DERIVED_CAM_DICT
 
-from plotter.field_interface_definitions import ASDF_SPATIAL_COLS
+from plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
 from plotter.model_prototypes import (
     XSpec,
     filter_fields_factory,
@@ -44,6 +44,7 @@ class ZSpec(XSpec):
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
     # spatial data quality flag produced during ingest
     spatial_flag = models.CharField("spatial_flag", **B_N_I, max_length=15)
+    phot_flag = models.CharField("photometry_flag", **B_N_I, max_length=15)
     # radiometric calibration file metadata fields
     rc_caltarget_file = models.CharField(
         "caltarget file", max_length=80, **B_N_I
@@ -209,11 +210,12 @@ class TestSpec(RoverSpectrum):
 
 
 # "mag" fields are power-of-10 magnitude, computed during multidex ingest
-for field_name in ASDF_SPATIAL_COLS:
+for field_name in ASDF_CART_COLS + ASDF_PHOT_COLS:
     field = models.FloatField(field_name.lower(), **B_N_I)
     field.contribute_to_class(ZSpec, field_name.lower())
     magfield = models.FloatField(field_name.lower() + "mag", **B_N_I)
-    magfield.contribute_to_class(ZSpec, field_name.lower() + "mag")
+    if field_name in ASDF_PHOT_COLS:
+        magfield.contribute_to_class(ZSpec, field_name.lower() + "mag")
 del field, magfield
 
 # bulk setup for each instrument
