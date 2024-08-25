@@ -284,7 +284,8 @@ def spatial_flags(table):
     cartflags, photflags = [], []
     for color in table['COLOR']:
         cartflags.append(_cart_flagchecks(table, color))
-        photflags.append(_phot_flagchecks(table, color))
+        if ASDF_PHOT_COLS.issubset(table.columns):
+            photflags.append(_phot_flagchecks(table, color))
     return cartflags, photflags
 
 
