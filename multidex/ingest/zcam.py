@@ -285,8 +285,10 @@ def spatial_flags(table):
     for color in table['COLOR']:
         cartflags.append(_cart_flagchecks(table, color))
         # TODO, maybe: check for missing eye (rare case)
-        if not set(ASDF_PHOT_COLS).issubset(table.columns):
+        if set(ASDF_PHOT_COLS).issubset(table.columns):
             photflags.append(_phot_flagchecks(table, color))
+        else:
+            photflags = "no_data"
     return cartflags, photflags
 
 
