@@ -252,14 +252,11 @@ def _cart_flagchecks(table, color):
         # edge, so calculation gets screwy. might be other causes. might
         # need a high bounds check as well, or a looser low bounds check.
         return 'bad'
-    dubious_a = False
     for eye in ('LEFT', 'RIGHT'):
         if abs(
             np.log10(cart[f'{eye}_HW']) - np.log10(cart[f'{eye}_A'])
         ) > 1.25:
             return 'dubious_a'
-    if dubious_a is True:
-        return 'dubious_a'
     for dim in ('H', 'W'):
         if abs(
             cart[f'LEFT_{dim}'] - cart[f'RIGHT_{dim}']
