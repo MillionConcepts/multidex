@@ -51,8 +51,9 @@ QUALITATIVE_METADATA_FIELDS = (
     "target_type_shot_specific",
     "wtsn",
     "zoom",
-    # quality flag computed during index for asdf-generated spatial data
+    # quality flags computed during index for asdf-generated spatial data
     "spatial_flag",
+    "phot_flag",
     # rc properties
     "rc_seq_id",
     # caltarget roi only
