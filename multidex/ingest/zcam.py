@@ -294,7 +294,8 @@ def spatial_flags(table):
 
 def insert_spatial_metadata(table):
     space = table.copy()
-    if not (('LEFT_H' in space.columns) or ('RIGHT_H' in space.columns)):
+    # TODO: permit missing eye (rare case)
+    if not set(ASDF_CART_COLS).issubset(table.columns):
         # asdf found no suitable XYR for this observation
         space['spatial_flag'] = "no_data"
         space['phot_flag'] = "no_data"
