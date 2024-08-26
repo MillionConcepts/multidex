@@ -273,6 +273,8 @@ def _phot_flagchecks(table, color):
     ].iloc[0]
     if phot.isna().any():
         return 'no_data'
+    if (phot == 0).any():
+        return "zero_angles"
     if (phot < 0).any():
         return 'negative_angles'
     if (phot > 180).any():
