@@ -213,8 +213,8 @@ class TestSpec(RoverSpectrum):
 for field_name in ASDF_CART_COLS + ASDF_PHOT_COLS:
     field = models.FloatField(field_name.lower(), **B_N_I)
     field.contribute_to_class(ZSpec, field_name.lower())
-    magfield = models.FloatField(field_name.lower() + "mag", **B_N_I)
-    if field_name in ASDF_PHOT_COLS:
+    if field_name in ASDF_CART_COLS:
+        magfield = models.FloatField(field_name.lower() + "mag", **B_N_I)
         magfield.contribute_to_class(ZSpec, field_name.lower() + "mag")
 del field, magfield
 
