@@ -372,7 +372,7 @@ def make_markers(
             get_verbose_name(props["value"], spec_model),
         )
     palette_type = get_scale_type(re_get(settings, "palette-name-drop.value"))
-    if palette_type is None:
+    if palette_type == "solid":
         # solid color case
         color = re_get(settings, "palette-name-drop.value")
         colorbar = None
