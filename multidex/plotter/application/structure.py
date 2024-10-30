@@ -45,6 +45,7 @@ MARKER_INPUTS = [
     Input("marker-outline-radio", "value"),
     Input("marker-size-radio", "value"),
     Input("marker-symbol-drop", "value"),
+    Input("marker-alpha-input", "value")
 ]
 
 HIGHLIGHT_INPUTS = [

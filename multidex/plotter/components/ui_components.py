@@ -653,7 +653,7 @@ def marker_size_div(marker_size) -> Div:
                 ],
                 value=marker_size,
             ),
-        ],
+        ]
     )
 
 
@@ -1111,5 +1111,22 @@ def marker_div(settings):
             marker_color_symbol_div(settings),
             marker_options_div(settings),
             marker_clip_div(settings),
+            html.Div(
+                id="marker-alpha-div",
+                children=[
+                    html.Label(
+                        children=["opacity: "],
+                        htmlFor="marker-alpha-input"
+                    ),
+                    dcc.Input(
+                        type="number",
+                        id="marker-alpha-input",
+                        style={"height": "1.4rem", "width": "3rem"},
+                        value=100,
+                        min=0,
+                        max=100,
+                    )
+                ]
+            )
         ],
     )

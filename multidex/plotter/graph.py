@@ -430,7 +430,7 @@ def make_markers(
     marker_property_dict = {
         "marker": {
             "size": size,
-            "opacity": 1,
+            "opacity": settings['marker-alpha-input.value'] / 100,
             "symbol": symbol,
             "coloraxis": "coloraxis1",
         },
