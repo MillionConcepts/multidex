@@ -99,7 +99,7 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
 def initialize_cache_values(cset, spec_model):
     cset("spec_model_name", spec_model.instrument_brief_name)
     cset("search_ids", qlist(spec_model.objects.all(), "id"))
-    cset("highlight_ids", qlist(spec_model.objects.all(), "id"))
+    cset("highlight_ids", [])
     cset("label_ids", [])
     cset(
         "data_df",

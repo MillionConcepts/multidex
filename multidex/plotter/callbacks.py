@@ -371,7 +371,11 @@ def update_main_graph(
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
     # TODO: cleanly prevent these from unsetting autoscale on load
-    if ("marker" in trigger) or ("click" in trigger):
+    if (
+            ("marker" in trigger)
+            or ("click" in trigger)
+            or ("highlight" in trigger and trigger != "highlight-trigger")
+    ):
         layout = ctx.states["main-graph.figure"]["layout"]
         zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
     else:
@@ -569,7 +573,7 @@ def toggle_search_input_visibility(field, options, *, spec_model):
     field's value type (quant or qual) and free-ness as appropriate.
     """
     if not field:
-        raise PreventUpdate
+        return [{"display": "none"}, {"display": "none"}, {"display": "none"}]
     if (
         keygrab(spec_model.searchable_fields(), "label", field)["value_type"]
         == "quant"

@@ -427,10 +427,13 @@ def make_markers(
     # set marker symbol
     symbol = re_get(settings, "marker-symbol-drop.value")
     coloraxis = {"colorscale": colormap}
+    opacity = settings['marker-opacity-input.value']
+    if opacity is None:
+        opacity = 100
     marker_property_dict = {
         "marker": {
             "size": size,
-            "opacity": settings['marker-alpha-input.value'] / 100,
+            "opacity": opacity / 100,
             "symbol": symbol,
             "coloraxis": "coloraxis1",
         },
@@ -746,7 +749,7 @@ def spectrum_from_graph_event(
     dcc.Graph event data (e.g. hoverData), plotter.Spectrum class ->
     plotter.Spectrum instance
     this function assumes it's getting data from a browser event that
-    highlights  a single graphed point (like clicking it or hovering on it),
+    highlights a single graphed point (like clicking it or hovering on it),
     and returns the associated Spectrum object.
     """
     # the graph's customdata property should contain numbers corresponding
@@ -862,13 +865,13 @@ def assemble_highlight_marker_dict(highlight_settings, base_marker_size):
     # iterate over values of all highlight UI elements, interpreting them as
     # marker values legible to go.Scatter & its relatives
     for prop, setting_input in zip(
-        ("color", "size", "symbol"),
-        ("color-drop", "size-radio", "symbol-drop"),
+        ("color", "size", "symbol", "opacity"),
+        ("color-drop", "size-radio", "symbol-drop", "opacity-input"),
     ):
         setting = highlight_settings[f"highlight-{setting_input}.value"]
         if setting == "none":
             continue
-        if prop == "size":
+        elif prop == "size":
             # highlight size increase is relative, not absolute;
             # base_marker_size can be either int or list[int] --
             # need to retain its type to retain how outline works
@@ -876,6 +879,9 @@ def assemble_highlight_marker_dict(highlight_settings, base_marker_size):
                 setting = [setting * value for value in base_marker_size]
             else:
                 setting = setting * base_marker_size
+        elif prop == "opacity":
+            setting = 100 if setting is None else setting
+            setting /= 100
         highlight_marker_dict[prop] = setting
     return highlight_marker_dict
 

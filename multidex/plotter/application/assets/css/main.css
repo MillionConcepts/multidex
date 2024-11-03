@@ -43,14 +43,14 @@ button {
     font-size: 0.89rem;
     padding-left: 5px;
     padding-right: 0;
-    line-height: 2rem
+    line-height: 1.6rem
 }
 
 
 
 .medium-drop .Select-control {
-    height:2rem;
-    display:block
+    height: 1.6rem;
+    display: block
 }
 
 .medium-drop.term-search .Select-control .Select-value {
@@ -76,7 +76,6 @@ button {
     font-size: .8rem
 }
 
-
 .medium-drop.term-search .Select-control .Select-input {
     padding: 2px 2px;
     font-size: .8rem;
@@ -93,6 +92,10 @@ button {
     display: block;
     min-width: 6rem;
     margin-right: 1rem
+}
+
+.filter-drop .Select-menu-outer {
+    min-width: 7rem;
 }
 
 .filter-drop .Select-value {
@@ -118,18 +121,17 @@ button {
     background-color: var(--invisible-pearl) !important;
 }
 
-
+/* TODO: something to allow x-axis
+    scrolling without clipping dropdowns*/
 .graph-controls-container {
     display: flex;
-    max-height: 12rem
+    max-height: 12rem;
+    /*overflow-x: auto;*/
+    /*overflow-y: visible;*/
+    scrollbar-color: var(--dark-tint-1) #EEDDDD;
+    scrollbar-width: thin;
+    padding-bottom: 0.5rem;
 }
-
-/*.graph-controls-container::-webkit-scrollbar {*/
-/*      display: block;*/
-/*      width: 10em;*/
-/*      overflow: auto;*/
-/*      height: 2em;*/
-/*}*/
 
 /*.Select-menu-outer {*/
 /*    background: blue;*/
@@ -144,7 +146,9 @@ button {
 }
 
 .radio-items {
-    font-size: 0.85rem
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: row
 }
 
 .scale-controls-container {
