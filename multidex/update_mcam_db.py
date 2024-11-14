@@ -61,8 +61,10 @@ def marslab_nameparse(fn):
         parsed['FORMAT'] = 'compact'
     return parsed
 
+
 def stamp() -> str:
     return dt.datetime.utcnow().isoformat()[:19]
+
 
 def initialize_database(db_name):
     initproc = runv(
@@ -168,7 +170,7 @@ def index_drive_data_folders():
     pool = MaybePool(6)
     pool.map(
         _investigate_drive_solfolder,
-        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()][:10]
+        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
     )
     pool.close()
     i = 0
