@@ -217,7 +217,10 @@ def format_for_multidex(frame):
     frame.columns = [col.upper().replace(" ", "_") for col in frame.columns]
     y_to_bool(frame, MCAM_BOOL_FIELDS)
     frame = frame.replace(["-", "", " "], np.nan)
-    frame.columns = [col.lower() for col in frame.columns]
+    # handle old-fashioned "_ERR"
+    frame.columns = [
+        col.lower().replace("_err", "_std") for col in frame.columns
+    ]
     return frame
 
 
