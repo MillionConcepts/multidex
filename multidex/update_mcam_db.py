@@ -23,9 +23,11 @@ from ingest.local_settings.mcam import (
     ASDF_CLIENT_SECRET,
     LOCAL_MSPEC_ROOT,
     DRIVE_MSPEC_ROOT,
-    MULTIDEX_ROOT,
     SHARED_DRIVE_ID,
     DRIVE_DB_FOLDER,
+    LOCAL_THUMB_PATH,
+    DJANGO_MANAGE_PATH,
+    LOCAL_DB_PATH
 )
 
 # TODO, maybe: most of this file is now shockingly redundant
@@ -305,7 +307,6 @@ def update_mdex_from_drive(
     local_only=False,
     force_rebuild=False,
     shutdown_on_completion=False,
-    ingest_rc=False,
     upload=True
 ):
     if local_only is False:
@@ -330,7 +331,7 @@ def update_mdex_from_drive(
         log(f"{stamp()}: sync complete; {len(saved_files)} files downloaded")
     log(f"{stamp()}: building {LOCAL_DB_PATH} from {LOCAL_MSPEC_ROOT}")
     try:
-        ingest_results = rebuild_database(ingest_rc)
+        ingest_results = rebuild_database()
     except Exception as ex:
         if 'bailing' in str(ex):
             # logging already handled
