@@ -39,11 +39,14 @@ def calendar_stamp():
 
 MDEX_FILE_PATTERN = re.compile(r"(marslab_SOL)|(context_image)")
 OBS_TITLE_PATTERN = re.compile(
-    r"(?P<SEQ_ID>mcam\d{5}) (?P<NAME>.*?) RSM (?P<RSM>\d+)"
+    r"(?P<SEQ_ID>mcam\d{5}) (?P<NAME>.*?) "
+    r"RSM ((?P<RSM_L>\d+)L)?_?((?P<RSM_R>\d+)R)?"
 )
+
 MARSLAB_FN_PATTERN = re.compile(
     r"(?P<FTYPE>marslab|roi)_((?P<FORMAT>extended|rc)_)?SOL(?P<SOL>\d{4})_"
-    r"(?P<SEQ_ID>\w+)_RSM(?P<RSM>\d+)(-(?P<ANALYSIS_NAME>.+?))?\."
+    r"(?P<SEQ_ID>mcam\d+)(_(?P<RSM_L>\d+)L)?(_(?P<RSM_R>\d+)R)?"
+    r"(-(?P<ANALYSIS_NAME>.+?))?\."
     r"(?P<EXTENSION>fits\.gz|fits|csv)"
 )
 
@@ -112,13 +115,14 @@ def csvify(sequence):
 
 def _check_correspondence(marslab_files, filtered_parseframe):
     corrpreds = [
-        marslab_files[k] == filtered_parseframe[k]
-        for k in ('SOL', 'SEQ_ID', 'RSM')
+        (marslab_files[k] == filtered_parseframe[k])
+        | (marslab_files[k].isna() & filtered_parseframe[k].isna())
+        for k in ('SOL', 'SEQ_ID', 'RSM_L', 'RSM_R')
     ]
     corresponds = reduce(and_, corrpreds)
     # noinspection PyUnresolvedReferences
     if not corresponds.all():
-        misplaced = '\n'.join(marslab_files.loc[~corrpreds, 'name'].tolist())
+        misplaced = '\n'.join(marslab_files.loc[~corresponds, 'name'].tolist())
         log(
             f"*****WARNING: some files are possibly misplaced:\n"
             f"{misplaced}\n*******"
@@ -164,7 +168,7 @@ def index_drive_data_folders():
     pool = MaybePool(6)
     pool.map(
         _investigate_drive_solfolder,
-        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()]
+        [{'key': name, 'args': (name, id_)} for name, id_ in soldirs.items()][:10]
     )
     pool.close()
     i = 0
@@ -208,10 +212,13 @@ def index_drive_data_folders():
 
 
 def _row2path(row):
-    return Path(
-        f"{row['SOL']}/{row['SEQ_ID']} {row['NAME']} RSM {row['RSM']}"
-        f"/{row['fn']}"
-    )
+    base = f"{row['SOL']}/{row['SEQ_ID']} {row['NAME']} RSM "
+    rsms = []
+    for eye in ("L", "R"):
+        if (eye_rsm := row[f"RSM_{eye}"]) is not None:
+            rsms.append(f"{eye_rsm}{eye}")
+    base += "_".join(rsms)
+    return Path(base, row['fn'])
 
 
 def _download_chunk_from_drive(rowchunk, logfile):
@@ -302,12 +309,12 @@ def sync_mspec_tree():
         log("***end of list***")
     return manifest, successes
 
-
+LOGFILE = f"mcam_db_{calendar_stamp()}.log"
 def update_mdex_from_drive(
     local_only=False,
     force_rebuild=False,
     shutdown_on_completion=False,
-    upload=True
+    upload=False
 ):
     if local_only is False:
         try:

@@ -317,7 +317,10 @@ def ingest_marslab_file(marslab_file, context_df):
         if frame["INSTRUMENT"].iloc[0] != "ZCAM":
             print("skipping non-ZCAM file: " + marslab_file)
             return False, "does not appear to be a ZCAM file", context_df
-    frame = frame.replace(["-", "", " ", "--"], np.nan)
+    for n, c in frame.items():
+        if c.dtype != 'O':
+            continue
+        frame[n] = c.replace(["-", "", " "], None)
     # don't ingest duplicate copies of rc-file-derived caltarget values
     if 'FEATURE' in frame.columns:
         if (frame['FEATURE'] == 'caltarget').all():

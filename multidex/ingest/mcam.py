@@ -66,12 +66,13 @@ def default_thumbnailer():
     }
     return Composition(steps=steps, inserts=inserts)
 
+
 ASDF_STEM_PATTERN = re.compile(
     r'SOL\d{4}_mcam\d{5}_(\d{1,4}(L|R)_?){1,2}(-\w+)?', re.UNICODE
 )
 
 # TODO: do this better, requires making people install this better
-THUMB_PATH = "plotter/application/assets/browse/mcam/"
+THUMB_PATH = "multidex/plotter/application/assets/browse/mcam/"
 
 MSPEC_FIELD_NAMES = list(map(attrgetter("name"), MSpec._meta.fields))
 
@@ -161,6 +162,7 @@ def save_thumb(filename, row):
     try:
         with open(filename, "wb") as file:
             file.write(row["buffer"].getbuffer())
+            print(file)
         return True, None
     except KeyboardInterrupt:
         raise
@@ -216,7 +218,10 @@ def process_marslab_row(row, marslab_file, obs_images):
 def format_for_multidex(frame):
     frame.columns = [col.upper().replace(" ", "_") for col in frame.columns]
     y_to_bool(frame, MCAM_BOOL_FIELDS)
-    frame = frame.replace(["-", "", " "], np.nan)
+    for n, c in frame.items():
+        if c.dtype != 'O':
+            continue
+        frame[n] = c.replace(["-", "", " "], None)
     # handle old-fashioned "_ERR"
     frame.columns = [
         col.lower().replace("_err", "_std") for col in frame.columns
