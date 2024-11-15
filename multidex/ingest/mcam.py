@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Callable
 
 import django.db.models
-import numpy as np
 from fs.osfs import OSFS
 import pandas as pd
 
@@ -21,6 +20,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
 from plotter.models import MSpec
+from ingest.local_settings.mcam import LOCAL_THUMB_PATH
 
 
 # make consistently-sized thumbnails out of the asdf context images. we
@@ -66,12 +66,13 @@ def default_thumbnailer():
     }
     return Composition(steps=steps, inserts=inserts)
 
+
 ASDF_STEM_PATTERN = re.compile(
     r'SOL\d{4}_mcam\d{5}_(\d{1,4}(L|R)_?){1,2}(-\w+)?', re.UNICODE
 )
 
 # TODO: do this better, requires making people install this better
-THUMB_PATH = "plotter/application/assets/browse/mcam/"
+THUMB_PATH = "multidex/plotter/application/assets/browse/mcam/"
 
 MSPEC_FIELD_NAMES = list(map(attrgetter("name"), MSpec._meta.fields))
 
@@ -157,7 +158,7 @@ def match_obs_images(marslab_file, context_df):
 
 
 def save_thumb(filename, row):
-    print("writing " + filename)
+    print("writing " + str(filename))
     try:
         with open(filename, "wb") as file:
             file.write(row["buffer"].getbuffer())
@@ -173,10 +174,11 @@ def save_relevant_thumbs(context_df):
     if "save" not in context_df.columns:
         return {}
     to_save = context_df.loc[context_df["save"] == True]
-    thumb_path = THUMB_PATH
     results = []
     for _, row in to_save.iterrows():
-        filename = thumb_path + row["stem"] + "-" + row["eye"] + "-thumb.jpg"
+        filename = LOCAL_THUMB_PATH / (
+            row["stem"] + "-" + row["eye"] + "-thumb.jpg"
+        )
         success, ex = save_thumb(filename, row)
         results.append(
             {
@@ -189,6 +191,9 @@ def save_relevant_thumbs(context_df):
     return results
 
 
+RSM_PAT = re.compile(r"((?P<rsm_l>\d+)L)?_?((?P<rsm_r>\d+)R)?")
+
+
 def process_marslab_row(row, marslab_file, obs_images):
     row = row.dropna()
     relevant_indices = [ix for ix in row.index if ix in MSPEC_FIELD_NAMES]
@@ -199,7 +204,9 @@ def process_marslab_row(row, marslab_file, obs_images):
         "images": obs_images,
         # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
         "min_count": row[row.index.str.contains("count")].astype(float).min(),
-    }
+    } | RSM_PAT.match(row['rsm']).groupdict()
+    if 'in-place' in metadata['float']:
+        metadata['float'] = 'in-place or N/A'
     try:
         spectrum = MSpec(**metadata)
         spectrum.clean()
@@ -216,8 +223,14 @@ def process_marslab_row(row, marslab_file, obs_images):
 def format_for_multidex(frame):
     frame.columns = [col.upper().replace(" ", "_") for col in frame.columns]
     y_to_bool(frame, MCAM_BOOL_FIELDS)
-    frame = frame.replace(["-", "", " "], np.nan)
-    frame.columns = [col.lower() for col in frame.columns]
+    for n, c in frame.items():
+        if c.dtype != 'O':
+            continue
+        frame[n] = c.replace(["-", "", " "], None)
+    # handle old-fashioned "_ERR"
+    frame.columns = [
+        col.lower().replace("_err", "_std") for col in frame.columns
+    ]
     return frame
 
 

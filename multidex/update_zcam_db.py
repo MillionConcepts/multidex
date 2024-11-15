@@ -44,6 +44,7 @@ LOCAL_THUMB_PATH = Path(
 )
 DJANGO_MANAGE_PATH = Path("manage.py")
 
+
 def stamp() -> str:
     return dt.datetime.utcnow().isoformat()[:19]
 
@@ -122,7 +123,7 @@ def _check_correspondence(marslab_files, filtered_parseframe):
     corresponds = reduce(and_, corrpreds)
     # noinspection PyUnresolvedReferences
     if not corresponds.all():
-        misplaced = '\n'.join(marslab_files.loc[~corrpreds, 'name'].tolist())
+        misplaced = '\n'.join(marslab_files.loc[~corresponds, 'name'].tolist())
         log(
             f"*****WARNING: some files are possibly misplaced:\n"
             f"{misplaced}\n*******"

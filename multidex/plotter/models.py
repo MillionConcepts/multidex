@@ -142,6 +142,8 @@ class MSpec(XSpec):
     instrument = "MCAM"
     instrument_brief_name = "Mastcam"
     color_mappings = MERSPECT_MSL_COLOR_MAPPINGS | {"black": "#000000"}
+    rsm_l = models.IntegerField("RSM_L", **B_N_I)
+    rsm_r = models.IntegerField("RSM_R", **B_N_I)
 
 
 class CSpec(RoverSpectrum):
