@@ -23,4 +23,15 @@ def multidex_run_hook():
 
 # tell fire to handle command line call
 if __name__ == "__main__":
-    multidex_run_hook()
+    try:
+        multidex_run_hook()
+    except ModuleNotFoundError:
+        print(
+            "Execution failure: MultiDEx was restructured as a Python package "
+            "in version 0.10.0 and now requires installation. Please run 'pip "
+            "install -e .' from the MultiDEx repository root. Note that "
+            "after doing this, it will be possible to execute MultiDEx by "
+            "running 'multidex INSTRUMENT_CODE' from any working directory, "
+            "although running 'python multidex.py INSTRUMENT_CODE' from this "
+            "directory will still work."
+        )
