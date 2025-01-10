@@ -32,7 +32,8 @@ from multidex.multidex_utils import (
     re_get,
     djget,
     insert_wavelengths_into_text,
-    model_metadata_df, get_verbose_name,
+    model_metadata_df, 
+    get_verbose_name,
 )
 from multidex.plotter import spectrum_ops
 from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type

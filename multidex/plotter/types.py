@@ -8,6 +8,5 @@ from typing_extensions import TypeAlias
 # accept / return Model classes and class instances.
 
 # e.g., ZSpec, MSpec, ...
-
 SpectrumModel: TypeAlias = Any
 SpectrumModelInstance: TypeAlias = Any
