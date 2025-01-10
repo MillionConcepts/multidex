@@ -104,6 +104,9 @@ QUANTITATIVE_METADATA_FIELDS = (
     "rc_uncertainty",
     # rc data field
     "azimuth_angle",
+    *[c.lower() for c in ASDF_CART_COLS],
+    *[f"{c.lower()}mag" for c in ASDF_CART_COLS],
+    *[c.lower() for c in ASDF_PHOT_COLS],
     # supercam
     "uv_rows",
     "vio_rows",
@@ -116,10 +119,6 @@ QUANTITATIVE_METADATA_FIELDS = (
     "p2300",
     "saturation",
     "focus_position_mm"
-
-    *[c.lower() for c in ASDF_CART_COLS],
-    *[f"{c.lower()}mag" for c in ASDF_CART_COLS],
-    *[c.lower() for c in ASDF_PHOT_COLS],
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = (

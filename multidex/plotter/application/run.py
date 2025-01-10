@@ -124,7 +124,7 @@ def initialize_cache_values(cset, spec_model):
             continue
         metadata_df.loc[pd.notna(metadata_df[c]), c] = [
             instant.hour * 3600 + instant.minute * 60 + instant.second
-            for instant in metadata_df["ltst"].dropna()
+            for instant in metadata_df[c].dropna()
         ]
 
     if "zoom" in metadata_df.columns:
