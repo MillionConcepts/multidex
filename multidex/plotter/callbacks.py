@@ -23,16 +23,11 @@ from dustgoggles.func import are_in
 from dustgoggles.pivot import split_on
 
 try:
-    from marslab.compat.xcam import (
-        construct_field_ordering,
-        numeric_columns,
-        integerize,
-    )
+    from marslab.compat.xcam import construct_field_ordering
 except ImportError:
     raise ImportError(
-        "multidex 0.8.2 requires marslab 0.9.81 or higher. "
-        "Please update by running:\n"
-        "pip install --upgrade --force-reinstall git+https://github.com/MillionConcepts/marslab.git\n"
+        "This version of multidex requires marslab 0.9.81 or higher. "
+        "Please update by running:\nconda upgrade -n multidex marslab\n"
         "(or your alternative method of choice)."
     )
 
@@ -454,17 +449,24 @@ def update_search_options(
             search_text = current_search
         else:
             search_text = ""
+        vmin, vmax, q1, q3 = spectrum_values_range(search_df, field)
+        infix = "~ " if not isinstance(vmin, int) else ""
         return [
             [{"label": "any", "value": "any"}],
-            "min/max: "
-            + str(spectrum_values_range(search_df, field))
-            + """ e.g., '100--200' or '100, 105, 110'""",
+            f"min/max: {infix}{vmin}/{vmax}\n25%/75%: {infix}{q1}/{q3}\n"
+            f"examples:\n100--200 or 100,105,110",
             search_text,
+            BASE_PARAM_LOGIC_OPTIONS,
         ]
 
     # otherwise, populate the term interface and reset the range display and
     # searches
-    return [field_values(search_df, field), "", ""]
+    return [
+        field_values(search_df, field),
+        "",
+        "",
+        BASE_PARAM_LOGIC_OPTIONS + [{"label": "free", "value": "is_free"}],
+    ]
 
 
 def update_search_ids(
@@ -485,8 +487,6 @@ def update_search_ids(
     """
     updates the spectra displayed in the graph view.
     """
-    # don't do anything if a blank request is issued
-
     if not (fields and (term_entries or quant_entries or free_entries)):
         raise PreventUpdate
     # construct a list of search parameters from filled quant inputs
@@ -559,19 +559,20 @@ def change_calc_input_visibility(calc_type, *, spec_model):
 
 def toggle_search_input_visibility(field, options, *, spec_model):
     """
-    toggle display of term dropdown / number / free search inputs.
-    just returns simple dicts to the dash callback based on the
-    field's value type (quant or qual) and free-ness as appropriate.
+    toggle between showing and hiding term drop down / number range boxes.
+    right now just returns simple dicts to the dash callback based on the
+    field's value type
+    (quant or qual) as appropriate.
     """
     if not field:
         raise PreventUpdate
-    if 'is_free' in options:
-        return [{'display': 'none'}, {'display': 'none'}, {}]
     if (
         keygrab(spec_model.searchable_fields(), "label", field)["value_type"]
         == "quant"
     ):
         return [{"display": "none"}, {}, {"display": "none"}]
+    elif 'is_free' in options:
+        return [{'display': 'none'}, {'display': 'none'}, {}]
     return [{}, {"display": "none"}, {"display": "none"}]
 
 
@@ -765,11 +766,12 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
         metadata_df["UNITS"] = "R*"
     else:
         metadata_df["UNITS"] = "IOF"
-    for time_field in ("LTST", "LMST"):
-        if time_field in metadata_df.columns:
-            metadata_df[time_field] = metadata_df[time_field].map(
-                seconds_since_beginning_of_day_to_iso
-            )
+    for c in metadata_df.columns[
+        metadata_df.columns.str.match(r"(RC_)?L[MT]ST$")
+    ]:
+        metadata_df[c] = metadata_df[c].map(
+            seconds_since_beginning_of_day_to_iso
+        )
     axes = cget("graph_contents")
     axes.columns = list(
         map(lambda x: re.sub(r"[%. ]", "_", x.upper()), axes.columns)
@@ -784,14 +786,13 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
     ordering = construct_field_ordering(
         filters=tuple(
             filter(
-                complement(are_in(("AVG", "STD"), oper=or_)), filter_df.columns
+                complement(are_in(("AVG", "STD", "RMAD"), oper=or_)),
+                filter_df.columns
             )
         ),
         fields=output_df.columns,
     )
-    output_df = output_df[ordering]
-    # TODO: use de-vendored dustgoggles version eventually
-    output_df = integerize(output_df)
+    output_df = integerize(output_df[ordering])
     filename_base = (
         f"{spec_model.instrument.lower()}-"
         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}"

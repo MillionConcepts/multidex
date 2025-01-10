@@ -3,6 +3,19 @@ assemble objects defining interface properties for various metadata fields
 and calculation types. fields must be defined in this module in order to
 be accessible to users for search and plotting.
 """
+from itertools import product
+
+# spatial / per-ROI photometry fields from asdf
+ASDF_SPATIAL_SUFFIXES = ('H', 'W', 'HW', 'A', 'D')
+ASDF_CART_COLS = [
+    f'{eye}_{suffix}'
+    for eye, suffix in product(('LEFT', 'RIGHT'), ASDF_SPATIAL_SUFFIXES)
+]
+ASDF_PHOT_SUFFIXES = ('I', 'E', 'P')
+ASDF_PHOT_COLS = [
+    f'{eye}_{suffix}'
+    for eye, suffix in product(('LEFT', 'RIGHT'), ASDF_PHOT_SUFFIXES)
+]
 # TODO: figure out how to implement decomposition parameter
 #  controls; maybe this doesn't go here, it's a separate interface,
 #  something like that
@@ -38,6 +51,9 @@ QUALITATIVE_METADATA_FIELDS = (
     "target_type_shot_specific",
     "wtsn",
     "zoom",
+    # quality flags computed during index for asdf-generated spatial data
+    "spatial_flag",
+    "phot_flag",
     # rc properties
     "rc_seq_id",
     # caltarget roi only
@@ -65,6 +81,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "odometry",
     "phase_angle",
     "raster_location",
+    "rc_ltst",
     "rover_elevation",
     "rsm",
     "sclk",
@@ -100,9 +117,20 @@ QUANTITATIVE_METADATA_FIELDS = (
     "saturation",
     "focus_position_mm"
 
+    *[c.lower() for c in ASDF_CART_COLS],
+    *[f"{c.lower()}mag" for c in ASDF_CART_COLS],
+    *[c.lower() for c in ASDF_PHOT_COLS],
 )
 # properties computed at runtime from metadata
-CALCULATED_FIELDS = ("filter_avg", "std_avg", "rel_std_avg")
+CALCULATED_FIELDS = (
+    "filter_avg",
+    "std_avg",
+    "rel_std_avg",
+    "l_rmad",
+    "r_rmad",
+    'l_rstd',
+    'r_rstd',
+)
 
 
 # assemble property records: these statements should not need to be modified

@@ -26,6 +26,7 @@
 /multidex/data/TEST.sqlite3
 /multidex/data/*.csv
 *scratch*.ipynb
+*scratch.js
 *test.json
 /multidex/notetaking_attempt_1/
 !missing.jpg
@@ -33,3 +34,4 @@
 *.tar.gz
 *_db_dump.csv
 .coverage
+/multidex/ingest/local_settings/

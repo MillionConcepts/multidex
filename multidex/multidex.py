@@ -1,7 +1,7 @@
 import os
 
 try:
-    from clize import run
+    import fire
 except ModuleNotFoundError:
     raise ImportError(
         "Unable to perform imports. Did you activate the multidex "
@@ -20,4 +20,4 @@ if __name__ == "__main__":
     django.setup()
     import plotter.application.run
 
-    run(plotter.application.run.run_multidex)
+    fire.Fire(plotter.application.run.run_multidex)

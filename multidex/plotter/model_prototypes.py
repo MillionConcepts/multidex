@@ -212,6 +212,7 @@ class XSpec(RoverSpectrum):
     formation = models.CharField("formation", **B_N_I, max_length=50)
     member = models.CharField("member", **B_N_I, max_length=50)
     float = models.CharField("floating / in-place", **B_N_I, max_length=15)
+    min_count = models.IntegerField("minimum pixel count", **B_N_I)
 
     @staticmethod
     def make_scatter_annotations(
@@ -221,15 +222,15 @@ class XSpec(RoverSpectrum):
         descriptor = meta["feature"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
         descriptor.loc[no_feature_ix] = meta["color"].loc[no_feature_ix]
-        sol = meta["sol"].copy()
-        has_sol = sol.loc[sol.notna()].index
+        solstrings = meta["sol"].astype(str).copy()
+        has_sol = meta['sol'].loc[meta['sol'].notna()].index
         if len(has_sol) > 0:
             # + operation throws an error if there is nothing to add to
-            sol.loc[has_sol] = (
-                "sol" + sol.loc[has_sol].apply("{:.0f}".format) + " "
+            solstrings.loc[has_sol] = (
+                "sol" + meta['sol'].loc[has_sol].apply("{:.0f}".format) + " "
             )
-        sol.loc[sol.isna()] = ""
-        return (sol + meta["name"] + " " + descriptor).values
+        solstrings.loc[meta['sol'].isna()] = ""
+        return (solstrings + meta["name"] + " " + descriptor).values
 
     # noinspection PyUnresolvedReferences
     def roi_hex_code(self) -> str:

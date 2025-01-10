@@ -1,10 +1,10 @@
 """user-facing noninteractive script for ingesting simulated VISOR spectra"""
 
-from clize import run
+import fire
 
 import ingest.visor
 
 
 # tell clize to handle command line call
 if __name__ == '__main__':
-    run(ingest.visor.perform_ingest)
+    fire.Fire(ingest.visor.perform_ingest)

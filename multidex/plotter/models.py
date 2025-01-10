@@ -1,3 +1,5 @@
+from functools import cache
+from itertools import product
 from types import MappingProxyType
 from typing import Sequence
 
@@ -10,6 +12,7 @@ from marslab.compat.mertools import (
 )
 from marslab.compat.xcam import DERIVED_CAM_DICT
 
+from plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
 from plotter.model_prototypes import (
     XSpec,
     filter_fields_factory,
@@ -38,8 +41,10 @@ class ZSpec(XSpec):
     distance = models.CharField("distance", max_length=20, **B_N_I)
     location = models.CharField("location", max_length=60, **B_N_I)
     analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
-    min_count = models.IntegerField("minimum pixel count", **B_N_I)
     outcrop = models.CharField("outcrop", **B_N_I, max_length=50)
+    # spatial data quality flag produced during ingest
+    spatial_flag = models.CharField("spatial_flag", **B_N_I, max_length=15)
+    phot_flag = models.CharField("photometry_flag", **B_N_I, max_length=15)
     # radiometric calibration file metadata fields
     rc_caltarget_file = models.CharField(
         "caltarget file", max_length=80, **B_N_I
@@ -66,6 +71,7 @@ class ZSpec(XSpec):
 
     color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
 
+    # TODO: check if unused image_directory argument is cruft or oversight
     def overlay_browse_file_info(self, image_directory: str) -> dict:
         files = self.image_files()
         images = {}
@@ -81,6 +87,49 @@ class ZSpec(XSpec):
         return [
             f for f in filts if not f.endswith(("R", "G", "B"))
         ]
+
+    # TODO: messy
+    @classmethod
+    @cache
+    def accessible_properties(cls):
+        props = super().accessible_properties()
+        rc_qa_props = [
+            {
+                'value': name,
+                'value_type': 'quant',
+                'type': 'non_filter_computed',
+                'label': name
+            }
+            for name in ('rc_goodness', 'rc_ltst_off', 'rc_sol_off')
+        ]
+        return props + tuple(rc_qa_props)
+
+    @staticmethod
+    def cal_goodness(calframe):
+        goodness_series = pd.Series(
+            index=calframe.index, name='rc_goodness', dtype='f4'
+        )
+        ltst_off_series = goodness_series.copy()
+        ltst_off_series.name = 'rc_ltst_off'
+        sol_off_series = goodness_series.copy()
+        sol_off_series.name = 'rc_sol_off'
+        hascal = calframe.loc[calframe.notna().all(axis=1)].astype('f4')
+        goodness = (
+           abs(hascal['sol'] - hascal['rc_sol'])
+           + abs(hascal['ltst'] - hascal['rc_ltst']) / 3600
+        )
+        goodness_series.loc[hascal.index] = np.log((1 / goodness) + 1)
+        ltst_off_series.loc[hascal.index] = (
+            abs(hascal['ltst'] - hascal['rc_ltst'])
+        )
+        sol_off_series.loc[hascal.index] = (
+            abs(hascal['sol'] - hascal['rc_sol'])
+        )
+        return {
+            'rc_goodness': goodness_series,
+            'rc_ltst_off': ltst_off_series,
+            'rc_sol_off': sol_off_series
+        }
 
 
 class MSpec(XSpec):
@@ -201,6 +250,15 @@ class TestSpec(RoverSpectrum):
     virtual_filters = {"test": 100}
     field_names = ()
 
+
+# "mag" fields are power-of-10 magnitude, computed during multidex ingest
+for field_name in ASDF_CART_COLS + ASDF_PHOT_COLS:
+    field = models.FloatField(field_name.lower(), **B_N_I)
+    field.contribute_to_class(ZSpec, field_name.lower())
+    if field_name in ASDF_CART_COLS:
+        magfield = models.FloatField(field_name.lower() + "mag", **B_N_I)
+        magfield.contribute_to_class(ZSpec, field_name.lower() + "mag")
+del field, magfield
 
 # bulk setup for each instrument
 for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:

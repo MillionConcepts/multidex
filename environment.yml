@@ -2,22 +2,23 @@ name: multidex
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
-  - clize
+  - python=3.11
   - conda-build
   - cytoolz
   - dash
   - django
   - django-extensions
   - dustgoggles
+  - fire
   - flask-caching
   - fs
   - git
   - marslab
   - matplotlib
   - more-itertools
-  - pandas
+  - pandas>=2.2.0
   - pillow
+  - pyarrow
   - pip
   - numpy
   - plotly

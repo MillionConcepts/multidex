@@ -182,7 +182,7 @@ def perform_decomposition(
         str(component_ix + 1),
         str(round(explained_variance * 100, 2)),
     )
-    return component, None, title
+    return component, title, eigenvector_df
 
 
 def perform_spectrum_op(
@@ -191,9 +191,10 @@ def perform_spectrum_op(
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
     # the inputs. also drop precalculated perperties -- a bit kludgey.
+    allowable = list(chain(*[(f, f"{f}_std") for f in spec_model.filters]))
     queryset_df = (
         filter_df.loc[id_list]
-        .drop(["filter_avg", "std_avg", "rel_std_avg"], axis=1)
+        .drop([c for c in filter_df if c not in allowable], axis=1)
         .copy()
     )
     filt_args = [
@@ -257,18 +258,26 @@ def make_axis(
     """
     axis_option, props = get_axis_option_props(settings, spec_model)
     if props["type"] == "decomposition":
-        if filters_are_averaged is True:
-            decomp_df = filter_df[
-                list(spec_model.canonical_averaged_filters.keys())
-            ]
-        else:
-            decomp_df = filter_df[list(spec_model.filters.keys())]
-        return perform_decomposition(
-            id_list, decomp_df, settings, props, spec_model, cset
+        return _decompose_for_axis(
+            settings,
+            cset,
+            id_list,
+            spec_model,
+            filter_df,
+            props,
+            filters_are_averaged
         )
 
     if props["type"] == "computed":
         return filter_df.loc[id_list, props["value"]].values, None, axis_option
+
+    # TODO, maybe: a hack
+    if props["type"] == "non_filter_computed":
+        return (
+            metadata_df.loc[id_list][props["value"]].values,
+            None,
+            props["label"]
+        )
 
     if props["type"] == "method":
         return perform_spectrum_op(
@@ -281,6 +290,37 @@ def make_axis(
         )
     value_series = metadata_df.loc[id_list][props["value"]]
     return value_series.values, None, get_verbose_name(axis_option, spec_model)
+
+
+def _decompose_for_axis(
+    settings,
+    cset,
+    id_list,
+    spec_model,
+    filter_df,
+    props,
+    filters_are_averaged
+):
+    if filters_are_averaged is True:
+        decomp_df = filter_df[
+            list(spec_model.canonical_averaged_filters.keys())
+        ]
+    else:
+        decomp_df = filter_df[list(spec_model.filters.keys())]
+    # TODO: this is an operational-timeline hack to permit "cut the
+    #  bayers" behavior. replace this with UI elements permitting
+    #  decomposition op feature selection later.
+    if "permissibly_explanatory_bandpasses" in dir(spec_model):
+        queryset_df = decomp_df[
+            spec_model.permissibly_explanatory_bandpasses(decomp_df.columns)
+        ].loc[id_list]
+    else:
+        queryset_df = filter_df.loc[id_list]
+    component, title, eigenvector_df = perform_decomposition(
+        queryset_df, settings, props, spec_model, cset
+    )
+    cset("eigenvector_df", eigenvector_df)
+    return component, None, title
 
 
 def get_axis_option_props(settings, spec_model):
@@ -305,17 +345,23 @@ def make_markers(
     filter_df,
     metadata_df,
     _get_errors,
-    _filters_are_averaged,
+    filters_are_averaged,
     color_clip,
 ):
     """
-    this expects an id list that has already
-    been processed by truncate_id_list_for_missing_properties
+    this expects an id list that has already been processed by
+    truncate_id_list_for_missing_properties()
     """
     marker_option, props = get_axis_option_props(settings, spec_model)
     if props["type"] == "decomposition":
-        property_list, _, title = perform_decomposition(
-            id_list, filter_df, settings, props, spec_model, cset
+        property_list, _, title = _decompose_for_axis(
+            settings,
+            cset,
+            id_list,
+            spec_model,
+            filter_df,
+            props,
+            filters_are_averaged
         )
     elif props["type"] == "computed":
         property_list, title = (
@@ -325,6 +371,12 @@ def make_markers(
     elif props["type"] == "method":
         property_list, _, title = perform_spectrum_op(
             id_list, spec_model, filter_df, settings, props
+        )
+    # TODO, maybe: a hack
+    elif props["type"] == "non_filter_computed":
+        property_list, title = (
+            metadata_df.loc[id_list][props["value"]].values,
+            props["label"]
         )
     else:
         property_list, title = (
@@ -436,13 +488,16 @@ def style_toggle(style, style_property="display", states=("none", "revert")):
     return style
 
 
-def spectrum_values_range(metadata_df, field):
+def spectrum_values_range(metadata_df, field, digits=2):
     """
     returns minimum and maximum values of property within id list of spectra.
     for cueing or aiding searches.
     """
-    values = metadata_df[field]
-    return values.min(), values.max()
+    values = metadata_df[field].dropna()
+    vstats= values.min(), values.max(), *np.quantile(values, (0.25, 0.75))
+    if (values.round() == values).all():
+        return tuple(map(lambda v: int(v), vstats))
+    return tuple(map(lambda v: round(v, digits), vstats))
 
 
 def non_blank_search_parameters(parameters):
@@ -450,6 +505,7 @@ def non_blank_search_parameters(parameters):
     # TODO: free semi-breaks this because it's no longer just an automatic
     #  distinction between quant and qual; bandaid fixes are in place
     #  downstream, but it would be better to actually fix it
+    # TODO: is that TODO out of date?
     return [
         parameter
         for parameter in parameters
@@ -547,14 +603,14 @@ def make_mspec_browse_image_components(mspec: "MSpec", static_image_url):
     image_div_children = []
     images = literal_eval(mspec.images)
     for side in ["left", "right"]:
-        eye_image = images.get(f"{side}eye_roi_image")
+        eye_image = images.get(side)
         if eye_image is None:
             eye_image = "missing.jpg"
         filename = static_image_url + eye_image
         image_div_children.append(
             html.Img(
                 src=filename,
-                style={"maxWidth": "55%", "maxHeight": "55%"},
+                style={"maxWidth": "70%", "maxHeight": "70%"},
                 id=f"spec-image-{side}",
             )
         )
@@ -662,7 +718,7 @@ def pretty_print_search_params(parameters, logical_quantifier):
     if not parameters:
         return ""
     for param in parameters:
-        if param['is_free'] is True:
+        if param.get('is_free') is True:
             description = f"{param['field']} LIKE {param['free']}"
         elif "begin" in param.keys() or "end" in param.keys():
             description = (

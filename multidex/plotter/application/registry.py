@@ -71,7 +71,6 @@ def register_update_main_graph(app, configured_function):
     # trigger redraw of main graph on new search, axis calculation change, etc
     app.callback(
         [Output("main-graph", "figure"), Output("main-graph", "clickData")],
-        # maybe later add an explicit recalculate button?
         [
             *X_INPUTS,
             *Y_INPUTS,
@@ -85,7 +84,6 @@ def register_update_main_graph(app, configured_function):
             Input("main-graph-error", "value"),
             Input("main-graph", "clickData"),
             Input("clear-labels", "n_clicks")
-            # Input({'type': 'load-trigger', 'index': 0}, 'value')
         ],
         [State("main-graph", "figure"), State("main-graph-average", "value")],
     )(configured_function)
@@ -152,6 +150,7 @@ def register_update_search_options(app, configured_function):
                 {"type": "number-range-display", "index": MATCH}, "children"
             ),
             Output({"type": "number-search", "index": MATCH}, "value"),
+            Output({"type": 'param-logic-options', "index": MATCH}, "options"),
         ],
         [
             Input({"type": "field-search", "index": MATCH}, "value"),

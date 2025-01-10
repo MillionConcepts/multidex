@@ -420,9 +420,9 @@ def model_range_entry(
     )
 
 
-def model_range_display(element_id: str, index: int) -> html.Span:
+def model_range_display(element_id: str, index: int) -> html.Pre:
     """placeholder area for displaying range for number field searches"""
-    return html.Span(
+    return html.Pre(
         className="tooltiptext",
         id={"type": element_id, "index": index},
     )
@@ -471,18 +471,22 @@ def search_parameter_div(
     else:
         button = html.Button(
             id={"type": "remove-param", "index": index},
-            children="del",
+            children="remove",
         )
     checklist_values = []
     for option in ("null", "invert", "is_free"):
         if preset.get(option) is True:
             checklist_values.append(option)
     checklist = dcc.Checklist(
-        style={"marginLeft": "0.1rem"},
+        style={
+            "marginLeft": "0.1rem",
+            "display": "flex",
+            "max-width": "8rem",
+            "flex-wrap": "wrap"
+        },
         id={"type": "param-logic-options", "index": index},
         className="info-text",
         options=[
-            # added new line to flip label to push contains to next line, not sure if there was a better way
             {"label": "null", "value": "null"},
             {"label": "flip", "value": "invert"},
             {"label": "free", "value": "is_free"},
@@ -596,7 +600,7 @@ def axis_controls_div(
                 ),
                 component_drop(
                     "component-" + axis,
-                    value=settings["component-" + axis + ".value"],
+                    value=int(settings["component-" + axis + ".value"]),
                     label_content="component #",
                 ),
             ],
@@ -939,11 +943,7 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
                     html.P(
                         id="highlight-description",
                         className="info-text",
-                        style={
-                            "maxWidth": "12rem",
-                            "maxHeight": "12rem",
-                            "overflowY": "scroll"
-                        },
+                        style={"maxWidth": "12rem"},
                         children="no highlight presently set.",
                     ),
                 ],

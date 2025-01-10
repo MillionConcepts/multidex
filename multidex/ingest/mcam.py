@@ -1,33 +1,26 @@
-from functools import reduce
-import io
-from multiprocessing import Pool
-from operator import attrgetter, and_
 import os
-from pathlib import Path
 import re
+from functools import reduce
+from operator import attrgetter, and_
+from pathlib import Path
 from typing import Callable
 
 import django.db.models
-from dustgoggles.composition import Composition
-from fs.osfs import OSFS
 import numpy as np
+from fs.osfs import OSFS
 import pandas as pd
+
+import io
+
 from PIL import Image
-
-pd.set_option('future.no_silent_downcasting', True)
-
-# NOTE: do not mess with this nontsandard import order. it is necessary to
-#  run this environment setup before touching any django modules.
+from dustgoggles.composition import Composition
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
-# noinspection PyUnresolvedReferences
-from plotter import div0
-from plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
-from plotter.models import ZSpec
+from plotter.models import MSpec
 
 
 # make consistently-sized thumbnails out of the asdf context images. we
@@ -73,25 +66,21 @@ def default_thumbnailer():
     }
     return Composition(steps=steps, inserts=inserts)
 
-
 ASDF_STEM_PATTERN = re.compile(
-    r'SOL\d{4}_zcam\d{5}_RSM\d{1,4}(-\w+)?', re.UNICODE
+    r'SOL\d{4}_mcam\d{5}_(\d{1,4}(L|R)_?){1,2}(-\w+)?', re.UNICODE
 )
 
-
 # TODO: do this better, requires making people install this better
-THUMB_PATH = "plotter/application/assets/browse/zcam/"
+THUMB_PATH = "plotter/application/assets/browse/mcam/"
 
-ZSPEC_FIELD_NAMES = list(map(attrgetter("name"), ZSpec._meta.fields))
+MSPEC_FIELD_NAMES = list(map(attrgetter("name"), MSpec._meta.fields))
 
 
-def marslab_looker(ingest_rc: bool = False) -> Callable[[str], bool]:
+def marslab_looker() -> Callable[[str], bool]:
     def looks_like_marslab(fn: str) -> bool:
         filts = [
             ("marslab" in fn), (not ("extended" in fn)), (fn.endswith(".csv"))
         ]
-        if ingest_rc is False:
-            filts.append((not ("_rc_" in fn)))
         return reduce(and_, filts)
 
     return looks_like_marslab
@@ -107,10 +96,8 @@ def directory_of(path: Path) -> str:
     return str(path.parent)
 
 
-def find_ingest_files(
-    path: Path, recursive: bool = False, ingest_rc: bool = False
-):
-    looks_like_marslab = marslab_looker(ingest_rc)
+def find_ingest_files(path: Path, recursive: bool = False):
+    looks_like_marslab = marslab_looker()
     if recursive:
         tree = OSFS(directory_of(path))
         marslab_files = map(
@@ -135,9 +122,9 @@ def y_to_bool(df, bool_fields):
     df.loc[:, relevant_bool_fields] = df.loc[:, relevant_bool_fields] == "Y"
 
 
-ZCAM_BOOL_FIELDS = [
+MCAM_BOOL_FIELDS = [
     field.name.upper()
-    for field in ZSpec._meta.fields
+    for field in MSpec._meta.fields
     if isinstance(field, django.db.models.fields.BooleanField)
 ]
 
@@ -187,40 +174,34 @@ def save_relevant_thumbs(context_df):
         return {}
     to_save = context_df.loc[context_df["save"] == True]
     thumb_path = THUMB_PATH
-    procs = []
-    pool = Pool(4)
+    results = []
     for _, row in to_save.iterrows():
         filename = thumb_path + row["stem"] + "-" + row["eye"] + "-thumb.jpg"
-        procs.append(pool.apply_async(save_thumb, (filename, row)))
-    pool.close()
-    pool.join()
-    results = [p.get() for p in procs]
-    pool.terminate()
-    records = []
-    for (success, ex), path in zip(results, to_save['path']):
-        records.append(
+        success, ex = save_thumb(filename, row)
+        results.append(
             {
-                "file": path,
+                "file": row["path"],
                 "filetype": "thumb",
                 "status": success,
                 "exception": ex,
             }
         )
-    return records
+    return results
 
 
 def process_marslab_row(row, marslab_file, obs_images):
     row = row.dropna()
-    relevant_indices = [ix for ix in row.index if ix in ZSPEC_FIELD_NAMES]
-    for filt in set(ZSpec.filters).intersection(row.index):
+    relevant_indices = [ix for ix in row.index if ix in MSPEC_FIELD_NAMES]
+    for filt in set(MSpec.filters).intersection(row.index):
         row[filt] = float(row[filt])
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
         "images": obs_images,
+        # "ingest_time": dt.datetime.utcnow().isoformat()[:-7] + "Z",
         "min_count": row[row.index.str.contains("count")].astype(float).min(),
     }
     try:
-        spectrum = ZSpec(**metadata)
+        spectrum = MSpec(**metadata)
         spectrum.clean()
         spectrum.save()
         row_color = row["color"] + " " + str(row.get("feature"))
@@ -234,112 +215,23 @@ def process_marslab_row(row, marslab_file, obs_images):
 
 def format_for_multidex(frame):
     frame.columns = [col.upper().replace(" ", "_") for col in frame.columns]
-    y_to_bool(frame, ZCAM_BOOL_FIELDS)
+    y_to_bool(frame, MCAM_BOOL_FIELDS)
+    frame = frame.replace(["-", "", " "], np.nan)
     frame.columns = [col.lower() for col in frame.columns]
     return frame
-
-
-def _cart_flagchecks(table, color):
-    cart = table.loc[
-        table['COLOR'] == color, ASDF_CART_COLS
-    ].iloc[0]
-    if cart.isna().any():
-        return "no_data"
-    # TODO, maybe: check for missing eye (rare case)
-    if (cart == 0).any():
-        # i think this generally indicates that the ROI overlaps but is
-        # not completely within a missing-data region, or is right on an
-        # edge, so calculation gets screwy. might be other causes. might
-        # need a high bounds check as well, or a looser low bounds check.
-        return 'bad'
-    for eye in ('LEFT', 'RIGHT'):
-        if abs(
-            np.log10(cart[f'{eye}_HW']) - np.log10(cart[f'{eye}_A'])
-        ) > 1.25:
-            return 'dubious_a'
-    for dim in ('H', 'W'):
-        if abs(
-            cart[f'LEFT_{dim}'] - cart[f'RIGHT_{dim}']
-        ) > (cart[[f'LEFT_{dim}', f'RIGHT_{dim}']].min() * 4):
-            return 'dubious_bounds'
-    if (cart > 800).any():
-        return 'dubious_size'
-    return 'ok'
-
-
-def _phot_flagchecks(table, color):
-    phot = table.loc[
-        table['COLOR'] == color, ASDF_PHOT_COLS
-    ].iloc[0]
-    if phot.isna().any():
-        return 'no_data'
-    if (phot == 0).any():
-        return "zero_angles"
-    if (phot < 0).any():
-        return 'negative_angles'
-    if (phot > 180).any():
-        return 'dubious_angles'
-    return 'ok'
-
-
-def spatial_flags(table):
-    cartflags, photflags = [], []
-    for color in table['COLOR']:
-        cartflags.append(_cart_flagchecks(table, color))
-        # TODO, maybe: check for missing eye (rare case)
-        if set(ASDF_PHOT_COLS).issubset(table.columns):
-            photflags.append(_phot_flagchecks(table, color))
-        else:
-            photflags = "no_data"
-    return cartflags, photflags
-
-
-def insert_spatial_metadata(table):
-    space = table.copy()
-    # TODO: permit missing eye (rare case)
-    if not set(ASDF_CART_COLS).issubset(table.columns):
-        # asdf found no suitable XYR for this observation
-        space['spatial_flag'] = "no_data"
-        space['phot_flag'] = "no_data"
-    else:
-        space[ASDF_CART_COLS] = space[ASDF_CART_COLS].astype(np.float32)
-        space['spatial_flag'], space['phot_flag'] = spatial_flags(space)
-        for c in ASDF_CART_COLS:
-            space[f'{c}MAG'] = np.log10(space[c]).astype(np.float32)
-    return space
 
 
 def ingest_marslab_file(marslab_file, context_df):
     frame = pd.read_csv(marslab_file)
     if "INSTRUMENT" in frame.columns:
-        # TODO: maybe put the hard version of this check back after getting
-        #  INSTRUMENT into the rc_marslab files
-        if frame["INSTRUMENT"].iloc[0] != "ZCAM":
-            print("skipping non-ZCAM file: " + marslab_file)
-            return False, "does not appear to be a ZCAM file", context_df
-    frame = frame.replace(["-", "", " ", "--"], np.nan)
-    # don't ingest duplicate copies of rc-file-derived caltarget values
-    if 'FEATURE' in frame.columns:
-        if (frame['FEATURE'] == 'caltarget').all():
-            # TODO: make this nicer
-            sol = ZSpec.objects.filter(
-                sol__iexact=frame['SOL'].iloc[0]
-            )
-            seq_id = sol.filter(seq_id__iexact=frame['SEQ_ID'].iloc[0])
-            geometry = seq_id.filter(
-                incidence_angle__iexact=frame["INCIDENCE_ANGLE"].iloc[0]
-            )
-            if len(geometry) > 0:
-                print(f"dupe caltarget values {marslab_file}, skipping")
-                return False, "dupe caltarget file", context_df
-    if frame["COLOR"].isna().all():
+        if frame["INSTRUMENT"].iloc[0] != "MCAM":
+            print("skipping non-MCAM file: " + marslab_file)
+            return False, "does not appear to be a MCAM file", context_df
+    if frame["COLOR"].eq("-").all():
         print(f"no spectra in {marslab_file}, skipping")
         return False, "no spectra in file", context_df
-    # TODO: temporary hack
-    if "TARGET_ELEV" in frame.columns:
-        frame["TARGET_ELEVATION"] = frame["TARGET_ELEV"]
     print("ingesting spectra from " + Path(marslab_file).name)
-    if (context_df is not None) and ("_rc_" not in marslab_file):
+    if context_df is not None:
         obs_images, match_index = match_obs_images(marslab_file, context_df)
         if obs_images != {}:
             print(f"found matching images: {obs_images}")
@@ -349,7 +241,6 @@ def ingest_marslab_file(marslab_file, context_df):
     else:
         obs_images = {}
 
-    frame = insert_spatial_metadata(frame)
     # regularize various ways people may have rendered metadata fields
     try:
         frame = format_for_multidex(frame)
@@ -367,29 +258,14 @@ def ingest_marslab_file(marslab_file, context_df):
     return True, None, context_df
 
 
-def nailpipe(image_path):
-    return default_thumbnailer().execute(image_path)
-
-
-def make_thumb_blobs(paths):
-    pool = Pool(4)
-    thumbproc = [pool.apply_async(nailpipe, (p,)) for p in paths]
-    pool.close()
-    pool.join()
-    thumb_blobs = [proc.get() for proc in thumbproc]
-    pool.terminate()
-    return thumb_blobs
-
-
 def perform_ingest(
     path_or_file,
     *,
-    recursive=False,
-    skip_thumbnails=False,
-    ingest_rc=False
+    recursive: bool = False,
+    skip_thumbnails: bool = False,
 ):
     """
-    ingests zcam -marslab.csv files and context image thumbnails generated
+    ingests mcam -marslab.csv files and context image thumbnails generated
     by asdf into a multidex database. expects all products in an observation
     to have matching filenames -- if you modify the filenames output by
     asdf or related applications, this script will likely fail, although you
@@ -400,13 +276,9 @@ def perform_ingest(
     param recursive: attempts to ingest all marslab files and context images
         in directory tree, regardless of what specific file you passed it
     param skip_thumbnails: don't process context images or make thumbnails.
-    param ingest_rc: ingest tables of spectra for caltarget observations
-        generated from "rc" (radiometric calibration) files.
     """
     path = Path(path_or_file)
-    marslab_files, context_files = find_ingest_files(
-        path, recursive, ingest_rc
-    )
+    marslab_files, context_files = find_ingest_files(path, recursive)
     if not skip_thumbnails:
         context_df = process_context_files(context_files)
     else:
@@ -425,8 +297,8 @@ def perform_ingest(
     if skip_thumbnails:
         return results
     print("making thumbnails")
+    nailpipe = default_thumbnailer()
     context_df = context_df.loc[context_df["save"]].copy()
-    context_df['buffer'] = make_thumb_blobs(context_df['path'])
-    print("saving thumbnails")
+    context_df["buffer"] = context_df["path"].apply(nailpipe.execute)
     thumb_results = save_relevant_thumbs(context_df)
     return results + thumb_results

@@ -4,12 +4,10 @@ import datetime as dt
 import json
 import re
 import sys
-from collections import defaultdict
 from functools import partial, reduce
 from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
-from string import whitespace, punctuation
 from typing import (
     Callable,
     Iterable,
@@ -21,8 +19,6 @@ from typing import (
     Sequence,
 )
 
-from dustgoggles.structures import listify
-import Levenshtein as lev
 import dash
 import numpy as np
 import pandas as pd
@@ -51,6 +47,29 @@ def re_get(mapping, pattern):
     return None
 
 
+def integerize(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocessing function for CSV output.
+
+    Checks all floating-point columns of `df` to see if they are 'actually'
+    integer columns converted to float by numpy/pandas due to the presence of
+    nulls. If so, modifies `df` inplace to replace them with columns of object
+    type that replaces those floats with stringified integer versions (i.e.,
+    removing the superfluous ".0") and replaces all invalid values with "".
+    """
+    for colname, col in df.items():
+        if not pd.api.types.is_float_dtype(col):
+            continue
+        notna = col[~col.isna()]
+        if not (notna.round() == notna).all():
+            continue
+        strings = pd.Series("", index=col.index, dtype=str)
+        strings[notna.index] = notna.astype(str).str.extract(r"(\d+)\.")[0]
+        df[colname] = strings
+    return df
+
+
+# TODO: similar thing in plotter.application.run should be replaced with this
 def seconds_since_beginning_of_day(time: dt.time) -> float:
     return (
         dt.datetime.combine(dt.date(1, 1, 1), time)
@@ -218,6 +237,8 @@ def dict_to_paragraphs(
         make_paragraph(key, value)
         for key, value in dictionary.items()
         if key not in ordering
+        # TODO: very, very hacky
+        and not re.search(r"_[hwad]+mag$", key)
     ]
     return ordered_grafs + unordered_grafs
 
@@ -355,6 +376,14 @@ def partially_evaluate_from_parameters(
     return partial(func, **pickitems(parameters, get_parameters(func)))
 
 
+def listify(thing: Any) -> list:
+    # TODO: replace this with the dustgoggles version
+    """Always a list, for things that want lists"""
+    if isiterable(thing):
+        return list(thing)
+    return [thing]
+
+
 def none_to_empty(thing: Any) -> Any:
     if thing is None:
         return ""
@@ -476,8 +505,9 @@ def df_multiple_field_search(
     """
     results = []
     for parameter in parameters:
+        valtype = parameter.get("value_type")
         # permit free text search
-        if parameter.get('is_free') is True:
+        if parameter.get('is_free') is True and valtype != "quant":
             result = loose_match(parameter['free'], tokens[parameter['field']])
             if result is None:
                 result = search_df.index
@@ -548,7 +578,7 @@ def model_metadata_df(
 # TODO: these kinds of printing rules probably need to go on individual
 #  models for cross-instrument compatibility
 def rearrange_band_depth_for_title(text: str) -> str:
-    filts = re.split(r"([L|R]?\d+[RGB]?)", text, maxsplit=0)
+    filts = re.split(r"([L|R]?\d[RGB]?)", text, maxsplit=0)
     return (
         f"{filts[0]}{filts[5]}, " f"shoulders at {filts[1]} and " f"{filts[3]}"
     )
@@ -605,6 +635,7 @@ def tokenize_series(series):
 
 def make_tokens(metadata):
     fields = {}
+    # TODO: don't tokenize quant fields, waste of time
     for colname, col in metadata.astype(str).items():
         coltoks = tokenize_series(col).tolist()
         lower = col.str.lower().tolist()
@@ -626,10 +657,16 @@ def make_tokens(metadata):
 def loose_match(term, tokens, cutoff_distance=2):
     if term is None:
         return None
+    term = term.lower()
     matches, keys = [], list(tokens.keys())
     for word in set(filter(None, map(str.strip, term.split(";")))):
+        if re.match(r"[\"'].*?[\"]", word) is not None:
+            if (tokmatch := word.strip("\"'")) in keys:
+                matches += tokens[tokmatch]
+            continue
         # noinspection PyArgumentList
         for i, distance in enumerate(map(curry(lev.distance)(word), tokens)):
             if distance <= cutoff_distance:
                 matches += tokens[keys[i]]
     return pd.Index(matches)
+
