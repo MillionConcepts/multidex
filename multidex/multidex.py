@@ -14,8 +14,9 @@ def multidex_run_hook():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.multidex.settings")
     os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
     django.setup()
-    from multidex.plotter.application.run import run_multidex
 
+    import multidex
+    from multidex.plotter.application.run import run_multidex
     fire.Fire(run_multidex)
 
 

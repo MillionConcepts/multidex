@@ -1,6 +1,6 @@
 from inspect import getmembers, isfunction, getmodule
 
-from multidex import MULTIDEX_ROOT
+from multidex._pathref import MULTIDEX_ROOT
 import multidex.plotter.application.registry
 import multidex.plotter.callbacks
 from multidex.multidex_utils import partially_evaluate_from_parameters

@@ -7,7 +7,7 @@ import pandas as pd
 from dash import dash
 from flask_caching.backends import FileSystemCache
 
-from multidex import MULTIDEX_ROOT
+from multidex._pathref import MULTIDEX_ROOT
 from multidex.multidex_utils import qlist, model_metadata_df, make_tokens
 from multidex.notetaking import Notepad, Paper
 from multidex.plotter.application.helpers import (
