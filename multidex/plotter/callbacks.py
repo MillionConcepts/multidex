@@ -527,7 +527,7 @@ def update_search_ids(
                 "invert": "invert" in option,
                 "is_free": "is_free" in option,
             }
-        )    # save search settings for applicatio-n state save
+        )    # save search settings for application state save
     cset("search_parameters", parameters)
     cset("logical_quantifier", logical_quantifier)
     # make a new id list and trigger graph update

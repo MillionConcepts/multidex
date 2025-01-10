@@ -1,5 +1,6 @@
 from inspect import getmembers, isfunction, getmodule
 
+from multidex import MULTIDEX_ROOT
 import multidex.plotter.application.registry
 import multidex.plotter.callbacks
 from multidex.multidex_utils import partially_evaluate_from_parameters
@@ -75,13 +76,20 @@ def configure_callbacks(cget, cset, spec_model):
         # django model containing our spectra.
         "spec_model": spec_model,
         # host-side directory containing context images
-        "image_directory": "plotter/application/assets/browse/" \
-                           + spec_model.instrument.lower(),
+        "image_directory": str(
+            MULTIDEX_ROOT
+            / "plotter/application/assets/browse"
+            / spec_model.instrument.lower()
+        ),
         # scale factor, in viewport units, for spectrum images
         "base_size": 20,
         "static_image_url": STATIC_IMAGE_URL,
         # path containing saved searches
-        "search_path": "./saves/" + spec_model.instrument.lower(),
+        "search_path": str(
+            MULTIDEX_ROOT
+            / "saves"
+            / spec_model.instrument.lower()
+        ),
     }
     return {
         name: partially_evaluate_from_parameters(func, settings)

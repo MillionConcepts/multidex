@@ -1,4 +1,3 @@
-from pathlib import Path
 import random
 import shutil
 
@@ -8,6 +7,7 @@ import pandas as pd
 from dash import dash
 from flask_caching.backends import FileSystemCache
 
+from multidex import MULTIDEX_ROOT
 from multidex.multidex_utils import qlist, model_metadata_df, make_tokens
 from multidex.notetaking import Notepad, Paper
 from multidex.plotter.application.helpers import (
@@ -58,8 +58,10 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # TODO: move these references into external scripts
     register_clientside_callbacks(app)
     # special case: serve context images using a flask 'route'
-    static_folder = Path(
-        Path(__file__).parent, "assets/browse/" + spec_model.instrument.lower()
+    static_folder = (
+        MULTIDEX_ROOT
+        / "plotter/application/assets/browse"
+        / spec_model.instrument.lower()
     )
 
     @app.server.route(STATIC_IMAGE_URL + "<path:path>")

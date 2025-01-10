@@ -15,3 +15,4 @@ sys.modules["mdex_cli_script"] = mdex_cli_script
 from mdex_cli_script import multidex_run_hook
 
 __version__ = "0.10.0"
+MULTIDEX_ROOT = Path(__file__).parent
