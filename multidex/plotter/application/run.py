@@ -1,6 +1,6 @@
+from pathlib import Path
 import random
 import shutil
-from pathlib import Path
 
 import flask
 import flask.cli
@@ -68,16 +68,17 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
 
     # silence irrelevant warnings about the dangers of using a dev server in
     # prod; this app only runs locally and woe betide thee if otherwise
+    # noinspection PyUnresolvedReferences
+    import multidex.plotter.application._suppress_werkzeug_warning
+
     flask.cli.show_server_banner = lambda *_: None
-    # there's probably a better way to do this than this hack
-    port = 49303
-    looking_for_port = True
+    port, looking_for_port = 49303, True
     while looking_for_port is True:
         try:
             app.run(
                 debug=debug,
                 use_reloader=False,
-                dev_tools_silence_routes_logging=False,
+                dev_tools_silence_routes_logging=True,
                 port=port,
                 host="127.0.0.1"
             )
