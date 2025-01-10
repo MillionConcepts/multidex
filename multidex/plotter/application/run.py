@@ -8,21 +8,21 @@ import pandas as pd
 from dash import dash
 from flask_caching.backends import FileSystemCache
 
-from multidex_utils import qlist, model_metadata_df, make_tokens
-from notetaking import Notepad, Paper
-from plotter.application.helpers import (
+from multidex.multidex_utils import qlist, model_metadata_df, make_tokens
+from multidex.notetaking import Notepad, Paper
+from multidex.plotter.application.helpers import (
     register_everything,
     configure_callbacks,
     register_clientside_callbacks,
     configure_flask_cache,
 )
-from plotter.application.structure import STATIC_IMAGE_URL
-from plotter.config.settings import instrument_settings
-from plotter.spectrum_ops import data_df_from_queryset
+from multidex.plotter.application.structure import STATIC_IMAGE_URL
+from multidex.plotter.config.settings import instrument_settings
+from multidex.plotter.spectrum_ops import data_df_from_queryset
 
-from plotter.layout import multidex_body
-from plotter.graph import cache_set, cache_get
-from plotter.models import INSTRUMENT_MODEL_MAPPING
+from multidex.plotter.layout import multidex_body
+from multidex.plotter.graph import cache_set, cache_get
+from multidex.plotter.models import INSTRUMENT_MODEL_MAPPING
 
 
 def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
@@ -72,21 +72,24 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # there's probably a better way to do this than this hack
     port = 49303
     looking_for_port = True
-    while looking_for_port:
+    while looking_for_port is True:
         try:
-            app.run_server(
+            app.run(
                 debug=debug,
                 use_reloader=False,
-                dev_tools_silence_routes_logging=True,
+                dev_tools_silence_routes_logging=False,
                 port=port,
                 host="127.0.0.1"
             )
             looking_for_port = False
-        except OSError:
+        except (OSError, SystemExit):
+            # werkzeug calls sys.exit() if a port is in use, because werkzeug
+            # is the most important thing in the world, and if a call to its
+            # high-level API fails, it should immediately crash the program
             print("... " + str(port) + " is taken, checking next port ...")
             port += 1
 
-    if use_notepad_cache:
+    if use_notepad_cache is True:
         cache._update_index()
         for key in cache.index:
             cache.__delitem__(key)
