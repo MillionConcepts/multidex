@@ -663,4 +663,3 @@ def loose_match(term, tokens, cutoff_distance=2):
             if distance <= cutoff_distance:
                 matches += tokens[keys[i]]
     return pd.Index(matches)
-

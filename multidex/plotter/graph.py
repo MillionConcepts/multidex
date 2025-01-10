@@ -171,7 +171,7 @@ def perform_decomposition(
         props["value"],
         str(component_ix + 1),
         str(round(explained_variance * 100, 2)),
-    )
+    ).title()
     return component, title, eigenvector_df
 
 
@@ -194,7 +194,7 @@ def perform_spectrum_op(
     spectrum_op = getattr(spectrum_ops, props["value"])
     base_title = props["value"] + " " + str(" ".join(filt_args))
     # TODO, unfortunately: this probably needs more fiddly rules
-    title = insert_wavelengths_into_text(base_title, spec_model)
+    title = insert_wavelengths_into_text(base_title.title(), spec_model)
     if get_errors == "none":
         get_errors = False
     try:
@@ -365,12 +365,12 @@ def make_markers(
     elif props["type"] == "non_filter_computed":
         property_list, title = (
             metadata_df.loc[id_list][props["value"]].values,
-            props["label"]
+            props["label"].title()
         )
     else:
         property_list, title = (
             metadata_df.loc[id_list][props["value"]].values,
-            get_verbose_name(props["value"], spec_model),
+            get_verbose_name(props["value"], spec_model).title(),
         )
     palette_type = get_scale_type(re_get(settings, "palette-name-drop.value"))
     if palette_type == "solid":
@@ -389,7 +389,7 @@ def make_markers(
             color = [string_hash[prop] for prop in property_list]
             colorbar_dict |= {
                 "tickvals": list(string_hash.values()),
-                "ticktext": list(string_hash.keys()),
+                "ticktext": list(map(str.title, string_hash.keys())),
             }
             if palette_type == "qualitative":
                 # only do this for "qualitative" scales to trick plotly...

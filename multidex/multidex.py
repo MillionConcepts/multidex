@@ -15,6 +15,7 @@ def multidex_run_hook():
     os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
     django.setup()
 
+    # noinspection PyUnresolvedReferences
     import multidex
     from multidex.plotter.application.run import run_multidex
     fire.Fire(run_multidex)
