@@ -1,8 +1,9 @@
-import sys
 from inspect import getmembers
+import sys
 
-from multidex_utils import fetch_css_variables, patch_settings_from_module
-import plotter.config.user_graph_style
+from multidex.multidex_utils import fetch_css_variables, patch_settings_from_module
+# noinspection PyUnresolvedReferences
+import multidex.plotter.config.user_graph_style
 
 css_variables = fetch_css_variables()
 
@@ -68,5 +69,6 @@ COLORBAR_SETTINGS = {
     # "ticklabelposition": "outside top"
 }
 patch_settings_from_module(
-    getmembers(sys.modules[__name__]), "plotter.config.user_graph_style"
+    getmembers(sys.modules[__name__]),
+    "multidex.plotter.config.user_graph_style"
 )

@@ -1,0 +1,52 @@
+[project]
+name        = "multidex"
+version     = "0.10.0"
+description = "Multidimensional multi/hyperspectral data exploration"
+readme      = "README.md"
+authors     = [ { name = "Million Concepts" } ]
+license     = { file = "LICENSE" }
+
+classifiers = [
+    "Development Status :: 5 - Production",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+
+requires-python = ">=3.11"
+dependencies = [
+  "conda-build",
+  "cytoolz",
+  "dash",
+  "django",
+  "django-extensions",
+  "dustgoggles",
+  "fire",
+  "flask-caching",
+  "fs",
+  "marslab",
+  "matplotlib",
+  "more-itertools",
+  "pandas>=2.2.0",
+  "pillow",
+  "pyarrow",
+  "pip",
+  "numpy",
+  "plotly",
+  "pytest",
+  "scikit-learn"
+]
+
+[project.scripts]
+multidex = "multidex:multidex_run_hook"
+
+[project.urls]
+Repository = "https://github.com/MillionConcepts/multidex"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["multidex"]
+

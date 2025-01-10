@@ -21,13 +21,15 @@ from typing import (
     Sequence,
 )
 
+from toolz import merge, isiterable
+from cytoolz import curry, keyfilter
 import dash
-import numpy as np
-import pandas as pd
-from cytoolz import keyfilter, curry
 from dash import html
 from dash.dependencies import Input, Output
-from toolz import merge, isiterable
+import Levenshtein as lev
+import numpy as np
+import pandas as pd
+from toolz import merge
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component
@@ -40,7 +42,6 @@ DEFAULT_CSS_PATH = str(
 )
 
 # generic
-
 
 def re_get(mapping, pattern):
     for key in mapping.keys():

@@ -31,7 +31,7 @@ except ImportError:
         "(or your alternative method of choice)."
     )
 
-from multidex_utils import (
+from multidex.multidex_utils import (
     triggered_by,
     trigger_index,
     dict_to_paragraphs,
@@ -41,14 +41,14 @@ from multidex_utils import (
     not_blank,
     seconds_since_beginning_of_day_to_iso,
 )
-from plotter.colors import generate_palette_options
-from plotter.components.graph_components import (
+from multidex.plotter.colors import generate_palette_options
+from multidex.plotter.components.graph_components import (
     main_scatter_graph,
     spectrum_line_graph,
     failed_scatter_graph,
 )
-from plotter.components.ui_components import parse_model_quant_entry
-from plotter.graph import (
+from multidex.plotter.components.ui_components import parse_model_quant_entry
+from multidex.plotter.graph import (
     load_state_into_application,
     add_dropdown,
     remove_dropdown,
@@ -77,7 +77,7 @@ from plotter.graph import (
     save_palette_memory,
     cache_data_df,
 )
-from plotter.render_output.output_writer import save_main_scatter_plot
+from multidex.plotter.render_output.output_writer import save_main_scatter_plot
 
 
 def trigger_search_update(_load_trigger, search_trigger):
@@ -371,7 +371,11 @@ def update_main_graph(
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
     # TODO: cleanly prevent these from unsetting autoscale on load
-    if ("marker" in trigger) or ("click" in trigger):
+    if (
+            ("marker" in trigger)
+            or ("click" in trigger)
+            or ("highlight" in trigger and trigger != "highlight-trigger")
+    ):
         layout = ctx.states["main-graph.figure"]["layout"]
         zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
     else:
@@ -565,7 +569,7 @@ def toggle_search_input_visibility(field, options, *, spec_model):
     (quant or qual) as appropriate.
     """
     if not field:
-        raise PreventUpdate
+        return [{"display": "none"}, {"display": "none"}, {"display": "none"}]
     if (
         keygrab(spec_model.searchable_fields(), "label", field)["value_type"]
         == "quant"

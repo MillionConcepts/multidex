@@ -5,7 +5,7 @@ very quickly by callbacks and are essentially placeholders.
 import sys
 from itertools import product
 
-from plotter.config.graph_style import css_variables
+from multidex.plotter.config.graph_style import css_variables
 
 SETTINGS = {
     "average_filters": "False",

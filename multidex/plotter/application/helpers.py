@@ -1,9 +1,9 @@
 from inspect import getmembers, isfunction, getmodule
 
-import plotter.application.registry
-import plotter.callbacks
-from multidex_utils import partially_evaluate_from_parameters
-from plotter.application.structure import (
+import multidex.plotter.application.registry
+import multidex.plotter.callbacks
+from multidex.multidex_utils import partially_evaluate_from_parameters
+from multidex.plotter.application.structure import (
     X_INPUTS,
     Y_INPUTS,
     MARKER_INPUTS,
@@ -18,7 +18,9 @@ def register_everything(app, configured_functions):
     as defined in plotter.application.registry
     """
     for name, func in configured_functions.items():
-        register = getattr(plotter.application.registry, "register_" + name)
+        register = getattr(
+            multidex.plotter.application.registry, "register_" + name
+        )
         # special cases
         if name == "change_calc_input_visibility":
             for value_class in ["x", "y", "marker"]:
@@ -50,7 +52,9 @@ def register_clientside_callbacks(app):
         'hide_spec_print'
     ]
     for name in js_callbacks:
-        register = getattr(plotter.application.registry, "register_" + name)
+        register = getattr(
+            multidex.plotter.application.registry, "register_" + name
+        )
         register(app)
 
 
@@ -83,7 +87,10 @@ def configure_callbacks(cget, cset, spec_model):
         name: partially_evaluate_from_parameters(func, settings)
         for name, func in [
             (name, func)
-            for name, func in getmembers(plotter.callbacks)
-            if isfunction(func) and (getmodule(func) == plotter.callbacks)
+            for name, func in getmembers(multidex.plotter.callbacks)
+            if (
+                isfunction(func)
+                and (getmodule(func) == multidex.plotter.callbacks)
+            )
         ]
     }

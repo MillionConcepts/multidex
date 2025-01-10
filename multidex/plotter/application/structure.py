@@ -45,13 +45,15 @@ MARKER_INPUTS = [
     Input("marker-outline-radio", "value"),
     Input("marker-size-radio", "value"),
     Input("marker-symbol-drop", "value"),
+    Input("marker-opacity-input", "value")
 ]
 
 HIGHLIGHT_INPUTS = [
     Input("highlight-toggle", "value"),
     Input("highlight-size-radio", "value"),
     Input("highlight-symbol-drop", "value"),
-    Input("highlight-color-drop", "value")
+    Input("highlight-color-drop", "value"),
+    Input("highlight-opacity-input", "value")
 ]
 
 GRAPH_DISPLAY_INPUTS = [

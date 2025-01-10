@@ -1,8 +1,9 @@
-import sys
 from inspect import getmembers
+import sys
 
-from multidex_utils import patch_settings_from_module
-import plotter.config.user_output_style
+from multidex.multidex_utils import patch_settings_from_module
+# noinspection PyUnresolvedReferences
+import multidex.plotter.config.user_output_style
 
 GRAPH_SETTINGS = {
     "paper_bgcolor": "white",
@@ -23,5 +24,6 @@ SCATTER_POINT_SCALE_SETTING = 1.5
 
 
 patch_settings_from_module(
-    getmembers(sys.modules[__name__]), "plotter.config.user_output_style"
+    getmembers(sys.modules[__name__]),
+    "multidex.plotter.config.user_output_style"
 )

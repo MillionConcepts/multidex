@@ -35,3 +35,4 @@
 *_db_dump.csv
 .coverage
 /multidex/ingest/local_settings/
+/multidex/data/backup

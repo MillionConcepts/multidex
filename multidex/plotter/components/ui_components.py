@@ -7,19 +7,19 @@ from dash import dcc
 from dash import html
 from dash.html import Div
 
-from multidex_utils import none_to_empty
-from plotter.colors import generate_palette_options, get_scale_type
-from plotter.config.graph_style import (
+from multidex.multidex_utils import none_to_empty
+from multidex.plotter.colors import generate_palette_options, get_scale_type
+from multidex.plotter.config.graph_style import (
     GRAPH_DISPLAY_SETTINGS,
     GRAPH_CONFIG_SETTINGS,
     css_variables,
 )
-from plotter.config.marker_style import MARKER_SYMBOL_SETTINGS
+from multidex.plotter.config.marker_style import MARKER_SYMBOL_SETTINGS
 
 
 # note that style properties are camelCased rather than hyphenated in
 # compliance with conventions for React virtual DOM
-from plotter.types import SpectrumModel
+from multidex.plotter.types import SpectrumModel
 
 
 def scale_to_drop(model, element_id, value=None):
@@ -636,10 +636,13 @@ def marker_coloring_type_div(coloring_type: str) -> Div:
 
 def marker_size_div(marker_size) -> Div:
     return html.Div(
-        style={"display": "flex", "flexDirection": "row"},
+        style={
+            "display": "flex",
+            "flexDirection": "column",
+        },
         children=[
             html.Label(
-                children=["size: "],
+                children=["size"],
                 className="info-text",
                 htmlFor="marker-size-radio",
             ),
@@ -653,7 +656,7 @@ def marker_size_div(marker_size) -> Div:
                 ],
                 value=marker_size,
             ),
-        ],
+        ]
     )
 
 
@@ -661,13 +664,12 @@ def marker_outline_div(outline_color) -> Div:
     return html.Div(
         style={
             "display": "flex",
-            "flexDirection": "row",
-            "marginTop": "0.5rem",
+            "flexDirection": "column",
         },
         children=[
             html.Label(
                 className="info-text",
-                children=["outline: "],
+                children=["outline"],
                 htmlFor="marker-outline-radio",
             ),
             dcc.RadioItems(
@@ -688,27 +690,45 @@ def clip_input(element_id, value):
     return dcc.Input(
         type="number",
         id=element_id,
-        style={"height": "1.4rem", "width": "3rem"},
+        style={"height": "1rem", "width": "3rem", "margin-left": "0.3rem"},
         value=value,
         min=0,
         max=100,
     )
 
 
-def marker_clip_div(settings: Mapping) -> Div:
+def marker_clip_opacity_div(settings: Mapping) -> Div:
     high = float(settings["color-clip-bound-high.value"])
     low = float(settings["color-clip-bound-low.value"])
     return html.Div(
         children=[
             html.Label(
                 children=["color clip"],
-                className="axis-title-text",
-                # TODO: wrap this more nicely
+                className="info-text",
                 htmlFor="color-clip-bound-low",
             ),
-            # TODO: make this and other number fields less visually hideous
-            clip_input("color-clip-bound-low", low),
-            clip_input("color-clip-bound-high", high),
+            # TODO, maybe: make this and other number fields less visually
+            #  hideous (very hard to override browser style)
+            html.Div(
+                children=[
+                    clip_input("color-clip-bound-low", low),
+                    clip_input("color-clip-bound-high", high),
+                ],
+                style={"display": "flex", "flexDirection": "row"}
+            ),
+            html.Label(
+                children=["opacity"],
+                className="info-text",
+                htmlFor="marker-opacity-input"
+            ),
+            dcc.Input(
+                type="number",
+                id="marker-opacity-input",
+                style={"height": "1.4rem", "width": "3rem"},
+                value=int(settings.get('marker-opacity-input.value', 100)),
+                min=0,
+                max=100,
+            )
         ],
         style={
             "display": "flex",
@@ -719,7 +739,7 @@ def marker_clip_div(settings: Mapping) -> Div:
     )
 
 
-def marker_options_div(settings: Mapping) -> Div:
+def marker_shape_div(settings: Mapping) -> Div:
     marker_symbol = settings["marker-symbol-drop.value"]
     outline_color = settings["marker-outline-radio.value"]
     marker_size = int(settings["marker-size-radio.value"])
@@ -757,17 +777,17 @@ def highlight_size_div(highlight_size: str) -> Div:
         },
         children=[
             html.Label(
-                children=["embiggen: "],
+                children=["embiggen"],
                 className="info-text",
                 htmlFor="highlight-size-radio",
             ),
             dcc.RadioItems(
                 id="highlight-size-radio",
-                className="info-text",
+                className="radio-items",
                 options=[
-                    {"label": "none", "value": 1},
-                    {"label": "some", "value": 2},
-                    {"label": "lots", "value": 4},
+                    {"label": "x1", "value": 1},
+                    {"label": "x2", "value": 2},
+                    {"label": "x4", "value": 4},
                 ],
                 value=highlight_size,
             ),
@@ -775,12 +795,41 @@ def highlight_size_div(highlight_size: str) -> Div:
     )
 
 
-# TODO: this is no longer the correct name for this function / object
-def marker_color_symbol_div(settings: Mapping) -> Div:
+def highlight_color_symbol_div(color, symbol) -> html.Div:
+    return html.Div(
+        children=[
+            html.Label(
+                children=["highlight color"],
+                htmlFor="highlight-color-drop",
+                className="info-text",
+            ),
+            marker_color_drop(
+                "highlight-color-drop",
+                palette=color,
+                palette_type="solid",
+                allow_none=True,
+            ),
+            html.Label(
+                children=["highlight symbol"],
+                htmlFor="highlight-symbol-drop",
+                className="info-text",
+            ),
+            dcc.Dropdown(
+                id="highlight-symbol-drop",
+                className="medium-drop filter-drop",
+                value=symbol,
+                options=[{"label": "none", "value": "none"}]
+                + list(MARKER_SYMBOL_SETTINGS),
+            )
+        ]
+    )
+
+
+def marker_color_div(settings: Mapping) -> Div:
     palette = settings["palette-name-drop.value"]
     palette_type = get_scale_type(palette)
     return html.Div(
-        id="marker-color-symbol-container",
+        id="marker-color-container",
         style={"display": "flex", "flexDirection": "column", "width": "8rem"},
         className="axis-controls-container",
         children=[
@@ -879,9 +928,9 @@ def display_controls_div(settings: Mapping) -> html.Div:
     )
 
 
-def highlight_options_div(size, color, symbol) -> html.Div:
+def highlight_size_opacity_div(size, opacity) -> html.Div:
     return html.Div(
-        id="highlight-options-div",
+        id="highlight-size-opacity-div",
         style={
             "display": "flex",
             "flexDirection": "column",
@@ -890,28 +939,18 @@ def highlight_options_div(size, color, symbol) -> html.Div:
         children=[
             highlight_size_div(size),
             html.Label(
-                children=["highlight color"],
-                htmlFor="highlight-color-drop",
+                children=["opacity"],
                 className="info-text",
+                htmlFor="highlight-opacity-input"
             ),
-            marker_color_drop(
-                "highlight-color-drop",
-                palette=color,
-                palette_type="solid",
-                allow_none=True,
-            ),
-            html.Label(
-                children=["highlight symbol"],
-                htmlFor="highlight-symbol-drop",
-                className="info-text",
-            ),
-            dcc.Dropdown(
-                id="highlight-symbol-drop",
-                className="medium-drop filter-drop",
-                value=symbol,
-                options=[{"label": "none", "value": "none"}]
-                + list(MARKER_SYMBOL_SETTINGS),
-            ),
+            dcc.Input(
+                type="number",
+                id="highlight-opacity-input",
+                style={"height": "1.4rem", "width": "3rem"},
+                value=opacity,
+                min=0,
+                max=100,
+            )
         ],
     )
 
@@ -921,6 +960,7 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
     size = int(settings["highlight-size-radio.value"])
     symbol = settings["highlight-symbol-drop.value"]
     color = settings["highlight-color-drop.value"]
+    opacity = int(settings.get('highlight-opacity-input.value', 100))
     return html.Div(
         children=[
             html.Div(
@@ -929,7 +969,7 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
                     html.Button(
                         "set highlight",
                         id="highlight-save",
-                        style={"marginTop": "1rem"},
+                        # style={"marginTop": "1rem"},
                     ),
                     dcc.RadioItems(
                         id="highlight-toggle",
@@ -948,7 +988,8 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
                     ),
                 ],
             ),
-            highlight_options_div(size, color, symbol),
+            highlight_size_opacity_div(size, opacity),
+            highlight_color_symbol_div(color, symbol)
         ],
         style={"display": "flex", "flexDirection": "row"},
     )
@@ -1108,8 +1149,8 @@ def marker_div(settings):
             "marginRight": "0.3rem",
         },
         children=[
-            marker_color_symbol_div(settings),
-            marker_options_div(settings),
-            marker_clip_div(settings),
+            marker_color_div(settings),
+            marker_shape_div(settings),
+            marker_clip_opacity_div(settings),
         ],
     )

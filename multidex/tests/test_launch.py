@@ -19,7 +19,7 @@ def test_launch_multidex():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
     os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
     django.setup()
-    from plotter.application.run import run_multidex
+    from multidex.plotter.application.run import run_multidex
     proc = Thread(target=run_multidex, args=("TEST",), daemon=True)
     proc.start()
     attempts = 0

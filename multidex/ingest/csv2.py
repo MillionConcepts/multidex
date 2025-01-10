@@ -7,13 +7,13 @@ import os
 import django
 import pandas as pd
 
-from multidex_utils import modeldict
+from multidex.multidex_utils import modeldict
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
-from plotter.models import INSTRUMENT_MODEL_MAPPING
+from multidex.plotter.models import INSTRUMENT_MODEL_MAPPING
 
 
 # TODO: how do I track full file provenance? It would be great if there were

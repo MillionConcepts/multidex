@@ -19,7 +19,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # NOTE: don't deploy this as a web application. it's designed to run
-# locally only, and preferably sandboxed.. These settings are very insecure
+# locally only, and preferably sandboxed. These settings are very insecure
 # for an internet-facing application.
 SECRET_KEY = "r6x1g8gc8)mw32jd5j(eplf(0*f4z#2mzfmi^)b$2lfwstp49-"
 DEBUG = True
@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "plotter",
+    "multidex.plotter",
     "django_extensions",
 ]
 
@@ -50,7 +50,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "multidex.urls"
+ROOT_URLCONF = "multidex.multidex.urls"
 
 TEMPLATES = [
     {
@@ -68,7 +68,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "multidex.wsgi.application"
+WSGI_APPLICATION = "multidex.multidex.wsgi.application"
 
 DATABASES = {
     "default": {
@@ -97,7 +97,7 @@ DATABASES = {
     }
 }
 
-DATABASE_ROUTERS = ['routers.InstrumentRouter']
+DATABASE_ROUTERS = ['multidex.routers.routers.InstrumentRouter']
 
 AUTH_PASSWORD_VALIDATORS = [
     {

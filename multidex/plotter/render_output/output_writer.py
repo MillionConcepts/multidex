@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 
-from plotter.config.output_style import (
+from multidex.plotter.config.output_style import (
     BASE_SIZE_SETTING,
     GRAPH_SETTINGS,
     AXIS_SETTINGS,
@@ -26,20 +26,23 @@ def apply_output_image_style(fig):
     # again, hacky to use typesetting as layout, but...
 
     coloraxis = next(fig.select_coloraxes())
-    if coloraxis:
-        if "colorbar" in coloraxis:
-            colorbar = coloraxis.colorbar
-            if len(colorbar.title.text) > 12:
-                colorbar.title.side = "right"
-                colorbar.title.text = f"<br><br><br> &nbsp;{coloraxis.colorbar.title.text}"
+    if coloraxis.colorscale is not None:
+        colorbar = coloraxis.colorbar
+        if len(colorbar.title.text) > 12:
+            colorbar.title.side = "right"
+            colorbar.title.text = f"<br><br><br> &nbsp;{coloraxis.colorbar.title.text}"
 
-            else:
-                colorbar.title.side = "top"
-                colorbar.title.text = f"{coloraxis.colorbar.title.text}<br> &nbsp;"
-            colorbar.tickvals = coloraxis.colorbar.tickvals
-            colorbar.update(COLORBAR_SETTINGS)
-            coloraxis["colorbar"] = colorbar
-            fig.update_coloraxes(coloraxis)
+        else:
+            colorbar.title.side = "top"
+            colorbar.title.text = f"{coloraxis.colorbar.title.text}<br> &nbsp;"
+        colorbar.tickvals = coloraxis.colorbar.tickvals
+        colorbar.update(COLORBAR_SETTINGS)
+        coloraxis["colorbar"] = colorbar
+        fig.update_coloraxes(coloraxis)
+    else:
+        marg = GRAPH_SETTINGS['margin'].copy()
+        marg['r'] -= 180
+        fig.update_layout({'margin': marg})
     return fig
 
 

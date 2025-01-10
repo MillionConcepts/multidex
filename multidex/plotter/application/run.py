@@ -1,6 +1,6 @@
+from pathlib import Path
 import random
 import shutil
-from pathlib import Path
 
 import flask
 import flask.cli
@@ -9,21 +9,21 @@ from dash import dash
 from flask_caching.backends import FileSystemCache
 from django.db import models
 
-from multidex_utils import qlist, model_metadata_df, make_tokens
-from notetaking import Notepad, Paper
-from plotter.application.helpers import (
+from multidex.multidex_utils import qlist, model_metadata_df, make_tokens
+from multidex.notetaking import Notepad, Paper
+from multidex.plotter.application.helpers import (
     register_everything,
     configure_callbacks,
     register_clientside_callbacks,
     configure_flask_cache,
 )
-from plotter.application.structure import STATIC_IMAGE_URL
-from plotter.config.settings import instrument_settings
-from plotter.spectrum_ops import data_df_from_queryset
+from multidex.plotter.application.structure import STATIC_IMAGE_URL
+from multidex.plotter.config.settings import instrument_settings
+from multidex.plotter.spectrum_ops import data_df_from_queryset
 
-from plotter.layout import multidex_body
-from plotter.graph import cache_set, cache_get
-from plotter.models import INSTRUMENT_MODEL_MAPPING
+from multidex.plotter.layout import multidex_body
+from multidex.plotter.graph import cache_set, cache_get
+from multidex.plotter.models import INSTRUMENT_MODEL_MAPPING
 
 
 def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
@@ -69,13 +69,14 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
 
     # silence irrelevant warnings about the dangers of using a dev server in
     # prod; this app only runs locally and woe betide thee if otherwise
+    # noinspection PyUnresolvedReferences
+    import multidex.plotter.application._suppress_werkzeug_warning
+
     flask.cli.show_server_banner = lambda *_: None
-    # there's probably a better way to do this than this hack
-    port = 49303
-    looking_for_port = True
-    while looking_for_port:
+    port, looking_for_port = 49303, True
+    while looking_for_port is True:
         try:
-            app.run_server(
+            app.run(
                 debug=debug,
                 use_reloader=False,
                 dev_tools_silence_routes_logging=True,
@@ -83,11 +84,14 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
                 host="127.0.0.1"
             )
             looking_for_port = False
-        except OSError:
+        except (OSError, SystemExit):
+            # werkzeug calls sys.exit() if a port is in use, because werkzeug
+            # is the most important thing in the world, and if a call to its
+            # high-level API fails, it should immediately crash the program
             print("... " + str(port) + " is taken, checking next port ...")
             port += 1
 
-    if use_notepad_cache:
+    if use_notepad_cache is True:
         cache._update_index()
         for key in cache.index:
             cache.__delitem__(key)
@@ -101,7 +105,7 @@ def initialize_cache_values(cset, spec_model):
     cset("spec_model_name", spec_model.instrument_brief_name)
 
     cset("search_ids", qlist(spec_model.objects.all(), "id"))
-    cset("highlight_ids", qlist(spec_model.objects.all(), "id"))
+    cset("highlight_ids", [])
     cset("label_ids", [])
     cset(
         "data_df",

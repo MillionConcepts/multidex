@@ -7,13 +7,14 @@ from numbers import Number
 from operator import mul
 from typing import Union
 
+from dustgoggles.func import gmap
 from dustgoggles.structures import dig_for_value
 import numpy as np
 import plotly.colors as pcolors
 import plotly.graph_objects as go
 from more_itertools import windowed
 
-from plotter.config.marker_style import SOLID_MARKER_COLOR_SETTINGS
+from multidex.plotter.config.marker_style import SOLID_MARKER_COLOR_SETTINGS
 
 PLOTLY_COLOR_MODULES = (
     pcolors.sequential,
@@ -42,6 +43,9 @@ def get_scale_type(
     for scale_type in scale_dict.keys():
         if scale_name in scale_dict[scale_type].keys():
             return scale_type
+    if scale_name in gmap(lambda k: k['value'], SOLID_MARKER_COLOR_SETTINGS):
+        return "solid"
+    raise ValueError(f"Unknown colormap {scale_name}")
 
 
 def rgbstring_to_rgb_percent(rgb: str) -> tuple[float]:

@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
 
-from multidex_utils import (
+from multidex.multidex_utils import (
     keygrab,
     not_blank,
     seconds_since_beginning_of_day,
@@ -32,26 +32,26 @@ from multidex_utils import (
     re_get,
     djget,
     insert_wavelengths_into_text,
-    model_metadata_df, get_verbose_name,
+    model_metadata_df, 
+    get_verbose_name,
 )
-import plotter.div0
-from plotter import spectrum_ops
-from plotter.colors import get_palette_from_scale_name, get_scale_type
-from plotter.components.ui_components import (
+from multidex.plotter import spectrum_ops
+from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type
+from multidex.plotter.components.ui_components import (
     search_parameter_div,
 )
-from plotter.layout import primary_app_div
-from plotter.models import INSTRUMENT_MODEL_MAPPING
-from plotter.reduction import (
+from multidex.plotter.layout import primary_app_div
+from multidex.plotter.models import INSTRUMENT_MODEL_MAPPING
+from multidex.plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain,
 )
-from plotter.spectrum_ops import data_df_from_queryset
-from plotter.config.graph_style import COLORBAR_SETTINGS
-from plotter.types import SpectrumModel, SpectrumModelInstance
+from multidex.plotter.spectrum_ops import data_df_from_queryset
+from multidex.plotter.config.graph_style import COLORBAR_SETTINGS
+from multidex.plotter.types import SpectrumModel, SpectrumModelInstance
 
 if TYPE_CHECKING:
-    from plotter.models import ZSpec, MSpec
+    from multidex.plotter.models import ZSpec, MSpec
 
 
 # ### cache functions ###
@@ -384,7 +384,7 @@ def make_markers(
             get_verbose_name(props["value"], spec_model),
         )
     palette_type = get_scale_type(re_get(settings, "palette-name-drop.value"))
-    if palette_type is None:
+    if palette_type == "solid":
         # solid color case
         color = re_get(settings, "palette-name-drop.value")
         colorbar = None
@@ -439,10 +439,13 @@ def make_markers(
     # set marker symbol
     symbol = re_get(settings, "marker-symbol-drop.value")
     coloraxis = {"colorscale": colormap}
+    opacity = settings['marker-opacity-input.value']
+    if opacity is None:
+        opacity = 100
     marker_property_dict = {
         "marker": {
             "size": size,
-            "opacity": 1,
+            "opacity": opacity / 100,
             "symbol": symbol,
             "coloraxis": "coloraxis1",
         },
@@ -758,7 +761,7 @@ def spectrum_from_graph_event(
     dcc.Graph event data (e.g. hoverData), plotter.Spectrum class ->
     plotter.Spectrum instance
     this function assumes it's getting data from a browser event that
-    highlights  a single graphed point (like clicking it or hovering on it),
+    highlights a single graphed point (like clicking it or hovering on it),
     and returns the associated Spectrum object.
     """
     # the graph's customdata property should contain numbers corresponding
@@ -874,13 +877,13 @@ def assemble_highlight_marker_dict(highlight_settings, base_marker_size):
     # iterate over values of all highlight UI elements, interpreting them as
     # marker values legible to go.Scatter & its relatives
     for prop, setting_input in zip(
-        ("color", "size", "symbol"),
-        ("color-drop", "size-radio", "symbol-drop"),
+        ("color", "size", "symbol", "opacity"),
+        ("color-drop", "size-radio", "symbol-drop", "opacity-input"),
     ):
         setting = highlight_settings[f"highlight-{setting_input}.value"]
         if setting == "none":
             continue
-        if prop == "size":
+        elif prop == "size":
             # highlight size increase is relative, not absolute;
             # base_marker_size can be either int or list[int] --
             # need to retain its type to retain how outline works
@@ -888,6 +891,9 @@ def assemble_highlight_marker_dict(highlight_settings, base_marker_size):
                 setting = [setting * value for value in base_marker_size]
             else:
                 setting = setting * base_marker_size
+        elif prop == "opacity":
+            setting = 100 if setting is None else setting
+            setting /= 100
         highlight_marker_dict[prop] = setting
     return highlight_marker_dict
 

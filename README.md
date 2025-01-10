@@ -20,7 +20,7 @@ require access to MultiDEx files that contain confidential data,
 please contact the repository maintainers.
 
 ### known issues
-* image export does not work on Windows. A fix for this is also planned.
+* image export does not work on Windows. A fix for this is planned.
 
 ### licensing notes
 This code carries a BSD 3-Clause license. You can do nearly anything that 
