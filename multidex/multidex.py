@@ -16,8 +16,6 @@ def multidex_run_hook():
     django.setup()
     from multidex.plotter.application.run import run_multidex
 
-    import sys
-    sys.argv += ["ZCAM"]
     fire.Fire(run_multidex)
 
 
