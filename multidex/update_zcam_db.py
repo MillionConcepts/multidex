@@ -19,7 +19,7 @@ from googleapiclient.errors import Error as GoogleError
 from more_itertools import chunked
 from oauth2client.service_account import ServiceAccountCredentials
 
-from ingest.local_settings.zcam import (
+from multidex.ingest.local_settings.zcam import (
     ASDF_CLIENT_SECRET,
     LOCAL_MSPEC_ROOT,
     DRIVE_MSPEC_ROOT,
@@ -360,7 +360,7 @@ def update_mdex_from_drive(
     log("END FILE MANIFEST")
     try:
         log(f"{stamp()}: dumping database as CSV")
-        from plotter.graph import dump_model_table
+        from multidex.plotter.graph import dump_model_table
         dump_model_table("ZCAM", f"ZCAM_db_dump.csv")
     except Exception as ex:
         log_exception("db dump failed", ex)

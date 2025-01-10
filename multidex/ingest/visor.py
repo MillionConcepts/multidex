@@ -13,13 +13,13 @@ import django
 from cytoolz import valfilter
 from fs.osfs import OSFS
 
-from multidex_utils import directory_of
+from multidex.multidex_utils import directory_of
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
-from plotter.models import INSTRUMENT_MODEL_MAPPING
+from multidex.plotter.models import INSTRUMENT_MODEL_MAPPING
 
 
 def find_ingest_files(

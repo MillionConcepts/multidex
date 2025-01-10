@@ -14,7 +14,7 @@ import plotly.colors as pcolors
 import plotly.graph_objects as go
 from more_itertools import windowed
 
-from plotter.config.marker_style import SOLID_MARKER_COLOR_SETTINGS
+from multidex.plotter.config.marker_style import SOLID_MARKER_COLOR_SETTINGS
 
 PLOTLY_COLOR_MODULES = (
     pcolors.sequential,

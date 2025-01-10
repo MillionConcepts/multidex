@@ -10,7 +10,7 @@ import pandas.api.types
 from marslab.imgops.pltutils import attach_axis
 from matplotlib.cm import register_cmap
 
-from plotter.reduction import (
+from multidex.plotter.reduction import (
     default_multidex_pipeline,
     explained_variance_ratios,
 )

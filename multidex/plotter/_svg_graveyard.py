@@ -4,7 +4,7 @@ from pathlib import Path
 
 import wand.image
 
-import plotter.application
+import multidex.plotter.application
 
 
 def make_svg_font_style_block():

@@ -30,7 +30,7 @@ except ImportError:
         "(or your alternative method of choice)."
     )
 
-from multidex_utils import (
+from multidex.multidex_utils import (
     triggered_by,
     trigger_index,
     dict_to_paragraphs,
@@ -41,14 +41,14 @@ from multidex_utils import (
     seconds_since_beginning_of_day_to_iso,
     integerize
 )
-from plotter.colors import generate_palette_options
-from plotter.components.graph_components import (
+from multidex.plotter.colors import generate_palette_options
+from multidex.plotter.components.graph_components import (
     main_scatter_graph,
     spectrum_line_graph,
     failed_scatter_graph,
 )
-from plotter.components.ui_components import parse_model_quant_entry
-from plotter.graph import (
+from multidex.plotter.components.ui_components import parse_model_quant_entry
+from multidex.plotter.graph import (
     load_state_into_application,
     add_dropdown,
     remove_dropdown,
@@ -77,7 +77,7 @@ from plotter.graph import (
     save_palette_memory,
     cache_data_df,
 )
-from plotter.render_output.output_writer import save_main_scatter_plot
+from multidex.plotter.render_output.output_writer import save_main_scatter_plot
 
 
 def trigger_search_update(_load_trigger, search_trigger):

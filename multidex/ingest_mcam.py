@@ -5,9 +5,9 @@ format into multidex
 
 import fire
 
-import ingest.mcam
+import multidex.ingest.mcam
 
 
 # tell fire to handle command line call
 if __name__ == '__main__':
-    fire.Fire(ingest.mcam.perform_ingest)
+    fire.Fire(multidex.ingest.mcam.perform_ingest)

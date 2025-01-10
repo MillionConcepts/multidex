@@ -19,7 +19,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
-from plotter.models import MSpec
+from multidex.plotter.models import MSpec
 from ingest.local_settings.mcam import LOCAL_THUMB_PATH
 
 

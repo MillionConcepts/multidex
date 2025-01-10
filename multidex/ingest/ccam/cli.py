@@ -12,7 +12,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
-from plotter.models import CSpec
+from multidex.plotter.models import CSpec
 
 CSPEC_FIELD_NAMES = list(map(attrgetter("name"), CSpec._meta.fields))
 

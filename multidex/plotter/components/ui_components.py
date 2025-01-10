@@ -7,19 +7,19 @@ from dash import dcc
 from dash import html
 from dash.html import Div
 
-from multidex_utils import none_to_empty
-from plotter.colors import generate_palette_options, get_scale_type
-from plotter.config.graph_style import (
+from multidex.multidex_utils import none_to_empty
+from multidex.plotter.colors import generate_palette_options, get_scale_type
+from multidex.plotter.config.graph_style import (
     GRAPH_DISPLAY_SETTINGS,
     GRAPH_CONFIG_SETTINGS,
     css_variables,
 )
-from plotter.config.marker_style import MARKER_SYMBOL_SETTINGS
+from multidex.plotter.config.marker_style import MARKER_SYMBOL_SETTINGS
 
 
 # note that style properties are camelCased rather than hyphenated in
 # compliance with conventions for React virtual DOM
-from plotter.types import SpectrumModel
+from multidex.plotter.types import SpectrumModel
 
 
 def scale_to_drop(model, element_id, value=None):

@@ -21,13 +21,13 @@ from typing import (
     Sequence,
 )
 
-import Levenshtein as lev
-import dash
-import numpy as np
-import pandas as pd
 from cytoolz import curry, keyfilter
+import dash
 from dash import html
 from dash.dependencies import Input, Output
+import Levenshtein as lev
+import numpy as np
+import pandas as pd
 from toolz import merge
 
 if TYPE_CHECKING:
@@ -41,7 +41,6 @@ DEFAULT_CSS_PATH = str(
 )
 
 # generic
-
 
 def re_get(mapping, pattern):
     for key in mapping.keys():

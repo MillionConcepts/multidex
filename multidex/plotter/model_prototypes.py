@@ -14,9 +14,9 @@ from marslab.compat.xcam import polish_xcam_spectrum, DERIVED_CAM_DICT
 import pandas as pd
 import numpy as np
 
-from plotter import __version__
-from multidex_utils import modeldict
-from plotter.field_interface_definitions import (
+from multidex import __version__
+from multidex.multidex_utils import modeldict
+from multidex.plotter.field_interface_definitions import (
     METADATA_PROPERTIES,
     DYNAMIC_PROPERTIES,
     UNGRAPHABLE_FIELDS,

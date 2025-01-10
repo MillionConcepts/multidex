@@ -1,23 +1,20 @@
 from functools import cache
-from itertools import product
 from types import MappingProxyType
 from typing import Sequence
 
+from django.db import models
 import numpy as np
 import pandas as pd
-from django.db import models
 from marslab.compat.mertools import (
-    MERSPECT_M20_COLOR_MAPPINGS,
-    MERSPECT_MSL_COLOR_MAPPINGS,
+    MERSPECT_M20_COLOR_MAPPINGS, MERSPECT_MSL_COLOR_MAPPINGS,
 )
 from marslab.compat.xcam import DERIVED_CAM_DICT
 
-from plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
-from plotter.model_prototypes import (
-    XSpec,
-    filter_fields_factory,
-    B_N_I,
-    RoverSpectrum,
+from multidex.plotter.field_interface_definitions import (
+    ASDF_CART_COLS, ASDF_PHOT_COLS
+)
+from multidex.plotter.model_prototypes import (
+    B_N_I, filter_fields_factory, RoverSpectrum, XSpec,
 )
 
 

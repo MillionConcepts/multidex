@@ -1,10 +1,10 @@
 """
-callback registry: register functions from plotter.callbacks with app i/o
+callback registry: register functions from multidex.plotter.callbacks with app i/o
 """
 
 from dash.dependencies import Input, Output, State, MATCH, ALL
 
-from plotter.application.structure import (
+from multidex.plotter.application.structure import (
     FILTER_DROPDOWN_OUTPUTS,
     GRAPH_DISPLAY_INPUTS,
     HIGHLIGHT_INPUTS,

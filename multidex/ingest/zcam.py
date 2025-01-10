@@ -24,10 +24,11 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
+import multidex
 # noinspection PyUnresolvedReferences
-from plotter import div0
-from plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
-from plotter.models import ZSpec
+from multidex.plotter import div0
+from multidex.plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
+from multidex.plotter.models import ZSpec
 
 
 # make consistently-sized thumbnails out of the asdf context images. we
@@ -79,8 +80,9 @@ ASDF_STEM_PATTERN = re.compile(
 )
 
 
-# TODO: do this better, requires making people install this better
-THUMB_PATH = "plotter/application/assets/browse/zcam/"
+THUMB_PATH = Path(
+    multidex.__file__
+).parent / "plotter/application/assets/browse/zcam/"
 
 ZSPEC_FIELD_NAMES = list(map(attrgetter("name"), ZSpec._meta.fields))
 

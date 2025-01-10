@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 
-from plotter.config.output_style import (
+from multidex.plotter.config.output_style import (
     BASE_SIZE_SETTING,
     GRAPH_SETTINGS,
     AXIS_SETTINGS,

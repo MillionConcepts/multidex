@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
 
-from plotter.colors import discretize_color_representations
-from plotter.spectrum_ops import d2r
-from plotter.config.graph_style import (
+from multidex.plotter.colors import discretize_color_representations
+from multidex.plotter.spectrum_ops import d2r
+from multidex.plotter.config.graph_style import (
     ANNOTATION_SETTINGS,
     GRAPH_DISPLAY_SETTINGS,
     AXIS_DISPLAY_SETTINGS,

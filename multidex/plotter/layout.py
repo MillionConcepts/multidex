@@ -3,15 +3,15 @@ from typing import Optional, Mapping
 from dash import dcc
 from dash import html
 
-from plotter.components.ui_components import (
+from multidex.plotter.components.ui_components import (
     dynamic_spec_div,
     fake_output_divs,
     graph_controls_div,
     main_graph,
     trigger_div,
 )
-from plotter.config.settings import instrument_settings
-from plotter.types import SpectrumModel
+from multidex.plotter.config.settings import instrument_settings
+from multidex.plotter.types import SpectrumModel
 
 
 def primary_app_div(

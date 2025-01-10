@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 from plotly import graph_objects as go
 
-from multidex_utils import (
+from multidex.multidex_utils import (
     keygrab,
     not_blank,
     seconds_since_beginning_of_day,
@@ -34,23 +34,23 @@ from multidex_utils import (
     insert_wavelengths_into_text,
     model_metadata_df, get_verbose_name,
 )
-from plotter import spectrum_ops
-from plotter.colors import get_palette_from_scale_name, get_scale_type
-from plotter.components.ui_components import (
+from multidex.plotter import spectrum_ops
+from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type
+from multidex.plotter.components.ui_components import (
     search_parameter_div,
 )
-from plotter.layout import primary_app_div
-from plotter.models import INSTRUMENT_MODEL_MAPPING
-from plotter.reduction import (
+from multidex.plotter.layout import primary_app_div
+from multidex.plotter.models import INSTRUMENT_MODEL_MAPPING
+from multidex.plotter.reduction import (
     default_multidex_pipeline,
     transform_and_explain,
 )
-from plotter.spectrum_ops import data_df_from_queryset
-from plotter.config.graph_style import COLORBAR_SETTINGS
-from plotter.types import SpectrumModel, SpectrumModelInstance
+from multidex.plotter.spectrum_ops import data_df_from_queryset
+from multidex.plotter.config.graph_style import COLORBAR_SETTINGS
+from multidex.plotter.types import SpectrumModel, SpectrumModelInstance
 
 if TYPE_CHECKING:
-    from plotter.models import ZSpec, MSpec
+    from multidex.plotter.models import ZSpec, MSpec
 
 
 # ### cache functions ###
