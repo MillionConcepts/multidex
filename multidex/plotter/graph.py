@@ -4,6 +4,7 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
+from _testcapi import INT_MAX
 from ast import literal_eval
 from collections.abc import Iterable
 from copy import deepcopy
@@ -12,8 +13,7 @@ import datetime as dt
 from functools import reduce
 from itertools import chain, cycle
 from operator import or_
-import os
-from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, TYPE_CHECKING
 
 from dash import html
 from dash.exceptions import PreventUpdate
@@ -26,13 +26,13 @@ from multidex.multidex_utils import (
     keygrab,
     not_blank,
     seconds_since_beginning_of_day,
-    arbitrarily_hash_strings,
+    hash_strings,
     none_to_quote_unquote_none,
     df_multiple_field_search,
     re_get,
     djget,
     insert_wavelengths_into_text,
-    model_metadata_df, 
+    model_metadata_df,
     get_verbose_name,
 )
 from multidex.plotter import spectrum_ops
@@ -49,6 +49,8 @@ from multidex.plotter.reduction import (
 from multidex.plotter.spectrum_ops import data_df_from_queryset
 from multidex.plotter.config.graph_style import COLORBAR_SETTINGS
 from multidex.plotter.types import SpectrumModel, SpectrumModelInstance
+from plotter.components.graph_components import get_ordering
+from plotter.config.orderings import SPECIAL_ORDERINGS
 
 if TYPE_CHECKING:
     from multidex.plotter.models import ZSpec, MSpec
@@ -277,7 +279,10 @@ def make_axis(
             props,
             get_errors,
         )
-    value_series = metadata_df.loc[id_list][props["value"]]
+    # qual case
+    value_series = metadata_df.loc[id_list][
+        props["value"]
+    ].astype(str).str.title()
     return value_series.values, None, get_verbose_name(axis_option, spec_model)
 
 
@@ -319,6 +324,12 @@ def get_axis_option_props(settings, spec_model):
     props = keygrab(spec_model.graphable_properties(), "value", axis_option)
     return axis_option, props
 
+
+def _maybeindex(x, seq):
+    try:
+        return -seq.index(x)
+    except ValueError:
+        return INT_MAX
 
 # TODO: this is sloppy but cleanup would be better after everything's
 #  implemented...probably...it would really be better to do this in components
@@ -382,8 +393,14 @@ def make_markers(
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
         colormap = re_get(settings, "palette-name-drop.value")
         if props["value_type"] == "qual":
-            property_list = none_to_quote_unquote_none(property_list)
-            string_hash = arbitrarily_hash_strings(property_list)
+            property_list = tuple(
+                map(str.title, none_to_quote_unquote_none(property_list))
+            )
+            carr = get_ordering(
+                props["value"], spec_model.instrument
+            ).get("categoryarray")
+            key = None if carr is None else lambda x: _maybeindex(x, carr)
+            string_hash = hash_strings(property_list, key)
             # TODO: compute this one step later so that we can avoid
             #  including entirely-highlighted things in colorbar
             color = [string_hash[prop] for prop in property_list]

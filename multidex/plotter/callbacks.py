@@ -39,7 +39,7 @@ from multidex.multidex_utils import (
     field_values,
     not_blank,
     seconds_since_beginning_of_day_to_iso,
-    integerize
+    integerize, re_get
 )
 from multidex.plotter.colors import generate_palette_options
 from multidex.plotter.components.graph_components import (
@@ -372,9 +372,9 @@ def update_main_graph(
     # TODO: continue assessing these conditions
     # TODO: cleanly prevent these from unsetting autoscale on load
     if (
-            ("marker" in trigger)
-            or ("click" in trigger)
-            or ("highlight" in trigger and trigger != "highlight-trigger")
+        ("marker" in trigger)
+        or ("click" in trigger)
+        or ("highlight" in trigger and trigger != "highlight-trigger")
     ):
         layout = ctx.states["main-graph.figure"]["layout"]
         zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
@@ -409,6 +409,11 @@ def update_main_graph(
     cset("graph_contents", graph_contents)
     # TODO: hacky!
     cset("loading_state", False)
+    ax_field_names = {}
+    for ax, s in zip(
+        ("x", "y", "marker"), (x_settings, y_settings, marker_settings)
+    ):
+        ax_field_names[ax] = re_get(s, "graph-option-")
     return (
         main_scatter_graph(
             graph_df,
@@ -421,6 +426,8 @@ def update_main_graph(
             graph_display_settings,
             axis_display_settings,
             label_ids,
+            spec_model.instrument,
+            ax_field_names,
             x_title,
             y_title,
             zoom,

@@ -5,6 +5,7 @@ from typing import Mapping, Optional
 
 import numpy as np
 import pandas as pd
+from fontTools.misc.cython import returns
 from plotly import graph_objects as go
 
 from multidex.plotter.colors import discretize_color_representations
@@ -15,7 +16,15 @@ from multidex.plotter.config.graph_style import (
     AXIS_DISPLAY_SETTINGS,
     SEARCH_FAILURE_MESSAGE_SETTINGS,
 )
+from multidex.plotter.config.orderings import SPECIAL_ORDERINGS
 
+
+def get_ordering(field: Mapping, instrument: str):
+    if (omap := SPECIAL_ORDERINGS.get(instrument)) is None:
+        return {'categoryorder': 'category ascending'}
+    if (ordering := omap.get(field)) is None:
+        return {'categoryorder': 'category ascending'}
+    return {'categoryarray': ordering}
 
 def style_data(
     fig,
@@ -26,18 +35,20 @@ def style_data(
     marker_axis_type=None,
     marker_property_dict=None,
     zoom=None,
+    instrument=None,
+    ax_field_names=None
 ):
     axis_display_dict = AXIS_DISPLAY_SETTINGS | axis_display_settings
     # noinspection PyTypeChecker
     fig.update_xaxes(
-        axis_display_dict | {
-            "title_text": x_title, "categoryorder": "category ascending"
-        }
+        axis_display_dict
+        | {"title_text": x_title}
+        | get_ordering(ax_field_names['x'], instrument)
     )
     fig.update_yaxes(
-        axis_display_dict | {
-            "title_text": y_title, "categoryorder": "category ascending"
-        }
+        axis_display_dict
+        | {"title_text": y_title}
+        | get_ordering(ax_field_names['x'], instrument)
     )
     if (
         (marker_axis_type == "qual")
@@ -74,6 +85,13 @@ def apply_canvas_style(fig, graph_display_settings):
     fig.update_layout(display_dict)
 
 
+def failed_scatter_graph(message: str, graph_display_settings: Mapping):
+    fig = go.Figure()
+    fig.add_annotation(text=message, **SEARCH_FAILURE_MESSAGE_SETTINGS)
+    apply_canvas_style(fig, graph_display_settings)
+    return fig
+
+
 def main_scatter_graph(
     graph_df: pd.DataFrame,
     highlight_df: Optional[pd.DataFrame],
@@ -85,6 +103,8 @@ def main_scatter_graph(
     graph_display_settings: Mapping,
     axis_display_settings: Mapping,
     label_ids: list[int],
+    instrument: str,
+    ax_field_names: dict[str, str],
     x_title: str = None,
     y_title: str = None,
     zoom: Optional[tuple[list[float, float]]] = None,
@@ -140,6 +160,7 @@ def main_scatter_graph(
         )
     fig = draw_errors_on_figure(fig, errors)
     # last-step canvas stuff: set bounds, gridline color, titles, etc.
+    spec_model_name = None
     style_data(
         fig,
         graph_display_settings,
@@ -149,14 +170,9 @@ def main_scatter_graph(
         marker_axis_type,
         marker_property_dict,
         zoom,
+        instrument,
+        ax_field_names
     )
-    return fig
-
-
-def failed_scatter_graph(message: str, graph_display_settings: Mapping):
-    fig = go.Figure()
-    fig.add_annotation(text=message, **SEARCH_FAILURE_MESSAGE_SETTINGS)
-    apply_canvas_style(fig, graph_display_settings)
     return fig
 
 

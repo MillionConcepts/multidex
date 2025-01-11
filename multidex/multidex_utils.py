@@ -10,6 +10,7 @@ from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
 from string import whitespace, punctuation
+from types import MappingProxyType as MPt
 from typing import (
     Callable,
     Iterable,
@@ -18,13 +19,14 @@ from typing import (
     Mapping,
     Union,
     Optional,
-    Sequence,
+    Sequence, MutableMapping,
 )
 
 from cytoolz import curry, keyfilter
 import dash
 from dash import html
 from dash.dependencies import Input, Output
+from dustgoggles.structures import dig_and_edit
 import Levenshtein as lev
 import numpy as np
 import pandas as pd
@@ -118,8 +120,8 @@ def none_to_quote_unquote_none(
     return de_noned_list
 
 
-def arbitrarily_hash_strings(strings: Iterable[str]) -> dict:
-    unique_string_values = sorted(list(set(strings)), reverse=True)
+def hash_strings(strings: Iterable[str], key) -> dict:
+    unique_string_values = sorted(list(set(strings)), key=key, reverse=True)
     return {string: ix for ix, string in enumerate(unique_string_values)}
 
 
@@ -663,3 +665,14 @@ def loose_match(term, tokens, cutoff_distance=2):
             if distance <= cutoff_distance:
                 matches += tokens[keys[i]]
     return pd.Index(matches)
+
+
+def freeze_nested_mapping(m: MutableMapping):
+    return MPt(
+        dig_and_edit(
+            m,
+            lambda _, v: isinstance(v, MutableMapping),
+            lambda _, v: MPt(v),
+            (MutableMapping,)
+        )
+    )
