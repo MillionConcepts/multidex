@@ -49,8 +49,7 @@ from multidex.plotter.reduction import (
 from multidex.plotter.spectrum_ops import data_df_from_queryset
 from multidex.plotter.config.graph_style import COLORBAR_SETTINGS
 from multidex.plotter.types import SpectrumModel, SpectrumModelInstance
-from plotter.components.graph_components import get_ordering
-from plotter.config.orderings import SPECIAL_ORDERINGS
+from multidex.plotter.components.graph_components import get_ordering
 
 if TYPE_CHECKING:
     from multidex.plotter.models import ZSpec, MSpec
