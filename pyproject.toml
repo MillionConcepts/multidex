@@ -1,6 +1,6 @@
 [project]
 name        = "multidex"
-version     = "0.10.0"
+version     = "0.10.1"
 description = "Multidimensional multi/hyperspectral data exploration"
 readme      = "README.md"
 authors     = [ { name = "Million Concepts" } ]
