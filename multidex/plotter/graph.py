@@ -20,6 +20,7 @@ from dash.exceptions import PreventUpdate
 from dustgoggles.pivot import split_on
 import numpy as np
 import pandas as pd
+from dustgoggles.structures import listify
 from plotly import graph_objects as go
 
 from multidex.multidex_utils import (
@@ -438,7 +439,7 @@ def make_markers(
         size = [size for _ in id_list]
         outline = {
             "color": re_get(settings, "outline-radio.value"),
-            "width": 5,
+            "width": 1,
         }
 
     # set marker symbol
@@ -447,18 +448,16 @@ def make_markers(
     opacity = settings['marker-opacity-input.value']
     if opacity is None:
         opacity = 100
-    marker_property_dict = {
-        "marker": {
-            "size": size,
-            "opacity": opacity / 100,
-            "symbol": symbol,
-            "coloraxis": "coloraxis1",
-        },
+    marker_property_dict ={
+        "size": size,
+        "opacity": opacity / 100,
+        "symbol": symbol,
+        "coloraxis": "coloraxis1",
         "line": outline,
     }
     # colorbar = None causes plotly to draw undesirable fake ticks
     if colorbar is not None:
-        # marker_property_dict["marker"]["colorbar"] = colorbar
+        # marker_property_dict["colorbar"] = colorbar
         coloraxis["colorbar"] = colorbar
     return marker_property_dict, color, coloraxis, props["value_type"]
 
@@ -877,28 +876,47 @@ def explicitly_set_graph_bounds(ctx):
     return graph, {}
 
 
-def assemble_highlight_marker_dict(highlight_settings, base_marker_size):
+def assemble_highlight_marker_dict(
+    highlight_settings, base_marker_size, highlight_ids
+):
     highlight_marker_dict = {}
     # iterate over values of all highlight UI elements, interpreting them as
     # marker values legible to go.Scatter & its relatives
     for prop, setting_input in zip(
-        ("color", "size", "symbol", "opacity"),
-        ("color-drop", "size-radio", "symbol-drop", "opacity-input"),
+        ("color", "size", "symbol", "outline", "opacity"),
+        (
+            "color-drop",
+            "size-radio",
+            "symbol-drop",
+            "outline-radio",
+            "opacity-input"
+        ),
     ):
         setting = highlight_settings[f"highlight-{setting_input}.value"]
         if setting == "none":
             continue
+        elif prop == "outline" and setting == "off":
+            prop, setting = "line", {}
+        elif prop == "outline":
+            prop, setting = "line", {"color": setting, "width": 1}
         elif prop == "size":
-            # highlight size increase is relative, not absolute;
-            # base_marker_size can be either int or list[int] --
-            # need to retain its type to retain how outline works
-            if isinstance(base_marker_size, list):
-                setting = [setting * value for value in base_marker_size]
+            # highlight size increase is relative, not absolute, and
+            # base_marker_size can be either int or list[int] -- will be
+            # list[int] if outline for the primary graph is on and int if
+            # outline is off. we need to follow the same typing rules here
+            # depending on the highlight outline setting (or lack thereof).
+            base_size = listify(base_marker_size)[0]
+            hout = highlight_settings.get("highlight-outline-radio.value")
+            if hout is None and isinstance(base_marker_size, int):
+                setting = setting * base_size
+            elif hout is None:
+                setting = [setting * base_size for _ in highlight_ids]
+            elif hout == "off":
+                setting = setting * base_size
             else:
-                setting = setting * base_marker_size
+                setting = [setting * base_size for _ in highlight_ids]
         elif prop == "opacity":
-            setting = 100 if setting is None else setting
-            setting /= 100
+            setting = 1 if setting is None else setting / 100
         highlight_marker_dict[prop] = setting
     return highlight_marker_dict
 
@@ -920,7 +938,7 @@ def branch_highlight_df(
         graph_df, graph_df["customdata"].isin(highlight_ids)
     )
     highlight_marker_dict = assemble_highlight_marker_dict(
-        highlight_settings, base_marker_size
+        highlight_settings, base_marker_size, highlight_ids
     )
     return graph_df, highlight_df, highlight_marker_dict
 

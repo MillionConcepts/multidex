@@ -1,15 +1,13 @@
 """dash components that are graphs and associated helper functions"""
 
 from copy import deepcopy
-from typing import Mapping, Optional
+from typing import Mapping, Optional, MutableMapping
 
 import numpy as np
 import pandas as pd
-from fontTools.misc.cython import returns
 from plotly import graph_objects as go
 
 from multidex.plotter.colors import discretize_color_representations
-from multidex.plotter.spectrum_ops import d2r
 from multidex.plotter.config.graph_style import (
     ANNOTATION_SETTINGS,
     GRAPH_DISPLAY_SETTINGS,
@@ -17,6 +15,7 @@ from multidex.plotter.config.graph_style import (
     SEARCH_FAILURE_MESSAGE_SETTINGS,
 )
 from multidex.plotter.config.orderings import SPECIAL_ORDERINGS
+from multidex.plotter.spectrum_ops import d2r
 
 
 def get_ordering(field: Mapping, instrument: str):
@@ -53,7 +52,7 @@ def style_data(
     if (
         (marker_axis_type == "qual")
         # don't try to discretize solid colors
-        and not isinstance(marker_property_dict["marker"]["color"], str)
+        and not isinstance(marker_property_dict["color"], str)
     ):
         fig = discretize_color_representations(fig)
     apply_canvas_style(fig, graph_display_settings)
@@ -96,10 +95,10 @@ def main_scatter_graph(
     graph_df: pd.DataFrame,
     highlight_df: Optional[pd.DataFrame],
     errors: Mapping,
-    marker_property_dict: Mapping,
+    marker_property_dict: dict,
     marker_axis_type: str,
     coloraxis: dict,
-    highlight_marker_dict: Mapping,
+    highlight_marker_dict: dict,
     graph_display_settings: Mapping,
     axis_display_settings: Mapping,
     label_ids: list[int],
@@ -118,7 +117,7 @@ def main_scatter_graph(
     draw_floating_labels(fig, graph_df, label_ids)
     # and the scattered points and their error bars
     # last-mile thing here to keep separate from highlight -- TODO: silly?
-    marker_property_dict["marker"]["color"] = graph_df["color"].values
+    marker_property_dict["color"] = graph_df["color"].values
     fig.update_coloraxes(coloraxis)
     fig.add_trace(
         go.Scattergl(
@@ -131,20 +130,17 @@ def main_scatter_graph(
             mode="markers + text",
             # marker={"color": "black", "size": 8},
             showlegend=False,
-            **marker_property_dict,
+            marker=marker_property_dict,
         )
     )
 
     if highlight_df is not None:
         draw_floating_labels(fig, highlight_df, label_ids)
-        # TODO: ...why are we doing this here?
         full_marker_dict = dict(deepcopy(marker_property_dict))
-        full_marker_dict["marker"] = (
-            full_marker_dict["marker"] | highlight_marker_dict
-        )
+        full_marker_dict = full_marker_dict | highlight_marker_dict
         if "color" not in highlight_marker_dict:
             # just treat it like the graph df
-            full_marker_dict["marker"]["color"] = highlight_df["color"].values
+            full_marker_dict["color"] = highlight_df["color"].values
         fig.add_trace(
             go.Scattergl(
                 x=highlight_df["x"],
@@ -155,7 +151,7 @@ def main_scatter_graph(
                 hovertemplate="%{hovertext}<extra></extra>",
                 mode="markers + text",
                 showlegend=False,
-                **full_marker_dict,
+                marker=full_marker_dict,
             )
         )
     fig = draw_errors_on_figure(fig, errors)
@@ -270,12 +266,12 @@ def sort_by_marker_size(errors, graph_df, marker_property_dict):
                 continue
             errors[axis][key] = np.array(errors[axis][key])[sort_indices]
     for key in ("color", "size"):
-        if marker_property_dict["marker"].get(key) is None:
+        if marker_property_dict.get(key) is None:
             continue
         # solid colors
-        if isinstance(marker_property_dict["marker"].get(key), str):
+        if isinstance(marker_property_dict.get(key), str):
             continue
-        marker_property_dict["marker"][key] = np.array(
-            marker_property_dict["marker"][key]
+        marker_property_dict[key] = np.array(
+            marker_property_dict[key]
         )[sort_indices]
     return errors, graph_df, marker_property_dict

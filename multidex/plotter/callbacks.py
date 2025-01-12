@@ -366,7 +366,7 @@ def update_main_graph(
         graph_df,
         highlight_ids,
         highlight_settings,
-        base_marker_size=marker_properties["marker"]["size"],
+        base_marker_size=marker_properties["size"],
     )
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
