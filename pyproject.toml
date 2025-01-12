@@ -15,6 +15,8 @@ classifiers = [
 
 requires-python = ">=3.11"
 dependencies = [
+  "async_timeout",
+  "choreographer>=0.99.6",
   "conda-build",
   "cytoolz",
   "dash",
@@ -48,5 +50,5 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["multidex"]
+packages = ["multidex", "kaleido"]
 
