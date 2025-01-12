@@ -28,7 +28,7 @@ you want with it. _However_, **some data referenced by code in this
 repository may be subject to the MSL and/or Mars 2020 Team Guidelines, so 
 please act accordingly.**
 
-MultiDEx includes a vendored version of `kaleido`. THis portion of the code is
+MultiDEx includes a vendored version of `kaleido`. THis portion of the code
 is additionally subject to `kaleido`'s license: [LICENSE.md](kaleido/LICENSE.md).
 
 MultiDEx bundles several open-source fonts subject to the OFL with various 
