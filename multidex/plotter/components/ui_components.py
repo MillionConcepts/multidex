@@ -964,7 +964,9 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
     symbol = settings["highlight-symbol-drop.value"]
     color = settings["highlight-color-drop.value"]
     opacity = int(settings.get('highlight-opacity-input.value', 100))
-    outline_color = settings["highlight-outline-radio.value"]
+    outline_color = settings.get(
+        "highlight-outline-radio.value", "rgba(0, 0, 0, 1)"
+    )
     return html.Div(
         children=[
             html.Div(
