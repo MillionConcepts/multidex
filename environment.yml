@@ -4,7 +4,6 @@ channels:
 dependencies:
   - python=3.11
   - async_timeout
-  - choreographer>=0.99.6
   - conda-build
   - cytoolz
   - dash
@@ -15,6 +14,7 @@ dependencies:
   - flask-caching
   - fs
   - git
+  - Levenshtein
   - marslab
   - matplotlib
   - more-itertools

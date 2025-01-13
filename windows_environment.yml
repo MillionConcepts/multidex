@@ -13,6 +13,7 @@ dependencies:
   - flask-caching
   - fs
   - git
+  - Levenshtein
   - marslab
   - matplotlib
   - more-itertools
