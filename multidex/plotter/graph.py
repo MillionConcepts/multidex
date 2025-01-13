@@ -262,7 +262,7 @@ def make_axis(
     if props["type"] == "computed":
         return filter_df.loc[id_list, props["value"]].values, None, axis_option
 
-    # TODO, maybe: a hack
+    # TODO, mayquantitbe: a hack
     if props["type"] == "non_filter_computed":
         return (
             metadata_df.loc[id_list][props["value"]].values,
@@ -279,11 +279,15 @@ def make_axis(
             props,
             get_errors,
         )
-    # qual case
-    value_series = metadata_df.loc[id_list][
-        props["value"]
-    ].astype(str).str.title()
-    return value_series.values, None, get_verbose_name(axis_option, spec_model)
+    if props.get('value_type') != 'quant':
+        value_series = metadata_df.loc[
+            id_list, props["value"]
+        ].astype(str).str.title().values
+    else:
+        value_series = metadata_df.loc[id_list, props["value"]].values
+    return (
+        value_series, None, get_verbose_name(axis_option, spec_model).title()
+    )
 
 
 def _decompose_for_axis(
