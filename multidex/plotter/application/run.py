@@ -3,6 +3,7 @@ import pickle
 import random
 import shutil
 from pickle import UnpicklingError
+import warnings
 
 import django.conf
 import flask
@@ -29,6 +30,15 @@ from multidex.plotter.spectrum_ops import data_df_from_queryset
 from multidex.plotter.layout import multidex_body
 from multidex.plotter.graph import cache_set, cache_get
 from multidex.plotter.models import INSTRUMENT_MODEL_MAPPING
+
+
+def get_multidex_commit_hash():
+    if not (gdir := MULTIDEX_ROOT.parent / ".git").is_dir():
+        raise FileNotFoundError
+    with (gdir / "HEAD").open() as stream:
+        branch = stream.readlines()[0].split('/')[-1].strip()
+    with (gdir / "refs" / "heads" / branch).open() as stream:
+        return stream.read()
 
 
 def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
@@ -150,7 +160,15 @@ def initialize_cache_values(cset, spec_model, use_cached_dfs):
 def maybe_unpickle_preprocessed(cset, default_dkwargs, dkwjson, spec_model):
     cache_dir = (MULTIDEX_ROOT.parent / ".cache").absolute()
     dbf = django.conf.settings.DATABASES[spec_model.instrument]["NAME"]
-    dfcache_dir = cache_dir / md5sum(dbf)
+    try:
+        chash = get_multidex_commit_hash().encode("ascii")
+    except (IndexError, KeyError, FileNotFoundError):
+        warnings.warn(
+            "Nonstandard git repository configuration. Preprocessed data "
+            "caching may not work correctly."
+        )
+        chash = b""
+    dfcache_dir = cache_dir / md5sum(dbf, chash)
     dfcache_dir.mkdir(parents=True, exist_ok=True)
     cset("dfcache_dir", dfcache_dir)
     data_df, metadata_df, tokens = None, None, None

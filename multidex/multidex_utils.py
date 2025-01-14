@@ -679,9 +679,11 @@ def freeze_nested_mapping(m: MutableMapping):
     )
 
 
-def md5sum(path):
+def md5sum(path, mixin=None):
     hasher = md5()
     with open(path, 'rb') as f:
         for c in iter(lambda: f.read(8192), b''):
             hasher.update(c)
+    if mixin is not None:
+        hasher.update(mixin)
     return hasher.hexdigest()
