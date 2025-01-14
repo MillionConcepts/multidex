@@ -18,12 +18,13 @@ from typing import (
     Any,
     TYPE_CHECKING,
     Mapping,
+    MutableMapping,
     Union,
     Optional,
-    Sequence, MutableMapping,
+    Sequence
 )
 
-from cytoolz import curry, keyfilter
+from cytoolz import curry, keyfilter, merge
 import dash
 from dash import html
 from dash.dependencies import Input, Output
@@ -31,7 +32,6 @@ from dustgoggles.structures import dig_and_edit
 import Levenshtein as lev
 import numpy as np
 import pandas as pd
-from toolz import merge
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component

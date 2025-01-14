@@ -126,14 +126,11 @@ def truncate_id_list_for_missing_properties(
         else:
             metadata_args.append(axis_option)
     if filt_args:
-        try:
-            indices.append(
-                filter_df.loc[id_list][list(set(chain.from_iterable(filt_args)))]
-                .dropna()
-                .index
-            )
-        except KeyError:
-            cat = True
+        indices.append(
+            filter_df.loc[id_list][list(set(chain.from_iterable(filt_args)))]
+            .dropna()
+            .index
+        )
     if metadata_args:
         indices.append(
             metadata_df.loc[id_list][list(set(metadata_args))].dropna().index
@@ -152,9 +149,7 @@ def deframe(df_or_series):
 #  every time any axis is changed. it might be better to cache this.
 #  at the moment, the performance concerns probably don't really matter,
 #  though; PCA on these sets is < 250ms per and generally much less.
-def perform_decomposition(
-    queryset_df, settings, props, spec_model, cset
-):
+def perform_decomposition(queryset_df, settings, props):
     # TODO: temporary hack -- don't do PCA on tiny sets
     if len(queryset_df.index) < 8:
         raise ValueError("Won't do PCA on tiny sets.")
