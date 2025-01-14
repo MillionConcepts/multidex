@@ -137,7 +137,7 @@ def initialize_cache_values(cset, spec_model, use_cached_dfs):
     else:
         print("preprocessing data...", end="", flush=True)
         data_df = data_df_from_queryset(
-            spec_model.objects.all(), **default_dkwargs
+            spec_model.objects.all(), spec_model, **default_dkwargs
         )
         print("preprocessing metadata...", end="", flush=True)
         metadata_df = build_metadata_df(spec_model)
@@ -196,7 +196,7 @@ def maybe_unpickle_preprocessed(cset, default_dkwargs, dkwjson, spec_model):
     if data_df is None:
         print("preprocessing data...", end="", flush=True)
         data_df = data_df_from_queryset(
-            spec_model.objects.all(), **default_dkwargs
+            spec_model.objects.all(), spec_model, **default_dkwargs
         )
         with dfp.open("wb") as stream:
             pickle.dump(data_df, stream)

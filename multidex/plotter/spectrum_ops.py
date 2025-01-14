@@ -95,9 +95,10 @@ def _build_base_df(average_filters, queryset, scale_to):
 
 
 def data_df_from_queryset(
-    queryset, r_star=True, average_filters=False, scale_to=None,
+    queryset, spec_model, r_star=True, average_filters=False, scale_to=None
 ):
     filter_df = _build_base_df(average_filters, queryset, scale_to)
+    filter_df["max_wrasd"] = make_roughness_metric(filter_df, spec_model)
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #   it's preferable to have rules for this on models.
     if r_star is True:
@@ -134,6 +135,22 @@ def data_df_from_queryset(
         filter_df['l_rstd'] = None
         filter_df['r_rstd'] = None
     return filter_df
+
+
+def make_roughness_metric(spike_df, spec_model):
+    spike_df = spike_df.copy()
+    if "permissibly_explanatory_bandpasses" in dir(spec_model):
+        spike_df = spike_df[
+            spec_model().permissibly_explanatory_bandpasses(spike_df.columns)
+        ]
+    spike_df = spike_df[[f for f in spike_df.columns if "_std" not in f]]
+    scols = sorted(
+        spike_df.columns, key=lambda f: spec_model().all_filter_waves()[f]
+    )
+    sdiff = spike_df[scols].diff(axis=1).replace(np.nan, 0)
+    srev = (np.sign(sdiff).diff(axis=1).abs() == 2) + 1
+    max_wrasd = (sdiff.abs() * srev).max(axis=1) / spike_df[scols].replace(np.nan, 0).mean(axis=1)
+    return max_wrasd
 
 
 def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):

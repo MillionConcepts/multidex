@@ -112,6 +112,7 @@ CALCULATED_FIELDS = (
     "r_rmad",
     'l_rstd',
     'r_rstd',
+    "max_wrasd"
 )
 
 
