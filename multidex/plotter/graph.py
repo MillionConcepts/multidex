@@ -321,7 +321,7 @@ def _decompose_for_axis(
     else:
         queryset_df = filter_df.loc[id_list]
     component, title, eigenvector_df = perform_decomposition(
-        queryset_df, settings, props, spec_model, cset
+        queryset_df, settings, props
     )
     cset("eigenvector_df", eigenvector_df)
     return component, None, title
