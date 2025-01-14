@@ -93,9 +93,7 @@ def truncate_id_list_for_missing_properties(
     spec_model,
     filters_are_averaged: bool,
 ):
-    metadata_args = []
-    filt_args = []
-    indices = []
+    metadata_args, filt_args, indices = [], [], []
     for suffix in input_suffixes:
         axis_option = re_get(settings, "graph-option-" + suffix)
         model_property = keygrab(
@@ -127,11 +125,13 @@ def truncate_id_list_for_missing_properties(
         else:
             metadata_args.append(axis_option)
     if filt_args:
-        indices.append(
-            filter_df.loc[id_list][list(set(chain.from_iterable(filt_args)))]
-            .dropna()
-            .index
-        )
+        filter_vals = filter_df.loc[
+            id_list, list(set(chain.from_iterable(filt_args)))
+        ]
+        filter_vals = filter_vals.loc[
+            ~((filter_vals == 0) | filter_vals.isna()).any(axis=1)
+        ]
+        indices.append(filter_vals.index)
     if metadata_args:
         indices.append(
             metadata_df.loc[id_list][list(set(metadata_args))].dropna().index
