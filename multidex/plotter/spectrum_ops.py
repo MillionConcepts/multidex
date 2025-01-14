@@ -73,9 +73,6 @@ def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     return nominal_value, (offsets.min(axis=1), offsets.max(axis=1))
 
 
-from line_profiler import LineProfiler
-LP = LineProfiler()
-
 def _build_base_df(average_filters, queryset, scale_to):
     filter_value_list, id_list = [], []
     for spectrum in queryset:
@@ -94,12 +91,9 @@ def _build_base_df(average_filters, queryset, scale_to):
         filter_value_list.append(mean_dict | err_dict)
         id_list.append(spectrum.id)
 
-    base_df = pd.DataFrame(filter_value_list)
-    base_df.index = id_list
-    return base_df
+    return pd.DataFrame(filter_value_list, index=id_list)
 
 
-# @LP
 def data_df_from_queryset(
     queryset, r_star=True, average_filters=False, scale_to=None,
 ):
@@ -139,7 +133,6 @@ def data_df_from_queryset(
         filter_df['r_rmad'] = None
         filter_df['l_rstd'] = None
         filter_df['r_rstd'] = None
-    # LP.print_stats()
     return filter_df
 
 
