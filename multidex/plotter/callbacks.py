@@ -213,6 +213,7 @@ def update_data_df(
     scale_trigger_count,
     *,
     cset,
+    cget,
     spec_model,
 ):
     if dash.callback_context.triggered[0]["prop_id"] == ".":
@@ -222,7 +223,7 @@ def update_data_df(
     if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     r_star = bool(r_star)
-    cache_data_df(average_filters, cset, r_star, scale_to, spec_model)
+    cache_data_df(average_filters, cset, cget, r_star, scale_to, spec_model)
     if not scale_trigger_count:
         return 1
     return scale_trigger_count + 1

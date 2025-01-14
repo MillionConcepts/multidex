@@ -1,6 +1,10 @@
+import json
+import pickle
 import random
 import shutil
+from pickle import UnpicklingError
 
+import django.conf
 import flask
 import flask.cli
 import pandas as pd
@@ -8,7 +12,9 @@ from dash import dash
 from flask_caching.backends import FileSystemCache
 
 from multidex._pathref import MULTIDEX_ROOT
-from multidex.multidex_utils import qlist, model_metadata_df, make_tokens
+from multidex.multidex_utils import (
+    qlist, model_metadata_df, make_tokens, md5sum
+)
 from multidex.notetaking import Notepad, Paper
 from multidex.plotter.application.helpers import (
     register_everything,
@@ -46,9 +52,9 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # many other app runtime values
     # setter and getter functions for a flask_caching.Cache object. in the
     # context of this app initialization, they basically define a namespace.
-    cset = cache_set(cache)
-    cget = cache_get(cache)
+    cset, cget = cache_set(cache), cache_get(cache)
     initialize_cache_values(cset, spec_model)
+
     # configure callback functions
     configured_callbacks = configure_callbacks(cget, cset, spec_model)
     # initialize app layout -- later changes are all performed by callbacks
@@ -99,21 +105,64 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
         cache._index_buffer.unlink()
         cache._index_buffer.close()
     else:
-        shutil.rmtree(".cache/" + cache_prefix)
+        shutil.rmtree(MULTIDEX_ROOT.parent / ".cache" /  cache_prefix)
 
 
-def initialize_cache_values(cset, spec_model):
+def initialize_cache_values(cset, spec_model, use_cache=True):
     cset("spec_model_name", spec_model.instrument_brief_name)
     cset("search_ids", qlist(spec_model.objects.all(), "id"))
     cset("highlight_ids", [])
     cset("label_ids", [])
-    cset(
-        "data_df",
-        data_df_from_queryset(spec_model.objects.all()),
-    )
-    # TODO: this is a hack that should be initialized from some property of
+    # TODO: these are hacks that should be initialized from some property of
     #  the model
     cset("r_star", True)
+    default_dkwargs = {
+        "r_star": True, "scale_to": None, "average_filters": False
+    }
+    dkwjson = json.dumps(default_dkwargs)
+    cache_dir = (MULTIDEX_ROOT.parent / ".cache").absolute()
+    dbf = django.conf.settings.DATABASES[spec_model.instrument]["NAME"]
+    dfcache_dir = cache_dir / md5sum(dbf)
+    dfcache_dir.mkdir(parents=True, exist_ok=True)
+    cset("dfcache_dir", dfcache_dir)
+    data_df = None
+    if (dfp := dfcache_dir / f"data_df_{dkwjson}.pkl").exists():
+        with dfp.open("rb") as stream:
+            try:
+                data_df = pickle.load(stream)
+            except UnpicklingError:
+                pass
+    if data_df is None:
+        data_df = data_df_from_queryset(
+            spec_model.objects.all(), **default_dkwargs
+        )
+        with dfp.open("wb") as stream:
+            pickle.dump(data_df, stream)
+    cset("data_df", data_df)
+    cset(f"data_df_{dkwjson}", data_df)
+    metadata_df = None
+    if (mdfp := dfcache_dir / f"metadata_df.pkl").exists():
+        with mdfp.open("rb") as stream:
+            try:
+                metadata_df = pickle.load(stream)
+            except pickle.UnpicklingError:
+                pass
+    if metadata_df is None:
+        metadata_df = build_metadata_df(spec_model)
+        with mdfp.open("wb") as stream:
+            pickle.dump(metadata_df, stream)
+
+    cset("metadata_df", metadata_df)
+    cset(
+        "palette_memory",
+        instrument_settings(spec_model.instrument)["palette_memory"]
+    )
+    cset("tokens", make_tokens(metadata_df))
+    cset("scale_to", "none")
+    cset("average_filters", False)
+
+
+def build_metadata_df(spec_model):
     metadata_df = model_metadata_df(spec_model)
     # TODO: this is a hack in place of adding formatted time parsing at
     #  various places within the application
@@ -135,15 +184,8 @@ def initialize_cache_values(cset, spec_model):
         metadata_df["zoom"] = metadata_df["zoom"].astype(float)
     if {"rc_ltst", "rc_sol", "sol", "ltst"}.issubset(metadata_df.columns):
         for k, v in spec_model.cal_goodness(
-            metadata_df[['ltst', 'rc_ltst', 'sol', 'rc_sol']]
+                metadata_df[['ltst', 'rc_ltst', 'sol', 'rc_sol']]
         ).items():
             metadata_df[k] = v
-    cset(
-        "palette_memory",
-        instrument_settings(spec_model.instrument)["palette_memory"]
-    )
-    cset("metadata_df", metadata_df)
-    cset("tokens", make_tokens(metadata_df))
-    cset("scale_to", "none")
-    cset("average_filters", False)
+    return metadata_df
 

@@ -4,6 +4,9 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
+import json
+import pickle
+
 from _testcapi import INT_MAX
 from ast import literal_eval
 from collections.abc import Iterable
@@ -183,7 +186,12 @@ def perform_spectrum_op(
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
     # the inputs. also drop precalculated perperties -- a bit kludgey.
-    allowable = list(chain(*[(f, f"{f}_std") for f in spec_model.filters]))
+    allowable = [
+        (f, f"{f}_std")
+        for f in tuple(spec_model.filters.keys())
+        + tuple(spec_model.canonical_averaged_filters.keys())
+    ]
+    allowable = list(chain(*allowable))
     queryset_df = (
         filter_df.loc[id_list]
         .drop([c for c in filter_df if c not in allowable], axis=1)
@@ -697,13 +705,12 @@ def load_state_into_application(search_file, spec_model, cget, cset):
     # TODO: should really rectify types across cache, component, and loaded
     #  values -- although maybe this _is_ the load -> cache conversion step,
     #  which should just be siloed and made explicit?
-    average_filters = settings["average_filters"] == "True"
-    r_star = settings["r_star"] == "True"
     cache_data_df(
         spec_model=spec_model,
         cset=cset,
-        average_filters=average_filters,
-        r_star=r_star,
+        cget=cget,
+        average_filters=settings["average_filters"] == "True",
+        r_star=settings["r_star"] == "True",
         scale_to=settings["scale_to"],
     )
     if settings["highlight_parameters"] is not None:
@@ -970,17 +977,31 @@ def dump_model_table(
     output.to_csv(filename, index=None)
 
 
-def cache_data_df(average_filters, cset, r_star, scale_to, spec_model):
-    cset(
-        "data_df",
-        data_df_from_queryset(
-            spec_model.objects.all(),
-            average_filters=average_filters,
-            scale_to=scale_to,
-            r_star=r_star,
-        ),
-    )
-    if scale_to != "none":
+def cache_data_df(average_filters, cset, cget, r_star, scale_to, spec_model):
+    if isinstance(scale_to, str) and scale_to.lower() == "none":
+        scale_to = None
+    dkwargs = {
+        "r_star": r_star,
+        "scale_to": scale_to,
+        "average_filters": average_filters
+    }
+    kwjson = json.dumps(dkwargs)
+    dfcache_dir = cget("dfcache_dir")
+    data_df = cget(f"data_df_{kwjson}")
+    dfp = dfcache_dir / f"data_df_{kwjson}.pkl"
+    if data_df is None and dfp.exists():
+        with dfp.open("rb") as stream:
+            try:
+                data_df = pickle.load(stream)
+            except pickle.UnpicklingError:
+                pass
+    if data_df is None:
+        data_df = data_df_from_queryset(spec_model.objects.all(),  **dkwargs)
+        cset(f"data_df_{kwjson}", data_df)
+        with dfp.open("wb") as stream:
+            pickle.dump(data_df, stream)
+    cset("data_df", data_df)
+    if scale_to is not None:
         scale_to_string = "_".join(scale_to)
     else:
         scale_to_string = scale_to

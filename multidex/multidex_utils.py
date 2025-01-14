@@ -4,6 +4,7 @@ import datetime as dt
 import json
 import re
 import sys
+from hashlib import md5
 from collections import defaultdict
 from functools import partial, reduce
 from inspect import signature, getmembers
@@ -676,3 +677,11 @@ def freeze_nested_mapping(m: MutableMapping):
             (MutableMapping,)
         )
     )
+
+
+def md5sum(path):
+    hasher = md5()
+    with open(path, 'rb') as f:
+        for c in iter(lambda: f.read(8192), b''):
+            hasher.update(c)
+    return hasher.hexdigest()

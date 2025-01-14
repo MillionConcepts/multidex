@@ -14,4 +14,4 @@ sys.modules["mdex_cli_script"] = mdex_cli_script
 # noinspection PyUnresolvedReferences
 from mdex_cli_script import multidex_run_hook
 
-__version__ = "0.10.1"
+__version__ = "0.10.2"
