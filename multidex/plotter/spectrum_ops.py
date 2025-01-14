@@ -98,7 +98,9 @@ def data_df_from_queryset(
     queryset, spec_model, r_star=True, average_filters=False, scale_to=None
 ):
     filter_df = _build_base_df(average_filters, queryset, scale_to)
-    filter_df["max_wrasd"] = make_roughness_metric(filter_df, spec_model)
+    filter_df["max_wrasd"], filter_df["mean_wrasd"], filter_df["p2p"] = (
+        make_roughness_metric(filter_df, spec_model)
+    )
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #   it's preferable to have rules for this on models.
     if r_star is True:
@@ -149,8 +151,12 @@ def make_roughness_metric(spike_df, spec_model):
     )
     sdiff = spike_df[scols].diff(axis=1).replace(np.nan, 0)
     srev = (np.sign(sdiff).diff(axis=1).abs() == 2) + 1
-    max_wrasd = (sdiff.abs() * srev).max(axis=1) / spike_df[scols].replace(np.nan, 0).mean(axis=1)
-    return max_wrasd
+    smdiff = abs(np.nanmean(sdiff, axis=0))
+    refmean = spike_df[scols].replace(np.nan, 0).mean(axis=1)
+    wrasd = (sdiff.abs() * srev).values * smdiff
+    maskframe = np.ma.masked_invalid(spike_df[scols].values)
+    p2p = np.ptp(maskframe, axis=1) / np.max(maskframe, axis=1)
+    return wrasd.max(axis=1) / refmean, wrasd.mean(axis=1) / refmean, p2p
 
 
 def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):
