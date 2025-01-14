@@ -150,24 +150,13 @@ def deframe(df_or_series):
 #  every time any axis is changed. it might be better to cache this.
 #  at the moment, the performance concerns probably don't really matter,
 #  though; PCA on these sets is < 250ms per and generally much less.
-def perform_decomposition(
-    id_list, filter_df, settings, props, spec_model, cset
-):
-    # TODO: this is an operational-timeline hack to permit "cut the
-    #  bayers" behavior. replace this with UI elements permitting
-    #  decomposition op feature selection later.
-    if "permissibly_explanatory_bandpasses" in dir(spec_model):
-        queryset_df = filter_df[
-            spec_model.permissibly_explanatory_bandpasses(filter_df.columns)
-        ].loc[id_list]
-    else:
-        queryset_df = filter_df.loc[id_list]
+def perform_decomposition(filter_df, settings, props):
     # TODO: temporary hack -- don't do PCA on tiny sets
-    if len(queryset_df.index) < 8:
+    if len(filter_df.index) < 8:
         raise ValueError("Won't do PCA on tiny sets.")
     # drop errors
-    queryset_df = queryset_df[
-        [c for c in queryset_df.columns if "std" not in c]
+    queryset_df = filter_df[
+        [c for c in filter_df.columns if "std" not in c]
     ]
     component_ix = int(re_get(settings, "component"))
     # TODO, maybe: placeholder for other decomposition methods
@@ -180,7 +169,6 @@ def perform_decomposition(
     eigenvectors.columns = queryset_df.columns
     eigenvectors.index = explained_variances.index
     eigenvector_df = pd.concat([eigenvectors, explained_variances], axis=1)
-    cset("eigenvector_df", eigenvector_df)
     component = list(transform.iloc[:, component_ix].values)
     explained_variance = explained_variances.iloc[component_ix]
     title = "{}{} {}%".format(
@@ -333,9 +321,9 @@ def _decompose_for_axis(
             spec_model.permissibly_explanatory_bandpasses(decomp_df.columns)
         ].loc[id_list]
     else:
-        queryset_df = filter_df.loc[id_list]
+        queryset_df = decomp_df.loc[id_list]
     component, title, eigenvector_df = perform_decomposition(
-        queryset_df, settings, props, spec_model, cset
+        queryset_df, settings, props
     )
     cset("eigenvector_df", eigenvector_df)
     return component, None, title
