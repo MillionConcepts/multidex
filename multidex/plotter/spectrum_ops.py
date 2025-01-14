@@ -98,8 +98,8 @@ def data_df_from_queryset(
     queryset, spec_model, r_star=True, average_filters=False, scale_to=None
 ):
     filter_df = _build_base_df(average_filters, queryset, scale_to)
-    filter_df["max_wrasd"], filter_df["mean_wrasd"], filter_df["p2p"] = (
-        make_roughness_metric(filter_df, spec_model)
+    filter_df = pd.concat(
+        [filter_df, spikiness_metrics(filter_df, spec_model)], axis=1
     )
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #   it's preferable to have rules for this on models.
@@ -139,7 +139,7 @@ def data_df_from_queryset(
     return filter_df
 
 
-def make_roughness_metric(spike_df, spec_model):
+def spikiness_metrics(spike_df: pd.DataFrame, spec_model):
     spike_df = spike_df.copy()
     if "permissibly_explanatory_bandpasses" in dir(spec_model):
         spike_df = spike_df[
@@ -149,14 +149,22 @@ def make_roughness_metric(spike_df, spec_model):
     scols = sorted(
         spike_df.columns, key=lambda f: spec_model().all_filter_waves()[f]
     )
-    sdiff = spike_df[scols].diff(axis=1).replace(np.nan, 0)
+    sdiff = spike_df[scols].diff(axis=1).replace(np.nan, 0).iloc[:, 1:]
     srev = (np.sign(sdiff).diff(axis=1).abs() == 2) + 1
-    smdiff = abs(np.nanmean(sdiff, axis=0))
-    refmean = spike_df[scols].replace(np.nan, 0).mean(axis=1)
-    wrasd = (sdiff.abs() * srev).values * smdiff
+    smdiff = abs(np.nanmean(sdiff, axis=0)) / np.sqrt(np.nanmean(spike_df, axis=0)[1:])
+    wasd = (sdiff.abs() * srev).values
+    wrasd = wasd / smdiff
     maskframe = np.ma.masked_invalid(spike_df[scols].values)
-    p2p = np.ptp(maskframe, axis=1) / np.max(maskframe, axis=1)
-    return wrasd.max(axis=1) / refmean, wrasd.mean(axis=1) / refmean, p2p
+    return pd.DataFrame(
+        {
+            'max_wrasd': wrasd.max(axis=1),
+            'mean_wrasd': wrasd.mean(axis=1),
+            'max_wasd': wasd.max(axis=1),
+            'mean_wasd': wasd.mean(axis=1),
+            'p2p': np.ptp(maskframe, axis=1) / np.max(maskframe, axis=1)
+        },
+        index=spike_df.index
+    )
 
 
 def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):

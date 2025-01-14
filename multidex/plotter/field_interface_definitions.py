@@ -114,6 +114,8 @@ CALCULATED_FIELDS = (
     'r_rstd',
     "mean_wrasd",
     "max_wrasd",
+    "mean_wasd",
+    "max_wasd",
     "p2p"
 )
 
