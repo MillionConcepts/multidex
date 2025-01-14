@@ -75,7 +75,7 @@ from multidex.plotter.graph import (
     halt_for_inappropriate_palette_type,
     branch_highlight_df,
     save_palette_memory,
-    cache_data_df,
+    data_df_update_handler,
 )
 from multidex.plotter.render_output.output_writer import save_main_scatter_plot
 
@@ -223,7 +223,7 @@ def update_data_df(
     if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     r_star = bool(r_star)
-    cache_data_df(average_filters, cset, cget, r_star, scale_to, spec_model)
+    data_df_update_handler(average_filters, cset, cget, r_star, scale_to, spec_model)
     if not scale_trigger_count:
         return 1
     return scale_trigger_count + 1

@@ -53,8 +53,8 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # setter and getter functions for a flask_caching.Cache object. in the
     # context of this app initialization, they basically define a namespace.
     cset, cget = cache_set(cache), cache_get(cache)
-    initialize_cache_values(cset, spec_model)
-
+    initialize_cache_values(cset, spec_model, use_cached_dfs = not debug)
+    print("configuring app...", end="", flush=True)
     # configure callback functions
     configured_callbacks = configure_callbacks(cget, cset, spec_model)
     # initialize app layout -- later changes are all performed by callbacks
@@ -78,7 +78,7 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
     # prod; this app only runs locally and woe betide thee if otherwise
     # noinspection PyUnresolvedReferences
     import multidex.plotter.application._suppress_werkzeug_warning
-
+    print("launching app server...", flush=True)
     flask.cli.show_server_banner = lambda *_: None
     port, looking_for_port = 49303, True
     while looking_for_port is True:
@@ -86,7 +86,7 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
             app.run(
                 debug=debug,
                 use_reloader=False,
-                dev_tools_silence_routes_logging=True,
+                dev_tools_silence_routes_logging=not debug,
                 port=port,
                 host="127.0.0.1"
             )
@@ -108,7 +108,7 @@ def run_multidex(instrument_code, debug=False, use_notepad_cache=False):
         shutil.rmtree(MULTIDEX_ROOT.parent / ".cache" /  cache_prefix)
 
 
-def initialize_cache_values(cset, spec_model, use_cache=True):
+def initialize_cache_values(cset, spec_model, use_cached_dfs):
     cset("spec_model_name", spec_model.instrument_brief_name)
     cset("search_ids", qlist(spec_model.objects.all(), "id"))
     cset("highlight_ids", [])
@@ -120,38 +120,21 @@ def initialize_cache_values(cset, spec_model, use_cache=True):
         "r_star": True, "scale_to": None, "average_filters": False
     }
     dkwjson = json.dumps(default_dkwargs)
-    cache_dir = (MULTIDEX_ROOT.parent / ".cache").absolute()
-    dbf = django.conf.settings.DATABASES[spec_model.instrument]["NAME"]
-    dfcache_dir = cache_dir / md5sum(dbf)
-    dfcache_dir.mkdir(parents=True, exist_ok=True)
-    cset("dfcache_dir", dfcache_dir)
-    data_df = None
-    if (dfp := dfcache_dir / f"data_df_{dkwjson}.pkl").exists():
-        with dfp.open("rb") as stream:
-            try:
-                data_df = pickle.load(stream)
-            except UnpicklingError:
-                pass
-    if data_df is None:
+    if use_cached_dfs is True:
+        data_df, metadata_df = maybe_unpickle_dfs(
+            cset, default_dkwargs, dkwjson, spec_model
+        )
+    else:
+        print("preprocessing data...", end="", flush=True)
         data_df = data_df_from_queryset(
             spec_model.objects.all(), **default_dkwargs
         )
-        with dfp.open("wb") as stream:
-            pickle.dump(data_df, stream)
+        print("preprocessing metadata...", end="", flush=True)
+        metadata_df = build_metadata_df(spec_model)
+        cset("dfcache_dir", None)
+    print("setting up app cache...", end="", flush=True)
     cset("data_df", data_df)
     cset(f"data_df_{dkwjson}", data_df)
-    metadata_df = None
-    if (mdfp := dfcache_dir / f"metadata_df.pkl").exists():
-        with mdfp.open("rb") as stream:
-            try:
-                metadata_df = pickle.load(stream)
-            except pickle.UnpicklingError:
-                pass
-    if metadata_df is None:
-        metadata_df = build_metadata_df(spec_model)
-        with mdfp.open("wb") as stream:
-            pickle.dump(metadata_df, stream)
-
     cset("metadata_df", metadata_df)
     cset(
         "palette_memory",
@@ -160,6 +143,43 @@ def initialize_cache_values(cset, spec_model, use_cache=True):
     cset("tokens", make_tokens(metadata_df))
     cset("scale_to", "none")
     cset("average_filters", False)
+
+
+def maybe_unpickle_dfs(cset, default_dkwargs, dkwjson, spec_model):
+    cache_dir = (MULTIDEX_ROOT.parent / ".cache").absolute()
+    dbf = django.conf.settings.DATABASES[spec_model.instrument]["NAME"]
+    dfcache_dir = cache_dir / md5sum(dbf)
+    dfcache_dir.mkdir(parents=True, exist_ok=True)
+    cset("dfcache_dir", dfcache_dir)
+    data_df, metadata_df = None, None
+    if (dfp := dfcache_dir / f"data_df_{dkwjson}.pkl").exists():
+        with dfp.open("rb") as stream:
+            try:
+                data_df = pickle.load(stream)
+                print("loaded preprocessed data...", end="", flush=True)
+            except UnpicklingError:
+                pass
+    metadata_df = None
+    if (mdfp := dfcache_dir / f"metadata_df.pkl").exists():
+        with mdfp.open("rb") as stream:
+            try:
+                metadata_df = pickle.load(stream)
+                print("loaded preprocessed metadata...", end="", flush=True)
+            except pickle.UnpicklingError:
+                pass
+    if data_df is None:
+        print("preprocessing data...", end="", flush=True)
+        data_df = data_df_from_queryset(
+            spec_model.objects.all(), **default_dkwargs
+        )
+        with dfp.open("wb") as stream:
+            pickle.dump(data_df, stream)
+    if metadata_df is None:
+        print("preprocessing metadata...", end="", flush=True)
+        metadata_df = build_metadata_df(spec_model)
+        with mdfp.open("wb") as stream:
+            pickle.dump(metadata_df, stream)
+    return data_df, metadata_df
 
 
 def build_metadata_df(spec_model):

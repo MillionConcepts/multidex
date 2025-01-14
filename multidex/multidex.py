@@ -9,22 +9,19 @@ except ModuleNotFoundError:
     )
 
 def multidex_run_hook():
-    import time
-    print("initializing data models...", end="")
-    start = time.time()
+    print("loading models...", end="", flush=True)
     import django
 
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.multidex.settings")
+    os.environ.setdefault(
+        "DJANGO_SETTINGS_MODULE", "multidex.multidex.settings"
+    )
     os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
     django.setup()
 
-    print(time.time() - start)
-    start = time.time()
-    print("loading core multidex modules...", end="")
+    print("importing modules...", end="", flush=True)
     # noinspection PyUnresolvedReferences
     import multidex
     from multidex.plotter.application.run import run_multidex
-    print(time.time() - start)
     fire.Fire(run_multidex)
 
 

@@ -126,11 +126,14 @@ def truncate_id_list_for_missing_properties(
         else:
             metadata_args.append(axis_option)
     if filt_args:
-        indices.append(
-            filter_df.loc[id_list][list(set(chain.from_iterable(filt_args)))]
-            .dropna()
-            .index
-        )
+        try:
+            indices.append(
+                filter_df.loc[id_list][list(set(chain.from_iterable(filt_args)))]
+                .dropna()
+                .index
+            )
+        except KeyError:
+            cat = True
     if metadata_args:
         indices.append(
             metadata_df.loc[id_list][list(set(metadata_args))].dropna().index
@@ -705,7 +708,7 @@ def load_state_into_application(search_file, spec_model, cget, cset):
     # TODO: should really rectify types across cache, component, and loaded
     #  values -- although maybe this _is_ the load -> cache conversion step,
     #  which should just be siloed and made explicit?
-    cache_data_df(
+    data_df_update_handler(
         spec_model=spec_model,
         cset=cset,
         cget=cget,
@@ -977,7 +980,30 @@ def dump_model_table(
     output.to_csv(filename, index=None)
 
 
-def cache_data_df(average_filters, cset, cget, r_star, scale_to, spec_model):
+def load_and_save_data_df(cset, cget, dkwargs, spec_model):
+    kwjson = json.dumps(dkwargs)
+    if (data_df := cget(f"data_df_{kwjson}")) is not None:
+        cset("data_df", data_df)
+        return data_df
+    # dfcache_dir should be None in debug mode and only debug mode
+    if (dfcache_dir := cget("dfcache_dir")) is not None:
+        if (dfp := dfcache_dir / f"data_df_{kwjson}.pkl").exists():
+            with dfp.open("rb") as stream:
+                try:
+                    data_df = pickle.load(stream)
+                except pickle.UnpicklingError:
+                    pass
+    if data_df is None:
+        data_df = data_df_from_queryset(spec_model.objects.all(), **dkwargs)
+        cset(f"data_df_{kwjson}", data_df)
+        with (dfcache_dir / f"data_df_{kwjson}.pkl").open("wb") as stream:
+            pickle.dump(data_df, stream)
+    cset("data_df", data_df)
+
+
+def data_df_update_handler(
+    average_filters, cset, cget, r_star, scale_to, spec_model
+):
     if isinstance(scale_to, str) and scale_to.lower() == "none":
         scale_to = None
     dkwargs = {
@@ -985,22 +1011,7 @@ def cache_data_df(average_filters, cset, cget, r_star, scale_to, spec_model):
         "scale_to": scale_to,
         "average_filters": average_filters
     }
-    kwjson = json.dumps(dkwargs)
-    dfcache_dir = cget("dfcache_dir")
-    data_df = cget(f"data_df_{kwjson}")
-    dfp = dfcache_dir / f"data_df_{kwjson}.pkl"
-    if data_df is None and dfp.exists():
-        with dfp.open("rb") as stream:
-            try:
-                data_df = pickle.load(stream)
-            except pickle.UnpicklingError:
-                pass
-    if data_df is None:
-        data_df = data_df_from_queryset(spec_model.objects.all(),  **dkwargs)
-        cset(f"data_df_{kwjson}", data_df)
-        with dfp.open("wb") as stream:
-            pickle.dump(data_df, stream)
-    cset("data_df", data_df)
+    load_and_save_data_df(cset, cget, dkwargs, spec_model)
     if scale_to is not None:
         scale_to_string = "_".join(scale_to)
     else:
