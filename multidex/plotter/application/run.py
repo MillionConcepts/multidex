@@ -121,7 +121,7 @@ def initialize_cache_values(cset, spec_model, use_cached_dfs):
     }
     dkwjson = json.dumps(default_dkwargs)
     if use_cached_dfs is True:
-        data_df, metadata_df = maybe_unpickle_dfs(
+        data_df, metadata_df, tokens = maybe_unpickle_preprocessed(
             cset, default_dkwargs, dkwjson, spec_model
         )
     else:
@@ -131,27 +131,29 @@ def initialize_cache_values(cset, spec_model, use_cached_dfs):
         )
         print("preprocessing metadata...", end="", flush=True)
         metadata_df = build_metadata_df(spec_model)
+        print("tokenizing text fields...", end="", flush=True)
+        tokens = make_tokens(metadata_df)
         cset("dfcache_dir", None)
     print("setting up app cache...", end="", flush=True)
     cset("data_df", data_df)
     cset(f"data_df_{dkwjson}", data_df)
     cset("metadata_df", metadata_df)
+    cset("tokens", tokens)
     cset(
         "palette_memory",
         instrument_settings(spec_model.instrument)["palette_memory"]
     )
-    cset("tokens", make_tokens(metadata_df))
     cset("scale_to", "none")
     cset("average_filters", False)
 
 
-def maybe_unpickle_dfs(cset, default_dkwargs, dkwjson, spec_model):
+def maybe_unpickle_preprocessed(cset, default_dkwargs, dkwjson, spec_model):
     cache_dir = (MULTIDEX_ROOT.parent / ".cache").absolute()
     dbf = django.conf.settings.DATABASES[spec_model.instrument]["NAME"]
     dfcache_dir = cache_dir / md5sum(dbf)
     dfcache_dir.mkdir(parents=True, exist_ok=True)
     cset("dfcache_dir", dfcache_dir)
-    data_df, metadata_df = None, None
+    data_df, metadata_df, tokens = None, None, None
     if (dfp := dfcache_dir / f"data_df_{dkwjson}.pkl").exists():
         with dfp.open("rb") as stream:
             try:
@@ -159,12 +161,18 @@ def maybe_unpickle_dfs(cset, default_dkwargs, dkwjson, spec_model):
                 print("loaded preprocessed data...", end="", flush=True)
             except UnpicklingError:
                 pass
-    metadata_df = None
     if (mdfp := dfcache_dir / f"metadata_df.pkl").exists():
         with mdfp.open("rb") as stream:
             try:
                 metadata_df = pickle.load(stream)
                 print("loaded preprocessed metadata...", end="", flush=True)
+            except pickle.UnpicklingError:
+                pass
+    if (tokp := dfcache_dir / f"tokens.pkl").exists():
+        with tokp.open("rb") as stream:
+            try:
+                tokens = pickle.load(stream)
+                print("loaded preprocessed tokens...", end="", flush=True)
             except pickle.UnpicklingError:
                 pass
     if data_df is None:
@@ -179,7 +187,12 @@ def maybe_unpickle_dfs(cset, default_dkwargs, dkwjson, spec_model):
         metadata_df = build_metadata_df(spec_model)
         with mdfp.open("wb") as stream:
             pickle.dump(metadata_df, stream)
-    return data_df, metadata_df
+    if tokens is None:
+        print("tokenizing text fields...", end="", flush=True)
+        tokens = make_tokens(metadata_df)
+        with tokp.open("wb") as stream:
+            pickle.dump(tokens, stream)
+    return data_df, metadata_df, tokens
 
 
 def build_metadata_df(spec_model):
