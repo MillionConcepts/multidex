@@ -1,7 +1,9 @@
 from inspect import getmembers
 import sys
 
-from multidex.multidex_utils import fetch_css_variables, patch_settings_from_module
+from multidex.multidex_utils import (
+    fetch_css_variables, patch_settings_from_module
+)
 # noinspection PyUnresolvedReferences
 import multidex.plotter.config.user_graph_style
 

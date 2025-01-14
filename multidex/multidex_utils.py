@@ -4,12 +4,14 @@ import datetime as dt
 import json
 import re
 import sys
+from hashlib import md5
 from collections import defaultdict
 from functools import partial, reduce
 from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
-from string import punctuation, whitespace
+from string import whitespace, punctuation
+from types import MappingProxyType as MPt
 from typing import (
     Callable,
     Iterable,
@@ -19,17 +21,17 @@ from typing import (
     Union,
     Optional,
     Sequence,
+    MutableMapping,
 )
 
-from toolz import merge, isiterable
-from cytoolz import curry, keyfilter
+from cytoolz import curry, isiterable, keyfilter, merge
 import dash
 from dash import html
 from dash.dependencies import Input, Output
+from dustgoggles.structures import dig_and_edit
 import Levenshtein as lev
 import numpy as np
 import pandas as pd
-from toolz import merge
 
 if TYPE_CHECKING:
     from dash.development.base_component import Component
@@ -119,8 +121,8 @@ def none_to_quote_unquote_none(
     return de_noned_list
 
 
-def arbitrarily_hash_strings(strings: Iterable[str]) -> dict:
-    unique_string_values = sorted(list(set(strings)), reverse=True)
+def hash_strings(strings: Iterable[str], key) -> dict:
+    unique_string_values = sorted(list(set(strings)), key=key, reverse=True)
     return {string: ix for ix, string in enumerate(unique_string_values)}
 
 
@@ -377,14 +379,6 @@ def partially_evaluate_from_parameters(
     assert add_1(2) == 3
     """
     return partial(func, **pickitems(parameters, get_parameters(func)))
-
-
-def listify(thing: Any) -> list:
-    # TODO: replace this with the dustgoggles version
-    """Always a list, for things that want lists"""
-    if isiterable(thing):
-        return list(thing)
-    return [thing]
 
 
 def none_to_empty(thing: Any) -> Any:
@@ -673,3 +667,21 @@ def loose_match(term, tokens, cutoff_distance=2):
                 matches += tokens[keys[i]]
     return pd.Index(matches)
 
+
+def freeze_nested_mapping(m: MutableMapping):
+    return MPt(
+        dig_and_edit(
+            m,
+            lambda _, v: isinstance(v, MutableMapping),
+            lambda _, v: MPt(v),
+            (MutableMapping,)
+        )
+    )
+
+
+def md5sum(path):
+    hasher = md5()
+    with open(path, 'rb') as f:
+        for c in iter(lambda: f.read(8192), b''):
+            hasher.update(c)
+    return hasher.hexdigest()

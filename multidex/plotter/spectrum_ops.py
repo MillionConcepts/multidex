@@ -2,7 +2,6 @@
 functions for calculations on spectral features.
 includes preprocessing and wrapping for marslab.spectops
 """
-
 import math
 from itertools import product
 from statistics import mean
@@ -15,7 +14,6 @@ from sklearn.decomposition import PCA
 
 from marslab import spectops
 from marslab.compat.xcam import INSTRUMENT_UNCERTAINTIES
-
 
 def d2r(
     degrees: Union[float, np.ndarray, pd.Series]
@@ -75,14 +73,11 @@ def compute_minmax_spec_error(filter_df, spec_model, spec_op, *filters):
     return nominal_value, (offsets.min(axis=1), offsets.max(axis=1))
 
 
-def data_df_from_queryset(
-    queryset,
-    r_star=True,
-    average_filters=False,
-    scale_to=None,
-):
-    filter_value_list = []
-    id_list = []
+from line_profiler import LineProfiler
+LP = LineProfiler()
+
+def _build_base_df(average_filters, queryset, scale_to):
+    filter_value_list, id_list = [], []
     for spectrum in queryset:
         mean_dict = {
             filt: value["mean"]
@@ -98,22 +93,29 @@ def data_df_from_queryset(
         }
         filter_value_list.append(mean_dict | err_dict)
         id_list.append(spectrum.id)
-    filter_df = pd.DataFrame(filter_value_list)
+
+    base_df = pd.DataFrame(filter_value_list)
+    base_df.index = id_list
+    return base_df
+
+
+# @LP
+def data_df_from_queryset(
+    queryset, r_star=True, average_filters=False, scale_to=None,
+):
+    filter_df = _build_base_df(average_filters, queryset, scale_to)
     # TODO: I'm not actually sure this should be happening here. Assess whether
-    #  it's preferable to have rules for this on models.
-    if r_star:
+    #   it's preferable to have rules for this on models.
+    if r_star is True:
         theta_i = np.cos(
             d2r(pd.Series([spec.incidence_angle for spec in queryset]))
         )
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
-    filter_df.index = id_list
-    filter_df["filter_avg"] = np.round(
-        filter_df[[c for c in filter_df.columns if "std" not in c]].mean(
-            axis=1
-        ),
-        5,
-    )
+    filter_avg = filter_df[
+        [c for c in filter_df.columns if "std" not in c]
+    ].mean(axis=1)
+    filter_df["filter_avg"] = np.round(filter_avg, 5)
     filter_df["std_avg"] = np.round(
         filter_df[[c for c in filter_df.columns if "std" in c]].mean(axis=1), 5
     )
@@ -137,6 +139,7 @@ def data_df_from_queryset(
         filter_df['r_rmad'] = None
         filter_df['l_rstd'] = None
         filter_df['r_rstd'] = None
+    # LP.print_stats()
     return filter_df
 
 

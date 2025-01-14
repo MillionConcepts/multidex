@@ -20,7 +20,6 @@ from dash.exceptions import PreventUpdate
 from dash import dcc
 import pandas as pd
 from dustgoggles.func import are_in
-from dustgoggles.pivot import split_on
 
 try:
     from marslab.compat.xcam import construct_field_ordering
@@ -40,6 +39,7 @@ from multidex.multidex_utils import (
     field_values,
     not_blank,
     seconds_since_beginning_of_day_to_iso,
+    integerize, re_get
 )
 from multidex.plotter.colors import generate_palette_options
 from multidex.plotter.components.graph_components import (
@@ -75,7 +75,7 @@ from multidex.plotter.graph import (
     halt_for_inappropriate_palette_type,
     branch_highlight_df,
     save_palette_memory,
-    cache_data_df,
+    data_df_update_handler,
 )
 from multidex.plotter.render_output.output_writer import save_main_scatter_plot
 
@@ -213,6 +213,7 @@ def update_data_df(
     scale_trigger_count,
     *,
     cset,
+    cget,
     spec_model,
 ):
     if dash.callback_context.triggered[0]["prop_id"] == ".":
@@ -222,7 +223,7 @@ def update_data_df(
     if scale_to != "none":
         scale_to = spec_model.virtual_filter_mapping[scale_to]
     r_star = bool(r_star)
-    cache_data_df(average_filters, cset, r_star, scale_to, spec_model)
+    data_df_update_handler(average_filters, cset, cget, r_star, scale_to, spec_model)
     if not scale_trigger_count:
         return 1
     return scale_trigger_count + 1
@@ -366,15 +367,15 @@ def update_main_graph(
         graph_df,
         highlight_ids,
         highlight_settings,
-        base_marker_size=marker_properties["marker"]["size"],
+        base_marker_size=marker_properties["size"],
     )
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
     # TODO: cleanly prevent these from unsetting autoscale on load
     if (
-            ("marker" in trigger)
-            or ("click" in trigger)
-            or ("highlight" in trigger and trigger != "highlight-trigger")
+        ("marker" in trigger)
+        or ("click" in trigger)
+        or ("highlight" in trigger and trigger != "highlight-trigger")
     ):
         layout = ctx.states["main-graph.figure"]["layout"]
         zoom = (layout["xaxis"]["range"], layout["yaxis"]["range"])
@@ -409,6 +410,11 @@ def update_main_graph(
     cset("graph_contents", graph_contents)
     # TODO: hacky!
     cset("loading_state", False)
+    ax_field_names = {}
+    for ax, s in zip(
+        ("x", "y", "marker"), (x_settings, y_settings, marker_settings)
+    ):
+        ax_field_names[ax] = re_get(s, "graph-option-")
     return (
         main_scatter_graph(
             graph_df,
@@ -421,12 +427,20 @@ def update_main_graph(
             graph_display_settings,
             axis_display_settings,
             label_ids,
+            spec_model.instrument,
+            ax_field_names,
             x_title,
             y_title,
             zoom,
         ),
         {},
     )
+
+
+BASE_PARAM_LOGIC_OPTIONS = [
+    {"label": "null", "value": "null"},
+    {"label": "flip", "value": "invert"}
+]
 
 
 def update_search_options(
@@ -521,8 +535,7 @@ def update_search_ids(
                 "invert": "invert" in option,
                 "is_free": "is_free" in option,
             }
-        )
-    # save search settings for application state save
+        )    # save search settings for application state save
     cset("search_parameters", parameters)
     cset("logical_quantifier", logical_quantifier)
     # make a new id list and trigger graph update
@@ -563,10 +576,9 @@ def change_calc_input_visibility(calc_type, *, spec_model):
 
 def toggle_search_input_visibility(field, options, *, spec_model):
     """
-    toggle between showing and hiding term drop down / number range boxes.
-    right now just returns simple dicts to the dash callback based on the
-    field's value type
-    (quant or qual) as appropriate.
+    toggle display of term dropdown / number / free search inputs.
+    just returns simple dicts to the dash callback based on the
+    field's value type (quant or qual) and free-ness as appropriate.
     """
     if not field:
         return [{"display": "none"}, {"display": "none"}, {"display": "none"}]

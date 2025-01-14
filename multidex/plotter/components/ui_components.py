@@ -1,6 +1,6 @@
 """factory functions for dash UI components"""
 import random
-from typing import Mapping, Optional, Iterable, Union, Sequence
+from typing import Mapping, Optional, Iterable, Union, Sequence, Literal
 
 import plotly.graph_objects as go
 from dash import dcc
@@ -660,7 +660,9 @@ def marker_size_div(marker_size) -> Div:
     )
 
 
-def marker_outline_div(outline_color) -> Div:
+def marker_outline_div(
+    outline_color, which: Literal["marker", "highlight"] = "marker"
+) -> Div:
     return html.Div(
         style={
             "display": "flex",
@@ -670,10 +672,10 @@ def marker_outline_div(outline_color) -> Div:
             html.Label(
                 className="info-text",
                 children=["outline"],
-                htmlFor="marker-outline-radio",
+                htmlFor=f"{which}-outline-radio",
             ),
             dcc.RadioItems(
-                id="marker-outline-radio",
+                id=f"{which}-outline-radio",
                 className="radio-items",
                 options=[
                     {"label": "off", "value": "off"},
@@ -795,9 +797,10 @@ def highlight_size_div(highlight_size: str) -> Div:
     )
 
 
-def highlight_color_symbol_div(color, symbol) -> html.Div:
+def highlight_color_symbol_div(color, symbol, outline_color) -> html.Div:
     return html.Div(
         children=[
+            marker_outline_div(outline_color, "highlight"),
             html.Label(
                 children=["highlight color"],
                 htmlFor="highlight-color-drop",
@@ -961,6 +964,9 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
     symbol = settings["highlight-symbol-drop.value"]
     color = settings["highlight-color-drop.value"]
     opacity = int(settings.get('highlight-opacity-input.value', 100))
+    outline_color = settings.get(
+        "highlight-outline-radio.value", "rgba(0, 0, 0, 1)"
+    )
     return html.Div(
         children=[
             html.Div(
@@ -989,7 +995,7 @@ def highlight_controls_div(settings: Mapping) -> html.Div:
                 ],
             ),
             highlight_size_opacity_div(size, opacity),
-            highlight_color_symbol_div(color, symbol)
+            highlight_color_symbol_div(color, symbol, outline_color)
         ],
         style={"display": "flex", "flexDirection": "row"},
     )

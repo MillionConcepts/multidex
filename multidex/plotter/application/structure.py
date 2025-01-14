@@ -50,6 +50,7 @@ MARKER_INPUTS = [
 
 HIGHLIGHT_INPUTS = [
     Input("highlight-toggle", "value"),
+    Input("highlight-outline-radio", "value"),
     Input("highlight-size-radio", "value"),
     Input("highlight-symbol-drop", "value"),
     Input("highlight-color-drop", "value"),

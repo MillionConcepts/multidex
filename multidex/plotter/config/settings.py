@@ -23,6 +23,7 @@ SETTINGS = {
     "palette-name-drop.value": "Bold",
     "palette-type-drop.value": "qualitative",
     "marker-outline-radio.value": "rgba(0,0,0,1)",
+    "highlight-outline-radio.value": "rgba(0,0,0,1)",
     "marker-size-radio.value": 11,
     "plot_bgcolor": css_variables["dark-tint-0"],
     "showgrid": True,

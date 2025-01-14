@@ -4,7 +4,11 @@ within plotly-dash objects. this module is _separate_ from app structure
 definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
+import json
 import os
+import pickle
+
+from _testcapi import INT_MAX
 from ast import literal_eval
 from collections.abc import Iterable
 from copy import deepcopy
@@ -13,26 +17,27 @@ import datetime as dt
 from functools import reduce
 from itertools import chain, cycle
 from operator import or_
-from typing import TYPE_CHECKING, Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, TYPE_CHECKING
 
 from dash import html
 from dash.exceptions import PreventUpdate
 from dustgoggles.pivot import split_on
 import numpy as np
 import pandas as pd
+from dustgoggles.structures import listify
 from plotly import graph_objects as go
 
 from multidex.multidex_utils import (
     keygrab,
     not_blank,
     seconds_since_beginning_of_day,
-    arbitrarily_hash_strings,
+    hash_strings,
     none_to_quote_unquote_none,
     df_multiple_field_search,
     re_get,
     djget,
     insert_wavelengths_into_text,
-    model_metadata_df, 
+    model_metadata_df,
     get_verbose_name,
 )
 from multidex.plotter import spectrum_ops
@@ -49,6 +54,7 @@ from multidex.plotter.reduction import (
 from multidex.plotter.spectrum_ops import data_df_from_queryset
 from multidex.plotter.config.graph_style import COLORBAR_SETTINGS
 from multidex.plotter.types import SpectrumModel, SpectrumModelInstance
+from multidex.plotter.components.graph_components import get_ordering
 
 if TYPE_CHECKING:
     from multidex.plotter.models import ZSpec, MSpec
@@ -181,7 +187,7 @@ def perform_decomposition(
         props["value"],
         str(component_ix + 1),
         str(round(explained_variance * 100, 2)),
-    )
+    ).title()
     return component, title, eigenvector_df
 
 
@@ -191,7 +197,12 @@ def perform_spectrum_op(
     # we assume here that 'methods' all take a spectrum's filter names
     # as arguments, and have arguments in an order corresponding to
     # the inputs. also drop precalculated perperties -- a bit kludgey.
-    allowable = list(chain(*[(f, f"{f}_std") for f in spec_model.filters]))
+    allowable = [
+        (f, f"{f}_std")
+        for f in tuple(spec_model.filters.keys())
+        + tuple(spec_model.canonical_averaged_filters.keys())
+    ]
+    allowable = list(chain(*allowable))
     queryset_df = (
         filter_df.loc[id_list]
         .drop([c for c in filter_df if c not in allowable], axis=1)
@@ -204,7 +215,7 @@ def perform_spectrum_op(
     spectrum_op = getattr(spectrum_ops, props["value"])
     base_title = props["value"] + " " + str(" ".join(filt_args))
     # TODO, unfortunately: this probably needs more fiddly rules
-    title = insert_wavelengths_into_text(base_title, spec_model)
+    title = insert_wavelengths_into_text(base_title.title(), spec_model)
     if get_errors == "none":
         get_errors = False
     try:
@@ -288,8 +299,15 @@ def make_axis(
             props,
             get_errors,
         )
-    value_series = metadata_df.loc[id_list][props["value"]]
-    return value_series.values, None, get_verbose_name(axis_option, spec_model)
+    if props.get('value_type') != 'quant':
+        value_series = metadata_df.loc[
+            id_list, props["value"]
+        ].astype(str).str.title().values
+    else:
+        value_series = metadata_df.loc[id_list, props["value"]].values
+    return (
+        value_series, None, get_verbose_name(axis_option, spec_model).title()
+    )
 
 
 def _decompose_for_axis(
@@ -330,6 +348,12 @@ def get_axis_option_props(settings, spec_model):
     props = keygrab(spec_model.graphable_properties(), "value", axis_option)
     return axis_option, props
 
+
+def _maybeindex(x, seq):
+    try:
+        return -seq.index(x)
+    except ValueError:
+        return INT_MAX
 
 # TODO: this is sloppy but cleanup would be better after everything's
 #  implemented...probably...it would really be better to do this in components
@@ -376,12 +400,12 @@ def make_markers(
     elif props["type"] == "non_filter_computed":
         property_list, title = (
             metadata_df.loc[id_list][props["value"]].values,
-            props["label"]
+            props["label"].title()
         )
     else:
         property_list, title = (
             metadata_df.loc[id_list][props["value"]].values,
-            get_verbose_name(props["value"], spec_model),
+            get_verbose_name(props["value"], spec_model).title(),
         )
     palette_type = get_scale_type(re_get(settings, "palette-name-drop.value"))
     if palette_type == "solid":
@@ -393,14 +417,20 @@ def make_markers(
         colorbar_dict = COLORBAR_SETTINGS.copy() | {"title_text": title}
         colormap = re_get(settings, "palette-name-drop.value")
         if props["value_type"] == "qual":
-            property_list = none_to_quote_unquote_none(property_list)
-            string_hash = arbitrarily_hash_strings(property_list)
+            property_list = tuple(
+                map(str.title, none_to_quote_unquote_none(property_list))
+            )
+            carr = get_ordering(
+                props["value"], spec_model.instrument
+            ).get("categoryarray")
+            key = None if carr is None else lambda x: _maybeindex(x, carr)
+            string_hash = hash_strings(property_list, key)
             # TODO: compute this one step later so that we can avoid
             #  including entirely-highlighted things in colorbar
             color = [string_hash[prop] for prop in property_list]
             colorbar_dict |= {
                 "tickvals": list(string_hash.values()),
-                "ticktext": list(string_hash.keys()),
+                "ticktext": list(map(str.title, string_hash.keys())),
             }
             if palette_type == "qualitative":
                 # only do this for "qualitative" scales to trick plotly...
@@ -433,7 +463,7 @@ def make_markers(
         size = [size for _ in id_list]
         outline = {
             "color": re_get(settings, "outline-radio.value"),
-            "width": 5,
+            "width": 1,
         }
 
     # set marker symbol
@@ -442,18 +472,16 @@ def make_markers(
     opacity = settings['marker-opacity-input.value']
     if opacity is None:
         opacity = 100
-    marker_property_dict = {
-        "marker": {
-            "size": size,
-            "opacity": opacity / 100,
-            "symbol": symbol,
-            "coloraxis": "coloraxis1",
-        },
+    marker_property_dict ={
+        "size": size,
+        "opacity": opacity / 100,
+        "symbol": symbol,
+        "coloraxis": "coloraxis1",
         "line": outline,
     }
     # colorbar = None causes plotly to draw undesirable fake ticks
     if colorbar is not None:
-        # marker_property_dict["marker"]["colorbar"] = colorbar
+        # marker_property_dict["colorbar"] = colorbar
         coloraxis["colorbar"] = colorbar
     return marker_property_dict, color, coloraxis, props["value_type"]
 
@@ -689,13 +717,12 @@ def load_state_into_application(search_file, spec_model, cget, cset):
     # TODO: should really rectify types across cache, component, and loaded
     #  values -- although maybe this _is_ the load -> cache conversion step,
     #  which should just be siloed and made explicit?
-    average_filters = settings["average_filters"] == "True"
-    r_star = settings["r_star"] == "True"
-    cache_data_df(
+    data_df_update_handler(
         spec_model=spec_model,
         cset=cset,
-        average_filters=average_filters,
-        r_star=r_star,
+        cget=cget,
+        average_filters=settings["average_filters"] == "True",
+        r_star=settings["r_star"] == "True",
         scale_to=settings["scale_to"],
     )
     if settings["highlight_parameters"] is not None:
@@ -872,28 +899,47 @@ def explicitly_set_graph_bounds(ctx):
     return graph, {}
 
 
-def assemble_highlight_marker_dict(highlight_settings, base_marker_size):
+def assemble_highlight_marker_dict(
+    highlight_settings, base_marker_size, highlight_ids
+):
     highlight_marker_dict = {}
     # iterate over values of all highlight UI elements, interpreting them as
     # marker values legible to go.Scatter & its relatives
     for prop, setting_input in zip(
-        ("color", "size", "symbol", "opacity"),
-        ("color-drop", "size-radio", "symbol-drop", "opacity-input"),
+        ("color", "size", "symbol", "outline", "opacity"),
+        (
+            "color-drop",
+            "size-radio",
+            "symbol-drop",
+            "outline-radio",
+            "opacity-input"
+        ),
     ):
         setting = highlight_settings[f"highlight-{setting_input}.value"]
         if setting == "none":
             continue
+        elif prop == "outline" and setting == "off":
+            prop, setting = "line", {}
+        elif prop == "outline":
+            prop, setting = "line", {"color": setting, "width": 1}
         elif prop == "size":
-            # highlight size increase is relative, not absolute;
-            # base_marker_size can be either int or list[int] --
-            # need to retain its type to retain how outline works
-            if isinstance(base_marker_size, list):
-                setting = [setting * value for value in base_marker_size]
+            # highlight size increase is relative, not absolute, and
+            # base_marker_size can be either int or list[int] -- will be
+            # list[int] if outline for the primary graph is on and int if
+            # outline is off. we need to follow the same typing rules here
+            # depending on the highlight outline setting (or lack thereof).
+            base_size = listify(base_marker_size)[0]
+            hout = highlight_settings.get("highlight-outline-radio.value")
+            if hout is None and isinstance(base_marker_size, int):
+                setting = setting * base_size
+            elif hout is None:
+                setting = [setting * base_size for _ in highlight_ids]
+            elif hout == "off":
+                setting = setting * base_size
             else:
-                setting = setting * base_marker_size
+                setting = [setting * base_size for _ in highlight_ids]
         elif prop == "opacity":
-            setting = 100 if setting is None else setting
-            setting /= 100
+            setting = 1 if setting is None else setting / 100
         highlight_marker_dict[prop] = setting
     return highlight_marker_dict
 
@@ -915,7 +961,7 @@ def branch_highlight_df(
         graph_df, graph_df["customdata"].isin(highlight_ids)
     )
     highlight_marker_dict = assemble_highlight_marker_dict(
-        highlight_settings, base_marker_size
+        highlight_settings, base_marker_size, highlight_ids
     )
     return graph_df, highlight_df, highlight_marker_dict
 
@@ -943,17 +989,39 @@ def dump_model_table(
     output.to_csv(filename, index=None)
 
 
-def cache_data_df(average_filters, cset, r_star, scale_to, spec_model):
-    cset(
-        "data_df",
-        data_df_from_queryset(
-            spec_model.objects.all(),
-            average_filters=average_filters,
-            scale_to=scale_to,
-            r_star=r_star,
-        ),
-    )
-    if scale_to != "none":
+def load_and_save_data_df(cset, cget, dkwargs, spec_model):
+    kwjson = json.dumps(dkwargs)
+    if (data_df := cget(f"data_df_{kwjson}")) is not None:
+        cset("data_df", data_df)
+        return data_df
+    # dfcache_dir should be None in debug mode and only debug mode
+    if (dfcache_dir := cget("dfcache_dir")) is not None:
+        if (dfp := dfcache_dir / f"data_df_{kwjson}.pkl").exists():
+            with dfp.open("rb") as stream:
+                try:
+                    data_df = pickle.load(stream)
+                except pickle.UnpicklingError:
+                    pass
+    if data_df is None:
+        data_df = data_df_from_queryset(spec_model.objects.all(), **dkwargs)
+        cset(f"data_df_{kwjson}", data_df)
+        with (dfcache_dir / f"data_df_{kwjson}.pkl").open("wb") as stream:
+            pickle.dump(data_df, stream)
+    cset("data_df", data_df)
+
+
+def data_df_update_handler(
+    average_filters, cset, cget, r_star, scale_to, spec_model
+):
+    if isinstance(scale_to, str) and scale_to.lower() == "none":
+        scale_to = None
+    dkwargs = {
+        "r_star": r_star,
+        "scale_to": scale_to,
+        "average_filters": average_filters
+    }
+    load_and_save_data_df(cset, cget, dkwargs, spec_model)
+    if scale_to is not None:
         scale_to_string = "_".join(scale_to)
     else:
         scale_to_string = scale_to
