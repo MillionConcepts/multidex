@@ -989,7 +989,9 @@ def load_and_save_data_df(cset, cget, dkwargs, spec_model):
                 except pickle.UnpicklingError:
                     pass
     if data_df is None:
-        data_df = data_df_from_queryset(spec_model.objects.all(), **dkwargs)
+        data_df = data_df_from_queryset(
+            spec_model.objects.all(), spec_model, **dkwargs
+        )
         cset(f"data_df_{kwjson}", data_df)
         with (dfcache_dir / f"data_df_{kwjson}.pkl").open("wb") as stream:
             pickle.dump(data_df, stream)
