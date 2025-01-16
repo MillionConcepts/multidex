@@ -37,7 +37,7 @@ from multidex.multidex_utils import (
     djget,
     insert_wavelengths_into_text,
     model_metadata_df,
-    get_verbose_name,
+    get_verbose_name, nt_sani,
 )
 from multidex.plotter import spectrum_ops
 from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type
@@ -976,7 +976,7 @@ def dump_model_table(
 
 
 def load_and_save_data_df(cset, cget, dkwargs, spec_model):
-    kwjson = json.dumps(dkwargs)
+    kwjson = nt_sani(json.dumps(dkwargs))
     if (data_df := cget(f"data_df_{kwjson}")) is not None:
         cset("data_df", data_df)
         return data_df

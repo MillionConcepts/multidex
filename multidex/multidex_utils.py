@@ -10,7 +10,7 @@ from functools import partial, reduce
 from inspect import signature, getmembers
 from operator import and_, gt, ge, lt, le, contains
 from pathlib import Path
-from string import whitespace, punctuation
+from string import whitespace, punctuation, ascii_letters, digits
 from types import MappingProxyType as MPt
 from typing import (
     Callable,
@@ -677,6 +677,14 @@ def freeze_nested_mapping(m: MutableMapping):
             (MutableMapping,)
         )
     )
+
+
+LEGAL_WINDOWS_FN_CHARS = sum((ascii_letters, digits, "_-_()"))
+
+
+def nt_sani(fn: str):
+    """Replace expected but illegal-in-windows characters with underscores"""
+    return sum(f if f in LEGAL_WINDOWS_FN_CHARS else "_" for f in fn)
 
 
 def md5sum(path, mixin=None):

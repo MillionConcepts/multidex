@@ -4,6 +4,7 @@ import random
 import shutil
 from pickle import UnpicklingError
 import warnings
+from string import ascii_lowercase
 
 import django.conf
 import flask
@@ -14,7 +15,7 @@ from flask_caching.backends import FileSystemCache
 
 from multidex._pathref import MULTIDEX_ROOT
 from multidex.multidex_utils import (
-    qlist, model_metadata_df, make_tokens, md5sum
+    qlist, model_metadata_df, make_tokens, md5sum, nt_sani
 )
 from multidex.notetaking import Notepad, Paper
 from multidex.plotter.application.helpers import (
@@ -129,7 +130,7 @@ def initialize_cache_values(cset, spec_model, use_cached_dfs):
     default_dkwargs = {
         "r_star": True, "scale_to": None, "average_filters": False
     }
-    dkwjson = json.dumps(default_dkwargs)
+    dkwjson = nt_sani(json.dumps(default_dkwargs))
     if use_cached_dfs is True:
         data_df, metadata_df, tokens = maybe_unpickle_preprocessed(
             cset, default_dkwargs, dkwjson, spec_model
