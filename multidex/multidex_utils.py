@@ -679,12 +679,12 @@ def freeze_nested_mapping(m: MutableMapping):
     )
 
 
-LEGAL_WINDOWS_FN_CHARS = sum((ascii_letters, digits, "_-_()"))
+LEGAL_WINDOWS_FN_CHARS = ascii_letters + digits + "_-_()"
 
 
 def nt_sani(fn: str):
     """Replace expected but illegal-in-windows characters with underscores"""
-    return sum(f if f in LEGAL_WINDOWS_FN_CHARS else "_" for f in fn)
+    return "".join(f if f in LEGAL_WINDOWS_FN_CHARS else "_" for f in fn)
 
 
 def md5sum(path, mixin=None):
