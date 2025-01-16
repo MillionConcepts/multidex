@@ -14,7 +14,7 @@ from flask_caching.backends import FileSystemCache
 
 from multidex._pathref import MULTIDEX_ROOT
 from multidex.multidex_utils import (
-    qlist, model_metadata_df, make_tokens, md5sum
+    qlist, model_metadata_df, make_tokens, md5sum, nt_sani
 )
 from multidex.notetaking import Notepad, Paper
 from multidex.plotter.application.helpers import (
@@ -129,7 +129,7 @@ def initialize_cache_values(cset, spec_model, use_cached_dfs):
     default_dkwargs = {
         "r_star": True, "scale_to": None, "average_filters": False
     }
-    dkwjson = json.dumps(default_dkwargs)
+    dkwjson = nt_sani(json.dumps(default_dkwargs))
     if use_cached_dfs is True:
         data_df, metadata_df, tokens = maybe_unpickle_preprocessed(
             cset, default_dkwargs, dkwjson, spec_model
@@ -137,7 +137,7 @@ def initialize_cache_values(cset, spec_model, use_cached_dfs):
     else:
         print("preprocessing data...", end="", flush=True)
         data_df = data_df_from_queryset(
-            spec_model.objects.all(), **default_dkwargs
+            spec_model.objects.all(), spec_model, **default_dkwargs
         )
         print("preprocessing metadata...", end="", flush=True)
         metadata_df = build_metadata_df(spec_model)
@@ -196,7 +196,7 @@ def maybe_unpickle_preprocessed(cset, default_dkwargs, dkwjson, spec_model):
     if data_df is None:
         print("preprocessing data...", end="", flush=True)
         data_df = data_df_from_queryset(
-            spec_model.objects.all(), **default_dkwargs
+            spec_model.objects.all(), spec_model, **default_dkwargs
         )
         with dfp.open("wb") as stream:
             pickle.dump(data_df, stream)

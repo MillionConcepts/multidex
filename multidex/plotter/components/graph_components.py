@@ -202,7 +202,7 @@ def spectrum_line_graph(
     roi_color.
     """
     spectrum_data = spectrum.filter_values(
-        scale_to=scale_to, average_filters=average_filters
+        scale_to=scale_to, average_filters=average_filters, show_bayers=False
     )
     x_axis = [filt_value["wave"] for filt_value in spectrum_data.values()]
     y_axis = [filt_value["mean"] for filt_value in spectrum_data.values()]

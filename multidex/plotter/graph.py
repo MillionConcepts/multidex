@@ -39,6 +39,7 @@ from multidex.multidex_utils import (
     insert_wavelengths_into_text,
     model_metadata_df,
     get_verbose_name,
+    nt_sani,
 )
 from multidex.plotter import spectrum_ops
 from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type
@@ -978,7 +979,7 @@ def dump_model_table(
 
 
 def load_and_save_data_df(cset, cget, dkwargs, spec_model):
-    kwjson = json.dumps(dkwargs)
+    kwjson = nt_sani(json.dumps(dkwargs))
     if (data_df := cget(f"data_df_{kwjson}")) is not None:
         cset("data_df", data_df)
         return data_df
@@ -991,7 +992,9 @@ def load_and_save_data_df(cset, cget, dkwargs, spec_model):
                 except pickle.UnpicklingError:
                     pass
     if data_df is None:
-        data_df = data_df_from_queryset(spec_model.objects.all(), **dkwargs)
+        data_df = data_df_from_queryset(
+            spec_model.objects.all(), spec_model, **dkwargs
+        )
         cset(f"data_df_{kwjson}", data_df)
         with (dfcache_dir / f"data_df_{kwjson}.pkl").open("wb") as stream:
             pickle.dump(data_df, stream)

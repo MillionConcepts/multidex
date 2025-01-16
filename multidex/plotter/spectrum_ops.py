@@ -95,9 +95,12 @@ def _build_base_df(average_filters, queryset, scale_to):
 
 
 def data_df_from_queryset(
-    queryset, r_star=True, average_filters=False, scale_to=None,
+    queryset, spec_model, r_star=True, average_filters=False, scale_to=None
 ):
     filter_df = _build_base_df(average_filters, queryset, scale_to)
+    filter_df = pd.concat(
+        [filter_df, spikiness_metrics(filter_df, spec_model)], axis=1
+    )
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #   it's preferable to have rules for this on models.
     if r_star is True:
@@ -134,6 +137,34 @@ def data_df_from_queryset(
         filter_df['l_rstd'] = None
         filter_df['r_rstd'] = None
     return filter_df
+
+
+def spikiness_metrics(spike_df: pd.DataFrame, spec_model):
+    spike_df = spike_df.copy()
+    if "permissibly_explanatory_bandpasses" in dir(spec_model):
+        spike_df = spike_df[
+            spec_model().permissibly_explanatory_bandpasses(spike_df.columns)
+        ]
+    spike_df = spike_df[[f for f in spike_df.columns if "_std" not in f]]
+    scols = sorted(
+        spike_df.columns, key=lambda f: spec_model().all_filter_waves()[f]
+    )
+    sdiff = spike_df[scols].diff(axis=1).replace(np.nan, 0).iloc[:, 1:]
+    srev = (np.sign(sdiff).diff(axis=1).abs() == 2) + 1
+    smdiff = abs(np.nanmean(sdiff, axis=0)) / np.sqrt(np.nanmean(spike_df, axis=0)[1:])
+    wasd = (sdiff.abs() * srev).values
+    wrasd = wasd / smdiff
+    maskframe = np.ma.masked_invalid(spike_df[scols].values)
+    return pd.DataFrame(
+        {
+            'max_wrasd': wrasd.max(axis=1),
+            'mean_wrasd': wrasd.mean(axis=1),
+            'max_wasd': wasd.max(axis=1),
+            'mean_wasd': wasd.mean(axis=1),
+            'p2p': np.ptp(maskframe, axis=1) / np.max(maskframe, axis=1)
+        },
+        index=spike_df.index
+    )
 
 
 def intervening(filter_df, spec_model, wave_1, wave_2, errors=False):
