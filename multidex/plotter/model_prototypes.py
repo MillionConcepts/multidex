@@ -167,6 +167,7 @@ class RoverSpectrum(models.Model):
         """
         spectrum = {
             filt: getattr(self, filt.lower()) for filt in self.filters.keys()
+            if not filt[-1] in ("R", "G", "B")
         }
         spectrum |= {
             filt + "_STD": getattr(self, filt.lower() + "_std")
