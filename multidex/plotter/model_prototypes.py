@@ -159,6 +159,7 @@ class RoverSpectrum(models.Model):
         self,
         scale_to: Optional[Sequence[str]] = None,
         average_filters: bool = False,
+        show_bayers: bool = True
     ) -> dict[str, dict]:
         """
         return dictionary of filter values, optionally scaled and merged
@@ -167,8 +168,12 @@ class RoverSpectrum(models.Model):
         """
         spectrum = {
             filt: getattr(self, filt.lower()) for filt in self.filters.keys()
-            if not filt[-1] in ("R", "G", "B")
         }
+        if show_bayers is False:
+            spectrum = {
+                k: v for k, v in spectrum.items()
+                if not k[-1] in ("R", "G", "B")
+            }
         spectrum |= {
             filt + "_STD": getattr(self, filt.lower() + "_std")
             for filt in self.filters.keys()
