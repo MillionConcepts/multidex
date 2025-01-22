@@ -804,6 +804,7 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
         ),
         fields=output_df.columns,
     )
+    ordering = list(filter(lambda f: f in output_df.columns, ordering))
     output_df = integerize(output_df[ordering])
     filename_base = (
         f"{spec_model.instrument.lower()}-"
