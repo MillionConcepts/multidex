@@ -582,7 +582,7 @@ def rearrange_band_depth_for_title(text: str) -> str:
 
 
 def insert_wavelengths_into_text(text: str, spec_model: "Model") -> str:
-    if "depth" in text:
+    if "depth" in text.lower():
         text = rearrange_band_depth_for_title(text)
     for filt, wavelength in (
         spec_model.filters | spec_model.virtual_filters
