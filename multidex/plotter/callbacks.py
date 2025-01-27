@@ -188,10 +188,10 @@ def update_spectrum_graph(
     *,
     spec_model,
 ):
-    if (
-        scale_to != "none" and scale_to is not None
-    ):  # TODO scale_to is None, not "none"
+    if scale_to not in (None, "none", "None"):
         scale_to = spec_model.virtual_filter_mapping[scale_to]
+    else:
+        scale_to = None
     average_filters = True if average_input_value == ["average"] else False
     if not event_data:
         raise PreventUpdate
@@ -220,10 +220,14 @@ def update_data_df(
         raise PreventUpdate
     # TODO: obnoxious component / loading compatibility issue
     average_filters = bool(average_filters)
-    if scale_to != "none":
+    if scale_to not in (None, "none", "None"):
         scale_to = spec_model.virtual_filter_mapping[scale_to]
+    else:
+        scale_to = None
     r_star = bool(r_star)
-    data_df_update_handler(average_filters, cset, cget, r_star, scale_to, spec_model)
+    data_df_update_handler(
+        average_filters, cset, cget, r_star, scale_to, spec_model
+    )
     if not scale_trigger_count:
         return 1
     return scale_trigger_count + 1
