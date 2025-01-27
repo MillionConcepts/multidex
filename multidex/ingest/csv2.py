@@ -9,7 +9,7 @@ import pandas as pd
 
 from multidex.multidex_utils import modeldict
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 
