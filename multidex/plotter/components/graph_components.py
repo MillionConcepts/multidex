@@ -24,13 +24,18 @@ def add_regression(fig: go.Figure, unsplit_graph_df: pd.DataFrame):
     try:
         reg = linregress(unsplit_graph_df["x"], unsplit_graph_df["y"])
         r_2, p = reg.rvalue ** 2, reg.pvalue
+        m, b = reg.slope, reg.intercept
         r_2_text = f"{r_2:.1e}" if r_2 < 0.01 else round(r_2, 2)
-        p_text = f"{p:.1e}" if p < 0.01 else round(p, 2)
+        if p < 1e-30:
+            p_text = "0"
+        else:
+            p_text = f"{p:.1e}" if p < 0.01 else round(p, 2)
+        m_text =  f"{m:.1e}" if abs(m) < 0.01 else round(m, 2)
+        b_text = f"{abs(b):.1e}" if abs(b) < 0.01 else round(abs(b), 2)
+        op_text = "-" if b < 0 else "+"
+        eqn_text = f"y = {m_text}x {op_text} {b_text}"
         xreg = [unsplit_graph_df["x"].min(), unsplit_graph_df["x"].max()]
-        yreg = [
-            xreg[0] * reg.slope + reg.intercept,
-            xreg[1] * reg.slope + reg.intercept
-        ]
+        yreg = [xreg[0] * m + b, xreg[1] * m + b]
     except ValueError as ve:
         if "all x values are identical" not in str(ve):
             raise
@@ -54,7 +59,7 @@ def add_regression(fig: go.Figure, unsplit_graph_df: pd.DataFrame):
         {
             "annotations": [
                 {
-                    "text": f"R^2: {r_2_text}; p: {p_text}",
+                    "text": f"{eqn_text}; R^2 = {r_2_text}; p = {p_text}",
                     "xref": "paper",
                     "yref": "paper",
                     "x": 0,
