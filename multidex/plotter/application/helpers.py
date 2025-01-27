@@ -11,7 +11,7 @@ from multidex.plotter.application.structure import (
     GRAPH_DISPLAY_INPUTS,
     STATIC_IMAGE_URL, HIGHLIGHT_INPUTS,
 )
-from plotter.application.structure import REGRESSION_LINE_INPUTS
+from multidex.plotter.application.structure import REGRESSION_LINE_INPUTS
 
 
 def register_everything(app, configured_functions):
