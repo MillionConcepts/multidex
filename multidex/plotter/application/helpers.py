@@ -11,6 +11,7 @@ from multidex.plotter.application.structure import (
     GRAPH_DISPLAY_INPUTS,
     STATIC_IMAGE_URL, HIGHLIGHT_INPUTS,
 )
+from plotter.application.structure import REGRESSION_LINE_INPUTS
 
 
 def register_everything(app, configured_functions):
@@ -73,6 +74,7 @@ def configure_callbacks(cget, cset, spec_model):
         "marker_inputs": MARKER_INPUTS,
         "highlight_inputs": HIGHLIGHT_INPUTS,
         "graph_display_inputs": GRAPH_DISPLAY_INPUTS,
+        "regression_line_inputs": REGRESSION_LINE_INPUTS,
         "cget": cget,
         "cset": cset,
         # django model containing our spectra.

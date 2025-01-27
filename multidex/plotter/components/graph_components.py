@@ -1,7 +1,7 @@
 """dash components that are graphs and associated helper functions"""
 
 from copy import deepcopy
-from typing import Mapping, Optional, MutableMapping
+from typing import Mapping, Optional
 
 import numpy as np
 import pandas as pd
@@ -18,12 +18,64 @@ from multidex.plotter.config.orderings import SPECIAL_ORDERINGS
 from multidex.plotter.spectrum_ops import d2r
 
 
+def add_regression(fig: go.Figure, unsplit_graph_df: pd.DataFrame):
+    from scipy.stats import linregress
+
+    try:
+        reg = linregress(unsplit_graph_df["x"], unsplit_graph_df["y"])
+        r_2, p = reg.rvalue ** 2, reg.pvalue
+        r_2_text = f"{r_2:.1e}" if r_2 < 0.01 else round(r_2, 2)
+        p_text = f"{p:.1e}" if p < 0.01 else round(p, 2)
+        xreg = [unsplit_graph_df["x"].min(), unsplit_graph_df["x"].max()]
+        yreg = [
+            xreg[0] * reg.slope + reg.intercept,
+            xreg[1] * reg.slope + reg.intercept
+        ]
+    except ValueError as ve:
+        if "all x values are identical" not in str(ve):
+            raise
+        return
+    except TypeError as te:
+        # TODO: check
+        return
+    fig.add_trace(
+        go.Scattergl(
+            x=xreg,
+            y=yreg,
+            line={"color": "black", "width": 4},
+            marker=None,
+            showlegend=False,
+            name="regression",
+            mode="lines"
+         )
+    )
+    # TODO, probably: make this configurable
+    fig.update_layout(
+        {
+            "annotations": [
+                {
+                    "text": f"R^2: {r_2_text}; p: {p_text}",
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0,
+                    "y": 0,
+                    "showarrow": False,
+                    "font": {"size": 28, "color": "black", "weight": 800},
+                    "bgcolor": "rgba(0, 0, 0, 0.2)"
+                }
+            ]
+        }
+    )
+    fig.update_traces(textposition="bottom center")
+
+
 def get_ordering(field: Mapping, instrument: str):
     if (omap := SPECIAL_ORDERINGS.get(instrument)) is None:
         return {'categoryorder': 'category ascending'}
     if (ordering := omap.get(field)) is None:
         return {'categoryorder': 'category ascending'}
     return {'categoryarray': ordering}
+
 
 def style_data(
     fig,
@@ -155,8 +207,7 @@ def main_scatter_graph(
             )
         )
     fig = draw_errors_on_figure(fig, errors)
-    # last-step canvas stuff: set bounds, gridline color, titles, etc.
-    spec_model_name = None
+    # last-step primary canvas stuff: set bounds, gridline color, titles, etc.
     style_data(
         fig,
         graph_display_settings,

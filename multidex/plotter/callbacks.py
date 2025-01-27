@@ -45,7 +45,7 @@ from multidex.plotter.colors import generate_palette_options
 from multidex.plotter.components.graph_components import (
     main_scatter_graph,
     spectrum_line_graph,
-    failed_scatter_graph,
+    failed_scatter_graph, add_regression,
 )
 from multidex.plotter.components.ui_components import parse_model_quant_entry
 from multidex.plotter.graph import (
@@ -242,6 +242,7 @@ def update_main_graph(
     marker_inputs,
     highlight_inputs,
     graph_display_inputs,
+    regression_line_inputs,
     cget,
     cset,
     spec_model,
@@ -280,6 +281,7 @@ def update_main_graph(
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
+    regression_settings = pickctx(ctx, regression_line_inputs)
     highlight_settings = pickctx(ctx, highlight_inputs)
     highlight_ids = cget("highlight_ids")
     halt_for_ineffective_highlight_toggle(ctx, highlight_settings)
@@ -392,6 +394,7 @@ def update_main_graph(
         "axis_display_settings",
         "get_errors",
         "bounds_string",
+        "regression_line_inputs"
     ):
         cset(parameter, locals()[parameter])
     # for concatenating with filter_df on export
@@ -415,26 +418,29 @@ def update_main_graph(
         ("x", "y", "marker"), (x_settings, y_settings, marker_settings)
     ):
         ax_field_names[ax] = re_get(s, "graph-option-")
-    return (
-        main_scatter_graph(
-            graph_df,
-            highlight_df,
-            errors,
-            marker_properties,
-            marker_axis_type,
-            coloraxis,
-            highlight_marker_dict,
-            graph_display_settings,
-            axis_display_settings,
-            label_ids,
-            spec_model.instrument,
-            ax_field_names,
-            x_title,
-            y_title,
-            zoom,
-        ),
-        {},
+    graph = main_scatter_graph(
+        graph_df,
+        highlight_df,
+        errors,
+        marker_properties,
+        marker_axis_type,
+        coloraxis,
+        highlight_marker_dict,
+        graph_display_settings,
+        axis_display_settings,
+        label_ids,
+        spec_model.instrument,
+        ax_field_names,
+        x_title,
+        y_title,
+        zoom,
     )
+    # draw regression line if requested
+    # TODO: hacky; basically here as a placeholder to include possible options.
+    #  do it more nicely when functionality is firmed up.
+    if len(regression_settings['main-graph-regression-check.value']) > 0:
+        add_regression(graph, graph_contents_df)
+    return graph, {}
 
 
 BASE_PARAM_LOGIC_OPTIONS = [

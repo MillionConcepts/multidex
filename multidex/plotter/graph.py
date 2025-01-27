@@ -777,6 +777,12 @@ def spectrum_from_graph_event(
     highlights a single graphed point (like clicking it or hovering on it),
     and returns the associated Spectrum object.
     """
+    try:
+        customdata  = event_data["points"][0]["customdata"]
+    except KeyError:
+        # this case should only happen for ancillary traces.
+        # TODO, maybe: do this a nicer way upstream
+        raise PreventUpdate
     # the graph's customdata property should contain numbers corresponding
     # to database pks of spectra of associated points.
     return djget(
