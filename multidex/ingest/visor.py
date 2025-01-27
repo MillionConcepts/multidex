@@ -15,7 +15,7 @@ from fs.osfs import OSFS
 
 from multidex.multidex_utils import directory_of
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.multidex.settings")
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 django.setup()
 

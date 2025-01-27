@@ -24,7 +24,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
-import multidex
+from multidex._pathref import MULTIDEX_ROOT
 # noinspection PyUnresolvedReferences
 from multidex.plotter import div0
 from multidex.plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
@@ -80,9 +80,7 @@ ASDF_STEM_PATTERN = re.compile(
 )
 
 
-THUMB_PATH = Path(
-    multidex.__file__
-).parent / "plotter/application/assets/browse/zcam/"
+THUMB_PATH = MULTIDEX_ROOT / "plotter/application/assets/browse/zcam/"
 
 ZSPEC_FIELD_NAMES = list(map(attrgetter("name"), ZSpec._meta.fields))
 
@@ -172,7 +170,7 @@ def match_obs_images(marslab_file, context_df):
 
 
 def save_thumb(filename, row):
-    print("writing " + filename)
+    print(f"writing {filename}")
     try:
         with open(filename, "wb") as file:
             file.write(row["buffer"].getbuffer())
@@ -192,7 +190,7 @@ def save_relevant_thumbs(context_df):
     procs = []
     pool = Pool(4)
     for _, row in to_save.iterrows():
-        filename = thumb_path + row["stem"] + "-" + row["eye"] + "-thumb.jpg"
+        filename = thumb_path / f"{row['stem']}-{row['eye']}-thumb.jpg"
         procs.append(pool.apply_async(save_thumb, (filename, row)))
     pool.close()
     pool.join()
