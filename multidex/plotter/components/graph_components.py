@@ -170,8 +170,8 @@ def main_scatter_graph(
     and metadata are filtered and formatted in callbacks.update_main_graph().
     """
     fig = go.Figure()
-    # the click-to-label annotations
-    draw_floating_labels(fig, graph_df, label_ids)
+    # # the click-to-label annotations
+    # draw_floating_labels(fig, graph_df, label_ids)
     # and the scattered points and their error bars
     # last-mile thing here to keep separate from highlight -- TODO: silly?
     marker_property_dict["color"] = graph_df["color"].values
@@ -192,7 +192,7 @@ def main_scatter_graph(
     )
 
     if highlight_df is not None:
-        draw_floating_labels(fig, highlight_df, label_ids)
+        # draw_floating_labels(fig, highlight_df, label_ids)
         full_marker_dict = dict(deepcopy(marker_property_dict))
         full_marker_dict = full_marker_dict | highlight_marker_dict
         if "color" not in highlight_marker_dict:

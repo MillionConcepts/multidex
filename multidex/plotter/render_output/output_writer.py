@@ -14,7 +14,10 @@ def apply_output_image_style(fig):
     fig.update_layout(**GRAPH_SETTINGS)
     fig.update_xaxes(**AXIS_SETTINGS)
     fig.update_yaxes(**AXIS_SETTINGS)
+    # adjust marker size
     for trace in fig.select_traces():
+        if trace.name == 'regression':
+            continue  # no markers to adjust!
         marker = trace.marker
         if isinstance(marker.size, int):
             marker_size = marker.size * SCATTER_POINT_SCALE_SETTING

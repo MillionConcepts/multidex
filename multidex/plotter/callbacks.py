@@ -21,6 +21,8 @@ from dash import dcc
 import pandas as pd
 from dustgoggles.func import are_in
 
+from plotter.components.graph_components import draw_floating_labels
+
 try:
     from marslab.compat.xcam import construct_field_ordering
 except ImportError:
@@ -444,6 +446,9 @@ def update_main_graph(
     #  do it more nicely when functionality is firmed up.
     if len(regression_settings['main-graph-regression-check.value']) > 0:
         add_regression(graph, graph_contents_df)
+    draw_floating_labels(graph, graph_df, label_ids)
+    if highlight_df is not None:
+        draw_floating_labels(graph, highlight_df, label_ids)
     return graph, {}
 
 
