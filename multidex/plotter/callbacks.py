@@ -21,7 +21,6 @@ from dash import dcc
 import pandas as pd
 from dustgoggles.func import are_in
 
-from plotter.components.graph_components import draw_floating_labels
 
 try:
     from marslab.compat.xcam import construct_field_ordering
@@ -45,9 +44,11 @@ from multidex.multidex_utils import (
 )
 from multidex.plotter.colors import generate_palette_options
 from multidex.plotter.components.graph_components import (
+    add_regression,
+    draw_floating_labels,
+    failed_scatter_graph,
     main_scatter_graph,
     spectrum_line_graph,
-    failed_scatter_graph, add_regression,
 )
 from multidex.plotter.components.ui_components import parse_model_quant_entry
 from multidex.plotter.graph import (
