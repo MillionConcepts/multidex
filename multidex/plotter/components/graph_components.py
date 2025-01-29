@@ -1,7 +1,7 @@
 """dash components that are graphs and associated helper functions"""
 
 from copy import deepcopy
-from typing import Mapping, Optional, MutableMapping
+from typing import Mapping, Optional
 
 import numpy as np
 import pandas as pd
