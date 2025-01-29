@@ -140,6 +140,7 @@ def truncate_id_list_for_missing_properties(
 
 def deframe(df_or_series):
     if isinstance(df_or_series, pd.DataFrame):
+        # TODO: this must be a bug, right?
         assert len(df_or_series.columns == 1)
         return df_or_series.iloc[:, 0]
     return df_or_series

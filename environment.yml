@@ -26,3 +26,7 @@ dependencies:
   - plotly
   - pytest
   - scikit-learn
+  - setuptools
+  - pip:
+      - choreographer>=0.99.6
+      - git+https://github.com/MillionConcepts/kaleido.git

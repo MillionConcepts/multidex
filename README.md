@@ -19,9 +19,6 @@ If you are affiliated with the Mars Science Laboratory or Mars 2020 missions and
 require access to MultiDEx files that contain confidential data,
 please contact the repository maintainers.
 
-### known issues
-* image export does not work on Windows. A fix for this is planned.
-
 ### licensing notes
 This code carries a BSD 3-Clause license. You can do nearly anything that 
 you want with it. _However_, **some data referenced by code in this 

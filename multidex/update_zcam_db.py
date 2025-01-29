@@ -23,10 +23,11 @@ from multidex.ingest.local_settings.zcam import (
     ASDF_CLIENT_SECRET,
     LOCAL_MSPEC_ROOT,
     DRIVE_MSPEC_ROOT,
-    MULTIDEX_ROOT,
     SHARED_DRIVE_ID,
     DRIVE_DB_FOLDER,
 )
+
+from multidex._pathref import MULTIDEX_ROOT
 
 OBS_TITLE_PATTERN = re.compile(
     r"(?P<SEQ_ID>zcam\d{5}) (?P<NAME>.*?) RSM (?P<RSM>\d+)"
@@ -154,7 +155,7 @@ def _investigate_drive_solfolder(solname, solfolder):
                 datafiles[k] = None
         datafile_frames.append(datafiles)
     if len(datafile_frames) == 0:
-        return []
+        return None
     datafile_frame = pd.concat(datafile_frames)
     datafile_frame['SOL'] = solname
     return datafile_frame
@@ -181,7 +182,9 @@ def index_drive_data_folders():
         done = [r for r in pool.results_ready().values() if r is True]
         log(f"{stamp()}: {len(done)}/{len(soldirs)} sols indexed")
     log(f"{stamp()}: {len(soldirs)}/{len(soldirs)} sols indexed")
-    solresults = pool.get()
+    # sol trees with no data folder descendants should return None, and this
+    # should not be treated as an error.
+    solresults = {k: v for k, v in pool.get().items() if v is not None}
     pool.terminate()
     exceptions = {
         sol: e for sol, e in solresults.items() if isinstance(e, Exception)
