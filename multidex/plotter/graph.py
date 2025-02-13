@@ -142,6 +142,7 @@ def truncate_id_list_for_missing_properties(
 
 def deframe(df_or_series):
     if isinstance(df_or_series, pd.DataFrame):
+        # TODO: this must be a bug, right?
         assert len(df_or_series.columns == 1)
         return df_or_series.iloc[:, 0]
     return df_or_series
@@ -780,6 +781,12 @@ def spectrum_from_graph_event(
     highlights a single graphed point (like clicking it or hovering on it),
     and returns the associated Spectrum object.
     """
+    try:
+        customdata  = event_data["points"][0]["customdata"]
+    except KeyError:
+        # this case should only happen for ancillary traces.
+        # TODO, maybe: do this a nicer way upstream
+        raise PreventUpdate
     # the graph's customdata property should contain numbers corresponding
     # to database pks of spectra of associated points.
     return djget(

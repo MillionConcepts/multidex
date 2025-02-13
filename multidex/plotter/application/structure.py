@@ -62,6 +62,10 @@ GRAPH_DISPLAY_INPUTS = [
     Input("main-graph-gridlines-radio", "value"),
 ]
 
+REGRESSION_LINE_INPUTS = [
+    Input("main-graph-regression-check", "value")
+]
+
 FILTER_DROPDOWN_OUTPUTS = [
     Output(dropdown, "options")
     for dropdown in CALC_OPTION_DROPDOWNS

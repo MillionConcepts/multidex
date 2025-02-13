@@ -1,4 +1,6 @@
+import numpy as np
 import pandas as pd
+from scipy.stats import linregress
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, Normalizer
 from sklearn.pipeline import Pipeline
@@ -41,3 +43,14 @@ def transform_and_explain(df, skl_pipeline):
     ratios = explained_variance_ratios(transform)
     ratios.name = "explained_variance"
     return transform, eigenvectors, ratios
+
+
+def fit_line(xvar: np.ndarray, yvar: np.ndarray):
+    """simple least-squares linear regression"""
+    regression = linregress(xvar, yvar)
+    intercept = regression.intercept
+    slope = regression.slope
+    scaled = intercept + slope * xvar
+    return regression, scaled
+
+

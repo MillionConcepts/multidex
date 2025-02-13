@@ -1,7 +1,7 @@
 """dash components that are graphs and associated helper functions"""
 
 from copy import deepcopy
-from typing import Mapping, Optional, MutableMapping
+from typing import Mapping, Optional
 
 import numpy as np
 import pandas as pd
@@ -18,12 +18,69 @@ from multidex.plotter.config.orderings import SPECIAL_ORDERINGS
 from multidex.plotter.spectrum_ops import d2r
 
 
+def add_regression(fig: go.Figure, unsplit_graph_df: pd.DataFrame):
+    from scipy.stats import linregress
+
+    try:
+        reg = linregress(unsplit_graph_df["x"], unsplit_graph_df["y"])
+        r_2, p = reg.rvalue ** 2, reg.pvalue
+        m, b = reg.slope, reg.intercept
+        r_2_text = f"{r_2:.1e}" if r_2 < 0.01 else round(r_2, 2)
+        if p < 1e-30:
+            p_text = "0"
+        else:
+            p_text = f"{p:.1e}" if p < 0.01 else round(p, 2)
+        m_text =  f"{m:.1e}" if abs(m) < 0.01 else round(m, 2)
+        b_text = f"{abs(b):.1e}" if abs(b) < 0.01 else round(abs(b), 2)
+        op_text = "-" if b < 0 else "+"
+        eqn_text = f"y = {m_text}x {op_text} {b_text}"
+        xreg = [unsplit_graph_df["x"].min(), unsplit_graph_df["x"].max()]
+        yreg = [xreg[0] * m + b, xreg[1] * m + b]
+    except ValueError as ve:
+        if "all x values are identical" not in str(ve):
+            raise
+        return
+    except TypeError as te:
+        # TODO: check
+        return
+    fig.add_trace(
+        go.Scattergl(
+            x=xreg,
+            y=yreg,
+            line={"color": "black", "width": 4},
+            marker=None,
+            showlegend=False,
+            name="regression",
+            mode="lines"
+         )
+    )
+    # TODO, probably: make this configurable
+    fig.update_layout(
+        {
+            "annotations": [
+                {
+                    "text": f"{eqn_text}; R^2 = {r_2_text}; p = {p_text}",
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0,
+                    "y": 0,
+                    "showarrow": False,
+                    "font": {"size": 28, "color": "black", "weight": 800},
+                    "bgcolor": "rgba(0, 0, 0, 0.2)"
+                }
+            ]
+        }
+    )
+    fig.update_traces(textposition="bottom center")
+
+
 def get_ordering(field: Mapping, instrument: str):
     if (omap := SPECIAL_ORDERINGS.get(instrument)) is None:
         return {'categoryorder': 'category ascending'}
     if (ordering := omap.get(field)) is None:
         return {'categoryorder': 'category ascending'}
     return {'categoryarray': ordering}
+
 
 def style_data(
     fig,
@@ -113,8 +170,8 @@ def main_scatter_graph(
     and metadata are filtered and formatted in callbacks.update_main_graph().
     """
     fig = go.Figure()
-    # the click-to-label annotations
-    draw_floating_labels(fig, graph_df, label_ids)
+    # # the click-to-label annotations
+    # draw_floating_labels(fig, graph_df, label_ids)
     # and the scattered points and their error bars
     # last-mile thing here to keep separate from highlight -- TODO: silly?
     marker_property_dict["color"] = graph_df["color"].values
@@ -135,7 +192,7 @@ def main_scatter_graph(
     )
 
     if highlight_df is not None:
-        draw_floating_labels(fig, highlight_df, label_ids)
+        # draw_floating_labels(fig, highlight_df, label_ids)
         full_marker_dict = dict(deepcopy(marker_property_dict))
         full_marker_dict = full_marker_dict | highlight_marker_dict
         if "color" not in highlight_marker_dict:
@@ -155,8 +212,7 @@ def main_scatter_graph(
             )
         )
     fig = draw_errors_on_figure(fig, errors)
-    # last-step canvas stuff: set bounds, gridline color, titles, etc.
-    spec_model_name = None
+    # last-step primary canvas stuff: set bounds, gridline color, titles, etc.
     style_data(
         fig,
         graph_display_settings,

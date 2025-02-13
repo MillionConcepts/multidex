@@ -40,8 +40,6 @@ the command:
 
 `conda env create -f environment.yml`
 
-If you're on Windows, instead run `conda env create -f windows_environment.yml`
-
 Say yes at the prompts and let the installation finish. Then run:
 
 `conda env list`

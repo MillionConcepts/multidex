@@ -926,6 +926,18 @@ def display_controls_div(settings: Mapping) -> html.Div:
                 ],
                 value=gridcolor,
             ),
+
+            html.Label(
+                className="info-text",
+                htmlFor="main-graph-regression-check",
+            ),
+            dcc.Checklist(
+                ["fit line"],
+                [],
+                id="main-graph-regression-check",
+                className="info-text",
+                inline=True
+            ),
             html.Button("clear labels", id="clear-labels"),
         ]
     )

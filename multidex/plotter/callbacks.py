@@ -21,6 +21,7 @@ from dash import dcc
 import pandas as pd
 from dustgoggles.func import are_in
 
+
 try:
     from marslab.compat.xcam import construct_field_ordering
 except ImportError:
@@ -43,9 +44,11 @@ from multidex.multidex_utils import (
 )
 from multidex.plotter.colors import generate_palette_options
 from multidex.plotter.components.graph_components import (
+    add_regression,
+    draw_floating_labels,
+    failed_scatter_graph,
     main_scatter_graph,
     spectrum_line_graph,
-    failed_scatter_graph,
 )
 from multidex.plotter.components.ui_components import parse_model_quant_entry
 from multidex.plotter.graph import (
@@ -188,10 +191,10 @@ def update_spectrum_graph(
     *,
     spec_model,
 ):
-    if (
-        scale_to != "none" and scale_to is not None
-    ):  # TODO scale_to is None, not "none"
+    if scale_to not in (None, "none", "None"):
         scale_to = spec_model.virtual_filter_mapping[scale_to]
+    else:
+        scale_to = None
     average_filters = True if average_input_value == ["average"] else False
     if not event_data:
         raise PreventUpdate
@@ -220,10 +223,14 @@ def update_data_df(
         raise PreventUpdate
     # TODO: obnoxious component / loading compatibility issue
     average_filters = bool(average_filters)
-    if scale_to != "none":
+    if scale_to not in (None, "none", "None"):
         scale_to = spec_model.virtual_filter_mapping[scale_to]
+    else:
+        scale_to = None
     r_star = bool(r_star)
-    data_df_update_handler(average_filters, cset, cget, r_star, scale_to, spec_model)
+    data_df_update_handler(
+        average_filters, cset, cget, r_star, scale_to, spec_model
+    )
     if not scale_trigger_count:
         return 1
     return scale_trigger_count + 1
@@ -242,6 +249,7 @@ def update_main_graph(
     marker_inputs,
     highlight_inputs,
     graph_display_inputs,
+    regression_line_inputs,
     cget,
     cset,
     spec_model,
@@ -280,6 +288,7 @@ def update_main_graph(
     x_settings = pickctx(ctx, x_inputs)
     y_settings = pickctx(ctx, y_inputs)
     marker_settings = pickctx(ctx, marker_inputs)
+    regression_settings = pickctx(ctx, regression_line_inputs)
     highlight_settings = pickctx(ctx, highlight_inputs)
     highlight_ids = cget("highlight_ids")
     halt_for_ineffective_highlight_toggle(ctx, highlight_settings)
@@ -392,6 +401,7 @@ def update_main_graph(
         "axis_display_settings",
         "get_errors",
         "bounds_string",
+        "regression_line_inputs"
     ):
         cset(parameter, locals()[parameter])
     # for concatenating with filter_df on export
@@ -415,26 +425,32 @@ def update_main_graph(
         ("x", "y", "marker"), (x_settings, y_settings, marker_settings)
     ):
         ax_field_names[ax] = re_get(s, "graph-option-")
-    return (
-        main_scatter_graph(
-            graph_df,
-            highlight_df,
-            errors,
-            marker_properties,
-            marker_axis_type,
-            coloraxis,
-            highlight_marker_dict,
-            graph_display_settings,
-            axis_display_settings,
-            label_ids,
-            spec_model.instrument,
-            ax_field_names,
-            x_title,
-            y_title,
-            zoom,
-        ),
-        {},
+    graph = main_scatter_graph(
+        graph_df,
+        highlight_df,
+        errors,
+        marker_properties,
+        marker_axis_type,
+        coloraxis,
+        highlight_marker_dict,
+        graph_display_settings,
+        axis_display_settings,
+        label_ids,
+        spec_model.instrument,
+        ax_field_names,
+        x_title,
+        y_title,
+        zoom,
     )
+    # draw regression line if requested
+    # TODO: hacky; basically here as a placeholder to include possible options.
+    #  do it more nicely when functionality is firmed up.
+    if len(regression_settings['main-graph-regression-check.value']) > 0:
+        add_regression(graph, graph_contents_df)
+    draw_floating_labels(graph, graph_df, label_ids)
+    if highlight_df is not None:
+        draw_floating_labels(graph, highlight_df, label_ids)
+    return graph, {}
 
 
 BASE_PARAM_LOGIC_OPTIONS = [

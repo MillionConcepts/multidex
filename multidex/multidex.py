@@ -1,4 +1,5 @@
 import os
+import sys
 
 try:
     import fire
@@ -19,8 +20,7 @@ def multidex_run_hook():
     django.setup()
 
     print("importing modules...", end="", flush=True)
-    # noinspection PyUnresolvedReferences
-    import multidex
+
     from multidex.plotter.application.run import run_multidex
     fire.Fire(run_multidex)
 
