@@ -13,7 +13,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 django.setup()
 
-from plotter.models import SSpec
+from multidex.plotter.models import SSpec
 
 SSPEC_FIELD_NAMES = list(map(attrgetter("name"), SSpec._meta.fields))
 # set up absolute path to thumbs so this can be run from anywhere
