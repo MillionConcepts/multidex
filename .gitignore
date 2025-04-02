@@ -36,3 +36,4 @@
 .coverage
 /multidex/ingest/local_settings/
 /multidex/data/backup
+!/multidex/saves/zcam/default.csv
