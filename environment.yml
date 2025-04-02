@@ -23,10 +23,10 @@ dependencies:
   - pyarrow
   - pip
   - numpy
-  - plotly
+  - plotly<6.0.0
   - pytest
   - scikit-learn
   - setuptools
-  - pip:
-      - choreographer>=0.99.6
-      - git+https://github.com/MillionConcepts/kaleido.git
+#  - pip:
+#      - choreographer>=0.99.6
+#      - git+https://github.com/MillionConcepts/kaleido.git
