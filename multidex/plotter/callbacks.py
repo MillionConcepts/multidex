@@ -624,7 +624,11 @@ def update_spectrum_images(
     #  wanting distinct behavior
     if spec_model.instrument == "CCAM":
         return make_cspec_browse_image_components(
-            spectrum, image_directory, static_image_url
+            spectrum, static_image_url
+        )
+    if spec_model.instrument == "SCAM":
+        return make_cspec_browse_image_components(
+            spectrum, static_image_url
         )
     if spec_model.instrument == "ZCAM":
         return make_zspec_browse_image_components(

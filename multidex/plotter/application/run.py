@@ -4,7 +4,6 @@ import random
 import shutil
 from pickle import UnpicklingError
 import warnings
-from string import ascii_lowercase
 
 import django.conf
 import flask

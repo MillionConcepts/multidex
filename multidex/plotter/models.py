@@ -148,15 +148,16 @@ class CSpec(RoverSpectrum):
     type_of_product = models.CharField(
         "Type of Product", **B_N_I, max_length=50
     )
-    target_distance = models.FloatField("Distance (m)", max_length=20, **B_N_I)
-    lmst = models.TimeField("Local Mean Solar Time", **B_N_I)
+    target_distance = models.FloatField("Distance (m)", **B_N_I)
+    lmst = models.TimeField("Local Mean Solar Time", max_length=30, **B_N_I)
     exposure = models.IntegerField("Exposure (ms)", **B_N_I)
     target_type = models.CharField("Target Type", max_length=30, **B_N_I)
     target_type_shot_specific = models.CharField(
         "Target Type (shot specific)", max_length=60, **B_N_I
     )
+    target = models.CharField("Target", max_length=60, **B_N_I)
     instrument_elevation = models.FloatField(
-        "Instrument Elevation (deg)", **B_N_I
+        "Instrument Elevation (deg)", max_length=10, **B_N_I
     )
     instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
     solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
@@ -166,6 +167,10 @@ class CSpec(RoverSpectrum):
         "LIBS before or after passive", max_length=30, **B_N_I
     )
     raster_location = models.IntegerField("Raster Location #", **B_N_I)
+    group = models.CharField("Group", max_length=45, **B_N_I)
+    formation = models.CharField("Formation", max_length=45, **B_N_I)
+    member = models.CharField("Member", max_length=45, **B_N_I)
+    tau = models.FloatField("tau", **B_N_I)
 
     instrument = "CCAM"
     instrument_brief_name = "ChemCam"
@@ -178,17 +183,11 @@ class CSpec(RoverSpectrum):
         descriptor = meta["target"].copy()
         no_feature_ix = descriptor.loc[descriptor.isna()].index
         descriptor.loc[no_feature_ix] = meta["target"].loc[no_feature_ix]
-        sol = meta["sol"].copy()
-        has_sol = sol.loc[sol.notna()].index
-        if len(has_sol) > 0:
-            # + operation throws an error if there is nothing to add to
-            sol.loc[has_sol] = sol.loc[has_sol].apply("{:.0f}".format) + " "
-        sol.loc[sol.isna()] = ""
-        raster = meta["raster_location"].copy()
-        has_raster = raster.loc[raster.notna()].index
-        raster.loc[has_raster] = (
-                raster.loc[has_raster].apply("{:.0f}".format) + " "
-        )
+        intpat = r"\.\d+|nan"
+        sol = meta["sol"].astype(str).str.replace(intpat, "", regex=True)
+        raster = meta[
+            "raster_location"
+        ].astype(str).str.replace(intpat, "", regex=True)
         return (
                 meta["name"]
                 + "<br>sol: "
@@ -197,6 +196,49 @@ class CSpec(RoverSpectrum):
                 + descriptor
                 + "<br>raster #: "
                 + raster
+        ).values
+
+
+class SSpec(RoverSpectrum):
+    target = models.CharField("Target", **B_N_I, max_length=50)
+    type_of_product = models.CharField(
+        "Type of Product", **B_N_I, max_length=50
+    )
+    lmst = models.TimeField("Local Mean Solar Time", max_length=30, **B_N_I)
+    target_type = models.CharField("Target Type", max_length=30, **B_N_I)
+    instrument_elevation = models.FloatField("Instrument Elevation (deg)", **B_N_I)
+    instrument_azimuth = models.FloatField("Instrument Azimuth (deg)", **B_N_I)
+    solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
+    solar_elevation = models.FloatField("Solar Elevation (deg)", **B_N_I)
+    raster_location = models.IntegerField("Raster Location #", **B_N_I)
+    rsm_azimuth = models.FloatField("RSM Azimuth (deg)", **B_N_I)
+    rsm_elevation = models.FloatField("RSM Elevation (deg)", **B_N_I)
+    tau = models.FloatField("Tau", **B_N_I)
+    uv_rows = models.IntegerField("UV Rows", **B_N_I)
+    vio_rows = models.IntegerField("VIO Rows", **B_N_I)
+    red_rows = models.CharField("Red Rows", max_length=10, **B_N_I)
+    t_integ_real = models.FloatField("Integration Time (real)", **B_N_I)
+    p750 = models.FloatField("P750", **B_N_I)
+    p1400 = models.FloatField("P1400", **B_N_I)
+    p1900 = models.FloatField("P1900", **B_N_I)
+    p2300 = models.FloatField("P2300", **B_N_I)
+    formation = models.CharField("Formation", max_length=45, **B_N_I)
+    member = models.CharField("Member", max_length=45, **B_N_I)
+    powerfail = models.IntegerField("Power Fail", **B_N_I)
+    saturation = models.FloatField("Saturation", **B_N_I)
+    focus_position_mm = models.FloatField("Focus Position (mm)", **B_N_I)
+    tdb_name = models.CharField("TDB name", max_length=45, **B_N_I)
+
+    instrument = "SCAM"
+    instrument_brief_name = "SuperCam"
+
+    @staticmethod
+    def make_scatter_annotations(
+            metadata_df: pd.DataFrame, truncated_ids: Sequence[int]
+    ) -> np.ndarray:
+        meta = metadata_df.loc[truncated_ids]
+        return (
+                meta["name"]
         ).values
 
 
@@ -218,7 +260,7 @@ for field_name in ASDF_CART_COLS + ASDF_PHOT_COLS:
 del field, magfield
 
 # bulk setup for each instrument
-for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:
+for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:
     if spec_model.instrument not in DERIVED_CAM_DICT.keys():
         continue
 
@@ -262,5 +304,5 @@ for spec_model in [ZSpec, MSpec, CSpec, TestSpec]:
 
 # for automated model selection
 INSTRUMENT_MODEL_MAPPING = MappingProxyType(
-    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "TEST": TestSpec}
+    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "SCAM": SSpec, "TEST": TestSpec}
 )

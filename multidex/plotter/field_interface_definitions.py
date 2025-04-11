@@ -58,7 +58,12 @@ QUALITATIVE_METADATA_FIELDS = (
     "rc_seq_id",
     # caltarget roi only
     "caltarget_element",
+    # supercam
+    "red_rows",
+    "powerfail",
+    "tdb_name"
 )
+
 # metadata fields we should treat as quantitative / continuous
 QUANTITATIVE_METADATA_FIELDS = (
     "compression_quality",
@@ -102,6 +107,18 @@ QUANTITATIVE_METADATA_FIELDS = (
     *[c.lower() for c in ASDF_CART_COLS],
     *[f"{c.lower()}mag" for c in ASDF_CART_COLS],
     *[c.lower() for c in ASDF_PHOT_COLS],
+    # supercam
+    "uv_rows",
+    "vio_rows",
+    "rsm_azimuth",
+    "rsm_elevation",
+    "t_integ_real",
+    "p750",
+    "p1400",
+    "p1900",
+    "p2300",
+    "saturation",
+    "focus_position_mm"
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = (

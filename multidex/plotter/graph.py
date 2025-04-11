@@ -5,6 +5,7 @@ definition_ and, to the extent possible, components. these are lower-level
 functions used by interface functions in callbacks.py
 """
 import json
+import os
 import pickle
 
 from _testcapi import INT_MAX
@@ -37,7 +38,8 @@ from multidex.multidex_utils import (
     djget,
     insert_wavelengths_into_text,
     model_metadata_df,
-    get_verbose_name, nt_sani,
+    get_verbose_name,
+    nt_sani,
 )
 from multidex.plotter import spectrum_ops
 from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type
@@ -92,9 +94,7 @@ def truncate_id_list_for_missing_properties(
     spec_model,
     filters_are_averaged: bool,
 ):
-    metadata_args = []
-    filt_args = []
-    indices = []
+    metadata_args, filt_args, indices = [], [], []
     for suffix in input_suffixes:
         axis_option = re_get(settings, "graph-option-" + suffix)
         model_property = keygrab(
@@ -126,11 +126,15 @@ def truncate_id_list_for_missing_properties(
         else:
             metadata_args.append(axis_option)
     if filt_args:
-        indices.append(
-            filter_df.loc[id_list][list(set(chain.from_iterable(filt_args)))]
-            .dropna()
-            .index
-        )
+        filter_vals = filter_df.loc[
+            id_list, list(set(chain.from_iterable(filt_args)))
+        ]
+        # NOTE: added prohibition on 0-values for SCAM, but should be
+        #  applicable to all relevant instruments
+        filter_vals = filter_vals.loc[
+            ~((filter_vals == 0) | filter_vals.isna()).any(axis=1)
+        ]
+        indices.append(filter_vals.index)
     if metadata_args:
         indices.append(
             metadata_df.loc[id_list][list(set(metadata_args))].dropna().index
@@ -150,13 +154,13 @@ def deframe(df_or_series):
 #  every time any axis is changed. it might be better to cache this.
 #  at the moment, the performance concerns probably don't really matter,
 #  though; PCA on these sets is < 250ms per and generally much less.
-def perform_decomposition(queryset_df, settings, props):
+def perform_decomposition(filter_df, settings, props):
     # TODO: temporary hack -- don't do PCA on tiny sets
-    if len(queryset_df.index) < 8:
+    if len(filter_df.index) < 8:
         raise ValueError("Won't do PCA on tiny sets.")
     # drop errors
-    queryset_df = queryset_df[
-        [c for c in queryset_df.columns if "std" not in c]
+    queryset_df = filter_df[
+        [c for c in filter_df.columns if "std" not in c]
     ]
     component_ix = int(re_get(settings, "component"))
     # TODO, maybe: placeholder for other decomposition methods
@@ -266,10 +270,11 @@ def make_axis(
             props,
             filters_are_averaged
         )
+
     if props["type"] == "computed":
         return filter_df.loc[id_list, props["value"]].values, None, axis_option
 
-    # TODO, mayquantitbe: a hack
+    # TODO, maybe: a hack
     if props["type"] == "non_filter_computed":
         return (
             metadata_df.loc[id_list][props["value"]].values,
@@ -320,7 +325,7 @@ def _decompose_for_axis(
             spec_model.permissibly_explanatory_bandpasses(decomp_df.columns)
         ].loc[id_list]
     else:
-        queryset_df = filter_df.loc[id_list]
+        queryset_df = decomp_df.loc[id_list]
     component, title, eigenvector_df = perform_decomposition(
         queryset_df, settings, props
     )
@@ -670,11 +675,11 @@ def make_zspec_browse_image_components(
 
 #  new layout
 def make_cspec_browse_image_components(
-    cspec: "CSpec", image_directory, static_image_url
+    cspec: "CSpec", static_image_url
 ):
     """
-    CSpec object, size factor (viewport units), image directory ->
-    dash html.Img component containing the natural-color image
+    CSpec or SPec object, size factor (viewport units), image directory ->
+    dash html.Img component containing the image
     associated with that object, mapped to the assets image
     route defined in the live app instance -- silly hack rn
     """
@@ -683,7 +688,7 @@ def make_cspec_browse_image_components(
     img = img[0]
     if img is None:
         img = "missing.jpg"
-    filename = static_image_url + "/" + img
+    filename = os.path.join(static_image_url, img)
     image_div_children.append(
             html.Img(
                 src=filename,
