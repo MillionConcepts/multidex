@@ -24,7 +24,7 @@ from typing import (
     Sequence
 )
 
-from cytoolz import curry, keyfilter, merge
+from cytoolz import curry, isiterable, keyfilter, merge
 import dash
 from dash import html
 from dash.dependencies import Input, Output

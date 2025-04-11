@@ -90,7 +90,7 @@ class RoverSpectrum(models.Model):
     """
 
     # instrument designation, currently by convention four letters:
-    # MCAM, ZCAM, CCAM
+    # MCAM, ZCAM, CCAM, SCAM
     instrument = None
     # brief and full instrument names
     instrument_brief_name = None
