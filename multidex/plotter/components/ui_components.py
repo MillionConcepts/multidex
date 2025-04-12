@@ -1078,8 +1078,8 @@ def export_div():
             ),
             dcc.Download(id="csv-export-endpoint"),
             dcc.Download(id="csv-export-endpoint-2"),
-            html.Button("image", id="export-image"),
-            dcc.Download(id="image-export-endpoint"),
+            html.Button("plot", id="export-plot"),
+            dcc.Download(id="plot-export-endpoint"),
         ],
     )
 

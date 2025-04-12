@@ -3,6 +3,8 @@ these are intended principally as function prototypes. they are partially
 defined and/or passed to callback decorators in order to generate flow control
 within the app. they should rarely, if ever, be called in these generic forms.
 """
+import pickle
+from io import BytesIO
 import re
 from ast import literal_eval
 import csv
@@ -52,6 +54,7 @@ from multidex.plotter.components.graph_components import (
 )
 from multidex.plotter.components.ui_components import parse_model_quant_entry
 from multidex.plotter.graph import (
+    fig_from_main_graph,
     load_state_into_application,
     add_dropdown,
     remove_dropdown,
@@ -206,6 +209,41 @@ def update_spectrum_graph(
         r_star=r_star,
         show_error=error_bar_value,
     )
+
+
+def export_plot_png(_trigger, cget, spec_model):
+    kwargs = {
+        k: cget(k) for k in
+        (
+            "graph_contents",
+            "x_settings",
+            "y_settings",
+            "marker_settings",
+            "highlight_settings",
+            "graph_display_settings",
+            "axis_display_settings",
+            "r_star"
+        )
+    }
+    filename = (
+        f"{spec_model.instrument.lower()}-"
+        f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
+    )
+    # TODO: PICKLE TEMPORARY FOR DEV! REMOVE! !!!!!!!!!!
+    with open(filename.replace("png", "pkl"), "wb") as stream:
+        pickle.dump(kwargs, stream)
+    fig = fig_from_main_graph(**kwargs)
+    buf = BytesIO()
+    # TODO: add other kwargs as necessary for formatting,
+    #  e.g. pad_inches -- see pretty-plot for likely options
+    fig.savefig(buf, format="png")
+    buf.seek(0)
+    return {
+        "content": b64encode(buf.read()).decode("ascii"),
+        "filename": filename,
+        "type": 'image/png',
+        "base64": True
+    }
 
 
 def update_data_df(
@@ -946,22 +984,23 @@ def save_application_state(
     return trigger_value + 1
 
 
-def export_graph_png(clientside_fig_info, fig_dict, *, spec_model):
-    # this condition occurs during saved search loading. search loading
-    #  triggers a call from the clientside js snippet that triggers image
-    #  export. this is an inelegant way to suppress that call.
-    if not fig_dict.get("data"):
-        raise PreventUpdate
-    info = json.loads(clientside_fig_info)
-    aspect = info["width"] / info["height"]
-    blob = save_main_scatter_plot(fig_dict, aspect)
-    filename = (
-        f"{spec_model.instrument.lower()}-"
-        f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
-    )
-    return {
-        'content': b64encode(blob).decode('ascii'),
-        'filename': filename,
-        'type': 'image/png',
-        'base64': True
-    }
+# TODO, probably: remove !!!!!!!!!!!!!
+# def export_graph_png(clientside_fig_info, fig_dict, *, spec_model):
+#     # this condition occurs during saved search loading. search loading
+#     #  triggers a call from the clientside js snippet that triggers image
+#     #  export. this is an inelegant way to suppress that call.
+#     if not fig_dict.get("data"):
+#         raise PreventUpdate
+#     info = json.loads(clientside_fig_info)
+#     aspect = info["width"] / info["height"]
+#     blob = save_main_scatter_plot(fig_dict, aspect)
+#     filename = (
+#         f"{spec_model.instrument.lower()}-"
+#         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
+#     )
+#     return {
+#         'content': b64encode(blob).decode('ascii'),
+#         'filename': filename,
+#         'type': 'image/png',
+#         'base64': True
+#     }

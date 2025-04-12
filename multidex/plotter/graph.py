@@ -478,6 +478,24 @@ def make_markers(
     return marker_property_dict, color, coloraxis, props["value_type"]
 
 
+# TODO: implement
+def fig_from_main_graph(
+    graph_contents,
+    x_settings,
+    y_settings,
+    marker_settings,
+    highlight_settings,
+    graph_display_settings,
+    axis_display_settings,
+    r_star
+):
+    import matplotlib.pyplot as plt
+
+    # TODO: do stuff
+
+    return plt.Figure()
+
+
 def format_display_settings(settings):
     settings_dict = {}
     axis_settings_dict = {}
