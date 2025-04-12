@@ -572,18 +572,9 @@ def model_metadata_df(
     return pd.DataFrame(value_list, index=id_list)
 
 
-# TODO: these kinds of printing rules probably need to go on individual
-#  models for cross-instrument compatibility
-def rearrange_band_depth_for_title(text: str) -> str:
-    filts = re.split(r"([L|R]?\d[RGB]?)", text, maxsplit=0)
-    return (
-        f"{filts[0]}{filts[5]}, " f"shoulders at {filts[1]} and " f"{filts[3]}"
-    )
-
-
 def insert_wavelengths_into_text(text: str, spec_model: "Model") -> str:
     if "depth" in text.lower():
-        text = rearrange_band_depth_for_title(text)
+        text = spec_model.rearrange_band_depth_for_title(text)
     for filt, wavelength in (
         spec_model.filters | spec_model.virtual_filters
     ).items():

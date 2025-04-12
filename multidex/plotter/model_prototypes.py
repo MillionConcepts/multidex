@@ -2,7 +2,7 @@
 prototypes / abstractions and literals to be used in the creation
 of database models in plotter.models
 """
-
+import re
 from ast import literal_eval
 import datetime as dt
 from functools import cache
@@ -195,6 +195,13 @@ class RoverSpectrum(models.Model):
         """
         aprops = [a_prop["value"] for a_prop in self.accessible_properties()]
         return keyfilter(lambda x: x in aprops, modeldict(self))
+
+    @staticmethod
+    def rearrange_band_depth_for_title(text: str) -> str:
+        filts = re.split(r"([L|R]?\d[RGB]?)", text, maxsplit=0)
+        return (
+            f"{filts[0]}{filts[5]}, " f"shoulders at {filts[1]} and " f"{filts[3]}"
+        )
 
     # noinspection PyUnresolvedReferences
     def __str__(self):
