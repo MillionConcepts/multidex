@@ -862,6 +862,7 @@ def add_or_remove_label(cset, ctx, label_ids):
 def parse_main_graph_bounds_string(ctx):
     bounds_string = ctx.inputs["main-graph-bounds.value"]
     try:
+        bounds_string = bounds_string.strip("[]").replace(",", " ")
         bounds_string = [
             float(bound) for bound in filter(None, bounds_string.split(" "))
         ]
@@ -887,14 +888,12 @@ def update_zoom_from_bounds_string(graph, bounds_string):
     return graph
 
 
-def explicitly_set_graph_bounds(ctx):
+def explicitly_set_graph_bounds(bounds_string, graph):
     """change graph bounds based on input to the 'set bounds' field"""
-    bounds_string = parse_main_graph_bounds_string(ctx)
     if bounds_string is None:
         raise PreventUpdate
-    graph = go.Figure(ctx.states["main-graph.figure"])
     update_zoom_from_bounds_string(graph, bounds_string)
-    return graph, {}
+    return graph
 
 
 def assemble_highlight_marker_dict(

@@ -257,9 +257,18 @@ def update_main_graph(
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
     # handle explicit bounds changes
-    if trigger == "main-graph-bounds.value":
-        return explicitly_set_graph_bounds(ctx)
+    # NOTE: we don't actually _do_ anything later in the function
+    #  with bounds_string in other cases, but I've
+    #  rewritten it this way to facilitate possible changes in logic that
+    #  are currently under discussion
     bounds_string = parse_main_graph_bounds_string(ctx)
+    cset("bounds_string", bounds_string)
+    if trigger == "main-graph-bounds.value":
+        import plotly.graph_objects as go
+
+        return explicitly_set_graph_bounds(
+            bounds_string, go.Figure(ctx.states["main-graph.figure"])
+        ), {}
     try:
         color_clip = [
             ctx.inputs["color-clip-bound-low.value"],
@@ -331,7 +340,7 @@ def update_main_graph(
         metadata_df,
         spec_model,
         filters_are_averaged,
-    )
+        )
     if not truncated_ids:
         return (
             failed_scatter_graph(
@@ -418,8 +427,6 @@ def update_main_graph(
         graph_contents.columns = (x_title, y_title)
     graph_contents.index = graph_contents_df["customdata"]
     cset("graph_contents", graph_contents)
-    # TODO: hacky!
-    cset("loading_state", False)
     ax_field_names = {}
     for ax, s in zip(
         ("x", "y", "marker"), (x_settings, y_settings, marker_settings)
@@ -442,6 +449,13 @@ def update_main_graph(
         y_title,
         zoom,
     )
+    # TODO, maybe: hacky!
+    if cget("loading_state") is True:
+        try:
+            graph = explicitly_set_graph_bounds(bounds_string, graph)
+        except PreventUpdate:
+            pass
+    cset("loading_state", False)
     # draw regression line if requested
     # TODO: hacky; basically here as a placeholder to include possible options.
     #  do it more nicely when functionality is firmed up.
@@ -903,6 +917,7 @@ def save_application_state(
         "scale_to",
         "average_filters",
         "r_star",
+        "bounds_string"
     )
     state = {
         k: f"{v}"

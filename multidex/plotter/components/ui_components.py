@@ -1027,6 +1027,7 @@ def scale_controls_div(spec_model, settings: Mapping) -> html.Div:
                         htmlFor="main-graph-bounds",
                     ),
                     dcc.Input(
+                        value=settings.get("bounds_string"),
                         type="text",
                         id="main-graph-bounds",
                         style={"height": "1.4rem", "width": "10rem"},
