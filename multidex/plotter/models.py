@@ -198,6 +198,14 @@ class CSpec(RoverSpectrum):
                 + raster
         ).values
 
+    @staticmethod
+    def rearrange_band_depth_for_title(text: str) -> str:
+        filts = text.split()
+        return (
+            f"{filts[0]} {filts[3]}, " f"shoulders at {filts[1]} and " f"{filts[2]}"
+        )
+
+
 
 class SSpec(RoverSpectrum):
     target = models.CharField("Target", **B_N_I, max_length=50)
@@ -240,6 +248,13 @@ class SSpec(RoverSpectrum):
         return (
                 meta["name"]
         ).values
+
+    @staticmethod
+    def rearrange_band_depth_for_title(text: str) -> str:
+        filts = text.split()
+        return (
+            f"{filts[0]} {filts[3]}, " f"shoulders at {filts[1]} and " f"{filts[2]}"
+        )
 
 
 class TestSpec(RoverSpectrum):
