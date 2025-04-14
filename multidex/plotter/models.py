@@ -1,6 +1,7 @@
 from functools import cache
 from types import MappingProxyType
 from typing import Sequence
+import re
 
 from django.db import models
 import numpy as np
@@ -240,6 +241,13 @@ class SSpec(RoverSpectrum):
         return (
                 meta["name"]
         ).values
+
+    @staticmethod
+    def rearrange_band_depth_for_title(text: str) -> str:
+        filts = text.split()
+        return (
+            f"{filts[0]} {filts[3]}, " f"shoulders at {filts[1]} and " f"{filts[2]}"
+        )
 
 
 class TestSpec(RoverSpectrum):
