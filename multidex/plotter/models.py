@@ -1,7 +1,6 @@
 from functools import cache
 from types import MappingProxyType
 from typing import Sequence
-import re
 
 from django.db import models
 import numpy as np
