@@ -39,3 +39,4 @@
 /multidex/data/backup
 !/multidex/saves/zcam/default.csv
 *.pkl
+*DS_Store

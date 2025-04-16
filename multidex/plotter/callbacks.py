@@ -236,7 +236,7 @@ def export_plot_png(_trigger, cget, spec_model):
     buf = BytesIO()
     # TODO: add other kwargs as necessary for formatting,
     #  e.g. pad_inches -- see pretty-plot for likely options
-    fig.savefig(buf, format="png")
+    fig.savefig(buf, format="png", bbox_inches='tight')
     buf.seek(0)
     return {
         "content": b64encode(buf.read()).decode("ascii"),

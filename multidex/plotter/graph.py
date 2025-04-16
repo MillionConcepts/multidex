@@ -491,9 +491,59 @@ def fig_from_main_graph(
 ):
     import matplotlib.pyplot as plt
 
-    # TODO: do stuff
+    # To avoid macOS specific threading errors:
+    plt.switch_backend('agg')
 
-    return plt.Figure()
+    # create the matplotlib figure and its subplot
+    fig, ax = plt.subplots(figsize = (6,6))
+    # add data points to the plot
+    plot = ax.scatter(
+        x = graph_contents.iloc[:,0],
+        y = graph_contents.iloc[:,1],
+        c = graph_contents.iloc[:,2],
+        cmap = marker_settings["palette-name-drop.value"].lower(),
+        s = marker_settings["marker-size-radio.value"],
+        alpha = (marker_settings["marker-opacity-input.value"]/100),
+    )
+    # background color
+    bg_color = graph_display_settings["plot_bgcolor"].replace("rgba(","").replace(")","").split(",")
+    bg_color = tuple(
+        [float(bg_color[0])/255, float(bg_color[1])/255, 
+         float(bg_color[2])/255, float(bg_color[3])]
+    )
+    ax.set_facecolor(bg_color)
+    # legend (temporary, replacing with a colorbar)
+    fig.legend(
+        *plot.legend_elements(), 
+        title = graph_contents.keys()[2],
+        bbox_to_anchor = (0.9, 0.5), 
+        loc = "center left",
+        prop = "monospace",
+    )
+    # axis labels
+    plt.xlabel(
+        graph_contents.keys()[0],
+        fontname = "monospace", 
+        wrap = True,
+        va = "top",
+    )
+    plt.ylabel(
+        graph_contents.keys()[1],
+        fontname = "monospace",
+        wrap = True,
+        va = "center",
+    )
+    # gridlines
+    if axis_display_settings["showgrid"] == True:
+        grid_color = axis_display_settings["gridcolor"].replace("rgba(","").replace(")","").split(",")
+        grid_color = tuple(
+            [float(grid_color[0])/255, float(grid_color[1])/255, 
+             float(grid_color[2])/255, float(grid_color[3])]
+        )
+        plt.grid(color = grid_color, alpha = grid_color[3])
+        ax.set_axisbelow(True)
+
+    return fig
 
 
 def format_display_settings(settings):
