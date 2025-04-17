@@ -225,6 +225,7 @@ def export_plot_png(
             "graph_display_settings",
             "axis_display_settings",
             "r_star",
+            "errors",
             "highlight_ids"
         )
     }
@@ -417,6 +418,9 @@ def update_main_graph(
     graph_df["y"], errors["y"], y_title = make_axis(
         y_settings, cset, *graph_content
     )
+    # TODO: this is weirdly out of sequence. only for plot export.
+    #  note that you _must_ use .loc, indices are matching but not aligned.
+    cset("errors", errors)
     # similarly for marker properties
     marker_properties, color, coloraxis, marker_axis_type = make_markers(
         marker_settings, cset, *graph_content

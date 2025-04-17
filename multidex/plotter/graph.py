@@ -493,6 +493,7 @@ def fig_from_main_graph(
     graph_display_settings,
     axis_display_settings,
     cclip,
+    errors,
     r_star
 ):
     import matplotlib.pyplot as plt
