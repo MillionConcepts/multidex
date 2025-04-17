@@ -18,6 +18,11 @@ def register_export_plot_png(app, configured_function):
     app.callback(
         Output("plot-export-endpoint", "data"),
         [Input("export-plot", "n_clicks")],
+        [
+            State("main-graph", "figure"),
+            State("color-clip-bound-low", "value"),
+            State("color-clip-bound-high", "value")
+        ],
         prevent_initial_call=True
     )(configured_function)
 

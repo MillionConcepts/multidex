@@ -211,7 +211,9 @@ def update_spectrum_graph(
     )
 
 
-def export_plot_png(_trigger, cget, spec_model):
+def export_plot_png(
+    _trigger, main_graph, cclip_low, cclip_high, cget, spec_model
+):
     kwargs = {
         k: cget(k) for k in
         (
@@ -229,6 +231,9 @@ def export_plot_png(_trigger, cget, spec_model):
     kwargs["metadata_df"] = cget('metadata_df').loc[
         kwargs["graph_contents"].index
     ]
+    kwargs["xrange"] = main_graph['layout']['xaxis']['range']
+    kwargs["yrange"] = main_graph['layout']['yaxis']['range']
+    kwargs["cclip"] = (cclip_low, cclip_high)
     filename = (
         f"{spec_model.instrument.lower()}-"
         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"

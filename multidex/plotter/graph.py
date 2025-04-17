@@ -482,6 +482,8 @@ def make_markers(
 def fig_from_main_graph(
     graph_contents,
     metadata_df,
+    xrange,
+    yrange,
     x_settings,
     y_settings,
     marker_settings,
@@ -489,6 +491,7 @@ def fig_from_main_graph(
     highlight_ids,
     graph_display_settings,
     axis_display_settings,
+    cclip,
     r_star
 ):
     import matplotlib.pyplot as plt
