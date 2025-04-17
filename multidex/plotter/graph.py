@@ -494,7 +494,8 @@ def fig_from_main_graph(
     axis_display_settings,
     cclip,
     errors,
-    r_star
+    r_star,
+    line
 ):
     import matplotlib.pyplot as plt
 

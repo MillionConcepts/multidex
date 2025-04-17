@@ -235,6 +235,19 @@ def export_plot_png(
     kwargs["xrange"] = main_graph['layout']['xaxis']['range']
     kwargs["yrange"] = main_graph['layout']['yaxis']['range']
     kwargs["cclip"] = (cclip_low, cclip_high)
+    line_traces = [
+        t for t in main_graph['data'] if t.get('name') == 'regression'
+    ]
+    if len(line_traces) > 0:
+        kwargs['line'] = {
+            'x': line_traces[0]['x'],
+            'y': line_traces[0]['y'],
+            # TODO: sloppy, but should always be correct with how the
+            #  annotations are currently constructed, even w/floating labels
+            'text': main_graph['layout']['annotations'][0]['text']
+        }
+    else:
+        kwargs['line'] = None
     filename = (
         f"{spec_model.instrument.lower()}-"
         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
