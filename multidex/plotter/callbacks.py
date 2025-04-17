@@ -407,7 +407,7 @@ def update_main_graph(
     ]
     graph_df = pd.DataFrame({"customdata": truncated_ids})
     # storing these separately because the API for error bars is annoying
-    errors = {}
+    errors = pd.DataFrame(columns=["x", "y"], index=graph_df.index)
     # passing cset into these in order to record eigenvectors & variances
     # for reduction operations. doing this asynchronously is not my favorite
     # thing in the world, but it _is_ special-case-y.
@@ -428,12 +428,19 @@ def update_main_graph(
     )
     # now that graph dataframe is constructed, split & style highlights to be
     # drawn as separate trace (or get None, {}) if no highlight is active)
-    graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
+    (
         graph_df,
-        highlight_ids,
-        highlight_settings,
-        base_marker_size=marker_properties["size"],
-    )
+        highlight_df,
+        highlight_marker_dict,
+        graph_errors,
+        highlight_errors
+    ) = branch_highlight_df(
+            graph_df,
+            highlight_ids,
+            highlight_settings,
+            errors,
+            base_marker_size=marker_properties["size"],
+        )
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
     # TODO: cleanly prevent these from unsetting autoscale on load
@@ -482,7 +489,8 @@ def update_main_graph(
     graph = main_scatter_graph(
         graph_df,
         highlight_df,
-        errors,
+        graph_errors,
+        highlight_errors,
         marker_properties,
         marker_axis_type,
         coloraxis,

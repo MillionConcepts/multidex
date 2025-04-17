@@ -234,7 +234,7 @@ def perform_spectrum_op(
         if get_errors and errors is not None:
             return (
                 list(deframe(vals).values),
-                {"array": list(deframe(errors).values)},
+                list(deframe(errors).values),
                 title,
             )
         return list(deframe(vals).values), None, title
@@ -283,7 +283,7 @@ def make_axis(
         )
 
     if props["type"] == "method":
-        return perform_spectrum_op(
+        res = perform_spectrum_op(
             id_list,
             spec_model,
             filter_df,
@@ -291,6 +291,7 @@ def make_axis(
             props,
             get_errors,
         )
+        return res
     if props.get('value_type') != 'quant':
         value_series = metadata_df.loc[
             id_list, props["value"]
@@ -1015,8 +1016,14 @@ def assemble_highlight_marker_dict(
 
 
 def branch_highlight_df(
-    graph_df, highlight_ids, highlight_settings, base_marker_size
-) -> tuple[pd.DataFrame, Optional[pd.DataFrame], dict]:
+    graph_df, highlight_ids, highlight_settings, errors, base_marker_size
+) -> tuple[
+    pd.DataFrame,
+    Optional[pd.DataFrame],
+    dict,
+    pd.DataFrame,
+    Optional[pd.DataFrame]
+]:
     """
     an element of the update_main_graph() flow. if highlight is active,
     split highlighted points out of main df and interpret styles as specified,
@@ -1026,14 +1033,22 @@ def branch_highlight_df(
     if highlight_settings["highlight-toggle.value"] == "off" or (
         len(highlight_ids) == 0
     ):
-        return graph_df, None, {}
+        return graph_df, None, {}, errors, None
     highlight_df, graph_df = split_on(
         graph_df, graph_df["customdata"].isin(highlight_ids)
     )
     highlight_marker_dict = assemble_highlight_marker_dict(
         highlight_settings, base_marker_size, highlight_ids
     )
-    return graph_df, highlight_df, highlight_marker_dict
+    graph_errors = errors.loc[graph_df.index]
+    highlight_errors = errors.loc[highlight_df.index]
+    return (
+        graph_df,
+        highlight_df,
+        highlight_marker_dict,
+        graph_errors,
+        highlight_errors
+    )
 
 
 # TODO: does this actually go here?
