@@ -222,9 +222,13 @@ def export_plot_png(_trigger, cget, spec_model):
             "highlight_settings",
             "graph_display_settings",
             "axis_display_settings",
-            "r_star"
+            "r_star",
+            "highlight_ids"
         )
     }
+    kwargs["metadata_df"] = cget('metadata_df').loc[
+        kwargs["graph_contents"].index
+    ]
     filename = (
         f"{spec_model.instrument.lower()}-"
         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"

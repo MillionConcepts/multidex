@@ -481,10 +481,12 @@ def make_markers(
 # TODO: implement
 def fig_from_main_graph(
     graph_contents,
+    metadata_df,
     x_settings,
     y_settings,
     marker_settings,
     highlight_settings,
+    highlight_ids,
     graph_display_settings,
     axis_display_settings,
     r_star
