@@ -42,7 +42,7 @@ from multidex.multidex_utils import (
     nt_sani,
 )
 from multidex.plotter import spectrum_ops
-from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type
+from multidex.plotter.colors import get_palette_from_scale_name, get_scale_type, plotly_color_to_percent
 from multidex.plotter.components.ui_components import (
     search_parameter_div,
 )
@@ -479,6 +479,29 @@ def make_markers(
     return marker_property_dict, color, coloraxis, props["value_type"]
 
 
+def plotly_to_matplotlib_symbol(plotly_symbol):
+    # TODO: taking the first item after splitting by '-' oversimplifies some symbols (e.g. star, triangle, etc)
+    plotly_base_symbol = plotly_symbol.split('-')[0]
+    plotly_symbol_keywords = {
+        'circle': 'o',
+        'square': 's',
+        'diamond': 'D',
+        'cross': 'P',
+        'x': 'X',
+        'triangle': '^',
+        'pentagon': 'p',
+        'hexagon2': 'H',
+        'hexagon': 'h',
+        'octagon': '8',
+        'star': '*',
+    }
+    try:
+        pyplot_symbol = plotly_symbol_keywords[plotly_base_symbol]
+    except:
+        pyplot_symbol = 'o' # default to circles if the above fails
+    
+    return pyplot_symbol
+
 # TODO: implement
 def fig_from_main_graph(
     graph_contents,
@@ -497,60 +520,184 @@ def fig_from_main_graph(
     r_star,
     line
 ):
+    from pathlib import Path
     import matplotlib.pyplot as plt
+    import matplotlib.font_manager as mplf
+    import matplotlib.cm as cm
+    import matplotlib.colors as colors
+    from marslab.imgops.pltutils import attach_axis
 
     # To avoid macOS specific threading errors:
     plt.switch_backend('agg')
 
-    # create the matplotlib figure and its subplot
+    # Create the matplotlib figure and its subplot
     fig, ax = plt.subplots(figsize = (6,6))
-    # add data points to the plot
+
+    # Set fonts
+    # TODO: maybe grab fonts from multidex/plotter/config/graph_style.py instead of hardcoding them here
+    font_file = Path(
+        Path(__file__).parent, "application/assets/fonts/Roboto-Regular.ttf"
+    )
+    label_fp = mplf.FontProperties(fname=font_file, size=12)
+    tick_fp = mplf.FontProperties(fname=font_file, size=8)
+    metadata_fp = mplf.FontProperties(fname=font_file, size=10)
+
+    # Marker outline color
+    if re_get(marker_settings, "marker-outline-radio.value") == "off":
+        outline_color = "face"
+    else:
+        outline_color = plotly_color_to_percent(
+            re_get(marker_settings, "marker-outline-radio.value")
+        )
+    # Plot the data points
     plot = ax.scatter(
         x = graph_contents.iloc[:,0],
         y = graph_contents.iloc[:,1],
         c = graph_contents.iloc[:,2],
-        cmap = marker_settings["palette-name-drop.value"].lower(),
-        s = marker_settings["marker-size-radio.value"],
-        alpha = (marker_settings["marker-opacity-input.value"]/100),
+        s = re_get(marker_settings, "marker-size-radio.value"),
+        alpha = re_get(marker_settings, "marker-opacity-input.value")/100,
+        edgecolors = outline_color,
+        marker = plotly_to_matplotlib_symbol(
+            re_get(marker_settings, "marker-symbol-drop.value")
+        ),
     )
-    # background color
-    bg_color = graph_display_settings["plot_bgcolor"].replace("rgba(","").replace(")","").split(",")
-    bg_color = tuple(
-        [float(bg_color[0])/255, float(bg_color[1])/255, 
-         float(bg_color[2])/255, float(bg_color[3])]
+    # Colormap
+    cmap = re_get(marker_settings, "palette-name-drop.value")
+    try:
+        plot.set_cmap(cmap)
+    except ValueError:
+        cmap = cmap.lower()
+        plot.set_cmap(cmap)
+    # Background color
+    bg_color = plotly_color_to_percent(
+        re_get(graph_display_settings, "plot_bgcolor")
     )
     ax.set_facecolor(bg_color)
-    # legend (temporary, replacing with a colorbar)
-    fig.legend(
-        *plot.legend_elements(), 
-        title = graph_contents.keys()[2],
-        bbox_to_anchor = (0.9, 0.5), 
-        loc = "center left",
-        prop = "monospace",
-    )
-    # axis labels
+    # Axis limits and labels
+    plt.xlim(xrange)
     plt.xlabel(
-        graph_contents.keys()[0],
-        fontname = "monospace", 
-        wrap = True,
-        va = "top",
+        graph_contents.keys()[0], fontproperties = label_fp, 
+        wrap = True, va = "top",
     )
+    plt.ylim(yrange)
     plt.ylabel(
-        graph_contents.keys()[1],
-        fontname = "monospace",
-        wrap = True,
-        va = "center",
+        graph_contents.keys()[1], fontproperties = label_fp,
+        wrap = True, va = "center",
     )
-    # gridlines
-    if axis_display_settings["showgrid"] == True:
-        grid_color = axis_display_settings["gridcolor"].replace("rgba(","").replace(")","").split(",")
-        grid_color = tuple(
-            [float(grid_color[0])/255, float(grid_color[1])/255, 
-             float(grid_color[2])/255, float(grid_color[3])]
+    # Tick labels
+    plt.tick_params(labelfontfamily = tick_fp.get_family())
+    # Error bars
+    if not errors.isnull().values.any():
+        plt.errorbar(
+            x = graph_contents.iloc[:,0], 
+            y = graph_contents.iloc[:,1], 
+            xerr = errors.loc[:, "x"],
+            yerr = errors.loc[:, "y"],
+            elinewidth = 0.5, 
+            ecolor = "gray", 
+            fmt = "none", # only draw error bars, no extra points/lines
+            alpha = re_get(marker_settings, "marker-opacity-input.value")/100,
+        )
+    # Gridlines
+    if re_get(axis_display_settings, "showgrid") == True:
+        grid_color = plotly_color_to_percent(
+            re_get(axis_display_settings, "gridcolor")
         )
         plt.grid(color = grid_color, alpha = grid_color[3])
         ax.set_axisbelow(True)
-
+    # Zero lines
+    if re_get(axis_display_settings, "zeroline") == False:
+        pass
+    else:
+        ax.axhline(color = grid_color, alpha = grid_color[3], 
+                   lw = 2, zorder = 0)
+        ax.axvline(color = grid_color, alpha = grid_color[3], 
+                   lw = 2, zorder = 0)
+    # Fit line
+    if line is not None:
+        fit_line = ax.plot(
+            line['x'], line['y'],
+            color = 'black', lw = 1.5,
+            marker = 'none',
+        )
+        plt.text(
+            xrange[0], yrange[0], 
+            f"   {re_get(line, 'text')}", 
+            fontproperties = metadata_fp, 
+            va = 'bottom',
+        )
+    # Highlighting
+    # TODO: the original points are not removed, the highlight markers are just plotted on top
+    if re_get(highlight_settings, "highlight-toggle.value") == "on":
+        # Set the fill and outline colors based on whether the marker symbol is "open" or filled
+        if '-open' in highlight_settings["highlight-symbol-drop.value"]:
+            hl_fillcolor = 'none'
+            hl_outline = highlight_settings["highlight-color-drop.value"]
+        else:
+            hl_fillcolor = highlight_settings["highlight-color-drop.value"]
+            hl_outline = plotly_color_to_percent(highlight_settings["highlight-outline-radio.value"])
+        # Plot the highlighted points
+        hl_df = graph_contents.loc[highlight_ids].copy()
+        highlights = ax.scatter(
+            x = hl_df.iloc[:,0], 
+            y = hl_df.iloc[:,1],
+            color = hl_fillcolor,
+            edgecolors = hl_outline,
+            marker = plotly_to_matplotlib_symbol(
+                re_get(highlight_settings, "highlight-symbol-drop.value")
+            ),
+            s = re_get(highlight_settings, "highlight-size-radio.value") * re_get(marker_settings, "marker-size-radio.value"),
+            alpha = re_get(highlight_settings, "highlight-opacity-input.value")/100,
+            zorder = 2, # Make sure the highlights plot above other markers
+        )
+    
+    # This whole last section is the colorbar:
+    m_axis = graph_contents.iloc[:,2]
+    m_axis_name = graph_contents.keys()[2].lower().replace(" ", "_")
+    # Adjust the m_axis name for edge cases where the column name is 
+    # different in graph_contents and metadata_df
+    m_axis_name = m_axis_name.replace("_category","").replace("caltarget","rc")
+    m_axis_edge_cases = {'photometry_flag': 'phot_flag',
+                         'local_true_solar_time': 'ltst',}
+    if m_axis_name in m_axis_edge_cases:
+        m_axis_name = m_axis_edge_cases[m_axis_name]
+    # Check if the m_axis needs a discrete or continuous colorbar, then set the 
+    # colormap and norm
+    if (
+        len(metadata_df[m_axis_name].unique()) < 50
+        and metadata_df[m_axis_name].dtypes == object
+    ):
+        qualitative = True
+        cbar_cmap = plt.get_cmap(cmap, len(m_axis.unique()))
+        norm = colors.NoNorm(vmin=min(m_axis), vmax=max(m_axis))
+    else:
+        qualitative = False
+        cbar_cmap = cmap
+        norm = plt.Normalize(vmin=min(m_axis), vmax=max(m_axis))
+    # Create the colorbar
+    cax = attach_axis(ax, size="3%", pad="0.5%")
+    colorbar = plt.colorbar(
+        cm.ScalarMappable(norm=norm, cmap=cbar_cmap), 
+        cax=cax,
+        label=graph_contents.keys()[2],
+    )
+    # Font properties and parameters for labels 
+    colorbar.ax.yaxis.label.set_font_properties(label_fp)
+    colorbar.ax.tick_params(labelfontfamily = tick_fp.get_family(),
+                            rotation = -15)
+    # Change the tick labels to their qualitative name
+    if qualitative == True:
+        cbar_ticks_df = pd.DataFrame({
+            'quant': graph_contents.iloc[:, 2], 
+            'qual': metadata_df.loc[:, m_axis_name].fillna('none')
+        })
+        cbar_tick_labels = list(
+            cbar_ticks_df.drop_duplicates().sort_values(by='quant')['qual']
+        )
+        cbar_tick_labels = [s.title() for s in cbar_tick_labels]
+        colorbar.ax.set_yticks(range(len(cbar_tick_labels)))
+        colorbar.ax.set_yticklabels(cbar_tick_labels)
+    
     return fig
 
 

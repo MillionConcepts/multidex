@@ -56,6 +56,17 @@ def rgbstring_to_rgb_percent(rgb: str) -> tuple[float]:
     # noinspection PyTypeChecker
     return tuple(division)
 
+def rgbastring_to_rgba_percent(rgba: str) -> tuple[float]:
+    division = rgba.replace("rgba(","").replace(")","").split(",")
+    division = [
+        float(division[0])/255, 
+        float(division[1])/255, 
+        float(division[2])/255, 
+        float(division[3])
+    ]
+    # noinspection PyTypeChecker
+    return tuple(division)
+
 
 # the following function is vendored from matplotlib.colors and carries the
 # matplotlib license. see the bottom of this module for a full copy of this license.
@@ -141,6 +152,8 @@ def plotly_color_to_percent(
 ) -> tuple[float]:
     if plotly_color.startswith("#"):
         return to_rgba_no_colorcycle(plotly_color)
+    if plotly_color.startswith("rgba"):
+        return rgbastring_to_rgba_percent(plotly_color)
     if plotly_color.startswith("rgb"):
         return rgbstring_to_rgb_percent(plotly_color)
     return plotly_color
