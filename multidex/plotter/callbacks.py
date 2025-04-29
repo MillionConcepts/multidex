@@ -235,6 +235,7 @@ def export_plot_png(
     kwargs["xrange"] = main_graph['layout']['xaxis']['range']
     kwargs["yrange"] = main_graph['layout']['yaxis']['range']
     kwargs["cclip"] = (cclip_low, cclip_high)
+    kwargs['marker_props'] = get_axis_option_props(cget('marker_settings'), spec_model)[1]
     line_traces = [
         t for t in main_graph['data'] if t.get('name') == 'regression'
     ]

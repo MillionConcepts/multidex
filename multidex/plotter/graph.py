@@ -511,6 +511,7 @@ def fig_from_main_graph(
     x_settings,
     y_settings,
     marker_settings,
+    marker_props,
     highlight_settings,
     highlight_ids,
     graph_display_settings,
@@ -531,7 +532,7 @@ def fig_from_main_graph(
     plt.switch_backend('agg')
 
     # Create the matplotlib figure and its subplot
-    fig, ax = plt.subplots(figsize = (6,6))
+    fig, ax = plt.subplots()
 
     # Set fonts
     # TODO: maybe grab fonts from multidex/plotter/config/graph_style.py instead of hardcoding them here
@@ -652,52 +653,49 @@ def fig_from_main_graph(
         )
     
     # This whole last section is the colorbar:
-    m_axis = graph_contents.iloc[:,2]
-    m_axis_name = graph_contents.keys()[2].lower().replace(" ", "_")
-    # Adjust the m_axis name for edge cases where the column name is 
-    # different in graph_contents and metadata_df
-    m_axis_name = m_axis_name.replace("_category","").replace("caltarget","rc")
-    m_axis_edge_cases = {'photometry_flag': 'phot_flag',
-                         'local_true_solar_time': 'ltst',}
-    if m_axis_name in m_axis_edge_cases:
-        m_axis_name = m_axis_edge_cases[m_axis_name]
-    # Check if the m_axis needs a discrete or continuous colorbar, then set the 
-    # colormap and norm
-    if (
-        len(metadata_df[m_axis_name].unique()) < 50
-        and metadata_df[m_axis_name].dtypes == object
-    ):
-        qualitative = True
-        cbar_cmap = plt.get_cmap(cmap, len(m_axis.unique()))
-        norm = colors.NoNorm(vmin=min(m_axis), vmax=max(m_axis))
+    marker_axis = graph_contents.iloc[:,2]
+    # Check if the m_axis is qualitative, then set the colormap and norm
+    if marker_props['value_type'] == 'qual':
+        cbar_cmap = plt.get_cmap(cmap, len(marker_axis.unique()))
+        norm = colors.NoNorm(vmin=min(marker_axis), vmax=max(marker_axis))
     else:
-        qualitative = False
         cbar_cmap = cmap
-        norm = plt.Normalize(vmin=min(m_axis), vmax=max(m_axis))
+        norm = plt.Normalize(vmin=min(marker_axis), vmax=max(marker_axis))
+    # Extend the colorbar to indicate when the color map has been clipped
+    if cclip[0] > 0 and cclip[1] < 100:
+        extend_cbar = 'both'
+    elif cclip[0] > 0:
+        extend_cbar = 'min'
+    elif cclip[1] < 100:
+        extend_cbar = 'max'
+    else:
+        extend_cbar = 'neither'
     # Create the colorbar
     cax = attach_axis(ax, size="3%", pad="0.5%")
     colorbar = plt.colorbar(
         cm.ScalarMappable(norm=norm, cmap=cbar_cmap), 
         cax=cax,
         label=graph_contents.keys()[2],
+        extend=extend_cbar,
     )
-    # Font properties and parameters for labels 
+    # Font properties and other label parameters 
     colorbar.ax.yaxis.label.set_font_properties(label_fp)
     colorbar.ax.tick_params(labelfontfamily = tick_fp.get_family(),
                             rotation = -15)
-    # Change the tick labels to their qualitative name
-    if qualitative == True:
+    colorbar.ax.ticklabel_format(scilimits = (-3,3))
+    # Change tick labels to their qualitative names
+    if marker_props['value_type'] == 'qual':
         cbar_ticks_df = pd.DataFrame({
             'quant': graph_contents.iloc[:, 2], 
-            'qual': metadata_df.loc[:, m_axis_name].fillna('none')
+            'qual': metadata_df.loc[:, marker_props['value']].fillna('none')
         })
         cbar_tick_labels = list(
             cbar_ticks_df.drop_duplicates().sort_values(by='quant')['qual']
         )
         cbar_tick_labels = [s.title() for s in cbar_tick_labels]
-        colorbar.ax.set_yticks(range(len(cbar_tick_labels)))
-        colorbar.ax.set_yticklabels(cbar_tick_labels)
-    
+        colorbar.ax.set_yticks(ticks = range(len(cbar_tick_labels)),
+                               labels = cbar_tick_labels)
+        
     return fig
 
 
