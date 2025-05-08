@@ -499,10 +499,9 @@ def plotly_to_matplotlib_symbol(plotly_symbol):
         pyplot_symbol = plotly_symbol_keywords[plotly_base_symbol]
     except:
         pyplot_symbol = 'o' # default to circles if the above fails
-    
     return pyplot_symbol
 
-# TODO: implement
+
 def fig_from_main_graph(
     graph_contents,
     metadata_df,
@@ -532,16 +531,20 @@ def fig_from_main_graph(
     plt.switch_backend('agg')
 
     # Create the matplotlib figure and its subplot
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize = (15,12), layout = 'tight')
 
     # Set fonts
-    # TODO: maybe grab fonts from multidex/plotter/config/graph_style.py instead of hardcoding them here
+    # TODO: maybe grab fonts from multidex/plotter/config/graph_style.py 
+    # instead of hardcoding them here
     font_file = Path(
-        Path(__file__).parent, "application/assets/fonts/Roboto-Regular.ttf"
+        Path(__file__).parent, "application/assets/fonts/TitilliumWeb-Light.ttf"
     )
-    label_fp = mplf.FontProperties(fname=font_file, size=12)
-    tick_fp = mplf.FontProperties(fname=font_file, size=8)
-    metadata_fp = mplf.FontProperties(fname=font_file, size=10)
+    font_file_bold = Path(
+        Path(__file__).parent, "application/assets/fonts/TitilliumWeb-Bold.ttf"
+    )
+    label_fp = mplf.FontProperties(fname=font_file, size=26)
+    tick_fp = mplf.FontProperties(fname=font_file, size=22)
+    fitline_fp = mplf.FontProperties(fname=font_file_bold, size=24)
 
     # Marker outline color
     if re_get(marker_settings, "marker-outline-radio.value") == "off":
@@ -555,7 +558,9 @@ def fig_from_main_graph(
         x = graph_contents.iloc[:,0],
         y = graph_contents.iloc[:,1],
         c = graph_contents.iloc[:,2],
-        s = re_get(marker_settings, "marker-size-radio.value"),
+        # marker sizes (s) in scatter plots are the square of their standard 
+        # matplotlib marker size
+        s = re_get(marker_settings, "marker-size-radio.value") ** 2,
         alpha = re_get(marker_settings, "marker-opacity-input.value")/100,
         edgecolors = outline_color,
         marker = plotly_to_matplotlib_symbol(
@@ -580,13 +585,13 @@ def fig_from_main_graph(
         graph_contents.keys()[0], fontproperties = label_fp, 
         wrap = True, va = "top",
     )
+    plt.xticks(font=tick_fp)
     plt.ylim(yrange)
     plt.ylabel(
         graph_contents.keys()[1], fontproperties = label_fp,
-        wrap = True, va = "center",
+        wrap = True, va = "bottom",
     )
-    # Tick labels
-    plt.tick_params(labelfontfamily = tick_fp.get_family())
+    plt.yticks(font=tick_fp)
     # Error bars
     if not errors.isnull().values.any():
         plt.errorbar(
@@ -594,10 +599,12 @@ def fig_from_main_graph(
             y = graph_contents.iloc[:,1], 
             xerr = errors.loc[:, "x"],
             yerr = errors.loc[:, "y"],
-            elinewidth = 0.5, 
+            elinewidth = 1, 
+            capsize = 5,
             ecolor = "gray", 
             fmt = "none", # only draw error bars, no extra points/lines
             alpha = re_get(marker_settings, "marker-opacity-input.value")/100,
+            zorder = 0, # plot error bars under the existing markers
         )
     # Gridlines
     if re_get(axis_display_settings, "showgrid") == True:
@@ -618,19 +625,24 @@ def fig_from_main_graph(
     if line is not None:
         fit_line = ax.plot(
             line['x'], line['y'],
-            color = 'black', lw = 1.5,
+            color = 'black', lw = 3,
             marker = 'none',
         )
         plt.text(
-            xrange[0], yrange[0], 
-            f"   {re_get(line, 'text')}", 
-            fontproperties = metadata_fp, 
-            va = 'bottom',
+            0.01, 0.01, 
+            f" {line['text']} ", 
+            transform = ax.transAxes, 
+            fontproperties = fitline_fp, 
+            va = 'bottom', ha = 'left',
+            bbox = dict(fc = 'gray', ec = 'none', alpha = 0.3,
+                        boxstyle = "Square, pad=0.3"),
         )
     # Highlighting
-    # TODO: the original points are not removed, the highlight markers are just plotted on top
+    # TODO: the original points are not removed, the highlight markers are just 
+    # plotted on top
     if re_get(highlight_settings, "highlight-toggle.value") == "on":
-        # Set the fill and outline colors based on whether the marker symbol is "open" or filled
+        # Set the fill and outline colors based on whether the marker symbol is 
+        # "open" or filled
         if '-open' in highlight_settings["highlight-symbol-drop.value"]:
             hl_fillcolor = 'none'
             hl_outline = highlight_settings["highlight-color-drop.value"]
@@ -647,7 +659,8 @@ def fig_from_main_graph(
             marker = plotly_to_matplotlib_symbol(
                 re_get(highlight_settings, "highlight-symbol-drop.value")
             ),
-            s = re_get(highlight_settings, "highlight-size-radio.value") * re_get(marker_settings, "marker-size-radio.value"),
+            # Hard coding in an extra 3x to mimic the plotly marker size
+            s = (marker_settings["marker-size-radio.value"] ** 2) * (highlight_settings["highlight-size-radio.value"] * 3),
             alpha = re_get(highlight_settings, "highlight-opacity-input.value")/100,
             zorder = 2, # Make sure the highlights plot above other markers
         )
@@ -675,14 +688,14 @@ def fig_from_main_graph(
     colorbar = plt.colorbar(
         cm.ScalarMappable(norm=norm, cmap=cbar_cmap), 
         cax=cax,
-        label=graph_contents.keys()[2],
         extend=extend_cbar,
     )
     # Font properties and other label parameters 
-    colorbar.ax.yaxis.label.set_font_properties(label_fp)
-    colorbar.ax.tick_params(labelfontfamily = tick_fp.get_family(),
-                            rotation = -15)
-    colorbar.ax.ticklabel_format(scilimits = (-3,3))
+    plt.ylabel(graph_contents.keys()[2], fontproperties = label_fp, 
+               wrap = True)
+    plt.yticks(font = tick_fp, rotation = -15)
+    colorbar.ax.ticklabel_format(scilimits = (-3,3), useMathText = True)
+    colorbar.ax.yaxis.offsetText.set_fontproperties(tick_fp)
     # Change tick labels to their qualitative names
     if marker_props['value_type'] == 'qual':
         cbar_ticks_df = pd.DataFrame({
