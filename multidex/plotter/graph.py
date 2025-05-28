@@ -553,11 +553,19 @@ def fig_from_main_graph(
         outline_color = plotly_color_to_percent(
             re_get(marker_settings, "marker-outline-radio.value")
         )
+
+    if re_get(highlight_settings, "highlight-toggle.value") == "on":
+        highlight_df, graph_df = split_on(
+            graph_contents, graph_contents.index.isin(highlight_ids)
+        )
+    else:
+        highlight_df, graph_df = None, graph_contents
+
     # Plot the data points
     plot = ax.scatter(
-        x = graph_contents.iloc[:,0],
-        y = graph_contents.iloc[:,1],
-        c = graph_contents.iloc[:,2],
+        x = graph_df.iloc[:,0],
+        y = graph_df.iloc[:,1],
+        c = graph_df.iloc[:,2],
         # marker sizes (s) in scatter plots are the square of their standard 
         # matplotlib marker size
         s = re_get(marker_settings, "marker-size-radio.value") ** 2,
@@ -582,21 +590,21 @@ def fig_from_main_graph(
     # Axis limits and labels
     plt.xlim(xrange)
     plt.xlabel(
-        graph_contents.keys()[0], fontproperties = label_fp, 
+        graph_df.keys()[0], fontproperties = label_fp,
         wrap = True, va = "top",
     )
     plt.xticks(font=tick_fp)
     plt.ylim(yrange)
     plt.ylabel(
-        graph_contents.keys()[1], fontproperties = label_fp,
+        graph_df.keys()[1], fontproperties = label_fp,
         wrap = True, va = "bottom",
     )
     plt.yticks(font=tick_fp)
     # Error bars
     if not errors.isnull().values.any():
         plt.errorbar(
-            x = graph_contents.iloc[:,0], 
-            y = graph_contents.iloc[:,1], 
+            x = graph_df.iloc[:,0],
+            y = graph_df.iloc[:,1],
             xerr = errors.loc[:, "x"],
             yerr = errors.loc[:, "y"],
             elinewidth = 1, 
@@ -638,10 +646,8 @@ def fig_from_main_graph(
                         boxstyle = "Square, pad=0.3"),
         )
     # Highlighting
-    # TODO: the original points are not removed, the highlight markers are just 
-    # plotted on top
     if re_get(highlight_settings, "highlight-toggle.value") == "on":
-        # Set the fill and outline colors based on whether the marker symbol is 
+        # Set the fill and outline colors based on whether the marker symbol is
         # "open" or filled
         if '-open' in highlight_settings["highlight-symbol-drop.value"]:
             hl_fillcolor = 'none'
@@ -650,10 +656,9 @@ def fig_from_main_graph(
             hl_fillcolor = highlight_settings["highlight-color-drop.value"]
             hl_outline = plotly_color_to_percent(highlight_settings["highlight-outline-radio.value"])
         # Plot the highlighted points
-        hl_df = graph_contents.loc[highlight_ids].copy()
-        highlights = ax.scatter(
-            x = hl_df.iloc[:,0], 
-            y = hl_df.iloc[:,1],
+        _highlights = ax.scatter(
+            x = highlight_df.iloc[:,0],
+            y = highlight_df.iloc[:,1],
             color = hl_fillcolor,
             edgecolors = hl_outline,
             marker = plotly_to_matplotlib_symbol(
@@ -666,7 +671,7 @@ def fig_from_main_graph(
         )
     
     # This whole last section is the colorbar:
-    marker_axis = graph_contents.iloc[:,2]
+    marker_axis = graph_df.iloc[:,2]
     # Check if the m_axis is qualitative, then set the colormap and norm
     if marker_props['value_type'] == 'qual':
         cbar_cmap = plt.get_cmap(cmap, len(marker_axis.unique()))
@@ -699,11 +704,13 @@ def fig_from_main_graph(
     # Change tick labels to their qualitative names
     if marker_props['value_type'] == 'qual':
         cbar_ticks_df = pd.DataFrame({
-            'quant': graph_contents.iloc[:, 2], 
-            'qual': metadata_df.loc[:, marker_props['value']].fillna('none')
+            'encoding': graph_df.iloc[:, 2],
+            'name': metadata_df.loc[
+                graph_df.index, marker_props['value']
+            ].fillna('none')
         })
         cbar_tick_labels = list(
-            cbar_ticks_df.drop_duplicates().sort_values(by='quant')['qual']
+            cbar_ticks_df.drop_duplicates().sort_values(by='encoding')['name']
         )
         cbar_tick_labels = [s.title() for s in cbar_tick_labels]
         colorbar.ax.set_yticks(ticks = range(len(cbar_tick_labels)),
