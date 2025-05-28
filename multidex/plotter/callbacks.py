@@ -82,7 +82,7 @@ from multidex.plotter.graph import (
     save_palette_memory,
     data_df_update_handler,
 )
-from multidex.plotter.plot_writer import fig_from_main_graph
+
 
 def trigger_search_update(_load_trigger, search_trigger):
     return search_trigger + 1
@@ -251,6 +251,9 @@ def export_plot_png(
     # TODO: PICKLE TEMPORARY FOR DEV! REMOVE! !!!!!!!!!!
     with open(filename.replace("png", "pkl"), "wb") as stream:
         pickle.dump(kwargs, stream)
+
+    from multidex.plotter.plot_writer import fig_from_main_graph
+
     fig = fig_from_main_graph(**kwargs)
     buf = BytesIO()
     # TODO: add other kwargs as necessary for formatting,
