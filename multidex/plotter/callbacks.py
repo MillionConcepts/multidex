@@ -54,7 +54,6 @@ from multidex.plotter.components.graph_components import (
 )
 from multidex.plotter.components.ui_components import parse_model_quant_entry
 from multidex.plotter.graph import (
-    fig_from_main_graph,
     load_state_into_application,
     add_dropdown,
     remove_dropdown,
@@ -83,8 +82,7 @@ from multidex.plotter.graph import (
     save_palette_memory,
     data_df_update_handler,
 )
-from multidex.plotter.render_output.output_writer import save_main_scatter_plot
-
+from multidex.plotter.plot_writer import fig_from_main_graph
 
 def trigger_search_update(_load_trigger, search_trigger):
     return search_trigger + 1
@@ -218,13 +216,10 @@ def export_plot_png(
         k: cget(k) for k in
         (
             "graph_contents",
-            "x_settings",
-            "y_settings",
             "marker_settings",
             "highlight_settings",
             "graph_display_settings",
             "axis_display_settings",
-            "r_star",
             "errors",
             "highlight_ids"
         )
