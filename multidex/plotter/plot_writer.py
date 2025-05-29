@@ -114,7 +114,7 @@ def _draw_colorbar(ax, cclip, cmap, norm, graph_contents,
 def _maybe_draw_grid(ax, axis_display_settings):
     showgrid = re_get(axis_display_settings, "showgrid") is True
     zeroline = re_get(axis_display_settings, "zeroline") is not False
-    if not showgrid or zeroline:
+    if not (showgrid or zeroline):
         return
     grid_color = plotly_color_to_percent(
         re_get(axis_display_settings, "gridcolor")
