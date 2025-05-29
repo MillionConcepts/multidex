@@ -17,6 +17,7 @@ from multidex.plotter.config.output_style import (
     TICK_TEXT_SIZE,
     FITLINE_TEXT_SIZE
 )
+from plotter.components.graph_components import get_ordering
 
 # TODO: grab fonts from config instead of hardcoding them here
 
@@ -81,8 +82,8 @@ def _draw_axis_labels(graph_df, label_fp, tick_fp, xrange, yrange):
     plt.yticks(font=tick_fp)
 
 
-def _draw_colorbar(ax, cclip, cmap, norm, graph_contents,
-                   qual_tick_labels, label_fp, marker_props, tick_fp):
+def _draw_colorbar(ax, cclip, cmap, norm, graph_contents, qual_ticks,
+                   label_fp, marker_props, tick_fp):
     # Check if the m_axis is qualitative, then set the colormap and norm
     # Extend the colorbar to indicate when the color map has been clipped
     if cclip[0] > 0 and cclip[1] < 100:
@@ -106,7 +107,7 @@ def _draw_colorbar(ax, cclip, cmap, norm, graph_contents,
     colorbar.ax.yaxis.offsetText.set_fontproperties(tick_fp)
     # Change tick labels to their qualitative names
     if marker_props['value_type'] == 'qual':
-        cbar_tick_labels = [s.title() for s in qual_tick_labels]
+        cbar_tick_labels = [s.title() for s in qual_ticks]
         colorbar.ax.set_yticks(ticks=range(len(cbar_tick_labels)),
                                labels=cbar_tick_labels)
 
@@ -130,7 +131,8 @@ def _maybe_draw_grid(ax, axis_display_settings):
 
 
 def _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
-                                   marker_settings, solid_color, cmap, norm):
+                                   marker_settings, solid_color, cmap, cnum,
+                                   norm):
     # Set the fill and outline colors based on whether the marker symbol is
     # "open" or filled
     color_kwargs = {
@@ -145,7 +147,7 @@ def _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
         else:
             color_kwargs["color"] = hcol
     elif solid_color is None:
-        color_kwargs["cmap"], color_kwargs["c"] = cmap, highlight_df.iloc[:, 2]
+        color_kwargs["cmap"], color_kwargs["c"] = cmap, highlight_df['cref']
         color_kwargs["norm"] = norm
     else:
         color_kwargs["color"] = solid_color
@@ -198,7 +200,7 @@ def _draw_main_scatter_points(ax, graph_df, marker_settings,
         ),
     }
     if cmap is not None:
-        plot_kwargs["c"], plot_kwargs["cmap"] = graph_df.iloc[:, 2], cmap
+        plot_kwargs["c"], plot_kwargs["cmap"] = graph_df['cref'], cmap
         plot_kwargs["norm"] = norm
     else:
         plot_kwargs["color"] = solid_color
@@ -233,7 +235,8 @@ def fig_from_main_graph(
     axis_display_settings,
     cclip,
     errors,
-    line
+    line,
+    spec_model
 ):
     if re_get(marker_settings, "marker-outline-radio.value") == "off":
         outline_color = "face"
@@ -251,18 +254,26 @@ def fig_from_main_graph(
         highlight_df, graph_df = split_on(graph_contents, is_highlight)
     else:
         highlight_df, graph_df, hcol = None, graph_contents, "none"
-    cref, qual_tick_labels, norm = None, None, None
+    cref, qual_ticknames, norm, cnum = None, None, None, None
     if hcol == "none" and cmap is not None:
         cref = graph_contents
     elif cmap is not None:
         cref = graph_df
     if cref is not None:
-        cnum = cref.iloc[:, 2]
         if marker_props["value_type"] == "qual":
-            cmap = cmap.resampled(len(cnum.unique()))
-            qual_tick_labels = _make_qual_tick_labels(cnum, cref, marker_props,
-                                                      metadata_df)
+            qual_ticknames, cnum = _encode_categoricals(
+                cref, marker_props, metadata_df, spec_model
+            )
+            cmap = cmap.resampled(len(qual_ticknames))
+        else:
+            cnum = cref.iloc[:, 2]
         norm = colors.Normalize(cnum.min(), cnum.max())
+        graph_df['cref'] = cnum.loc[cnum.index.isin(graph_df.index)]
+        if highlight_df is not None:
+            highlight_df['cref'] = cref.loc[
+                cref.index.isin(highlight_df.index)
+            ]
+
     # the 'agg' backend produces more consistent output and also prevents
     # macOS-specific threading errors
     plt.switch_backend('agg')
@@ -286,23 +297,21 @@ def fig_from_main_graph(
     if not errors.isnull().values.any():
         _draw_errors(errors, graph_contents, marker_settings)
     if solid_color is None:
-        _draw_colorbar(ax, cclip, cmap, norm, graph_contents,
-                       qual_tick_labels, LABEL_FP, marker_props, TICK_FP)
+        _draw_colorbar(ax, cclip, cmap, norm, graph_contents, qual_ticknames,
+                       LABEL_FP, marker_props, TICK_FP)
     return fig
 
 
-def _make_qual_tick_labels(cnum, cref, marker_props, metadata_df):
-    qual_tick_df = pd.DataFrame(
-        {
-            "encoding": cnum,
-            "name": metadata_df.loc[
-                cref.index, marker_props['value']
-            ].fillna('none')
-        }
-    )
-    qual_tick_labels = list(
-        qual_tick_df
-        .sort_values(by="encoding")["name"]
-        .drop_duplicates()
-    )
-    return qual_tick_labels
+def _encode_categoricals(cref, marker_props, metadata_df, spec_model_name):
+    names = metadata_df.loc[cref.index, marker_props['value']].fillna('none')
+    ospec = get_ordering(marker_props['value'], spec_model_name)
+    if (carry := ospec.get('categoryarray')) is None:
+        order = reversed(sorted(set(map(str.lower, names))))
+    else:
+        order = carry
+        if 'none' not in map(str.lower, carry):
+            order = ('none',) + order
+    encoding = {n.lower(): i for i, n in enumerate(order)}
+    qualticks = tuple(encoding.keys())
+    cnum = pd.Series([encoding[n.lower()] for n in names], index=cref.index)
+    return qualticks, cnum

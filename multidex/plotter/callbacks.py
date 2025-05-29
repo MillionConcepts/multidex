@@ -221,7 +221,7 @@ def export_plot_png(
             "graph_display_settings",
             "axis_display_settings",
             "errors",
-            "highlight_ids"
+            "highlight_ids",
         )
     }
     kwargs["metadata_df"] = cget('metadata_df').loc[
@@ -230,7 +230,10 @@ def export_plot_png(
     kwargs["xrange"] = main_graph['layout']['xaxis']['range']
     kwargs["yrange"] = main_graph['layout']['yaxis']['range']
     kwargs["cclip"] = (cclip_low, cclip_high)
-    kwargs['marker_props'] = get_axis_option_props(cget('marker_settings'), spec_model)[1]
+    kwargs['marker_props'] = get_axis_option_props(
+        cget('marker_settings'), spec_model
+    )[1]
+    kwargs['spec_model'] = spec_model.instrument
     line_traces = [
         t for t in main_graph['data'] if t.get('name') == 'regression'
     ]

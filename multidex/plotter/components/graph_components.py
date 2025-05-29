@@ -104,7 +104,7 @@ def style_data(
     fig.update_yaxes(
         axis_display_dict
         | {"title_text": y_title}
-        | get_ordering(ax_field_names['x'], instrument)
+        | get_ordering(ax_field_names['y'], instrument)
     )
     if (
         (marker_axis_type == "qual")
@@ -174,6 +174,7 @@ def main_scatter_graph(
     """
     fig = go.Figure()
     # # the click-to-label annotations
+    # TODO: why is this dead code still here?
     # draw_floating_labels(fig, graph_df, label_ids)
     # and the scattered points and their error bars
     # last-mile thing here to keep separate from highlight -- TODO: silly?
