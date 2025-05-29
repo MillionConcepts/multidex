@@ -1,5 +1,4 @@
 import warnings
-from pathlib import Path
 
 from dustgoggles.pivot import split_on
 from marslab.imgops.pltutils import attach_axis
@@ -11,15 +10,20 @@ import pandas as pd
 
 from multidex.multidex_utils import re_get
 from multidex.plotter.colors import plotly_color_to_percent, get_scale_type
+from multidex.plotter.config.output_style import (
+    FONT_PATH,
+    FONT_PATH_BOLD,
+    LABEL_TEXT_SIZE,
+    TICK_TEXT_SIZE,
+    FITLINE_TEXT_SIZE
+)
 
 # TODO: grab fonts from config instead of hardcoding them here
-FONT_PATH = Path(
-    Path(__file__).parent, "application/assets/fonts/TitilliumWeb-Light.ttf"
-)
-FONT_PATH_BOLD = Path(
-    Path(__file__).parent, "application/assets/fonts/TitilliumWeb-Bold.ttf"
-)
 
+# TODO: similarly, make these sizes configurable
+LABEL_FP = mplf.FontProperties(fname=FONT_PATH, size=LABEL_TEXT_SIZE)
+TICK_FP = mplf.FontProperties(fname=FONT_PATH, size=TICK_TEXT_SIZE)
+FITLINE_FP = mplf.FontProperties(fname=FONT_PATH_BOLD, size=FITLINE_TEXT_SIZE)
 
 def plotly_to_matplotlib_symbol(plotly_symbol):
     # TODO: taking the first item after splitting by '-' oversimplifies some
@@ -45,7 +49,9 @@ def plotly_to_matplotlib_symbol(plotly_symbol):
     return pyplot_symbol
 
 
-def _pick_colormap(marker_settings):
+def _pick_colormap(marker_settings) -> tuple[
+    colors.ListedColormap | None, str | None
+]:
     from matplotlib import colormaps
 
     palette_name = re_get(marker_settings, "palette-name-drop.value")
@@ -53,12 +59,14 @@ def _pick_colormap(marker_settings):
         # NOTE: matplotlib recognizes all solid colors multidex offers,
         #  because they're all CSS color names
         return None, palette_name
-    cmaps = [c for c in colormaps.keys() if c.lower() == palette_name.lower()]
+    cmaps = [
+        c for n, c in colormaps.items() if n.lower() == palette_name.lower()
+    ]
     if len(cmaps) > 0:
         return cmaps[0], None
     warnings.warn(f"The colormap '{palette_name}' is not available for plot "
                   f"export. Defaulting to 'inferno'.")
-    return "inferno", None
+    return colormaps["inferno"], None
 
 def _draw_axis_labels(graph_df, label_fp, tick_fp, xrange, yrange):
     plt.xlim(xrange)
@@ -73,16 +81,9 @@ def _draw_axis_labels(graph_df, label_fp, tick_fp, xrange, yrange):
     plt.yticks(font=tick_fp)
 
 
-def _draw_colorbar(ax, cclip, cmap, graph_contents, graph_df, label_fp,
-                   marker_props, metadata_df, tick_fp):
-    marker_axis = graph_df.iloc[:, 2]
+def _draw_colorbar(ax, cclip, cmap, norm, graph_contents,
+                   qual_tick_labels, label_fp, marker_props, tick_fp):
     # Check if the m_axis is qualitative, then set the colormap and norm
-    if marker_props['value_type'] == 'qual':
-        cbar_cmap = plt.get_cmap(cmap, len(marker_axis.unique()))
-        norm = colors.NoNorm(vmin=min(marker_axis), vmax=max(marker_axis))
-    else:
-        cbar_cmap = cmap
-        norm = plt.Normalize(vmin=min(marker_axis), vmax=max(marker_axis))
     # Extend the colorbar to indicate when the color map has been clipped
     if cclip[0] > 0 and cclip[1] < 100:
         extend_cbar = 'both'
@@ -95,28 +96,17 @@ def _draw_colorbar(ax, cclip, cmap, graph_contents, graph_df, label_fp,
     # Create the colorbar
     cax = attach_axis(ax, size="3%", pad="0.5%")
     colorbar = plt.colorbar(
-        cm.ScalarMappable(norm=norm, cmap=cbar_cmap),
-        cax=cax,
-        extend=extend_cbar,
+        # b/c we have a variable number of actually-graphed mappables, need to
+        # use a 'dummy' mappable here
+        cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, extend=extend_cbar,
     )
-    # Font properties and other label parameters
-    plt.ylabel(graph_contents.keys()[2], fontproperties=label_fp,
-               wrap=True)
+    plt.ylabel(graph_contents.keys()[2], fontproperties=label_fp, wrap=True)
     plt.yticks(font=tick_fp, rotation=-15)
     colorbar.ax.ticklabel_format(scilimits=(-3, 3), useMathText=True)
     colorbar.ax.yaxis.offsetText.set_fontproperties(tick_fp)
     # Change tick labels to their qualitative names
     if marker_props['value_type'] == 'qual':
-        cbar_ticks_df = pd.DataFrame({
-            'encoding': graph_df.iloc[:, 2],
-            'name': metadata_df.loc[
-                graph_df.index, marker_props['value']
-            ].fillna('none')
-        })
-        cbar_tick_labels = list(
-            cbar_ticks_df.drop_duplicates().sort_values(by='encoding')['name']
-        )
-        cbar_tick_labels = [s.title() for s in cbar_tick_labels]
+        cbar_tick_labels = [s.title() for s in qual_tick_labels]
         colorbar.ax.set_yticks(ticks=range(len(cbar_tick_labels)),
                                labels=cbar_tick_labels)
 
@@ -140,32 +130,39 @@ def _maybe_draw_grid(ax, axis_display_settings):
 
 
 def _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
-                                   marker_settings):
+                                   marker_settings, solid_color, cmap, norm):
     # Set the fill and outline colors based on whether the marker symbol is
     # "open" or filled
-    if '-open' in highlight_settings["highlight-symbol-drop.value"]:
-        hl_fillcolor = 'none'
-        hl_outline = highlight_settings["highlight-color-drop.value"]
-    else:
-        hl_fillcolor = highlight_settings["highlight-color-drop.value"]
-        hl_outline = plotly_color_to_percent(
+    color_kwargs = {
+        "edgecolors":  plotly_color_to_percent(
             highlight_settings["highlight-outline-radio.value"]
         )
-    # Plot the highlighted points
+    }
+
+    if (hcol := highlight_settings["highlight-color-drop.value"]) != 'none':
+        if '-open' in highlight_settings["highlight-symbol-drop.value"]:
+            color_kwargs["color"], color_kwargs["edgecolors"] = 'none', hcol
+        else:
+            color_kwargs["color"] = hcol
+    elif solid_color is None:
+        color_kwargs["cmap"], color_kwargs["c"] = cmap, highlight_df.iloc[:, 2]
+        color_kwargs["norm"] = norm
+    else:
+        color_kwargs["color"] = solid_color
+
     _highlights = ax.scatter(
         x=highlight_df.iloc[:, 0],
         y=highlight_df.iloc[:, 1],
-        color=hl_fillcolor,
-        edgecolors=hl_outline,
         marker=plotly_to_matplotlib_symbol(
             re_get(highlight_settings, "highlight-symbol-drop.value")
         ),
-        # Hard coding in an extra 3x to mimic the plotly marker size
+        # 3x matches plotly marker size convention
         s=(marker_settings["marker-size-radio.value"] ** 2) * (
                 highlight_settings["highlight-size-radio.value"] * 3),
         alpha=re_get(highlight_settings,
                      "highlight-opacity-input.value") / 100,
         zorder=2,  # Make sure the highlights plot above other markers
+        **color_kwargs
     )
 
 
@@ -186,8 +183,8 @@ def _draw_fit_line(ax, fitline_fp, line):
     )
 
 
-def _draw_main_scatter_points(ax, cmap, graph_df, marker_settings,
-                              outline_color, solid_color):
+def _draw_main_scatter_points(ax, graph_df, marker_settings,
+                              outline_color, solid_color, cmap, norm):
     plot_kwargs = {
         "x": graph_df.iloc[:, 0],
         "y": graph_df.iloc[:, 1],
@@ -202,6 +199,7 @@ def _draw_main_scatter_points(ax, cmap, graph_df, marker_settings,
     }
     if cmap is not None:
         plot_kwargs["c"], plot_kwargs["cmap"] = graph_df.iloc[:, 2], cmap
+        plot_kwargs["norm"] = norm
     else:
         plot_kwargs["color"] = solid_color
     ax.scatter(**plot_kwargs)
@@ -237,15 +235,6 @@ def fig_from_main_graph(
     errors,
     line
 ):
-    label_fp = mplf.FontProperties(fname=FONT_PATH, size=26)
-    tick_fp = mplf.FontProperties(fname=FONT_PATH, size=22)
-    fitline_fp = mplf.FontProperties(fname=FONT_PATH_BOLD, size=24)
-    if re_get(highlight_settings, "highlight-toggle.value") == "on":
-        highlight_df, graph_df = split_on(
-            graph_contents, graph_contents.index.isin(highlight_ids)
-        )
-    else:
-        highlight_df, graph_df = None, graph_contents
     if re_get(marker_settings, "marker-outline-radio.value") == "off":
         outline_color = "face"
     else:
@@ -253,28 +242,67 @@ def fig_from_main_graph(
             re_get(marker_settings, "marker-outline-radio.value")
         )
     cmap, solid_color = _pick_colormap(marker_settings)
+    graph_contents = graph_contents.copy()
+    # TODO, maybe: this color logic is very ugly but there aren't a lot of
+    #  not-awkward ways to share colorscales across mappables in matplotlib
+    if re_get(highlight_settings, "highlight-toggle.value") == "on":
+        hcol = highlight_settings["highlight-color-drop.value"]
+        is_highlight = graph_contents.index.isin(highlight_ids)
+        highlight_df, graph_df = split_on(graph_contents, is_highlight)
+    else:
+        highlight_df, graph_df, hcol = None, graph_contents, "none"
+    cref, qual_tick_labels, norm = None, None, None
+    if hcol == "none" and cmap is not None:
+        cref = graph_contents
+    elif cmap is not None:
+        cref = graph_df
+    if cref is not None:
+        cnum = cref.iloc[:, 2]
+        if marker_props["value_type"] == "qual":
+            cmap = cmap.resampled(len(cnum.unique()))
+            qual_tick_labels = _make_qual_tick_labels(cnum, cref, marker_props,
+                                                      metadata_df)
+        norm = colors.Normalize(cnum.min(), cnum.max())
     # the 'agg' backend produces more consistent output and also prevents
     # macOS-specific threading errors
     plt.switch_backend('agg')
     fig, ax = plt.subplots(figsize=(15, 12), layout='tight')
-    _draw_main_scatter_points(ax, cmap, graph_df, marker_settings,
-                              outline_color, solid_color)
+    _draw_main_scatter_points(ax, graph_df, marker_settings,
+                              outline_color, solid_color, cmap, norm)
     bg_color = plotly_color_to_percent(
         re_get(graph_display_settings, "plot_bgcolor")
     )
     ax.set_facecolor(bg_color)
-    _draw_axis_labels(graph_df, label_fp, tick_fp, xrange, yrange)
+    _draw_axis_labels(graph_df, LABEL_FP, TICK_FP, xrange, yrange)
     _maybe_draw_grid(ax, axis_display_settings)
     if line is not None:
-        _draw_fit_line(ax, fitline_fp, line)
+        _draw_fit_line(ax, FITLINE_FP, line)
     if re_get(highlight_settings, "highlight-toggle.value") == "on":
         _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
-                                       marker_settings)
+                                       marker_settings, solid_color, cmap,
+                                       norm)
     # TODO: i'm not sure all-not-null is the correct criterion
     # TODO: doublecheck alignment b/w highlight & main
     if not errors.isnull().values.any():
         _draw_errors(errors, graph_contents, marker_settings)
     if solid_color is None:
-        _draw_colorbar(ax, cclip, cmap, graph_contents, graph_df, label_fp,
-                       marker_props, metadata_df, tick_fp)
+        _draw_colorbar(ax, cclip, cmap, norm, graph_contents,
+                       qual_tick_labels, LABEL_FP, marker_props, TICK_FP)
     return fig
+
+
+def _make_qual_tick_labels(cnum, cref, marker_props, metadata_df):
+    qual_tick_df = pd.DataFrame(
+        {
+            "encoding": cnum,
+            "name": metadata_df.loc[
+                cref.index, marker_props['value']
+            ].fillna('none')
+        }
+    )
+    qual_tick_labels = list(
+        qual_tick_df
+        .sort_values(by="encoding")["name"]
+        .drop_duplicates()
+    )
+    return qual_tick_labels
