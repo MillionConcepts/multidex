@@ -51,7 +51,8 @@ def configure_flask_cache(cache_subdirectory):
 def register_clientside_callbacks(app):
     # TODO: move this into external scripts?
     js_callbacks = [
-        "record_graph_size_and_trigger_save",
+        # TODO, probably: remove!!!!!
+        # "record_graph_size_and_trigger_save",
         "drag_spec_print",
         'hide_spec_print'
     ]

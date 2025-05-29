@@ -3,6 +3,8 @@ these are intended principally as function prototypes. they are partially
 defined and/or passed to callback decorators in order to generate flow control
 within the app. they should rarely, if ever, be called in these generic forms.
 """
+import pickle
+from io import BytesIO
 import re
 from ast import literal_eval
 import csv
@@ -80,7 +82,6 @@ from multidex.plotter.graph import (
     save_palette_memory,
     data_df_update_handler,
 )
-from multidex.plotter.render_output.output_writer import save_main_scatter_plot
 
 
 def trigger_search_update(_load_trigger, search_trigger):
@@ -208,6 +209,65 @@ def update_spectrum_graph(
     )
 
 
+def export_plot_png(
+    _trigger, main_graph, cclip_low, cclip_high, cget, spec_model
+):
+    kwargs = {
+        k: cget(k) for k in
+        (
+            "graph_contents",
+            "marker_settings",
+            "highlight_settings",
+            "graph_display_settings",
+            "axis_display_settings",
+            "errors",
+            "highlight_ids"
+        )
+    }
+    kwargs["metadata_df"] = cget('metadata_df').loc[
+        kwargs["graph_contents"].index
+    ]
+    kwargs["xrange"] = main_graph['layout']['xaxis']['range']
+    kwargs["yrange"] = main_graph['layout']['yaxis']['range']
+    kwargs["cclip"] = (cclip_low, cclip_high)
+    kwargs['marker_props'] = get_axis_option_props(cget('marker_settings'), spec_model)[1]
+    line_traces = [
+        t for t in main_graph['data'] if t.get('name') == 'regression'
+    ]
+    if len(line_traces) > 0:
+        kwargs['line'] = {
+            'x': line_traces[0]['x'],
+            'y': line_traces[0]['y'],
+            # TODO: sloppy, but should always be correct with how the
+            #  annotations are currently constructed, even w/floating labels
+            'text': main_graph['layout']['annotations'][0]['text']
+        }
+    else:
+        kwargs['line'] = None
+    filename = (
+        f"{spec_model.instrument.lower()}-"
+        f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
+    )
+    # TODO: PICKLE TEMPORARY FOR DEV! REMOVE! !!!!!!!!!!
+    with open(filename.replace("png", "pkl"), "wb") as stream:
+        pickle.dump(kwargs, stream)
+
+    from multidex.plotter.plot_writer import fig_from_main_graph
+
+    fig = fig_from_main_graph(**kwargs)
+    buf = BytesIO()
+    # TODO: add other kwargs as necessary for formatting,
+    #  e.g. pad_inches -- see pretty-plot for likely options
+    fig.savefig(buf, format="png", bbox_inches='tight')
+    buf.seek(0)
+    return {
+        "content": b64encode(buf.read()).decode("ascii"),
+        "filename": filename,
+        "type": 'image/png',
+        "base64": True
+    }
+
+
 def update_data_df(
     _load_trigger,
     scale_to,
@@ -257,9 +317,18 @@ def update_main_graph(
     ctx = dash.callback_context
     trigger = ctx.triggered[0]["prop_id"]
     # handle explicit bounds changes
-    if trigger == "main-graph-bounds.value":
-        return explicitly_set_graph_bounds(ctx)
+    # NOTE: we don't actually _do_ anything later in the function
+    #  with bounds_string in other cases, but I've
+    #  rewritten it this way to facilitate possible changes in logic that
+    #  are currently under discussion
     bounds_string = parse_main_graph_bounds_string(ctx)
+    cset("bounds_string", bounds_string)
+    if trigger == "main-graph-bounds.value":
+        import plotly.graph_objects as go
+
+        return explicitly_set_graph_bounds(
+            bounds_string, go.Figure(ctx.states["main-graph.figure"])
+        ), {}
     try:
         color_clip = [
             ctx.inputs["color-clip-bound-low.value"],
@@ -331,7 +400,7 @@ def update_main_graph(
         metadata_df,
         spec_model,
         filters_are_averaged,
-    )
+        )
     if not truncated_ids:
         return (
             failed_scatter_graph(
@@ -351,7 +420,7 @@ def update_main_graph(
     ]
     graph_df = pd.DataFrame({"customdata": truncated_ids})
     # storing these separately because the API for error bars is annoying
-    errors = {}
+    errors = pd.DataFrame(columns=["x", "y"], index=graph_df.index)
     # passing cset into these in order to record eigenvectors & variances
     # for reduction operations. doing this asynchronously is not my favorite
     # thing in the world, but it _is_ special-case-y.
@@ -361,6 +430,9 @@ def update_main_graph(
     graph_df["y"], errors["y"], y_title = make_axis(
         y_settings, cset, *graph_content
     )
+    # TODO: this is weirdly out of sequence. only for plot export.
+    #  note that you _must_ use .loc, indices are matching but not aligned.
+    cset("errors", errors)
     # similarly for marker properties
     marker_properties, color, coloraxis, marker_axis_type = make_markers(
         marker_settings, cset, *graph_content
@@ -372,12 +444,19 @@ def update_main_graph(
     )
     # now that graph dataframe is constructed, split & style highlights to be
     # drawn as separate trace (or get None, {}) if no highlight is active)
-    graph_df, highlight_df, highlight_marker_dict = branch_highlight_df(
+    (
         graph_df,
-        highlight_ids,
-        highlight_settings,
-        base_marker_size=marker_properties["size"],
-    )
+        highlight_df,
+        highlight_marker_dict,
+        graph_errors,
+        highlight_errors
+    ) = branch_highlight_df(
+            graph_df,
+            highlight_ids,
+            highlight_settings,
+            errors,
+            base_marker_size=marker_properties["size"],
+        )
     # avoid resetting zoom for labels, color changes, etc.
     # TODO: continue assessing these conditions
     # TODO: cleanly prevent these from unsetting autoscale on load
@@ -418,8 +497,6 @@ def update_main_graph(
         graph_contents.columns = (x_title, y_title)
     graph_contents.index = graph_contents_df["customdata"]
     cset("graph_contents", graph_contents)
-    # TODO: hacky!
-    cset("loading_state", False)
     ax_field_names = {}
     for ax, s in zip(
         ("x", "y", "marker"), (x_settings, y_settings, marker_settings)
@@ -428,7 +505,8 @@ def update_main_graph(
     graph = main_scatter_graph(
         graph_df,
         highlight_df,
-        errors,
+        graph_errors,
+        highlight_errors,
         marker_properties,
         marker_axis_type,
         coloraxis,
@@ -442,6 +520,13 @@ def update_main_graph(
         y_title,
         zoom,
     )
+    # TODO, maybe: hacky!
+    if cget("loading_state") is True:
+        try:
+            graph = explicitly_set_graph_bounds(bounds_string, graph)
+        except PreventUpdate:
+            pass
+    cset("loading_state", False)
     # draw regression line if requested
     # TODO: hacky; basically here as a placeholder to include possible options.
     #  do it more nicely when functionality is firmed up.
@@ -903,6 +988,7 @@ def save_application_state(
         "scale_to",
         "average_filters",
         "r_star",
+        "bounds_string"
     )
     state = {
         k: f"{v}"
@@ -931,22 +1017,23 @@ def save_application_state(
     return trigger_value + 1
 
 
-def export_graph_png(clientside_fig_info, fig_dict, *, spec_model):
-    # this condition occurs during saved search loading. search loading
-    #  triggers a call from the clientside js snippet that triggers image
-    #  export. this is an inelegant way to suppress that call.
-    if not fig_dict.get("data"):
-        raise PreventUpdate
-    info = json.loads(clientside_fig_info)
-    aspect = info["width"] / info["height"]
-    blob = save_main_scatter_plot(fig_dict, aspect)
-    filename = (
-        f"{spec_model.instrument.lower()}-"
-        f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
-    )
-    return {
-        'content': b64encode(blob).decode('ascii'),
-        'filename': filename,
-        'type': 'image/png',
-        'base64': True
-    }
+# TODO, probably: remove !!!!!!!!!!!!!
+# def export_graph_png(clientside_fig_info, fig_dict, *, spec_model):
+#     # this condition occurs during saved search loading. search loading
+#     #  triggers a call from the clientside js snippet that triggers image
+#     #  export. this is an inelegant way to suppress that call.
+#     if not fig_dict.get("data"):
+#         raise PreventUpdate
+#     info = json.loads(clientside_fig_info)
+#     aspect = info["width"] / info["height"]
+#     blob = save_main_scatter_plot(fig_dict, aspect)
+#     filename = (
+#         f"{spec_model.instrument.lower()}-"
+#         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
+#     )
+#     return {
+#         'content': b64encode(blob).decode('ascii'),
+#         'filename': filename,
+#         'type': 'image/png',
+#         'base64': True
+#     }

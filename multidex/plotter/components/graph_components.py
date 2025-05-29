@@ -122,18 +122,20 @@ def style_data(
         )
 
 
-def draw_errors_on_figure(fig, errors):
+def construct_error_kwargs(errors):
+    kwargs = {}
     for axis in ["x", "y"]:
         key = f"error_{axis}"
-        if errors[axis] is None:
+        if errors[axis].isna().all():
             value = {"visible": False}
         else:
-            value = errors[axis] | {
+            value = {
+                "array": errors[axis].tolist(),
                 "visible": True,
                 "color": "rgba(0,0,0,0.3)",
             }
-        fig.update_traces({key: value})
-    return fig
+        kwargs[key] = value
+    return kwargs
 
 
 def apply_canvas_style(fig, graph_display_settings):
@@ -151,7 +153,8 @@ def failed_scatter_graph(message: str, graph_display_settings: Mapping):
 def main_scatter_graph(
     graph_df: pd.DataFrame,
     highlight_df: Optional[pd.DataFrame],
-    errors: Mapping,
+    graph_errors: pd.DataFrame,
+    highlight_errors: pd.DataFrame,
     marker_property_dict: dict,
     marker_axis_type: str,
     coloraxis: dict,
@@ -176,6 +179,7 @@ def main_scatter_graph(
     # last-mile thing here to keep separate from highlight -- TODO: silly?
     marker_property_dict["color"] = graph_df["color"].values
     fig.update_coloraxes(coloraxis)
+    error_kwargs = construct_error_kwargs(graph_errors)
     fig.add_trace(
         go.Scattergl(
             x=graph_df["x"],
@@ -188,6 +192,7 @@ def main_scatter_graph(
             # marker={"color": "black", "size": 8},
             showlegend=False,
             marker=marker_property_dict,
+            **error_kwargs
         )
     )
 
@@ -198,6 +203,7 @@ def main_scatter_graph(
         if "color" not in highlight_marker_dict:
             # just treat it like the graph df
             full_marker_dict["color"] = highlight_df["color"].values
+        highlight_error_kwargs = construct_error_kwargs(highlight_errors)
         fig.add_trace(
             go.Scattergl(
                 x=highlight_df["x"],
@@ -209,9 +215,9 @@ def main_scatter_graph(
                 mode="markers + text",
                 showlegend=False,
                 marker=full_marker_dict,
+                **highlight_error_kwargs
             )
         )
-    fig = draw_errors_on_figure(fig, errors)
     # last-step primary canvas stuff: set bounds, gridline color, titles, etc.
     style_data(
         fig,

@@ -14,6 +14,18 @@ from multidex.plotter.application.structure import (
     REGRESSION_LINE_INPUTS,
 )
 
+def register_export_plot_png(app, configured_function):
+    app.callback(
+        Output("plot-export-endpoint", "data"),
+        [Input("export-plot", "n_clicks")],
+        [
+            State("main-graph", "figure"),
+            State("color-clip-bound-low", "value"),
+            State("color-clip-bound-high", "value")
+        ],
+        prevent_initial_call=True
+    )(configured_function)
+
 
 def register_change_calc_input_visibility(
     app, configured_function, value_class
@@ -316,31 +328,32 @@ def register_export_graph_csv(app, configured_function):
     )(configured_function)
 
 
-def register_export_graph_png(app, configured_function):
-    app.callback(
-        Output("image-export-endpoint", "data"),
-        [Input("graph-size-record-div", "children")],
-        [State("main-graph", "figure")],
-        prevent_initial_call=True,
-    )(configured_function)
+# TODO, probably: remove !!!!!!!!!!!
+# def register_export_graph_png(app, configured_function):
+#     app.callback(
+#         Output("image-export-endpoint", "data"),
+#         [Input("graph-size-record-div", "children")],
+#         [State("main-graph", "figure")],
+#         prevent_initial_call=True,
+#     )(configured_function)
 
-
-def register_record_graph_size_and_trigger_save(app):
-    app.clientside_callback(
-        """
-        function() {
-            const main_graph = document.getElementById("main-graph");
-            const info_object = {
-                'width': main_graph.clientWidth, 
-                'height': main_graph.clientHeight
-            }
-            return JSON.stringify(info_object)
-        }
-        """,
-        Output("graph-size-record-div", "children"),
-        [Input("export-image", "n_clicks")],
-        prevent_initial_call=True,
-    )
+#
+# def register_record_graph_size_and_trigger_save(app):
+#     app.clientside_callback(
+#         """
+#         function() {
+#             const main_graph = document.getElementById("main-graph");
+#             const info_object = {
+#                 'width': main_graph.clientWidth,
+#                 'height': main_graph.clientHeight
+#             }
+#             return JSON.stringify(info_object)
+#         }
+#         """,
+#         Output("graph-size-record-div", "children"),
+#         [Input("export-image", "n_clicks")],
+#         prevent_initial_call=True,
+#     )
 
 
 def register_drag_spec_print(app):

@@ -21,7 +21,8 @@
 /multidex/plotter/cruft_holder/
 /multidex/plotter/application/assets/browse/mcam/*.jpg
 /multidex/plotter/application/assets/browse/zcam/*.jpg
-/multidex/plotter/application/assets/browse/ccam/*.png
+/multidex/plotter/application/assets/browse/ccam/*.jpg
+/multidex/plotter/application/assets/browse/scam/*.jpg
 /multidex/data/*CAM*.sqlite3
 /multidex/data/TEST.sqlite3
 /multidex/data/*.csv
@@ -37,3 +38,5 @@
 /multidex/ingest/local_settings/
 /multidex/data/backup
 !/multidex/saves/zcam/default.csv
+*.pkl
+*DS_Store
