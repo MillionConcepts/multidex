@@ -222,6 +222,7 @@ def export_plot_png(
             "axis_display_settings",
             "errors",
             "highlight_ids",
+            "ax_field_names"
         )
     }
     kwargs["metadata_df"] = cget('metadata_df').loc[
@@ -233,7 +234,7 @@ def export_plot_png(
     kwargs['marker_props'] = get_axis_option_props(
         cget('marker_settings'), spec_model
     )[1]
-    kwargs['spec_model'] = spec_model.instrument
+    kwargs['spec_model'] = spec_model
     line_traces = [
         t for t in main_graph['data'] if t.get('name') == 'regression'
     ]
@@ -251,10 +252,6 @@ def export_plot_png(
         f"{spec_model.instrument.lower()}-"
         f"{dt.datetime.now().strftime('%Y%m%dT%H%M%S')}.png"
     )
-    # TODO: PICKLE TEMPORARY FOR DEV! REMOVE! !!!!!!!!!!
-    with open(filename.replace("png", "pkl"), "wb") as stream:
-        pickle.dump(kwargs, stream)
-
     from multidex.plotter.plot_writer import fig_from_main_graph
 
     fig = fig_from_main_graph(**kwargs)
@@ -505,6 +502,7 @@ def update_main_graph(
         ("x", "y", "marker"), (x_settings, y_settings, marker_settings)
     ):
         ax_field_names[ax] = re_get(s, "graph-option-")
+    cset("ax_field_names", ax_field_names)
     graph = main_scatter_graph(
         graph_df,
         highlight_df,
@@ -566,6 +564,7 @@ def update_search_options(
     # if it's a field we do number interval searches on, reset term
     # interface and show number ranges in the range display. but don't reset
     # the number entries if we're in the middle of a load!
+
     if props["value_type"] == "quant":
         if is_loading:
             search_text = current_search

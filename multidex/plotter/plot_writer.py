@@ -8,7 +8,7 @@ import matplotlib.cm as cm
 from matplotlib import colors
 import pandas as pd
 
-from multidex.multidex_utils import re_get
+from multidex.multidex_utils import re_get, keygrab
 from multidex.plotter.colors import plotly_color_to_percent, get_scale_type
 from multidex.plotter.config.output_style import (
     FONT_PATH,
@@ -69,18 +69,26 @@ def _pick_colormap(marker_settings) -> tuple[
                   f"export. Defaulting to 'inferno'.")
     return colormaps["inferno"], None
 
-def _draw_axis_labels(graph_df, label_fp, tick_fp, xrange, yrange):
+def _draw_axis_labels(graph_df, label_fp, tick_fp, xrange, yrange,
+                      axtick_names):
     plt.xlim(xrange)
     plt.xlabel(
         graph_df.keys()[0], fontproperties=label_fp, wrap=True, va="top",
     )
-    plt.xticks(font=tick_fp)
+    if 'x' in axtick_names:
+        plt.xticks(font=tick_fp, ticks=list(range(len(axtick_names['x']))),
+                   labels=axtick_names['x'])
+    else:
+        plt.xticks(font=tick_fp)
     plt.ylim(yrange)
     plt.ylabel(
         graph_df.keys()[1], fontproperties=label_fp, wrap=True, va="bottom",
     )
-    plt.yticks(font=tick_fp)
-
+    if 'y' in axtick_names:
+        plt.yticks(font=tick_fp, ticks=list(range(len(axtick_names['y']))),
+                   labels=axtick_names['y'])
+    else:
+        plt.yticks(font=tick_fp)
 
 def _draw_colorbar(ax, cclip, cmap, norm, graph_contents, qual_ticks,
                    label_fp, marker_props, tick_fp):
@@ -131,7 +139,7 @@ def _maybe_draw_grid(ax, axis_display_settings):
 
 
 def _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
-                                   marker_settings, solid_color, cmap, cnum,
+                                   marker_settings, solid_color, cmap,
                                    norm):
     # Set the fill and outline colors based on whether the marker symbol is
     # "open" or filled
@@ -147,7 +155,7 @@ def _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
         else:
             color_kwargs["color"] = hcol
     elif solid_color is None:
-        color_kwargs["cmap"], color_kwargs["c"] = cmap, highlight_df['cref']
+        color_kwargs["cmap"], color_kwargs["c"] = cmap, highlight_df['cnum']
         color_kwargs["norm"] = norm
     else:
         color_kwargs["color"] = solid_color
@@ -188,8 +196,8 @@ def _draw_fit_line(ax, fitline_fp, line):
 def _draw_main_scatter_points(ax, graph_df, marker_settings,
                               outline_color, solid_color, cmap, norm):
     plot_kwargs = {
-        "x": graph_df.iloc[:, 0],
-        "y": graph_df.iloc[:, 1],
+        "x": graph_df['xnum'],
+        "y": graph_df['ynum'],
         # marker sizes (s) in scatter plots are the square of their standard
         # matplotlib marker size
         "s": re_get(marker_settings, "marker-size-radio.value") ** 2,
@@ -200,7 +208,7 @@ def _draw_main_scatter_points(ax, graph_df, marker_settings,
         ),
     }
     if cmap is not None:
-        plot_kwargs["c"], plot_kwargs["cmap"] = graph_df['cref'], cmap
+        plot_kwargs["c"], plot_kwargs["cmap"] = graph_df['cnum'], cmap
         plot_kwargs["norm"] = norm
     else:
         plot_kwargs["color"] = solid_color
@@ -236,7 +244,8 @@ def fig_from_main_graph(
     cclip,
     errors,
     line,
-    spec_model
+    spec_model,
+    ax_field_names
 ):
     if re_get(marker_settings, "marker-outline-radio.value") == "off":
         outline_color = "face"
@@ -246,6 +255,19 @@ def fig_from_main_graph(
         )
     cmap, solid_color = _pick_colormap(marker_settings)
     graph_contents = graph_contents.copy()
+    axtick_names = {}
+    for i, ax in enumerate(("x", "y")):
+        if keygrab(
+            spec_model.graphable_properties(), "value", ax_field_names[ax]
+        )["value_type"] == "qual":
+            axtick_names[ax], graph_contents[f'{ax}num'] = _catencode(
+                graph_contents.iloc[:, i],
+                graph_contents.columns[i],
+                metadata_df,
+                spec_model
+            )
+        else:
+            graph_contents[f'{ax}num'] = graph_contents.iloc[:, i]
     # TODO, maybe: this color logic is very ugly but there aren't a lot of
     #  not-awkward ways to share colorscales across mappables in matplotlib
     if re_get(highlight_settings, "highlight-toggle.value") == "on":
@@ -261,19 +283,18 @@ def fig_from_main_graph(
         cref = graph_df
     if cref is not None:
         if marker_props["value_type"] == "qual":
-            qual_ticknames, cnum = _encode_categoricals(
-                cref, marker_props, metadata_df, spec_model
+            qual_ticknames, cnum = _catencode(
+                cref, marker_props['value'], metadata_df, spec_model
             )
             cmap = cmap.resampled(len(qual_ticknames))
         else:
             cnum = cref.iloc[:, 2]
         norm = colors.Normalize(cnum.min(), cnum.max())
-        graph_df['cref'] = cnum.loc[cnum.index.isin(graph_df.index)]
+        graph_df['cnum'] = cnum.loc[cnum.index.isin(graph_df.index)]
         if highlight_df is not None:
-            highlight_df['cref'] = cref.loc[
+            highlight_df['cnum'] = cref.loc[
                 cref.index.isin(highlight_df.index)
             ]
-
     # the 'agg' backend produces more consistent output and also prevents
     # macOS-specific threading errors
     plt.switch_backend('agg')
@@ -284,7 +305,8 @@ def fig_from_main_graph(
         re_get(graph_display_settings, "plot_bgcolor")
     )
     ax.set_facecolor(bg_color)
-    _draw_axis_labels(graph_df, LABEL_FP, TICK_FP, xrange, yrange)
+    _draw_axis_labels(graph_df, LABEL_FP, TICK_FP, xrange, yrange,
+                      axtick_names)
     _maybe_draw_grid(ax, axis_display_settings)
     if line is not None:
         _draw_fit_line(ax, FITLINE_FP, line)
@@ -302,16 +324,16 @@ def fig_from_main_graph(
     return fig
 
 
-def _encode_categoricals(cref, marker_props, metadata_df, spec_model_name):
-    names = metadata_df.loc[cref.index, marker_props['value']].fillna('none')
-    ospec = get_ordering(marker_props['value'], spec_model_name)
+def _catencode(ref, value, metadata_df, spec_model):
+    names = metadata_df.loc[ref.index, value.lower()].fillna('none')
+    ospec = get_ordering(value.lower(), spec_model.instrument)
     if (carry := ospec.get('categoryarray')) is None:
-        order = reversed(sorted(set(map(str.lower, names))))
+        order = reversed(sorted(set(names)))
     else:
         order = carry
-        if 'none' not in map(str.lower, carry):
+        if 'none' not in map(str.lower, carry) and 'none' in names:
             order = ('none',) + order
     encoding = {n.lower(): i for i, n in enumerate(order)}
-    qualticks = tuple(encoding.keys())
-    cnum = pd.Series([encoding[n.lower()] for n in names], index=cref.index)
+    qualticks = tuple(map(str.title, encoding.keys()))
+    cnum = pd.Series([encoding[n.lower()] for n in names], index=ref.index)
     return qualticks, cnum
