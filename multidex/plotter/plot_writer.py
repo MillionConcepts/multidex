@@ -17,7 +17,7 @@ from multidex.plotter.config.output_style import (
     TICK_TEXT_SIZE,
     FITLINE_TEXT_SIZE
 )
-from plotter.components.graph_components import get_ordering
+from multidex.plotter.components.graph_components import get_ordering
 
 # TODO: grab fonts from config instead of hardcoding them here
 
