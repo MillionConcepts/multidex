@@ -63,6 +63,7 @@ class ZSpec(XSpec):
     caltarget_element = models.CharField(
         "caltarget_element", max_length=30, **B_N_I
     )
+    tau = models.FloatField("Tau", **B_N_I)
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 

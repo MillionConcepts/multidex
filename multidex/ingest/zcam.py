@@ -1,3 +1,4 @@
+import warnings
 from functools import reduce
 import io
 from multiprocessing import Pool
@@ -16,7 +17,7 @@ from PIL import Image
 
 pd.set_option('future.no_silent_downcasting', True)
 
-# NOTE: do not mess with this nontsandard import order. it is necessary to
+# NOTE: do not mess with this nonstandard import order. it is necessary to
 #  run this environment setup before touching any django modules.
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "multidex.settings")
@@ -29,6 +30,41 @@ from multidex._pathref import MULTIDEX_ROOT
 from multidex.plotter import div0
 from multidex.plotter.field_interface_definitions import ASDF_CART_COLS, ASDF_PHOT_COLS
 from multidex.plotter.models import ZSpec
+
+
+def load_tauframe():
+    try:
+        from multidex.ingest.local_settings.zcam import TAU_FILE
+        print(TAU_FILE.absolute())
+    except ImportError:
+        return
+    if not TAU_FILE.exists():
+        return
+    with TAU_FILE.open() as stream:
+        taulines = stream.readlines()
+    i, found = None, False
+    for i, line in enumerate(taulines):
+        if line.startswith("Eye,Type"):
+            found = True
+            break
+    if i is None or found is False:
+        warnings.warn("malformatted tau file")
+        return
+    tab = pd.read_csv(io.StringIO("".join(taulines[i:])))
+    tab.columns = tab.columns.str.strip()
+    return tab
+
+
+
+TAUFRAME = load_tauframe()
+
+
+def sideload_taus(frame):
+    sclk_off_min_ix = np.argmin(
+        (TAUFRAME["SCLK_L"] - frame["SCLK"].mean()).abs()
+    )
+    tauval = TAUFRAME.at[sclk_off_min_ix, 'tau-R']
+    frame['tau'] = tauval if tauval > 0 else np.nan
 
 
 # make consistently-sized thumbnails out of the asdf context images. we
@@ -341,6 +377,8 @@ def ingest_marslab_file(marslab_file, context_df):
     # TODO: temporary hack
     if "TARGET_ELEV" in frame.columns:
         frame["TARGET_ELEVATION"] = frame["TARGET_ELEV"]
+    if TAUFRAME is not None:
+        sideload_taus(frame)
     print("ingesting spectra from " + Path(marslab_file).name)
     if (context_df is not None) and ("_rc_" not in marslab_file):
         obs_images, match_index = match_obs_images(marslab_file, context_df)
