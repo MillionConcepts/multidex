@@ -325,15 +325,17 @@ def fig_from_main_graph(
 
 
 def _catencode(ref, value, metadata_df, spec_model):
-    names = metadata_df.loc[ref.index, value.lower()].fillna('none')
+    names = metadata_df.loc[
+        ref.index, value.lower()
+    ].fillna('none').str.lower()
     ospec = get_ordering(value.lower(), spec_model.instrument)
     if (carry := ospec.get('categoryarray')) is None:
         order = reversed(sorted(set(names)))
     else:
         order = carry
-        if 'none' not in map(str.lower, carry) and 'none' in names:
+        if 'none' not in map(str.lower, carry) and 'none' in names.values:
             order = ('none',) + order
     encoding = {n.lower(): i for i, n in enumerate(order)}
     qualticks = tuple(map(str.title, encoding.keys()))
-    cnum = pd.Series([encoding[n.lower()] for n in names], index=ref.index)
+    cnum = pd.Series([encoding[n] for n in names], index=ref.index)
     return qualticks, cnum
