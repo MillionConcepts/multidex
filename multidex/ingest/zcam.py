@@ -35,7 +35,6 @@ from multidex.plotter.models import ZSpec
 def load_tauframe():
     try:
         from multidex.ingest.local_settings.zcam import TAU_FILE
-        print(TAU_FILE.absolute())
     except ImportError:
         return
     if not TAU_FILE.exists():
@@ -60,9 +59,13 @@ TAUFRAME = load_tauframe()
 
 
 def sideload_taus(frame):
-    sclk_off_min_ix = np.argmin(
-        (TAUFRAME["SCLK_L"] - frame["SCLK"].mean()).abs()
-    )
+    diff = (TAUFRAME["SCLK_L"] - frame["SCLK"].mean()).abs()
+    sclk_off_min_ix = np.argmin(diff)
+    # TODO: 45000 here is in seconds -- an arbitrary cutoff equal to about
+    #  half a sol. Not sure if this is too strict or too loose!
+    if diff[sclk_off_min_ix] > 45000:
+        frame['tau'] = np.nan
+        return
     tauval = TAUFRAME.at[sclk_off_min_ix, 'tau-R']
     frame['tau'] = tauval if tauval > 0 else np.nan
 
@@ -100,7 +103,7 @@ def jpeg_buffer(image):
 
 
 def default_thumbnailer():
-    inserts = {"crop": {"bounds": (20, 20, 122, 5)}, "thumb": {"scale": 2}}
+    inserts = {"crop": {"bounds": (22, 22, 135, 5)}, "thumb": {"scale": 2}}
     steps = {
         "load": Image.open,
         "flatten": remove_alpha,

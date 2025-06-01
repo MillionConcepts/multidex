@@ -26,6 +26,7 @@
 /multidex/data/*CAM*.sqlite3
 /multidex/data/TEST.sqlite3
 /multidex/data/*.csv
+/multidex/data/*.txt
 *scratch*.ipynb
 *scratch.js
 *test.json
