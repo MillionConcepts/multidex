@@ -1,5 +1,5 @@
 import os
-import sys
+import re
 
 try:
     import fire
@@ -21,9 +21,21 @@ def multidex_run_hook():
 
     print("importing modules...", end="", flush=True)
 
+    import django.db
     from multidex.plotter.application.run import run_multidex
-    fire.Fire(run_multidex)
 
+    try:
+        fire.Fire(run_multidex)
+    except django.db.OperationalError as oe:
+        cmatch = re.search(r"no such column: .*?\.(\w+)", str(oe))
+        if cmatch is None:
+            raise oe
+        print(
+            f"\n\nERROR: Database is missing the column '{cmatch.group(1)}'.\n"
+            f"This may indicate that the version of MultiDEx you are running\n"
+            f"is incompatible with this database. Try using a newer build\n"
+            f"file or updating MultiDEx."
+        )
 
 # tell fire to handle command line call
 if __name__ == "__main__":
