@@ -11,20 +11,23 @@ import pandas as pd
 from multidex.multidex_utils import re_get, keygrab
 from multidex.plotter.colors import plotly_color_to_percent, get_scale_type
 from multidex.plotter.config.output_style import (
-    FONT_PATH,
-    FONT_PATH_BOLD,
-    LABEL_TEXT_SIZE,
-    TICK_TEXT_SIZE,
-    FITLINE_TEXT_SIZE
+    FONT_SETTINGS, SIZE_SETTINGS
 )
 from multidex.plotter.components.graph_components import get_ordering
 
 # TODO: grab fonts from config instead of hardcoding them here
 
 # TODO: similarly, make these sizes configurable
-LABEL_FP = mplf.FontProperties(fname=FONT_PATH, size=LABEL_TEXT_SIZE)
-TICK_FP = mplf.FontProperties(fname=FONT_PATH, size=TICK_TEXT_SIZE)
-FITLINE_FP = mplf.FontProperties(fname=FONT_PATH_BOLD, size=FITLINE_TEXT_SIZE)
+LABEL_FP = mplf.FontProperties(
+    fname=FONT_SETTINGS["FONT_PATH"], size=SIZE_SETTINGS["LABEL_TEXT_SIZE"]
+)
+TICK_FP = mplf.FontProperties(
+    fname=FONT_SETTINGS["FONT_PATH"], size=SIZE_SETTINGS["TICK_TEXT_SIZE"]
+)
+FITLINE_FP = mplf.FontProperties(
+    fname=FONT_SETTINGS["FONT_PATH_BOLD"],
+    size=SIZE_SETTINGS["FITLINE_TEXT_SIZE"]
+)
 
 def plotly_to_matplotlib_symbol(plotly_symbol):
     # TODO: taking the first item after splitting by '-' oversimplifies some

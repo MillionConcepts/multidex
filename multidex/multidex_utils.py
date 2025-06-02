@@ -610,6 +610,15 @@ def patch_settings_from_module(settings, module_name):
         settings[name] |= patch
 
 
+def patch_mappings_from_module_members(mappings, module_name):
+    for mapping in mappings:
+        mapping |= {
+            name: patch
+            for name, patch in getmembers(sys.modules[module_name])
+            if name in mapping.keys()
+        }
+
+
 def tokenize(text):
     lowered = text.lower()
     return re.split(rf"[{punctuation + whitespace}]+", lowered)
