@@ -19,13 +19,15 @@ from multidex.plotter.components.graph_components import get_ordering
 
 # TODO: similarly, make these sizes configurable
 LABEL_FP = mplf.FontProperties(
-    fname=FONT_SETTINGS["FONT_PATH"], size=SIZE_SETTINGS["LABEL_TEXT_SIZE"]
+    fname=FONT_SETTINGS["LABEL_FONT_PATH"],
+    size=SIZE_SETTINGS["LABEL_TEXT_SIZE"]
 )
 TICK_FP = mplf.FontProperties(
-    fname=FONT_SETTINGS["FONT_PATH"], size=SIZE_SETTINGS["TICK_TEXT_SIZE"]
+    fname=FONT_SETTINGS["TICK_FONT_PATH"],
+    size=SIZE_SETTINGS["TICK_TEXT_SIZE"]
 )
 FITLINE_FP = mplf.FontProperties(
-    fname=FONT_SETTINGS["FONT_PATH_BOLD"],
+    fname=FONT_SETTINGS["FITLINE_FONT_PATH"],
     size=SIZE_SETTINGS["FITLINE_TEXT_SIZE"]
 )
 

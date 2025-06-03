@@ -10,8 +10,9 @@ font_root = Path(
 ).parent / "assets" / "fonts"
 
 FONT_SETTINGS = {
-    "FONT_PATH": font_root / "TitilliumWeb-Light.ttf",
-    "FONT_PATH_BOLD": font_root / "TitilliumWeb-Bold.ttf"
+    "LABEL_FONT_PATH": font_root / "TitilliumWeb-Light.ttf",
+    "TICK_FONT_PATH": font_root / "TitilliumWeb-Light.ttf",
+    "FITLINE_FONT_PATH": font_root / "TitilliumWeb-Bold.ttf"
 }
 
 SIZE_SETTINGS = {
