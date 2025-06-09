@@ -298,7 +298,7 @@ def fig_from_main_graph(
         graph_df['cnum'] = cnum.loc[cnum.index.isin(graph_df.index)]
         if highlight_df is not None:
             highlight_df['cnum'] = cref.loc[
-                cref.index.isin(highlight_df.index)
+                cref.index.isin(highlight_df.index), 'cnum'
             ]
     # the 'agg' backend produces more consistent output and also prevents
     # macOS-specific threading errors
