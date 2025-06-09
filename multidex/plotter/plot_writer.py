@@ -279,6 +279,8 @@ def fig_from_main_graph(
         hcol = highlight_settings["highlight-color-drop.value"]
         is_highlight = graph_contents.index.isin(highlight_ids)
         highlight_df, graph_df = split_on(graph_contents, is_highlight)
+        highlight_df = highlight_df.copy()
+        graph_df = graph_df.copy()
     else:
         highlight_df, graph_df, hcol = None, graph_contents, "none"
     cref, qual_ticknames, norm, cnum = None, None, None, None
@@ -297,8 +299,8 @@ def fig_from_main_graph(
         norm = colors.Normalize(cnum.min(), cnum.max())
         graph_df['cnum'] = cnum.loc[cnum.index.isin(graph_df.index)]
         if highlight_df is not None:
-            highlight_df['cnum'] = cref.loc[
-                cref.index.isin(highlight_df.index), 'cnum'
+            highlight_df['cnum'] = cnum.loc[
+                cnum.index.isin(highlight_df.index)
             ]
     # the 'agg' backend produces more consistent output and also prevents
     # macOS-specific threading errors
