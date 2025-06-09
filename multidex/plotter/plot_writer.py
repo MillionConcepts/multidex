@@ -146,14 +146,11 @@ def _maybe_draw_grid(ax, axis_display_settings):
 def _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
                                    marker_settings, solid_color, cmap,
                                    norm):
-    # Set the fill and outline colors based on whether the marker symbol is
-    # "open" or filled
-    color_kwargs = {
-        "edgecolors":  plotly_color_to_percent(
+    color_kwargs = {}
+    if highlight_settings["highlight-outline-radio.value"] != "off":
+        color_kwargs["edgecolors"] = plotly_color_to_percent(
             highlight_settings["highlight-outline-radio.value"]
         )
-    }
-
     if (hcol := highlight_settings["highlight-color-drop.value"]) != 'none':
         if '-open' in highlight_settings["highlight-symbol-drop.value"]:
             color_kwargs["color"], color_kwargs["edgecolors"] = 'none', hcol
