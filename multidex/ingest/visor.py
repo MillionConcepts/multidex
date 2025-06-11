@@ -125,6 +125,7 @@ def process_visor_file(visor_fn, instrument_code):
     model_dict["feature"] = "lab spectrum"
     model_dict["color"] = "black"
     model_dict["incidence_angle"] = 0
+    model_dict["tau"] = None
     try:
         spectrum = model(**model_dict)
         spectrum.clean()
