@@ -126,6 +126,10 @@ def process_visor_file(visor_fn, instrument_code):
     model_dict["color"] = "black"
     model_dict["incidence_angle"] = 0
     model_dict["tau"] = None
+    try: 
+        model_dict["grain_size"] = visor_dict['GRAIN_SIZE']
+    except:
+        model_dict["grain_size"] = None
     try:
         spectrum = model(**model_dict)
         spectrum.clean()
