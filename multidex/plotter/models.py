@@ -237,7 +237,7 @@ class SSpec(RoverSpectrum):
     saturation = models.FloatField("Saturation", **B_N_I)
     focus_position_mm = models.FloatField("Focus Position (mm)", **B_N_I)
     tdb_name = models.CharField("TDB name", max_length=45, **B_N_I)
-
+    corrected = models.BooleanField("Corrected", **B_N_I)
     instrument = "SCAM"
     instrument_brief_name = "SuperCam"
 

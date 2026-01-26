@@ -62,6 +62,7 @@ QUALITATIVE_METADATA_FIELDS = (
     "red_rows",
     "powerfail",
     "tdb_name"
+    "corrected"
 )
 
 # metadata fields we should treat as quantitative / continuous
