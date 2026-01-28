@@ -56,8 +56,8 @@ def find_ingest_files(path: Path, recursive: bool = False):
     return marslab_files, context_files
 
 
-def csv_to_bool(df, bool_fields):
-    df.loc[:, bool_fields] = df.loc[:, bool_fields] == "True"
+def y_to_bool(df, bool_fields):
+    df.loc[:, bool_fields] = df.loc[:, bool_fields] == "Y"
 
 
 SCAM_BOOL_FIELDS = [
@@ -149,7 +149,7 @@ def save_relevant_thumbs(context_df):
 
 def format_for_multidex(frame):
     frame.columns = [col.upper().replace(" ", "_") for col in frame.columns]
-    csv_to_bool(frame, SCAM_BOOL_FIELDS)
+    y_to_bool(frame, SCAM_BOOL_FIELDS)
     frame = frame.replace(["-", "", " "], np.nan)
     frame.columns = [col.lower() for col in frame.columns]
     return frame
