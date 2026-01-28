@@ -98,9 +98,11 @@ def process_marslab_row(row, marslab_file, context_df):
                 obs_image = os.path.basename(record["path"])
 
     corrected_raw = row.get("corrected")          # may be "True"/"False"/"1"/"0"/None
+    print("corrected_raw " + corrected_raw )
+
     corrected_bool = csv_to_bool(corrected_raw)   # -> True / False / None
 
-    print(corrected_bool)
+    print("corrected_bool " + str(corrected_bool))
 
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
