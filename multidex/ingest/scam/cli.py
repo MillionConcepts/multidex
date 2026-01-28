@@ -97,9 +97,13 @@ def process_marslab_row(row, marslab_file, context_df):
             for record in context_matches[["path"]].to_dict(orient="records"):
                 obs_image = os.path.basename(record["path"])
 
+    corrected_raw = row.get("corrected")          # may be "True"/"False"/"1"/"0"/None
+    corrected_bool = csv_to_bool(corrected_raw)   # -> True / False / None
+
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
-        "images": [obs_image]
+        "images": [obs_image],
+        "corrected": corrected_bool
     }
 
     try:
@@ -113,6 +117,23 @@ def process_marslab_row(row, marslab_file, context_df):
         print("failed on " + row_target + ": " + str(ex))
         return None
     return row_target
+
+def csv_to_bool(value):
+    """
+    Convert a value that may be:
+      - the strings “True”, “true”, “1”, “yes”, “y”
+      - the strings “False”, “false”, “0”, “no”, “n”
+      - an empty string or None
+    → returns True, False, or None.
+    """
+    if value is None:
+        return None
+    s = str(value).strip().lower()
+    if s in ("true", "1", "yes", "y"):
+        return True
+    if s in ("false", "0", "no", "n"):
+        return False
+    return None          # treat any other token as “unknown”
 
 
 def save_thumb(filename, row):
