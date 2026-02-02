@@ -61,7 +61,7 @@ QUALITATIVE_METADATA_FIELDS = (
     # supercam
     "red_rows",
     "powerfail",
-    "tdb_name"
+    "tdb_name",
     "corrected"
 )
 
