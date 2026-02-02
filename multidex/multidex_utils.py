@@ -115,7 +115,7 @@ def none_to_quote_unquote_none(
     de_noned_list = []
     for element in list_containing_none:
         if element is not None:
-            de_noned_list.append(element)
+            de_noned_list.append(str(element))
         else:
             de_noned_list.append("none")
     return de_noned_list
