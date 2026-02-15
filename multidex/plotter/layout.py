@@ -92,7 +92,15 @@ def multidex_body(spec_model: SpectrumModel) -> html.Div:
                         },
                     ),
                     html.Div(
-                        id="spec-print", style={"display": "none", "margin": 0}
+                        id="spec-print",
+                        style={
+                            "display": "none",
+                            "margin": 0,
+                            "columns": 2,
+                            "column-gap": "2rem",
+                            "max-height": "75vh",
+                            "white-space": "pre-line"
+                        }
                     ),
                 ],
             ),

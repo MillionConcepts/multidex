@@ -518,6 +518,8 @@ def spectrum_values_range(metadata_df, field, digits=2):
     for cueing or aiding searches.
     """
     values = metadata_df[field].dropna()
+    if field == "ltst":
+        x = 1
     vstats= values.min(), values.max(), *np.quantile(values, (0.25, 0.75))
     if (values.round() == values).all():
         return tuple(map(lambda v: int(v), vstats))

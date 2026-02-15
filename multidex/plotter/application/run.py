@@ -1,6 +1,7 @@
 import json
 import pickle
 import random
+import re
 import shutil
 from pickle import UnpicklingError
 import warnings
@@ -215,21 +216,22 @@ def maybe_unpickle_preprocessed(cset, default_dkwargs, dkwjson, spec_model):
 
 def build_metadata_df(spec_model):
     metadata_df = model_metadata_df(spec_model)
-    # TODO: this is a hack in place of adding formatted time parsing at
-    #  various places within the application
-    for c in metadata_df.columns[
-        metadata_df.columns.str.match(r"(rc_)?l[mt]st")
-    ]:
-        if metadata_df[c].dtype.char != "O":
-            # this is a defensive measure in case we decide to ingest times
-            # already expressed as some sort of decimal, like ZCAM
-            # CALTARGET_LTST (which is superfluous because it's just a decimal
-            # form of RC_LTST, but some similarly-formatted field might not be)
+    for c in metadata_df.columns:
+        dt_kind = metadata_df.dtypes[c].kind
+        if dt_kind != "O":
             continue
-        metadata_df.loc[pd.notna(metadata_df[c]), c] = [
-            instant.hour * 3600 + instant.minute * 60 + instant.second
-            for instant in metadata_df[c].dropna()
-        ]
+        # TODO: this is a hack in place of adding formatted time parsing at
+        #  various places within the application
+        # convert HMS times into seconds-since-midnight
+        if re.match(r"(rc_)?l[mt]st", c):
+            metadata_df.loc[pd.notna(metadata_df[c]), c] = [
+                instant.hour * 3600 + instant.minute * 60 + instant.second
+                for instant in metadata_df[c].dropna()
+            ]
+            metadata_df[c] = metadata_df[c].astype(float)
+        else:
+            metadata_df.loc[metadata_df[c].isna(), c] = "nan"
+
     # TODO: these are hacky and should go on models somewhere
     if "zoom" in metadata_df.columns:
         metadata_df["zoom"] = metadata_df["zoom"].astype(float)
