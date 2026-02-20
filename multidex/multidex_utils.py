@@ -85,7 +85,7 @@ def seconds_since_beginning_of_day(time: dt.time) -> float:
 def seconds_since_beginning_of_day_to_iso(
     seconds: Optional[int], round_to=0
 ) -> Optional[str]:
-    if seconds is None:
+    if np.isnan(seconds):
         return None
     hour = int(seconds // 3600)
     remainder = seconds - hour * 3600
