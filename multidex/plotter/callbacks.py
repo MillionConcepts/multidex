@@ -877,7 +877,7 @@ def export_graph_csv(_clicks, selected, placeholder_data, *, cget, spec_model):
     ctx = dash.callback_context
     if ctx.triggered[0]["value"] is None:
         raise PreventUpdate
-    metadata_df = cget("metadata_df").copy()
+    metadata_df = cget("metadata_df").copy().replace('nan','-')
     filter_df = cget("data_df").copy()
     filter_df.columns = [column.upper() for column in filter_df.columns]
     metadata_df.columns = [column.upper() for column in metadata_df.columns]
