@@ -116,7 +116,6 @@ def process_marslab_row(row, marslab_file, context_df):
 
 
 def save_thumb(filename, row):
-    print("writing " + filename)
     try:
         shutil.copyfile(row['path'], filename)
         return True, None
