@@ -91,6 +91,10 @@ DATABASES = {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": Path(BASE_DIR, "data", "SCAM.sqlite3"),
     },
+    "PCAM": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": Path(BASE_DIR, "data", "PCAM.sqlite3"),
+    },
     "TEST": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": Path(BASE_DIR, "data", "TEST.sqlite3")

@@ -257,6 +257,27 @@ class SSpec(RoverSpectrum):
             f"{filts[0]} {filts[3]}, " f"shoulders at {filts[1]} and " f"{filts[2]}"
         )
 
+class PSpec(XSpec):
+    """MER Pancam spectrum class"""
+    feature_subtype = models.CharField(
+        "feature subtype", **B_N_I, max_length=45
+    )
+    # timestamp of file if automatically produced by asdf
+    file_timestamp = models.CharField(max_length=30, null=True)
+    compression = models.CharField("compression", max_length=40, **B_N_I)
+    grain_size = models.CharField("grain size", max_length=20, **B_N_I)
+    distance = models.CharField("distance", max_length=20, **B_N_I)
+    location = models.CharField("location", max_length=60, **B_N_I)
+    analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
+
+    pma = models.IntegerField("pma", **B_N_I)
+    solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
+    solar_elevation = models.FloatField("Solar Elevation (deg)", **B_N_I)
+
+    instrument = "PCAM"
+    instrument_brief_name = "Pancam"
+
+    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | MERSPECT_MSL_COLOR_MAPPINGS | {"black": "#000000"}
 
 class TestSpec(RoverSpectrum):
     """mock spectrum class for tests"""
@@ -276,7 +297,7 @@ for field_name in ASDF_CART_COLS + ASDF_PHOT_COLS:
 del field, magfield
 
 # bulk setup for each instrument
-for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:
+for spec_model in [ZSpec, MSpec, CSpec, SSpec, PSpec, TestSpec]:
     if spec_model.instrument not in DERIVED_CAM_DICT.keys():
         continue
 
@@ -320,5 +341,5 @@ for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:
 
 # for automated model selection
 INSTRUMENT_MODEL_MAPPING = MappingProxyType(
-    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "SCAM": SSpec, "TEST": TestSpec}
+    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "SCAM": SSpec, "PCAM": PSpec, "TEST": TestSpec}
 )
