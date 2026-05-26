@@ -270,7 +270,9 @@ class PSpec(XSpec):
     location = models.CharField("location", max_length=60, **B_N_I)
     analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
 
+    seq_ver = models.IntegerField("seq_ver", **B_N_I)
     pma = models.IntegerField("pma", **B_N_I)
+    rover = models.CharField("rover", max_length=15, **B_N_I)
     solar_azimuth = models.FloatField("Solar Azimuth (deg)", **B_N_I)
     solar_elevation = models.FloatField("Solar Elevation (deg)", **B_N_I)
 

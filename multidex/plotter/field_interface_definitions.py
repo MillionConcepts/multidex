@@ -61,7 +61,9 @@ QUALITATIVE_METADATA_FIELDS = (
     # supercam
     "red_rows",
     "powerfail",
-    "tdb_name"
+    "tdb_name",
+    "rover",
+    "seq_ver"
 )
 
 # metadata fields we should treat as quantitative / continuous
@@ -175,7 +177,9 @@ for op in SPECTRUM_OP_PROPERTIES:
 
 
 # fields from the above categories we would like users to search but not graph
-UNGRAPHABLE_FIELDS = ("color", "seq_id", "name", "analysis_name", "target")
+UNGRAPHABLE_FIELDS = (
+    "color", "seq_id", "name", "analysis_name", "target", "seq_ver"
+)
 
 
 # assemble categories, add labels, etc. nothing below this comment should
