@@ -33,6 +33,10 @@ import Levenshtein as lev
 import numpy as np
 import pandas as pd
 
+from multidex.plotter.field_interface_definitions import (
+    BINARY_QUALITATIVE_METADATA_FIELDS,
+)
+
 if TYPE_CHECKING:
     from dash.development.base_component import Component
     from django.db.models.query import QuerySet
@@ -482,9 +486,15 @@ def df_quant_field_search(search_df, parameter):
 
 
 def df_qual_field_search(search_df, parameter):
+    field = parameter["field"]
+    if field in BINARY_QUALITATIVE_METADATA_FIELDS:
+        field_values = pd.to_numeric(search_df[field], errors="coerce")
+        term_values = [pd.to_numeric(term, errors="coerce") for term in parameter["terms"]]
+        return search_df.loc[field_values.isin(term_values)].index
+
     param_results = []
     for term in parameter["terms"]:
-        param_result = df_term_search(search_df, parameter["field"], term)
+        param_result = df_term_search(search_df, field, term)
         param_results.append(param_result)
     return reduce(pd.Index.union, param_results)
 
