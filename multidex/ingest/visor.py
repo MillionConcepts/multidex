@@ -114,17 +114,27 @@ def process_visor_file(visor_fn, instrument_code):
             model_dict[other.lower() + "_std"] = 0
     except AttributeError:
         pass
-    model_dict[
-        "name"
-    ] = (
-        f"{visor_dict['NAME'].strip(',')} - "
-        f"{visor_dict['SAMPLE_ID'].strip(',')}"
-    )
+    if 'SPECTRUM_ID' in visor_dict:
+        model_dict["name"] = (
+            f"{visor_dict['NAME'].strip(',')} - "
+            f"{visor_dict['SPECTRUM_ID'].strip(',')}"
+        )
+    else:
+        # Backwards compatibility for older VISOR exports that use SAMPLE_ID
+        model_dict["name"] = (
+            f"{visor_dict['NAME'].strip(',')} - "
+            f"{visor_dict['SAMPLE_ID'].strip(',')}"
+        )
     model_dict["filename"] = Path(visor_fn).name
     # model_dict["ingest_time"] = dt.datetime.utcnow().isoformat()
     model_dict["feature"] = "lab spectrum"
     model_dict["color"] = "black"
     model_dict["incidence_angle"] = 0
+    model_dict["tau"] = None
+    try: 
+        model_dict["grain_size"] = visor_dict['GRAIN_SIZE']
+    except:
+        model_dict["grain_size"] = None
     try:
         spectrum = model(**model_dict)
         spectrum.clean()

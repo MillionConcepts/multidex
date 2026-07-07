@@ -11,20 +11,25 @@ import pandas as pd
 from multidex.multidex_utils import re_get, keygrab
 from multidex.plotter.colors import plotly_color_to_percent, get_scale_type
 from multidex.plotter.config.output_style import (
-    FONT_PATH,
-    FONT_PATH_BOLD,
-    LABEL_TEXT_SIZE,
-    TICK_TEXT_SIZE,
-    FITLINE_TEXT_SIZE
+    FONT_SETTINGS, SIZE_SETTINGS
 )
 from multidex.plotter.components.graph_components import get_ordering
 
 # TODO: grab fonts from config instead of hardcoding them here
 
 # TODO: similarly, make these sizes configurable
-LABEL_FP = mplf.FontProperties(fname=FONT_PATH, size=LABEL_TEXT_SIZE)
-TICK_FP = mplf.FontProperties(fname=FONT_PATH, size=TICK_TEXT_SIZE)
-FITLINE_FP = mplf.FontProperties(fname=FONT_PATH_BOLD, size=FITLINE_TEXT_SIZE)
+LABEL_FP = mplf.FontProperties(
+    fname=FONT_SETTINGS["LABEL_FONT_PATH"],
+    size=SIZE_SETTINGS["LABEL_TEXT_SIZE"]
+)
+TICK_FP = mplf.FontProperties(
+    fname=FONT_SETTINGS["TICK_FONT_PATH"],
+    size=SIZE_SETTINGS["TICK_TEXT_SIZE"]
+)
+FITLINE_FP = mplf.FontProperties(
+    fname=FONT_SETTINGS["FITLINE_FONT_PATH"],
+    size=SIZE_SETTINGS["FITLINE_TEXT_SIZE"]
+)
 
 def plotly_to_matplotlib_symbol(plotly_symbol):
     # TODO: taking the first item after splitting by '-' oversimplifies some
@@ -141,14 +146,11 @@ def _maybe_draw_grid(ax, axis_display_settings):
 def _draw_highlight_scatter_points(ax, highlight_df, highlight_settings,
                                    marker_settings, solid_color, cmap,
                                    norm):
-    # Set the fill and outline colors based on whether the marker symbol is
-    # "open" or filled
-    color_kwargs = {
-        "edgecolors":  plotly_color_to_percent(
+    color_kwargs = {}
+    if highlight_settings["highlight-outline-radio.value"] != "off":
+        color_kwargs["edgecolors"] = plotly_color_to_percent(
             highlight_settings["highlight-outline-radio.value"]
         )
-    }
-
     if (hcol := highlight_settings["highlight-color-drop.value"]) != 'none':
         if '-open' in highlight_settings["highlight-symbol-drop.value"]:
             color_kwargs["color"], color_kwargs["edgecolors"] = 'none', hcol
@@ -274,6 +276,8 @@ def fig_from_main_graph(
         hcol = highlight_settings["highlight-color-drop.value"]
         is_highlight = graph_contents.index.isin(highlight_ids)
         highlight_df, graph_df = split_on(graph_contents, is_highlight)
+        highlight_df = highlight_df.copy()
+        graph_df = graph_df.copy()
     else:
         highlight_df, graph_df, hcol = None, graph_contents, "none"
     cref, qual_ticknames, norm, cnum = None, None, None, None
@@ -292,8 +296,8 @@ def fig_from_main_graph(
         norm = colors.Normalize(cnum.min(), cnum.max())
         graph_df['cnum'] = cnum.loc[cnum.index.isin(graph_df.index)]
         if highlight_df is not None:
-            highlight_df['cnum'] = cref.loc[
-                cref.index.isin(highlight_df.index)
+            highlight_df['cnum'] = cnum.loc[
+                cnum.index.isin(highlight_df.index)
             ]
     # the 'agg' backend produces more consistent output and also prevents
     # macOS-specific threading errors

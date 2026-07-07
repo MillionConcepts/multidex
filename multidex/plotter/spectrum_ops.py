@@ -107,6 +107,7 @@ def data_df_from_queryset(
         theta_i = np.cos(
             d2r(pd.Series([spec.incidence_angle for spec in queryset]))
         )
+        theta_i.index = filter_df.index
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
     filter_avg = filter_df[

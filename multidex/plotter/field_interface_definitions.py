@@ -82,6 +82,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "lat",
     "lmst",
     "lon",
+    "l_s",
     "ltst",
     "min_count",
     "odometry",
