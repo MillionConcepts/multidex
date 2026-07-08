@@ -20,6 +20,11 @@ requires-python = ">=3.11"
 dependencies = [
 ]
 
+[project.optional-dependencies]
+typecheck = [
+    "mypy",
+]
+
 [project.urls]
 Repository = "https://github.com/MillionConcepts/multidex"
 
@@ -41,3 +46,80 @@ exclude = [
 ]
 namespaces = false
 where = ["."]
+
+
+[tool.mypy]
+# Keep this list in sync with the setuptools package discovery
+# configuration above.
+packages = [
+    "multidex",
+]
+# Start from maximum strictness, disable any inappropriate checks.
+strict = true
+# Redefinition (e.g. `thing = str(thing)`) is idiomatic in our code.
+allow_redefinition = true
+# Ensure package discovery doesn't go off into the weeds.
+mypy_path = "$MYPY_CONFIG_FILE_DIR/"
+namespace_packages = false
+
+[[tool.mypy.overrides]]
+# Project dependencies that currently do not have type annotations.
+module = [
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+# Keep this list in sync with the setuptools package discovery
+# configuration above.
+include = [
+    "pyproject.toml",
+    "multidex/**/*.py"
+]
+
+[tool.ruff.lint]
+# There are lots more checks ruff can do but this is a sensible default.
+# Unfortunately, many of the other lint groups combine high-value checks
+# with much lower-value or purely stylistic checks.
+#
+# To facilitate maintenance, this list should be kept in the same order
+# as the list of groups in <https://docs.astral.sh/ruff/rules/>.
+select = [
+    "ANN",      # missing type annotations
+    "FBT",      # forbid boolean positional arguments (keyword args are ok)
+    "RET",      # missing return values
+    # "TC",     # debatable rules about type-only imports
+    "SIM115",   # open() without 'with' block (other SIM checks are debatable)
+    "NPY",      # warns about deprecated NumPy APIs
+    "PD",       # warns about deprecated Pandas APIs
+    "PT",       # warns about a variety of easy mistakes when writing tests
+    "E1",       # inconsistent indentation (stylistic but very important)
+    # "E2",     # purely stylistic rules about whitespace around operators
+    # "E3",     # purely stylistic rules about blank lines
+    "E4",       # import-related mistakes
+    "E5",       # backslash-related mistakes
+    # "E6",     # there are no E6xx rules
+    "E7",       # more code that can be simplified,
+    # "E8",     # there are no E8xx rules
+    "E9",       # I/O errors while running ruff
+    "W",        # mostly whitespace errors; also, invalid \-escapes in strings
+    "F",        # grab bag of constructs that are almost certainly wrong
+    "PGH",      # no blanket lint annotations
+]
+ignore = [
+    # forbids all use of Any; we genuinely need it in a few places
+    "ANN401",
+    # stylistic rule (line length) lumped in with E5
+    "E501",
+    # better addressed by not using fonts in which l/I/1 or 0/O are
+    # visually ambiguous
+    "E741",
+    # stylistic rule lumped with RET ("never use 'else' after an
+    # if block ending with a 'return'"; in many cases the version
+    # with the 'else' is easier to read)
+    "RET505",
+    # stylistic rule (line length in docstrings) lumped in with W
+    "W505",
+]
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
