@@ -1,54 +1,43 @@
 [project]
-name        = "multidex"
-version     = "0.11.1"
-description = "Multidimensional multi/hyperspectral data exploration"
-readme      = "README.md"
-authors     = [ { name = "Million Concepts" } ]
-license     = { file = "LICENSE" }
+name          = "multidex"
+version       = "0.20.0"
+description   = "Multidimensional multi/hyperspectral data exploration"
+readme        = "README.md"
+authors       = [ { name = "Million Concepts" } ]
+license       = "BSD-3-Clause"
+license-files = ["LICENSE.md"]
 
 classifiers = [
-    "Development Status :: 5 - Production",
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: Console",
+    "Environment :: Web Environment",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Astronomy",
 ]
 
 requires-python = ">=3.11"
 dependencies = [
-  "async_timeout",
-  "choreographer>=0.99.6",
-  "conda-build",
-  "cytoolz",
-  "dash",
-  "django",
-  "django-extensions",
-  "dustgoggles",
-  "fire",
-  "flask-caching",
-  "fs",
-  "Levenshtein",
-  "marslab",
-  "matplotlib",
-  "more-itertools",
-  "pandas>=2.2.0",
-  "pillow",
-  "pyarrow",
-  "pip",
-  "numpy",
-  "plotly",
-  "pytest",
-  "scikit-learn"
 ]
-
-[project.scripts]
-multidex = "multidex:multidex_run_hook"
 
 [project.urls]
 Repository = "https://github.com/MillionConcepts/multidex"
 
+[project.scripts]
+
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools >= 77"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["multidex"]
+[tool.setuptools.packages.find]
+include = [
+    "multidex",
+    "multidex.*",
+]
+# remove after everything in _old is merged back
+exclude = [
+    "_old",
+    "_old.*",
+]
+namespaces = false
+where = ["."]

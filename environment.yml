@@ -2,31 +2,9 @@ name: multidex
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
-  - async_timeout
-  - conda-build
-  - cytoolz
-  - dash
-  - django
-  - django-extensions
-  - dustgoggles
-  - fire
-  - flask-caching
-  - fs
-  - git
-  - Levenshtein
-  - marslab
-  - matplotlib
-  - more-itertools
-  - pandas>=2.2.0
-  - pillow
-  - pyarrow
-  - pip
-  - numpy
-  - plotly<6.0.0
-  - pytest
-  - scikit-learn
-  - setuptools<81
-#  - pip:
-#      - choreographer>=0.99.6
-#      - git+https://github.com/MillionConcepts/kaleido.git
+  - python>=3.11
+  # Conda dependencies have temporarily been stubbed out while the
+  # package is under overhaul.  After creating the conda environment,
+  # use `pip install -e .` to install multidex along with all its
+  # dependencies.  (This will install the dependencies from PyPI
+  # rather than from Conda.)

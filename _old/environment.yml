@@ -1,0 +1,32 @@
+name: multidex
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - async_timeout
+  - conda-build
+  - cytoolz
+  - dash
+  - django
+  - django-extensions
+  - dustgoggles
+  - fire
+  - flask-caching
+  - fs
+  - git
+  - Levenshtein
+  - marslab
+  - matplotlib
+  - more-itertools
+  - pandas>=2.2.0
+  - pillow
+  - pyarrow
+  - pip
+  - numpy
+  - plotly<6.0.0
+  - pytest
+  - scikit-learn
+  - setuptools<81
+#  - pip:
+#      - choreographer>=0.99.6
+#      - git+https://github.com/MillionConcepts/kaleido.git
