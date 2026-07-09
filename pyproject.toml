@@ -18,6 +18,7 @@ classifiers = [
 
 requires-python = ">=3.11"
 dependencies = [
+    "aiohttp",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +30,7 @@ typecheck = [
 Repository = "https://github.com/MillionConcepts/multidex"
 
 [project.scripts]
+multidex = "multidex.cli:main"
 
 [build-system]
 requires = ["setuptools >= 77"]
