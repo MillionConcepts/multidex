@@ -12,6 +12,9 @@ the URL in the "Running on" line.
 import os
 import logging
 import argparse
+
+from collections.abc import Awaitable
+from functools import partial
 from os.path import splitext
 
 from aiohttp import web
@@ -19,55 +22,50 @@ from aiohttp import web
 from multidex.assets import load_asset
 
 
-async def index(req: web.Request) -> web.StreamResponse:
-    return web.Response(text="Welcome to MultiDEx!")
+async def respond_with_asset(
+    req: web.Request,
+    *,
+    asset_path: str,
+) -> web.StreamResponse:
+    suffix = splitext(asset_path)[1].lower().removeprefix(".")
+    content_type = ({
+        "css":   "text/css",
+        "html":  "text/html",
+        "js":    "text/javascript",
+        "md":    "text/plain",
+        "txt":   "text/plain",
 
+        "gif":   "image/gif",
+        "jpeg":  "image/jpeg",
+        "jpg":   "image/jpeg",
+        "png":   "image/png",
+        "svg":   "image/svg+xml",
+        "tiff":  "image/tiff",
 
-async def robots(req: web.Request) -> web.StreamResponse:
-    return web.Response(text="User-Agent: *\nDisallow: /\n")
+        "otf":   "font/otf",
+        "ttc":   "font/collection",
+        "ttf":   "font/ttf",
+        "woff":  "font/woff",
+        "woff2": "font/woff2",
+    }).get(suffix, "application/octet-stream")
 
-
-async def favicon(req: web.Request) -> web.StreamResponse:
     try:
-        body = load_asset("logo-small.png"),
+        body = load_asset(asset_path)
     except Exception as e:
         raise web.HTTPNotFound(text=f"{req.rel_url}: {e}") from e
     return web.Response(
         body = body,
-        content_type = "image/png",
+        content_type = content_type,
     )
 
 
-async def asset(req: web.Request) -> web.StreamResponse:
+def get_asset(route: str, asset: str) -> web.RouteDef:
+    return web.get(route, partial(respond_with_asset, asset_path=asset))
+
+
+def asset_dir(req: web.Request) -> Awaitable[web.StreamResponse]:
     asset_url = req.match_info["asset"]
-    suffix = splitext(asset_url)[1].lower().removeprefix(".")
-    try:
-        body = load_asset(asset_url)
-    except Exception as e:
-        raise web.HTTPNotFound(text=f"{req.rel_url}: {e}") from e
-    return web.Response(
-        body = body,
-        content_type = ({
-            "css":   "text/css",
-            "html":  "text/html",
-            "js":    "text/javascript",
-            "md":    "text/plain",
-            "txt":   "text/plain",
-
-            "gif":   "image/gif",
-            "jpeg":  "image/jpeg",
-            "jpg":   "image/jpeg",
-            "png":   "image/png",
-            "svg":   "image/svg+xml",
-            "tiff":  "image/tiff",
-
-            "otf":   "font/otf",
-            "ttc":   "font/collection",
-            "ttf":   "font/ttf",
-            "woff":  "font/woff",
-            "woff2": "font/woff2",
-        }).get(suffix, "application/octet-stream")
-    )
+    return respond_with_asset(req, asset_path=asset_url)
 
 
 def main() -> None:
@@ -94,10 +92,10 @@ def main() -> None:
 
     app = web.Application()
     app.add_routes([
-        web.get("/", index),
-        web.get("/favicon.ico", favicon),
-        web.get("/robots.txt", robots),
-        web.get("/s/{asset:[a-zA-Z0-9./_-]+}", asset),
+        get_asset("/", "plotter.html"),
+        get_asset("/favicon.ico", "logo-small.png"),
+        get_asset("/robots.txt", "robots.txt"),
+        web.get("/s/{asset:[a-zA-Z0-9./_-]+}", asset_dir),
     ])
 
     if args.debug:
