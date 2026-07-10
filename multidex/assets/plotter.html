@@ -2,9 +2,205 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MultiDEx Plotter</title>
+    <link rel="icon" type="image/png" href="/favicon.ico">
+    <link rel="stylesheet" href="/s/css/fonts.css">
+    <link rel="stylesheet" href="/s/css/main.css">
+    <script src="/s/js/eventhandlers.js"></script>
   </head>
   <body>
-    <h1>placeholder</h1>
+    <nav class="menubar">
+      <details class="menu">
+        <summary>x axis</summary>
+        <select class="menu-primary" name="x-primary" id="x-primary">
+          <option value="emission_angle">emission_angle</option>
+          <option value="incidence_angle">incidence_angle</option>
+          <option value="lat">lat</option>
+          <option value="lon">lon</option>
+          <option value="l_s">l_s</option>
+          <option value="ltst">ltst</option>
+          <option value="min_count">min_count</option>
+          <option value="odometry">odometry</option>
+          <option value="phase_angle">phase_angle</option>
+          <option value="rover_elevation">rover_elevation</option>
+          <option value="sclk">sclk</option>
+          <option value="sol">sol</option>
+          <option value="feature">feature</option>
+          <option value="feature_subtype">feature_subtype</option>
+          <option value="float">float</option>
+          <option value="formation">formation</option>
+          <option value="group">group</option>
+          <option value="lab_spectrum_type">lab_spectrum_type</option>
+          <option value="member">member</option>
+          <option value="rock_class">rock_class</option>
+          <option value="soil_class">soil_class</option>
+          <option value="ref">ref</option>
+          <option value="slope">slope</option>
+          <option value="band_avg">band_avg</option>
+          <option value="band_max">band_max</option>
+          <option value="band_min">band_min</option>
+          <option value="ratio">ratio</option>
+          <option value="band_depth">band_depth</option>
+          <option value="PCA">PCA</option>
+          <option value="filter_avg">filter_avg</option>
+          <option value="std_avg">std_avg</option>
+          <option value="rel_std_avg">rel_std_avg</option>
+          <option value="l_rmad">l_rmad</option>
+          <option value="r_rmad">r_rmad</option>
+          <option value="l_rstd">l_rstd</option>
+          <option value="r_rstd">r_rstd</option>
+          <option value="mean_wrasd">mean_wrasd</option>
+          <option value="max_wrasd">max_wrasd</option>
+          <option value="mean_wasd">mean_wasd</option>
+          <option value="max_wasd">max_wasd</option>
+          <option value="p2p">p2p</option>
+        </select>
+        <div class="submenus">
+          <div class="submenu-for" data-primaries="ref">
+            <select name="x-one-band" id="x-one-band">
+              <option value="L2"> 445 nm (L2)</option>
+              <option value="R2"> 447 nm (R2)</option>
+              <option value="L0B"> 495 nm (L0B)</option>
+              <option value="R0B"> 495 nm (R0B)</option>
+              <option value="L1"> 527 nm (L1)</option>
+              <option value="R1"> 527 nm (R1)</option>
+              <option value="R0G"> 551 nm (R0G)</option>
+              <option value="L0G"> 554 nm (L0G)</option>
+              <option value="R0R"> 638 nm (R0R)</option>
+              <option value="L0R"> 640 nm (L0R)</option>
+              <option value="L4"> 676 nm (L4)</option>
+              <option value="L3"> 751 nm (L3)</option>
+              <option value="R3"> 805 nm (R3)</option>
+              <option value="L5"> 867 nm (L5)</option>
+              <option value="R4"> 908 nm (R4)</option>
+              <option value="R5"> 937 nm (R5)</option>
+              <option value="L6">1012 nm (L6)</option>
+              <option value="R6">1013 nm (R6)</option>
+            </select>
+          </div>
+          <div class="submenu-for" data-primaries="slope band_avg band_max band_min ratio">
+            <label for="x-two-bands-left">left</label>
+            <select name="x-two-bands-left" id="x-two-bands-left">
+              <option value="L2"> 445 nm (L2)</option>
+              <option value="R2"> 447 nm (R2)</option>
+              <option value="L0B"> 495 nm (L0B)</option>
+              <option value="R0B"> 495 nm (R0B)</option>
+              <option value="L1"> 527 nm (L1)</option>
+              <option value="R1"> 527 nm (R1)</option>
+              <option value="R0G"> 551 nm (R0G)</option>
+              <option value="L0G"> 554 nm (L0G)</option>
+              <option value="R0R"> 638 nm (R0R)</option>
+              <option value="L0R"> 640 nm (L0R)</option>
+              <option value="L4"> 676 nm (L4)</option>
+              <option value="L3"> 751 nm (L3)</option>
+              <option value="R3"> 805 nm (R3)</option>
+              <option value="L5"> 867 nm (L5)</option>
+              <option value="R4"> 908 nm (R4)</option>
+              <option value="R5"> 937 nm (R5)</option>
+              <option value="L6">1012 nm (L6)</option>
+              <option value="R6">1013 nm (R6)</option>
+            </select>
+            <label for="x-two-bands-right">right</label>
+            <select name="x-two-bands-right" id="x-two-bands-right">
+              <option value="L2"> 445 nm (L2)</option>
+              <option value="R2"> 447 nm (R2)</option>
+              <option value="L0B"> 495 nm (L0B)</option>
+              <option value="R0B"> 495 nm (R0B)</option>
+              <option value="L1"> 527 nm (L1)</option>
+              <option value="R1"> 527 nm (R1)</option>
+              <option value="R0G"> 551 nm (R0G)</option>
+              <option value="L0G"> 554 nm (L0G)</option>
+              <option value="R0R"> 638 nm (R0R)</option>
+              <option value="L0R"> 640 nm (L0R)</option>
+              <option value="L4"> 676 nm (L4)</option>
+              <option value="L3"> 751 nm (L3)</option>
+              <option value="R3"> 805 nm (R3)</option>
+              <option value="L5"> 867 nm (L5)</option>
+              <option value="R4"> 908 nm (R4)</option>
+              <option value="R5"> 937 nm (R5)</option>
+              <option value="L6">1012 nm (L6)</option>
+              <option value="R6">1013 nm (R6)</option>
+            </select>
+          </div>
+          <div class="submenu-for" data-primaries="band_depth">
+            <label for="x-three-bands-left">left</label>
+            <select name="x-three-bands-left" id="x-three-bands-left">
+              <option value="L2"> 445 nm (L2)</option>
+              <option value="R2"> 447 nm (R2)</option>
+              <option value="L0B"> 495 nm (L0B)</option>
+              <option value="R0B"> 495 nm (R0B)</option>
+              <option value="L1"> 527 nm (L1)</option>
+              <option value="R1"> 527 nm (R1)</option>
+              <option value="R0G"> 551 nm (R0G)</option>
+              <option value="L0G"> 554 nm (L0G)</option>
+              <option value="R0R"> 638 nm (R0R)</option>
+              <option value="L0R"> 640 nm (L0R)</option>
+              <option value="L4"> 676 nm (L4)</option>
+              <option value="L3"> 751 nm (L3)</option>
+              <option value="R3"> 805 nm (R3)</option>
+              <option value="L5"> 867 nm (L5)</option>
+              <option value="R4"> 908 nm (R4)</option>
+              <option value="R5"> 937 nm (R5)</option>
+              <option value="L6">1012 nm (L6)</option>
+              <option value="R6">1013 nm (R6)</option>
+            </select>
+            <label for="x-three-bands-center">center</label>
+            <select name="x-three-bands-center" id="x-three-bands-center">
+              <option value="L2"> 445 nm (L2)</option>
+              <option value="R2"> 447 nm (R2)</option>
+              <option value="L0B"> 495 nm (L0B)</option>
+              <option value="R0B"> 495 nm (R0B)</option>
+              <option value="L1"> 527 nm (L1)</option>
+              <option value="R1"> 527 nm (R1)</option>
+              <option value="R0G"> 551 nm (R0G)</option>
+              <option value="L0G"> 554 nm (L0G)</option>
+              <option value="R0R"> 638 nm (R0R)</option>
+              <option value="L0R"> 640 nm (L0R)</option>
+              <option value="L4"> 676 nm (L4)</option>
+              <option value="L3"> 751 nm (L3)</option>
+              <option value="R3"> 805 nm (R3)</option>
+              <option value="L5"> 867 nm (L5)</option>
+              <option value="R4"> 908 nm (R4)</option>
+              <option value="R5"> 937 nm (R5)</option>
+              <option value="L6">1012 nm (L6)</option>
+              <option value="R6">1013 nm (R6)</option>
+            </select>
+            <label for="x-three-bands-right">right</label>
+            <select name="x-three-bands-right" id="x-three-bands-right">
+              <option value="L2"> 445 nm (L2)</option>
+              <option value="R2"> 447 nm (R2)</option>
+              <option value="L0B"> 495 nm (L0B)</option>
+              <option value="R0B"> 495 nm (R0B)</option>
+              <option value="L1"> 527 nm (L1)</option>
+              <option value="R1"> 527 nm (R1)</option>
+              <option value="R0G"> 551 nm (R0G)</option>
+              <option value="L0G"> 554 nm (L0G)</option>
+              <option value="R0R"> 638 nm (R0R)</option>
+              <option value="L0R"> 640 nm (L0R)</option>
+              <option value="L4"> 676 nm (L4)</option>
+              <option value="L3"> 751 nm (L3)</option>
+              <option value="R3"> 805 nm (R3)</option>
+              <option value="L5"> 867 nm (L5)</option>
+              <option value="R4"> 908 nm (R4)</option>
+              <option value="R5"> 937 nm (R5)</option>
+              <option value="L6">1012 nm (L6)</option>
+              <option value="R6">1013 nm (R6)</option>
+            </select>
+          </div>
+          <div class="submenu-for" data-primaries="PCA">
+            <label for="x-pca-component">component #</label>
+            <select name="x-pca-component" id="x-pca-component">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </div>
+        </div>
+      </details>
+    </nav>
   </body>
 </html>
