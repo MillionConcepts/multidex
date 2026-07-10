@@ -30,7 +30,7 @@ typecheck = [
 Repository = "https://github.com/MillionConcepts/multidex"
 
 [project.scripts]
-multidex = "multidex.cli:main"
+multidex = "multidex.plotter:main"
 
 [build-system]
 requires = ["setuptools >= 77"]
