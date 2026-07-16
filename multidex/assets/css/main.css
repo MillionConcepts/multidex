@@ -9,12 +9,73 @@ root {
     --clean-parchment: rgba(254, 252, 245, 1);
 }
 
-html {
-    background: var(--clean-parchment);
-    font-size: 1rem;
-    font-family: Open Sans, sans-serif;
+* {
+    box-sizing: border-box;
 }
 
+html {
+    background: var(--clean-parchment);
+    font-family: Open Sans, sans-serif;
+    height: 100%;
+    margin: 0;
+}
+
+/* layout */
+body {
+    display: grid;
+    grid-template-areas:
+        "menu menu"
+        "main refl"
+        "main brow"
+        "foot foot"
+    ;
+    grid-template-columns: 2fr 1fr;
+    /* I do not understand why the minmax() calls here are necessary.
+       Simpler things that *seem* like they should be equivalent
+       (e.g. "max-content 2fr 1fr max-content" or "auto 2fr 1fr auto")
+       either cause the menu and footer to get squashed out of existence,
+       or cause a vertical scroll bar to appear for the whole window,
+       unless the window is made very tall. */
+    grid-template-rows:
+        minmax(min-content, max-content)
+        minmax(0, 2fr)
+        minmax(0, 1fr)
+        minmax(min-content, max-content);
+    gap: 0;
+    height: 100%;
+    margin: 0;
+}
+
+nav, #main-plot, #reflectance-plot, #browse-image, footer {
+    /* padding: 8px; */
+}
+
+nav {
+    grid-area: menu;
+    display: flex;
+    align-items: stretch;
+    flex-direction: row;
+    overflow: scroll;
+    scrollbar-color: rgba(0, 0, 0, 60%) transparent;
+}
+
+#main-plot {
+    grid-area: main;
+}
+#reflectance-plot {
+    grid-area: refl;
+}
+#browse-image {
+    grid-area: brow;
+}
+footer {
+    grid-area: foot;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+}
+
+/* per-element formatting */
 button, input, label, select, summary {
     font-family: Fira Mono, monospace;
     font-size: 0.9rem;
@@ -28,9 +89,85 @@ button {
     margin-top: 0.2rem;
 }
 
+/* menus */
+details.menu {
+    margin: 8px 0 0 8px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* These selectors have to be this specific in order to outrank the default
+ * user agent rules.
+ * TODO: needs a ::-webkit-details-marker equivalent but first I need to look
+ * up whether that works the same as ::marker.
+ */
+details.menu > summary:first-of-type {
+    /*
+    transform: rotate(90deg) translateX(-2em);
+    transform-box: border-box;
+    transform-origin: left 50%;
+    */
+    list-style-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13"><path d="m 1.06,1.06 5.6,5.6 -5.6,5.6" fill="none" stroke="rgba(36,28,1,1)" stroke-width="3"/></svg>');
+}
+details.menu > summary:first-of-type::marker {
+}
+details.menu[open] > summary:first-of-type {
+    /* transform: none; */
+    list-style-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13"><path d="m 1.06,2.97 5.6,5.6 5.6,-5.6" fill="none" stroke="rgba(36,28,1,1)" stroke-width="3"/></svg>');
+}
+details.menu[open] > summary:first-of-type::marker {
+}
+
+div.submenus {
+    display: flex;
+    flex-direction: row;
+}
+
+div.submenu-for {
+    display: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+div.submenu-for.active {
+    display: flex;
+}
+div.label-select-wrapper {
+    width: max-content;
+    margin: 2px;
+}
+
 summary {
     cursor: pointer;
 }
+span.vcenter-menu-name {
+    position: relative;
+    bottom: 2px;
+}
 
-div.submenu-for { display: none; }
-div.submenu-for.active { display: block; }
+/* temporary */
+nav, #main-plot, #reflectance-plot, #browse-image, footer {
+    border: 8px solid rgba(0, 0, 0, 30%);
+}
+
+nav {
+    background: #fdc086;
+}
+
+#main-plot {
+    background: #beaed4;
+}
+#reflectance-plot {
+    background: #7fc97f;
+}
+#browse-image {
+    background: #386cb0;
+}
+footer {
+    background: #ffff99;
+}
+
+img.placeholder {
+    margin: 16px;
+    width: calc(100% - 2 * 16px);
+    height: calc(100% - 2 * 16px);
+}
