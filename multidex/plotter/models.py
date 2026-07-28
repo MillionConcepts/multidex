@@ -1,6 +1,6 @@
 from functools import cache
 from types import MappingProxyType
-from typing import Sequence
+from typing import Sequence, Optional
 
 from django.db import models
 import numpy as np
@@ -128,6 +128,56 @@ class ZSpec(XSpec):
             'rc_ltst_off': ltst_off_series,
             'rc_sol_off': sol_off_series
         }
+
+
+class PSpec(XSpec):
+    feature_subtype = models.CharField(
+        "feature subtype", **B_N_I, max_length=45
+    )
+    two_toned = models.CharField("two-toned", **B_N_I)
+    # TODO: some of this wants to move up to XCAM after MCAM asdf products
+    # pancam mast assembly motion counter -- for repointed stereo
+    # observations, this is the first RSM in the sequence
+    pma = models.IntegerField("PMA", **B_N_I)
+    # timestamp of file if automatically produced by asdf
+    file_timestamp = models.CharField(max_length=30, null=True)
+    compression = models.CharField("compression", max_length=40, **B_N_I)
+    compression_quality = models.IntegerField("compression quality", **B_N_I)
+    distance = models.CharField("distance", max_length=20, **B_N_I)
+
+    tau = models.FloatField("Tau", **B_N_I)
+    instrument = "PCAM"
+    instrument_brief_name = "MER Pancam"
+
+    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
+
+    def overlay_browse_file_info(self) -> dict:
+        files = self.image_files()
+        images = {}
+        for image_type, filename in files.items():
+            images[image_type + "_file"] = filename
+        return images
+
+    # filters we are allowed to use for PCA -- implementing this as
+    # a method in order to flexibly handle virtual filters etc.
+    @staticmethod
+    def permissibly_explanatory_bandpasses(filts):
+        # never use the broadband filter
+        return [f for f in filts if f != "L1"]
+
+    @cache
+    def filter_values(
+        self,
+        scale_to: Optional[Sequence[str]] = None,
+        average_filters: bool = False,
+        show_bayers: bool = True
+    ) -> dict[str, dict]:
+        spectrum = super().filter_values(
+            scale_to, average_filters, show_bayers
+        )
+        # don't show the broadband filter in spectrum graphs
+        spectrum.pop("L1")
+        return spectrum
 
 
 class MSpec(XSpec):
@@ -276,7 +326,7 @@ for field_name in ASDF_CART_COLS + ASDF_PHOT_COLS:
 del field, magfield
 
 # bulk setup for each instrument
-for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:
+for spec_model in [ZSpec, MSpec, CSpec, PSpec, SSpec, TestSpec]:
     if spec_model.instrument not in DERIVED_CAM_DICT.keys():
         continue
 
@@ -320,5 +370,12 @@ for spec_model in [ZSpec, MSpec, CSpec, SSpec, TestSpec]:
 
 # for automated model selection
 INSTRUMENT_MODEL_MAPPING = MappingProxyType(
-    {"ZCAM": ZSpec, "MCAM": MSpec, "CCAM": CSpec, "SCAM": SSpec, "TEST": TestSpec}
+    {
+        "ZCAM": ZSpec,
+        "MCAM": MSpec,
+        "CCAM": CSpec,
+        "SCAM": SSpec,
+        "PCAM": PSpec,
+        "TEST": TestSpec
+    }
 )

@@ -23,6 +23,7 @@
 /multidex/plotter/application/assets/browse/zcam/*.jpg
 /multidex/plotter/application/assets/browse/ccam/*.jpg
 /multidex/plotter/application/assets/browse/scam/*.jpg
+/multidex/plotter/application/assets/browse/pcam/*.jpg
 /multidex/data/*CAM*.sqlite3
 /multidex/data/TEST.sqlite3
 /multidex/data/*.csv
