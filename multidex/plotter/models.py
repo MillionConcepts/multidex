@@ -176,7 +176,7 @@ class PSpec(XSpec):
             scale_to, average_filters, show_bayers
         )
         # don't show the broadband filter in spectrum graphs
-        spectrum.pop("L1")
+        spectrum.pop("L1", None)
         return spectrum
 
 
