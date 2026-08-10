@@ -21,10 +21,13 @@ def __getattr__impl(name: str, parent: str) -> ModuleType:
     """
     if '.' in name:
         raise AttributeError(f"module '{parent}' has no attribute '{name}'")
-    from importlib import import_module
+
+    import importlib
+    import sys
+
     try:
-        mod = import_module("." + name, parent)
-        globals()[name] = mod
+        mod = importlib.import_module("." + name, parent)
+        setattr(sys.modules[parent], name, mod)
         return mod
     except ImportError as e:
         raise AttributeError(
