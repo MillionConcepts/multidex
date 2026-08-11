@@ -1,25 +1,31 @@
 """
-assemble objects defining interface properties for various metadata fields
-and calculation types. fields must be defined in this module in order to
-be accessible to users for search and plotting.
+Tables of UI properties for the various columns of an xCAM data set.
+Columns not mentioned in these tables will not be visible in the
+MultiDEx API.
 """
-from itertools import product
+
+from dataclasses import dataclass
+from enum import Enum
+
 
 # spatial / per-ROI photometry fields from asdf
-ASDF_SPATIAL_SUFFIXES = ('H', 'W', 'HW', 'A', 'D')
 ASDF_CART_COLS = [
-    f'{eye}_{suffix}'
-    for eye, suffix in product(('LEFT', 'RIGHT'), ASDF_SPATIAL_SUFFIXES)
+    f"{eye}_{suffix}"
+    for eye in ["LEFT", "RIGHT"]
+    for suffix in ["H", "W", "HW", "A", "D"]
 ]
-ASDF_PHOT_SUFFIXES = ('I', 'E', 'P')
+
 ASDF_PHOT_COLS = [
-    f'{eye}_{suffix}'
-    for eye, suffix in product(('LEFT', 'RIGHT'), ASDF_PHOT_SUFFIXES)
+    f"{eye}_{suffix}"
+    for eye in ["LEFT", "RIGHT"]
+    for suffix in ["I", "E", "P"]
 ]
+
 # TODO: figure out how to implement decomposition parameter
 #  controls; maybe this doesn't go here, it's a separate interface,
 #  something like that
 REDUCTION_OP_FIELDS = ("PCA",)
+
 # metadata fields we should treat as qualitative / categorical
 QUALITATIVE_METADATA_FIELDS = (
     "analysis_name",
@@ -121,6 +127,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "saturation",
     "focus_position_mm"
 )
+
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = (
     "filter_avg",
@@ -128,8 +135,8 @@ CALCULATED_FIELDS = (
     "rel_std_avg",
     "l_rmad",
     "r_rmad",
-    'l_rstd',
-    'r_rstd',
+    "l_rstd",
+    "r_rstd",
     "mean_wrasd",
     "max_wrasd",
     "mean_wasd",
@@ -137,56 +144,79 @@ CALCULATED_FIELDS = (
     "p2p"
 )
 
-
-# assemble property records: these statements should not need to be modified
-# simply to add new fields
-def make_property_records(fields, base_properties):
-    return tuple(({"value": field} | base_properties for field in fields))
-
-
-QUALITATIVE_METADATA_PROPERTIES = make_property_records(
-    QUALITATIVE_METADATA_FIELDS, {"value_type": "qual"}
-)
-QUANTITATIVE_METADATA_PROPERTIES = make_property_records(
-    QUANTITATIVE_METADATA_FIELDS, {"value_type": "quant"}
-)
-CALCULATED_PROPERTIES = make_property_records(
-    CALCULATED_FIELDS, {"value_type": "quant", "type": "computed"}
-)
-REDUCTION_OP_PROPERTIES = make_property_records(
-    REDUCTION_OP_FIELDS, {"value_type": "quant", "type": "decomposition"}
-)
-
-# spectrum operation / band math functions (band depth, etc.)
-# are always-already defined as records to give arity
-SPECTRUM_OP_BASE_PROPERTIES = {"type": "method", "value_type": "quant"}
-SPECTRUM_OP_PROPERTIES = (
-    {"value": "ref", "arity": 1},
-    {"value": "slope", "arity": 2},
-    {"value": "band_avg", "arity": 2},
-    {"value": "band_max", "arity": 2},
-    {"value": "band_min", "arity": 2},
-    {"value": "ratio", "arity": 2},
-    {"value": "band_depth", "arity": 3},
-)
-for op in SPECTRUM_OP_PROPERTIES:
-    op |= SPECTRUM_OP_BASE_PROPERTIES
-
-
 # fields from the above categories we would like users to search but not graph
 UNGRAPHABLE_FIELDS = ("color", "seq_id", "name", "analysis_name", "target")
 
 
-# assemble categories, add labels, etc. nothing below this comment should
-# need to be modified simply to add new fields.
+# nothing below this point should need to be modified simply to add more fields
+class ValueType(Enum):
+    QUAL  = "qual"
+    QUANT = "quant"
+
+class FieldType(Enum):
+    ATTRIBUTE = "attribute"
+    METHOD = "method"
+    COMPUTED = "computed"
+    DECOMPOSITION = "decomposition"
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class FieldProperties:
+    field:      str        # the name of the field
+    value_type: ValueType
+    type:       FieldType = FieldType.ATTRIBUTE
+    arity:      int = 0
+
+    # backcompat, to be eliminated
+    @property
+    def value(self):
+        return self.field
+
+    # backcompat / space for "friendlier" labels
+    @property
+    def label(self):
+        return self.field
+
+
+QUALITATIVE_METADATA_PROPERTIES = tuple(
+    FieldProperties(field = field, value_type = ValueType.QUAL)
+    for field in QUALITATIVE_METADATA_FIELDS
+)
+
+QUANTITATIVE_METADATA_PROPERTIES = tuple(
+    FieldProperties(field = field, value_type = ValueType.QUANT)
+    for field in QUANTITATIVE_METADATA_FIELDS
+)
+
+CALCULATED_PROPERTIES = tuple(
+    FieldProperties(field = field, value_type = ValueType.QUANT, type = FieldType.COMPUTED)
+    for field in CALCULATED_FIELDS
+)
+REDUCTION_OP_PROPERTIES = tuple(
+    FieldProperties(field = field, value_type = ValueType.QUANT, type = FieldType.DECOMPOSITION)
+    for field in REDUCTION_OP_FIELDS
+)
+
+# shorthand
+def spop(field: str, arity: int) -> FieldProperties:
+    return FieldProperties(field = field, value_type = ValueType.QUANT, type = FieldType.METHOD, arity = arity)
+
+# spectrum operation / band math functions (band depth, etc.) require the additional 'arity' parameter
+SPECTRUM_OP_PROPERTIES = (
+    spop("ref", 1),
+    spop("slope", 2),
+    spop("band_avg", 2),
+    spop("band_max", 2),
+    spop("band_min", 2),
+    spop("ratio", 2),
+    spop("band_depth", 3),
+)
+
+del spop
+
 METADATA_PROPERTIES = (
     QUANTITATIVE_METADATA_PROPERTIES + QUALITATIVE_METADATA_PROPERTIES
 )
+
 DYNAMIC_PROPERTIES = (
     SPECTRUM_OP_PROPERTIES + REDUCTION_OP_PROPERTIES + CALCULATED_PROPERTIES
 )
-for prop_record in METADATA_PROPERTIES + DYNAMIC_PROPERTIES:
-    if "label" not in prop_record.keys():
-        prop_record["label"] = prop_record["value"]
-    if "type" not in prop_record.keys():
-        prop_record["type"] = "attribute"
