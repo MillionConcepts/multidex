@@ -168,12 +168,12 @@ class FieldProperties:
 
     # backcompat, to be eliminated
     @property
-    def value(self):
+    def value(self) -> str:
         return self.field
 
     # backcompat / space for "friendlier" labels
     @property
-    def label(self):
+    def label(self) -> str:
         return self.field
 
 

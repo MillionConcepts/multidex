@@ -24,7 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 typecheck = [
-    "mypy",
+    "mypy", "types-gunicorn"
 ]
 
 [project.urls]
@@ -68,6 +68,7 @@ namespace_packages = false
 [[tool.mypy.overrides]]
 # Project dependencies that currently do not have type annotations.
 module = [
+    "pyarrow.*"
 ]
 ignore_missing_imports = true
 

@@ -11,10 +11,9 @@ import re
 
 from abc import ABCMeta, abstractmethod
 from functools import partial
-from typing import Callable, Iterable
+from typing import Any, Callable, Iterable, Mapping
 
 import pyarrow.compute as pc
-
 
 __all__ = [
     "Sexpr", "Constant", "Column", "Op",
@@ -55,7 +54,7 @@ class Constant(Sexpr):
 class Column(Sexpr):
     colname: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         # we use the Common Lisp "self-quoting symbol" notation, :colname,
         # for columns; this cannot collide with any JSON scalar value
         return f":{self.colname}"
@@ -69,12 +68,12 @@ class Op(Sexpr):
     args: list[Sexpr]
     kwargs: dict[str, Sexpr]
 
-    def __str__(self):
+    def __str__(self) -> str:
         # kwargs use the historical alternative self-quoting symbol
         # notation, &argname, so they can't collide with column names
         return (
             f"({self.opname} "
-            + " ".join(f"&{key} {val}" for key, val in self.kwargs)
+            + " ".join(f"&{key} {val}" for key, val in self.kwargs.items())
             + " ".join(str(arg) for arg in self.args)
             + ")"
         )
@@ -91,7 +90,7 @@ class Op(Sexpr):
         spec.check_kwarg_names(self.opname, self.kwargs.keys())
         return getattr(pc, spec.arrow_name)(
             *spec.convert_pargs(self.args),
-            **spec.convert_kwargs(self.kwargs)
+            **spec.convert_kwargs(self.opname, self.kwargs)
         )
 
 
@@ -117,11 +116,11 @@ SEXP_TOKEN_RE = re.compile(r"""
 class OpUnderConstruction:
     """parser stack entry, will become an Op when closed"""
     name: str | None = None
-    args: list = dataclasses.field(default_factory=list)
+    args: list[Sexpr] = dataclasses.field(default_factory=list)
     kwargs: dict[str, Sexpr] = dataclasses.field(default_factory=dict)
     pending_key: str | None = None
 
-    def append(self, val: Sexpr | str):
+    def append(self, val: Sexpr | str) -> None:
         if isinstance(val, Sexpr):
             if self.name is None:
                 # ??? we might need lists that aren't unevaluated forms, not sure yet
@@ -221,7 +220,7 @@ def parse_sexps(text: str) -> Iterable[Sexpr]:
 #
 def kwarg_as_arrow(opname: str, kw: str, arg: Sexpr) -> pc.Expression:
     try:
-        return arg.as_arrow()
+        return arg.to_arrow()
     except Exception as e:
         raise ValueError(
             f"calling {opname}: invalid value for {kw}: {e}"
@@ -314,7 +313,7 @@ class ArrowComputeFnSpec:
         if isinstance(self.arity, int):
             if self.arity != actual:
                 raise ValueError(
-                    f"operation {opname} requires {spec.arity} args,"
+                    f"operation {opname} requires {self.arity} args,"
                     f" have {actual}"
                 )
             return
@@ -358,11 +357,13 @@ class ArrowComputeFnSpec:
         compute function."""
         return tuple(arg.to_arrow() for arg in args)
 
-    def convert_kwargs(self, kwargs: Mapping[str, Sexpr]) -> dict[str, Any]:
+    def convert_kwargs(
+        self, opname: str, kwargs: Mapping[str, Sexpr]
+    ) -> dict[str, Any]:
         """Convert all keyword arguments to the form expected by this
         compute function."""
         return {
-            kw: self.kwarg_converters[kw](kw, val)
+            kw: self.kwarg_converters[kw](opname, kw, val)
             for kw, val in kwargs.items()
         }
 
@@ -383,7 +384,7 @@ CU = partial(kwarg_as_choice, choices=("ignore", "raise"))
 
 def F(
     name: str,
-    arity: int,
+    arity: int | slice,
     **kwarg_converters: Callable[[str, str, Sexpr], Any],
 ) -> ArrowComputeFnSpec:
     return ArrowComputeFnSpec(name, arity, kwarg_converters)

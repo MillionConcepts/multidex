@@ -30,7 +30,7 @@ def format_oserror(e: OSError) -> str:
         msg = e.strerror
     elif e.errno is not None:
         from os import strerror
-        msg = os.strerror(e.errno)
+        msg = strerror(e.errno)
     else:
         msg = type(e).__name__
 

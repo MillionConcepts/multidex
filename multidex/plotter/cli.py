@@ -108,7 +108,7 @@ def get_asset(route: str, asset: str) -> web.RouteDef:
 def asset_dir(req: web.Request) -> Awaitable[web.StreamResponse]:
     return respond_with_asset(
         req,
-        asset_path = eq.match_info["asset"]
+        asset_path = req.match_info["asset"]
     )
 
 
@@ -122,7 +122,7 @@ def browse_image(
     )
 
 
-def data(req: web.Request, *, dataset: Table) -> Awaitable[web.StreamResponse]:
+async def data(req: web.Request, *, dataset: Table) -> web.StreamResponse:
     if (raw_filter_expr := req.query.get("filter")) is not None:
         try:
             filter_exprs = list(parse_sexps(raw_filter_expr))
@@ -156,7 +156,7 @@ def data(req: web.Request, *, dataset: Table) -> Awaitable[web.StreamResponse]:
     )
 
 
-def cols(req: web.Request, *, dataset: Table) -> Awaitable[web.StreamResponse]:
+async def cols(req: web.Request, *, dataset: Table) -> web.StreamResponse:
     return web.Response(
         body = json.dumps(dataset.column_names),
         content_type="application/json"
