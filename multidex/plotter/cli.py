@@ -1,23 +1,54 @@
-"""The MultiDEx GUI.
-
-When you run this command it will print a message like this:
-
-    ======== Running on http://127.0.0.1:8080 ========
-    (Press CTRL+C to quit)
-
-Leave that window alone, open up your web browser, and point it at
-the URL in the "Running on" line.
-"""
+"""The MultiDEx GUI."""
 
 import logging
 import argparse
+import webbrowser
+import sys
 
+from functools import partial
 from pathlib import Path
 
 from aiohttp import web
 
 from multidex.plotter.backend import Backend
 from multidex.utilz.http import get_asset, get_any_asset
+
+
+async def after_startup_hook(
+    app: web.Application,
+    *,
+    port: int,
+    open_browser: bool,
+) -> None:
+    app_url = f"http://127.0.0.1:{port}/"
+    if not open_browser:
+        message = (
+            f"=== MultiDEx back end now running. ===\n"
+            f"\n"
+            f"Open the GUI by visiting this URL in your web browser:\n"
+            f"    <{app_url}>.\n"
+        )
+    elif webbrowser.open_new(app_url):
+        message = (
+            f"=== MultiDEx GUI now open in your web browser. ===\n"
+            f"\n"
+            f"If you accidentally close it, you can get it back by\n"
+            f"visiting this URL: <{app_url}>.\n"
+        )
+    else:
+        message = (
+            f"!!! Couldn't open the MultiDEx GUI in your web browser !!!\n"
+            f"\n"
+            f"The back end is running. You will have to open the GUI\n"
+            f"yourself: visit this URL: <{app_url}>.\n"
+        )
+
+    message += (
+        "\n"
+        "To quit MultiDEx, close any browser tab(s) displaying the GUI,\n"
+        "and then type control-C into this window.\n"
+    )
+    sys.stdout.write(message)
 
 
 def main() -> None:
@@ -35,6 +66,14 @@ def main() -> None:
                     " associated with the dataset.  If omitted, browse"
                     " images will not be displayed.")
 
+    ap.add_argument("--no-open-browser",
+                    action="store_false", dest="open_browser",
+                    help="Don't automatically open a browser window"
+                    " to display the MultiDEx GUI.")
+    ap.add_argument("--open-browser",
+                    action="store_const", const=True, dest="open_browser",
+                    help=argparse.SUPPRESS)
+
     ap.add_argument("--debug", action="store_true",
                     help="Print lots of debugging messages on the console.")
     ap.add_argument("-p", "--port", default="8080",
@@ -51,7 +90,6 @@ def main() -> None:
                  f" must be >= 1 and <= 65535")
 
     backend = Backend(args.dataset, args.browse_images)
-
     routes = [
         get_asset("/", "plotter.html"),
         get_asset("/favicon.ico", "logo-small.png"),
@@ -62,6 +100,12 @@ def main() -> None:
 
     app = web.Application()
     app.add_routes(routes)
+    app.on_startup.append(partial(
+        after_startup_hook,
+        port = port,
+        open_browser = args.open_browser,
+    ))
+
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
         # yes this is how you do this (if you don't control the call
@@ -72,6 +116,7 @@ def main() -> None:
             app,
             host = "127.0.0.1",
             port = port,
+            print = None,
         )
 
     else:
@@ -81,6 +126,7 @@ def main() -> None:
             host = "127.0.0.1",
             port = port,
             access_log = None,
+            print = None,
         )
 
 
