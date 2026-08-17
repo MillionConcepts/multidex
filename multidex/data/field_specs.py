@@ -32,42 +32,53 @@ QUALITATIVE_METADATA_FIELDS = (
     "color",
     "compression",
     "distance",
+    "drive",
     "feature",
     "feature_subtype",
+    "filename",
     "float",
     "formation",
     "grain_size",
     "group",
+    "id",
     "lab_spectrum_type",
+    "landform_type",
     "libs_before",
     "location",
     "member",
+    "morphology",
     "name",
     "notes",
     "outcrop",
     "pixl",
     "rock_class",
+    "rock_surface",
     "scam",
     "seq_id",
+    "site",
     "soil_class",
     "soil_color",
+    "soil_location",
     "srlc_spec",
     "target",
     "target_type",
     "target_type_shot_specific",
+    "type_of_product",
     "wtsn",
     "zoom",
     # quality flags computed during index for asdf-generated spatial data
     "spatial_flag",
     "phot_flag",
     # rc properties
+    "rc_caltarget_file",
     "rc_seq_id",
     # caltarget roi only
     "caltarget_element",
     # supercam
     "red_rows",
     "powerfail",
-    "tdb_name"
+    "tdb_name",
+    "workspace",
 )
 
 # metadata fields we should treat as quantitative / continuous
@@ -75,6 +86,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "compression_quality",
     "emission_angle",
     "exposure",
+    "file_timestamp",
     "focal_distance",
     "incidence_angle",
     "instrument_azimuth",
@@ -85,12 +97,15 @@ QUANTITATIVE_METADATA_FIELDS = (
     "l_s",
     "ltst",
     "min_count",
+    "modification_time",
     "odometry",
     "phase_angle",
     "raster_location",
     "rc_ltst",
     "rover_elevation",
     "rsm",
+    "rsm_l",
+    "rsm_r",
     "sclk",
     "sol",
     "solar_azimuth",
@@ -125,7 +140,7 @@ QUANTITATIVE_METADATA_FIELDS = (
     "p1900",
     "p2300",
     "saturation",
-    "focus_position_mm"
+    "focus_position_mm",
 )
 
 # properties computed at runtime from metadata
@@ -141,11 +156,11 @@ CALCULATED_FIELDS = (
     "max_wrasd",
     "mean_wasd",
     "max_wasd",
-    "p2p"
+    "p2p",
 )
 
 # fields from the above categories we would like users to search but not graph
-UNGRAPHABLE_FIELDS = ("color", "seq_id", "name", "analysis_name", "target")
+UNGRAPHABLE_FIELDS = ("color", "id", "seq_id", "name", "analysis_name", "target")
 
 
 # nothing below this point should need to be modified simply to add more fields
