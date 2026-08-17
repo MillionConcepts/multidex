@@ -11,11 +11,19 @@ from pathlib import Path
 from typing import Awaitable, Iterable
 
 from aiohttp import web
-from pyarrow import ArrowException, Table, parquet
+from pyarrow import ArrowException, Table, parquet, types as arrow_types
 
+from multidex.data.field_specs import METADATA_PROPERTIES, FieldType
 from multidex.data.sexps import parse_sexps
 from multidex.data.cleanup import cleanup
 from multidex.utilz.http import respond_with_file
+
+
+# TODO: possibly this belongs in m.d.field_specs
+METADATA_FIELD_PROPS = {
+    props.field: props
+    for props in METADATA_PROPERTIES
+}
 
 class Backend:
     dataset: Table
@@ -34,8 +42,23 @@ class Backend:
         )
 
     async def send_columns(self, req: web.Request) -> web.StreamResponse:
+        columns = {}
+        for col in self.dataset.column_names:
+            if (props := METADATA_FIELD_PROPS.get(col)) is None:
+                ctype = self.dataset.schema.field(col).type
+                columns[col] = {
+                    "meta": False,
+                    "type": "quant" if arrow_types.is_floating(ctype) else "qual"
+                }
+            else:
+                assert props.type == FieldType.ATTRIBUTE
+                columns[col] = {
+                    "meta": True,
+                    "type": props.value_type.value
+                }
+
         return web.Response(
-            body = json.dumps(self.dataset.column_names),
+            body = json.dumps(columns),
             content_type="application/json"
         )
 
