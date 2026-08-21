@@ -123,12 +123,12 @@ div.submenus {
     flex-direction: row;
 }
 
-div.submenu-for {
+div.submenu {
     display: none;
     flex-direction: row;
     flex-wrap: wrap;
 }
-div.submenu-for.active {
+div.submenu.active {
     display: flex;
 }
 div.label-select-wrapper {
