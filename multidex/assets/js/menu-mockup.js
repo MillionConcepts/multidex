@@ -634,30 +634,19 @@ const MENUS = [
 
 function make_menu(spec) {
     const SECONDARY_COMPONENTS = {
-        "single": (s) => SingleSecondaryMenu(
-            s.primaries, s.id, s.label, s.choices,
-        ),
-        "lr": (s) => LRSecondaryMenu(
-            s.primaries,
-            s.l_label, s.l_id, s.l_choices,
-            s.r_label, s.r_id, s.r_choices,
-        ),
-        "lcr": (s) => LCRSecondaryMenu(
-            s.primaries,
-            s.l_label, s.l_id, s.l_choices,
-            s.c_label, s.c_id, s.c_choices,
-            s.r_label, s.r_id, s.r_choices,
-        )
+        "single": SingleSecondaryMenu,
+        "lr": LRSecondaryMenu,
+        "lcr": LCRSecondaryMenu
     };
 
-    return PrimaryMenu(
-        spec.id,
-        spec.label,
-        spec.choices,
-        spec.secondaries.map(
+    return PrimaryMenu({
+        id: spec.id,
+        label: spec.label,
+        choices: spec.choices,
+        secondaries: spec.secondaries.map(
             (s_spec) => SECONDARY_COMPONENTS[s_spec.type](s_spec)
         )
-    );
+    });
 }
 
 function make_mock_menubar() {

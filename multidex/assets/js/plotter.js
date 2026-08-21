@@ -5,21 +5,34 @@
 ///
 /// ID       HTML id and name to use for the element; it needs to be
 ///              globally unique.
-/// KLASS    space-separated list of class tags to apply to the element.
+/// CLS      space-separated list of class tags to apply to the element.
 /// LABEL    human visible name of the <select>, or null to omit one.
 ///              (This will populate a <label for=ID> next to the <select>.)
 /// CHOICES  list of options.  Each element of the list must be a 2-tuple
 ///              whose first element is the internal "value" for that choice,
 ///              and whose second element is the human-visible text.
+/// ISEL     Internal "value" of the choice that should initially be selected.
+///              Null means use browser's default (option 0).
 /// ONCHANGE event handler function for the "change" event for this <select>.
-function _makeDropdown(id, klass, label, choices, onchange) {
+///              Null means don't establish an event handler.
+function _makeDropdown({ id, cls, label, choices, isel, onchange }) {
     const m = window.m;
 
-    let select = m(
-        "select",
-        { "class": klass, "name": id, "id": id, "onchange": onchange },
-        choices.map((opt) => m("option", {"value": opt[0]}, [opt[1]]))
-    );
+    let sel_attrs = {
+        name: id,
+        id: id,
+    };
+    if (cls)
+        sel_attrs["class"] = cls;
+    if (onchange != null) // also excludes undefined
+        sel_attrs["onchange"] = onchange;
+
+    let select = m("select", sel_attrs, choices.map((opt) => {
+        let opt_attrs = {"value": opt[0]};
+        if (isel == opt[0])
+            opt_attrs["selected"] = "selected";
+        return m("option", opt_attrs, [opt[1]]);
+    }));
 
     if (!label) {
         return select;
@@ -49,13 +62,15 @@ function MenuBar(menus) {
 /// ID           HTML id of the menu; it needs to be globally unique.
 /// LABEL        human visible name of the menu.
 /// CHOICES      list of menu options (see _makeDropdown for specifics)
+/// ISEL         initially selected menu option; null means use choice 0
 /// SECONDARIES  list of SecondaryMenu components forming the submenus
-function PrimaryMenu(id, label, choices, secondaries) {
+function PrimaryMenu({ id, label, choices, isel, secondaries }) {
     const m = window.m;
+    secondaries = secondaries ?? [];
 
-    // since we don't mark any of the choices as explicitly selected,
-    // the browser will default the <select> to showing the first option
-    let selected = choices[0][0];
+    // if we don't have an explicit initial option, the browser will
+    // default to showing the first option
+    let selected = isel ?? choices[0][0];
 
     function onchange(event) {
         selected = event.target.value;
@@ -65,7 +80,9 @@ function PrimaryMenu(id, label, choices, secondaries) {
         view: () => {
             return m("details.menu", [
                 m("summary", [m("span.vcenter-menu-name", [label])]),
-                _makeDropdown(id, "menu-primary", null, choices, onchange),
+                _makeDropdown({
+                    id, choices, isel, onchange, cls: "menu-primary"
+                }),
                 m("div.submenus", secondaries.map(
                     (submenu) => m(submenu, { "primary_selection": selected })
                 )),
@@ -85,7 +102,7 @@ function PrimaryMenu(id, label, choices, secondaries) {
 /// ID         HTML id of the menu; it needs to be globally unique.
 /// LABEL      human visible name of the menu.
 /// CHOICES    list of menu options (see _makeDropdown for specifics)
-function SingleSecondaryMenu(primaries, id, label, choices) {
+function SingleSecondaryMenu({ primaries, id, label, choices }) {
     const m = window.m;
 
     function onchange(event) {
@@ -97,7 +114,9 @@ function SingleSecondaryMenu(primaries, id, label, choices) {
             let active = primaries.includes(vnode.attrs.primary_selection);
             let classes = active ? "submenu active" : "submenu";
             return m("div", { "class": classes }, [
-                _makeDropdown(id, "menu-secondary", label, choices, onchange)
+                _makeDropdown({
+                    id, label, choices, onchange, cls: "menu-secondary"
+                })
             ]);
         }
     };
@@ -114,11 +133,11 @@ function SingleSecondaryMenu(primaries, id, label, choices) {
 /// R_ID       HTML id of the right menu; it needs to be globally unique.
 /// R_LABEL    human visible name of the right menu.
 /// R_CHOICES  list of options for the right menu.
-function LRSecondaryMenu(
+function LRSecondaryMenu({
     primaries,
     l_label, l_id, l_choices,
     r_label, r_id, r_choices
-) {
+}) {
     const m = window.m;
 
     function l_onchange(event) {
@@ -133,10 +152,14 @@ function LRSecondaryMenu(
             let active = primaries.includes(vnode.attrs.primary_selection);
             let classes = active ? "submenu active" : "submenu";
             return m("div", { "class": classes }, [
-                _makeDropdown(l_id, "menu-secondary",
-                              l_label, l_choices, l_onchange),
-                _makeDropdown(r_id, "menu-secondary",
-                              r_label, r_choices, r_onchange),
+                _makeDropdown({
+                    id: l_id, label: l_label, choices: l_choices,
+                    onchange: l_onchange, cls: "menu-secondary"
+                }),
+                _makeDropdown({
+                    id: r_id, label: r_label, choices: r_choices,
+                    onchange: r_onchange, cls: "menu-secondary",
+                }),
             ]);
         }
     };
@@ -156,12 +179,12 @@ function LRSecondaryMenu(
 /// R_ID       HTML id of the right menu; it needs to be globally unique.
 /// R_LABEL    human visible name of the right menu.
 /// R_CHOICES  list of options for the right menu.
-function LCRSecondaryMenu(
+function LCRSecondaryMenu({
     primaries,
     l_label, l_id, l_choices,
     c_label, c_id, c_choices,
     r_label, r_id, r_choices
-) {
+}) {
     const m = window.m;
 
     function l_onchange(event) {
@@ -179,28 +202,58 @@ function LCRSecondaryMenu(
             let active = primaries.includes(vnode.attrs.primary_selection);
             let classes = active ? "submenu active" : "submenu";
             return m("div", { "class": classes }, [
-                _makeDropdown(l_id, "menu-secondary",
-                              l_label, l_choices, l_onchange),
-                _makeDropdown(c_id, "menu-secondary",
-                              c_label, c_choices, c_onchange),
-                _makeDropdown(r_id, "menu-secondary",
-                              r_label, r_choices, r_onchange),
+                _makeDropdown({
+                    id: l_id, label: l_label, choices: l_choices,
+                    onchange: l_onchange, cls: "menu-secondary",
+                }),
+                _makeDropdown({
+                    id: c_id, label: c_label, choices: c_choices,
+                    onchange: c_onchange, cls: "menu-secondary",
+                }),
+                _makeDropdown({
+                    id: r_id, label: r_label, choices: r_choices,
+                    onchange: r_onchange, cls: "menu-secondary",
+                }),
             ]);
         }
     };
 }
 
 function make_menus(colspecs) {
-    let axis_choices = [];
+    let choices = [];
+    let x_isel = null;
+    let y_isel = null;
+    let m_isel = null;
     for (let [col, spec] of Object.entries(colspecs)) {
         if (spec.meta) {
-            axis_choices.push([col, col]);
+            choices.push([col, col]);
+
+            // Use the first quantitative column as the x-axis default,
+            // the second quantitative column as the y-axis default,
+            // and the first qualitative column as the marker default.
+            if (spec.type == "quant") {
+                if (x_isel == null) {
+                    x_isel = col;
+                } else if (y_isel == null) {
+                    y_isel = col;
+                }
+            } else if (spec.type == "qual") {
+                if (m_isel == null) {
+                    m_isel = col;
+                }
+            }
         }
     }
     return [
-        PrimaryMenu("x-primary", "x axis", axis_choices, []),
-        PrimaryMenu("y-primary", "y axis", axis_choices, []),
-        PrimaryMenu("m-primary", "markers", axis_choices, []),
+        PrimaryMenu({
+            id: "x-primary", label: "x axis", isel: x_isel, choices
+        }),
+        PrimaryMenu({
+            id: "y-primary", label: "y axis", isel: y_isel, choices
+        }),
+        PrimaryMenu({
+            id: "m-primary", label: "markers", isel: m_isel, choices
+        }),
     ];
 }
 
