@@ -15,7 +15,7 @@
 ///              Null means use browser's default (option 0).
 /// ONCHANGE event handler function for the "change" event for this <select>.
 ///              Null means don't establish an event handler.
-function _makeDropdown({ id, cls, label, choices, isel, onchange }) {
+function make_dropdown({ id, cls, label, choices, isel, onchange }) {
     const m = window.m;
 
     let sel_attrs = {
@@ -61,7 +61,7 @@ function MenuBar(menus) {
 ///
 /// ID           HTML id of the menu; it needs to be globally unique.
 /// LABEL        human visible name of the menu.
-/// CHOICES      list of menu options (see _makeDropdown for specifics)
+/// CHOICES      list of menu options (see make_dropdown for specifics)
 /// ISEL         initially selected menu option; null means use choice 0
 /// SECONDARIES  list of SecondaryMenu components forming the submenus
 function PrimaryMenu({ id, label, choices, isel, secondaries }) {
@@ -80,7 +80,7 @@ function PrimaryMenu({ id, label, choices, isel, secondaries }) {
         view: () => {
             return m("details.menu", [
                 m("summary", [m("span.vcenter-menu-name", [label])]),
-                _makeDropdown({
+                make_dropdown({
                     id, choices, isel, onchange, cls: "menu-primary"
                 }),
                 m("div.submenus", secondaries.map(
@@ -101,7 +101,7 @@ function PrimaryMenu({ id, label, choices, isel, secondaries }) {
 ///                for which this menu should be visible.
 /// ID         HTML id of the menu; it needs to be globally unique.
 /// LABEL      human visible name of the menu.
-/// CHOICES    list of menu options (see _makeDropdown for specifics)
+/// CHOICES    list of menu options (see make_dropdown for specifics)
 function SingleSecondaryMenu({ primaries, id, label, choices }) {
     const m = window.m;
 
@@ -114,7 +114,7 @@ function SingleSecondaryMenu({ primaries, id, label, choices }) {
             let active = primaries.includes(vnode.attrs.primary_selection);
             let classes = active ? "submenu active" : "submenu";
             return m("div", { "class": classes }, [
-                _makeDropdown({
+                make_dropdown({
                     id, label, choices, onchange, cls: "menu-secondary"
                 })
             ]);
@@ -152,11 +152,11 @@ function LRSecondaryMenu({
             let active = primaries.includes(vnode.attrs.primary_selection);
             let classes = active ? "submenu active" : "submenu";
             return m("div", { "class": classes }, [
-                _makeDropdown({
+                make_dropdown({
                     id: l_id, label: l_label, choices: l_choices,
                     onchange: l_onchange, cls: "menu-secondary"
                 }),
-                _makeDropdown({
+                make_dropdown({
                     id: r_id, label: r_label, choices: r_choices,
                     onchange: r_onchange, cls: "menu-secondary",
                 }),
@@ -202,15 +202,15 @@ function LCRSecondaryMenu({
             let active = primaries.includes(vnode.attrs.primary_selection);
             let classes = active ? "submenu active" : "submenu";
             return m("div", { "class": classes }, [
-                _makeDropdown({
+                make_dropdown({
                     id: l_id, label: l_label, choices: l_choices,
                     onchange: l_onchange, cls: "menu-secondary",
                 }),
-                _makeDropdown({
+                make_dropdown({
                     id: c_id, label: c_label, choices: c_choices,
                     onchange: c_onchange, cls: "menu-secondary",
                 }),
-                _makeDropdown({
+                make_dropdown({
                     id: r_id, label: r_label, choices: r_choices,
                     onchange: r_onchange, cls: "menu-secondary",
                 }),
