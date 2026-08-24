@@ -30,7 +30,10 @@ class Backend:
     browse_images: Path | None
 
     def __init__(self, dataset: Path, browse_images: Path | None):
-        self.dataset = cleanup(parquet.read_table(dataset))
+        self.dataset = cleanup(
+            parquet.read_table(dataset),
+            have_browse_images = browse_images is not None,
+        )
         self.browse_images = browse_images
 
     def routes(self) -> Iterable[web.RouteDef]:

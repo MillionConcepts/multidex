@@ -9,8 +9,11 @@ from ast import literal_eval
 import pyarrow as pa
 
 
-def cleanup(tbl: pa.Table) -> pa.Table:
-    return decode_image_json(drop_all_null_columns(tbl))
+def cleanup(tbl: pa.Table, *, have_browse_images: bool) -> pa.Table:
+    return decode_image_json(
+        drop_all_null_columns(tbl),
+        have_browse_images = have_browse_images,
+    )
 
 
 def drop_all_null_columns(tbl: pa.Table) -> pa.Table:
@@ -28,7 +31,7 @@ def drop_all_null_columns(tbl: pa.Table) -> pa.Table:
     return tbl.drop_columns(null_columns)
 
 
-def decode_image_json(tbl: pa.Table) -> pa.Table:
+def decode_image_json(tbl: pa.Table, *, have_browse_images: bool) -> pa.Table:
     """
     Return (a copy of) 'tbl' with the "images" column, which contains
     stringified JSON structures like '{"left": "filename", "right": "filename"}'
@@ -39,9 +42,15 @@ def decode_image_json(tbl: pa.Table) -> pa.Table:
     If there isn't an "images" column, 'tbl' is returned unmodified.
     If there is an "images" column but it's not as we expect, a warning
     message is generated and 'tbl' is returned unmodified.
+
+    If 'have_browse_images' is false, instead return (a copy of) 'tbl'
+    with the "images" column, if any, dropped, and no other changes.
+    In this case the contents of the "images" column are not validated.
     """
     if "images" not in tbl.column_names:
         return tbl
+    if not have_browse_images:
+        return tbl.drop_columns("images")
 
     images_left = []
     images_right = []

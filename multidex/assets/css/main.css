@@ -144,7 +144,7 @@ span.vcenter-menu-name {
     bottom: 2px;
 }
 
-/* temporary */
+/* temporary layout debugging aids */
 nav, #main-plot, #reflectance-plot, #browse-image, footer {
     border: 8px solid rgba(0, 0, 0, 30%);
 }
@@ -160,14 +160,39 @@ nav {
     background: #7fc97f;
 }
 #browse-image {
-    background: #386cb0;
-}
-footer {
     background: #ffff99;
 }
-
+footer {
+    background: #386cb0;
+    color: white;
+}
 img.placeholder {
     margin: 16px;
     width: calc(100% - 2 * 16px);
     height: calc(100% - 2 * 16px);
+}
+/* end of temporary layout debugging aids */
+
+/* browse image */
+#browse-image > img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* when the browse image fails to load it's replaced with an
+   error message div styled like this: */
+.no-image {
+    width: 100%;
+    height: 100%;
+    border: 2px inset #e34a33;
+    background: #fee8c8;
+    font-size: 2rem;
+    /* yes, this is really how you're supposed to center multiline
+       text within a <div> both horizontally and vertically. */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }

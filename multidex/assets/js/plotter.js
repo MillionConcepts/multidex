@@ -1,5 +1,92 @@
 "use strict";
 
+/// Application global state
+let STATE = {
+    // Browse image currently being displayed.
+    browse_image: null,
+};
+
+//
+// Browse-image handling
+//
+
+/// Active view for the browse-image pane.  No arguments; the src= for
+/// the image comes from STATE (see above).
+function BrowseImage() {
+    const m = window.m;
+
+    // Internal state: have we tried to load the image yet, and if so,
+    // did that succeed? Possible values are "unloaded", "ok", and "fail".
+    let status = "unloaded";
+
+    // Internal state: the last image we tried to load.  Needed so we
+    // notice when STATE.browse_image changes.
+    let last_image = null;
+
+    // Auto-redraw handles view updates after these events fire.
+    function onload() {
+        status = "ok";
+    }
+    function onerror() {
+        // Disappointingly, the event object doesn't record the
+        // HTTP error code, or any other details worth reporting.
+        // In context, this _should_ only happen when the browse
+        // image collection is incomplete, so we just say the image
+        // is "missing" in the visible error message.
+        status = "error";
+    }
+
+    function view() {
+        if (STATE.browse_image !== last_image) {
+            last_image = STATE.browse_image;
+            status = "unloaded";
+        }
+
+        let contents = [];
+        if (status == "error") {
+            let last_image_base = last_image.substring(
+                last_image.lastIndexOf("/") + 1
+            );
+            contents.push(m("div.no-image", [
+                "Browse image missing:",
+                m("br"),
+                m("code", [last_image_base])
+            ]));
+        } else if (last_image == null) {
+            // don't display an image in this case
+            status = "ok";
+        } else {
+            let attrs = { src: last_image };
+            if (status == "unloaded") {
+                attrs.onload = onload;
+                attrs.onerror = onerror;
+            }
+            contents.push(m("img", attrs));
+        }
+        return contents;
+    }
+
+    return { view };
+}
+
+/// Static view for the browse-image pane, used when browse images are
+/// not available
+function NoBrowseImages() {
+    const m = window.m;
+    return {
+        view: function () {
+            return m("div.no-image", [
+                "Browse images", m("br"), "not available"
+            ]);
+        }
+    };
+}
+
+
+//
+// Menus
+//
+
 /// Subroutine of the menu view methods; create a vnode tree for
 /// a <select> element.
 ///
@@ -51,7 +138,7 @@ function MenuBar(menus) {
     const m = window.m;
     return {
         view: function() {
-            return m("nav#menubar", menus.map(m));
+            return menus.map(m);
         }
     };
 }
@@ -263,6 +350,15 @@ function onDOMContentLoaded () {
         .then((colspecs) => {
             m.mount(document.getElementById("menubar"),
                     MenuBar(make_menus(colspecs)));
+            if ("images_left" in colspecs
+                || "images_right" in colspecs) {
+                m.mount(document.getElementById("browse-image"),
+                        BrowseImage());
+            } else {
+                // use m.render here so Mithril knows it won't change
+                m.render(document.getElementById("browse-image"),
+                         m(NoBrowseImages()));
+            }
         })
         .catch((error) => {
             console.error(error);
