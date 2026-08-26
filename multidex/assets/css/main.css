@@ -173,6 +173,47 @@ img.placeholder {
 }
 /* end of temporary layout debugging aids */
 
+
+/* main table */
+#main-plot {
+    /* this has to be on the table's *container*, because that's what has a
+       definite height */
+    overflow-y: scroll;
+}
+.main-data {
+    width: 100%;
+    border-spacing: 0;
+    /* position:relative on the <table> is needed to make position:sticky
+       work on the <th>s */
+    position: relative;
+}
+.main-data tr, .main-data th, .main-data td {
+    padding: 0.125rem 2px;
+}
+.main-data > thead th {
+    /* you cannot sticky a <thead> nor a <tr>, but you can sticky a <th> */
+    position: sticky;
+    top: 0;
+    /* because it is the <th>es that are sticky, they must be the ones
+       with the background and border */
+    background: #ccc;
+    border-bottom: 1px solid #333;
+}
+.main-data > tbody > tr {
+    background: #fff;
+}
+.main-data > tbody > tr:nth-of-type(even) {
+    background: #eee;
+}
+/* the double selector is to ensure that this is the most specific rule,
+   whether or not it's an even-numbered row */
+.main-data > tbody > tr.row-selected,
+.main-data > tbody > tr.row-selected:nth-of-type(even) {
+    background: #386cb0;
+    color: white;
+}
+
+
 /* browse image */
 #browse-image > img {
     width: 100%;
@@ -195,4 +236,20 @@ img.placeholder {
     justify-content: center;
     align-items: center;
     text-align: center;
+}
+
+/* loading spinner container box */
+.pinwheel-holder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+.pinwheel-holder > p {
+    font-size: 2rem;
+    font-style: italic;
+    color: #4d4d4d;
 }

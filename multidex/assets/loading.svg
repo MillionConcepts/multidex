@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     viewBox="-2.5 -2.5 55 55" width="75px" height="75px">
+<!-- This is a cleaned-up, SVG-ified version of the "bigdot" spinner
+     found at https://stephaniehobson.ca/loading-spinner/other-styles.html -->
+ <defs>
+  <radialGradient id="rg">
+   <stop stop-color="#000000" stop-opacity="1" offset="0"/>
+   <stop stop-color="#4d4d4d" stop-opacity=".8" offset=".3"/>
+   <stop stop-color="#4d4d4d" stop-opacity="0" offset="1"/>
+  </radialGradient>
+  <style><![CDATA[
+    circle {
+      fill: url(#rg);
+      transform-origin: center;
+      transform-box: fill-box;
+      animation-name: spin;
+      animation-duration: 2s;
+      animation-iteration-count: infinite;
+      animation-direction: normal;
+    }
+    #a { animation-delay: -1750ms; }
+    #b { animation-delay: -1500ms; }
+    #c { animation-delay: -1250ms; }
+    #d { animation-delay: -1000ms; }
+    #e { animation-delay:  -750ms; }
+    #f { animation-delay:  -500ms; }
+    #g { animation-delay:  -250ms; }
+    #h { animation-delay:     0ms; }
+    @keyframes spin {
+        0% { opacity:   1; transform: scale(1  ); }
+       30% { opacity: 0.7;                        }
+       60% { opacity: 0.3; transform: scale(0.5); }
+       61% {               transform: scale(0  ); }
+      100% {               transform: scale(0  ); }
+    }
+  ]]></style>
+ </defs>
+ <circle id="a" r="7.5" cx="37.0208" cy="8.7365"/>
+ <circle id="b" r="7.5" cx="45" cy="22"/>
+ <circle id="c" r="7.5" cx="41.2635" cy="37.0208"/>
+ <circle id="d" r="7.5" cx="28" cy="45"/>
+ <circle id="e" r="7.5" cx="12.9792" cy="41.2635"/>
+ <circle id="f" r="7.5" cx="5" cy="28"/>
+ <circle id="g" r="7.5" cx="8.73655" cy="12.9792"/>
+ <circle id="h" r="7.5" cx="22" cy="5"/>
+</svg>

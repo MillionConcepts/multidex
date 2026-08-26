@@ -1,13 +1,169 @@
 "use strict";
 
+// Utilities
+
+/// If ITEM is neither null nor undefined, append it to ARRAY.
+/// Otherwise do nothing.
+function push_nonnull(array, item) {
+    if (item != null)
+        array.push(item);
+}
+
 /// Application global state
 let STATE = {
+    // Whether browse images can be displayed.
+    browse_images_available: null,
+
     // Browse image currently being displayed.
     browse_image: null,
+
+    // Data row currently selected in the main view.
+    selected_main_row: null,
+
+    // Specifications for all the columns the back end can give us.
+    columns_available: {},
+
+    // Names of the columns currently being used as x axis, y axis,
+    // and markers in the main plot.
+    x_col: null,
+    y_col: null,
+    m_col: null,
+
+    // Data backing the main plot.
+    main_plot_data: {},
+
+    refresh_main_plot: function() {
+        const m = window.m;
+        let columns = [];
+        push_nonnull(columns, STATE.x_col);
+        push_nonnull(columns, STATE.y_col);
+        push_nonnull(columns, STATE.m_col);
+        if (STATE.browse_images_available) {
+            columns.push("images_left");
+            columns.push("images_right");
+        }
+
+        m.request({
+            url: "/data",
+            params: { columns: columns.join(",") }
+        }).then((columns) => {
+            STATE.main_plot_data = columns;
+            m.redraw();
+        });
+    }
 };
 
 //
-// Browse-image handling
+// The main plot
+//
+
+/// View rendering the main plot and its controls.
+/// No arguments; the data comes from STATE (see above).
+///
+/// As a temporary measure, this renders a *table* of the main plot
+/// data; clicking on any row causes the browse image for that row to
+/// be displayed.  (This might become an alternative presentation tab
+/// in the future.)
+function MainPlot() {
+    const m = window.m;
+    // might become switchable to right in the future
+    const image_col = "images_left";
+
+    function row_onclick(event, row_index) {
+        STATE.selected_main_row = row_index;
+        if (!STATE.browse_images_available) {
+            return;
+        }
+        STATE.browse_image = STATE.main_plot_data[image_col][row_index];
+    }
+
+    function still_loading() {
+        // continue to show loading spinner until data is available
+        // AFAICT there's no way to not duplicate the structure, see
+        // https://github.com/MithrilJS/mithril.js/discussions/3079
+        return m("div.pinwheel-holder", [
+            m("img", { src: "/s/loading.svg" }),
+            m("p", ["Loading…"])
+        ]);
+    }
+
+    function view() {
+        if (!STATE.x_col || !STATE.y_col || !STATE.m_col
+            || !STATE.main_plot_data) {
+            return still_loading();
+        }
+
+        let x_col = STATE.main_plot_data[STATE.x_col] ?? [];
+        let y_col = STATE.main_plot_data[STATE.y_col] ?? [];
+        let m_col = STATE.main_plot_data[STATE.m_col] ?? [];
+        let images = (
+            STATE.browse_images_available
+                ? STATE.main_plot_data[image_col]
+                : null
+        ) ?? [];
+
+        if (x_col.length == 0 || y_col.length == 0 || m_col.length == 0) {
+            return still_loading();
+        }
+
+        let base_key = `${STATE.x_col},${STATE.y_col},${STATE.m_col}`;
+        if (images.length > 0) {
+            base_key = `${base_key},${image_col}`;
+        }
+
+        let nrows = Math.max(
+            x_col.length,
+            y_col.length,
+            m_col.length,
+            images.length,
+        );
+
+        let rows = Array.from(
+            // an object with a "length" property is "array-like"
+            // enough to get the mapFn called for all i in
+            // 0 .. length.  Doncha love javascript?
+            { length: nrows },
+            (_, i) => {
+                let cells = [
+                    // `${expr}` is the current recommended way to
+                    // coerce expr to a string.
+                    m("td", [`${x_col[i] ?? ""}`]),
+                    m("td", [`${y_col[i] ?? ""}`]),
+                    m("td", [`${m_col[i] ?? ""}`]),
+                ];
+                if (images.length > 0) {
+                    cells.push(m("td", [`${images[i] ?? ""}`]));
+                }
+                let attrs = {
+                    key: `${base_key};${i}`,
+                    onclick: (e) => row_onclick(e, i),
+                };
+                if (i === STATE.selected_main_row) {
+                    attrs["class"] = "row-selected";
+                }
+                return m("tr", attrs, cells);
+            }
+        );
+
+        let colheads = [
+            m("th", [STATE.x_col]),
+            m("th", [STATE.y_col]),
+            m("th", [STATE.m_col]),
+        ];
+        if (images.length > 0) {
+            colheads.push(m("th", ["left image"]));
+        }
+
+        return m("table.main-data", [
+            m("thead", [m("tr", colheads)]),
+            m("tbody", rows)
+        ]);
+    }
+    return { view };
+}
+
+//
+// Browse-image display
 //
 
 /// Active view for the browse-image pane.  No arguments; the src= for
@@ -44,19 +200,16 @@ function BrowseImage() {
 
         let contents = [];
         if (status == "error") {
-            let last_image_base = last_image.substring(
-                last_image.lastIndexOf("/") + 1
-            );
             contents.push(m("div.no-image", [
                 "Browse image missing:",
                 m("br"),
-                m("code", [last_image_base])
+                m("code", [last_image])
             ]));
         } else if (last_image == null) {
             // don't display an image in this case
             status = "ok";
         } else {
-            let attrs = { src: last_image };
+            let attrs = { src: `/browse/${last_image}` };
             if (status == "unloaded") {
                 attrs.onload = onload;
                 attrs.onerror = onerror;
@@ -147,6 +300,8 @@ function MenuBar(menus) {
 /// bar.  It may have "secondary" submenus.
 ///
 /// ID           HTML id of the menu; it needs to be globally unique.
+///                This is also used to control what field of STATE
+///                is poked upon a change event.
 /// LABEL        human visible name of the menu.
 /// CHOICES      list of menu options (see make_dropdown for specifics)
 /// ISEL         initially selected menu option; null means use choice 0
@@ -157,10 +312,10 @@ function PrimaryMenu({ id, label, choices, isel, secondaries }) {
 
     // if we don't have an explicit initial option, the browser will
     // default to showing the first option
-    let selected = isel ?? choices[0][0];
+    STATE[id] = isel ?? choices[0][0];
 
     function onchange(event) {
-        selected = event.target.value;
+        STATE[id] = event.target.value;
     }
 
     return {
@@ -171,7 +326,7 @@ function PrimaryMenu({ id, label, choices, isel, secondaries }) {
                     id, choices, isel, onchange, cls: "menu-primary"
                 }),
                 m("div.submenus", secondaries.map(
-                    (submenu) => m(submenu, { "primary_selection": selected })
+                    (submenu) => m(submenu, { "primary_selection": STATE[id] })
                 )),
             ]);
         }
@@ -333,13 +488,13 @@ function make_menus(colspecs) {
     }
     return [
         PrimaryMenu({
-            id: "x-primary", label: "x axis", isel: x_isel, choices
+            id: "x_col", label: "x axis", isel: x_isel, choices
         }),
         PrimaryMenu({
-            id: "y-primary", label: "y axis", isel: y_isel, choices
+            id: "y_col", label: "y axis", isel: y_isel, choices
         }),
         PrimaryMenu({
-            id: "m-primary", label: "markers", isel: m_isel, choices
+            id: "m_col", label: "markers", isel: m_isel, choices
         }),
     ];
 }
@@ -348,17 +503,29 @@ function onDOMContentLoaded () {
     const m = window.m;
     m.request({ url: "/data/columns" })
         .then((colspecs) => {
-            m.mount(document.getElementById("menubar"),
-                    MenuBar(make_menus(colspecs)));
+            STATE.columns_available = colspecs;
+
             if ("images_left" in colspecs
                 || "images_right" in colspecs) {
                 m.mount(document.getElementById("browse-image"),
                         BrowseImage());
+                STATE.browse_images_available = true;
             } else {
                 // use m.render here so Mithril knows it won't change
                 m.render(document.getElementById("browse-image"),
                          m(NoBrowseImages()));
+                STATE.browse_images_available = false;
             }
+
+            m.mount(document.getElementById("main-plot"), MainPlot());
+
+            // this has the side effect of working out which columns
+            // should be selected by default
+            m.mount(document.getElementById("menubar"),
+                    MenuBar(make_menus(colspecs)));
+
+            // so now we can call this:
+            STATE.refresh_main_plot();
         })
         .catch((error) => {
             console.error(error);
