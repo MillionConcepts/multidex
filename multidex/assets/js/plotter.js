@@ -48,7 +48,6 @@ let STATE = {
             params: { columns: columns.join(",") }
         }).then((columns) => {
             STATE.main_plot_data = columns;
-            m.redraw();
         });
     }
 };
@@ -69,7 +68,19 @@ function MainPlot() {
     // might become switchable to right in the future
     const image_col = "images_left";
 
-    function row_onclick(event, row_index) {
+    function onclick(event) {
+        let target = event.target;
+        // the initial target of the event is probably a <td>
+        while (target
+               && (target.nodeType !== Node.ELEMENT_NODE
+                   || target.tagName !== "TR")) {
+            target = target.parentElement;
+        }
+        if (!target) {
+            console.error("no <tr> found as parent of %o", event.target);
+            return;
+        }
+        let row_index = target.sectionRowIndex;
         STATE.selected_main_row = row_index;
         if (!STATE.browse_images_available) {
             return;
@@ -136,7 +147,6 @@ function MainPlot() {
                 }
                 let attrs = {
                     key: `${base_key};${i}`,
-                    onclick: (e) => row_onclick(e, i),
                 };
                 if (i === STATE.selected_main_row) {
                     attrs["class"] = "row-selected";
@@ -145,18 +155,19 @@ function MainPlot() {
             }
         );
 
+        let colscope = {scope: "col"};
         let colheads = [
-            m("th", [STATE.x_col]),
-            m("th", [STATE.y_col]),
-            m("th", [STATE.m_col]),
+            m("th", colscope, [STATE.x_col]),
+            m("th", colscope, [STATE.y_col]),
+            m("th", colscope, [STATE.m_col]),
         ];
         if (images.length > 0) {
-            colheads.push(m("th", ["left image"]));
+            colheads.push(m("th", colscope, ["left image"]));
         }
 
         return m("table.main-data", [
             m("thead", [m("tr", colheads)]),
-            m("tbody", rows)
+            m("tbody", { onclick }, rows)
         ]);
     }
     return { view };
@@ -300,30 +311,28 @@ function MenuBar(menus) {
 /// bar.  It may have "secondary" submenus.
 ///
 /// ID           HTML id of the menu; it needs to be globally unique.
-///                This is also used to control what field of STATE
-///                is poked upon a change event.
+///                This also determines which field of STATE controls
+///                the selected value and is poked upon a change event.
 /// LABEL        human visible name of the menu.
 /// CHOICES      list of menu options (see make_dropdown for specifics)
-/// ISEL         initially selected menu option; null means use choice 0
 /// SECONDARIES  list of SecondaryMenu components forming the submenus
-function PrimaryMenu({ id, label, choices, isel, secondaries }) {
+function PrimaryMenu({ id, label, choices, secondaries }) {
     const m = window.m;
     secondaries = secondaries ?? [];
 
-    // if we don't have an explicit initial option, the browser will
-    // default to showing the first option
-    STATE[id] = isel ?? choices[0][0];
-
     function onchange(event) {
         STATE[id] = event.target.value;
+        STATE.refresh_main_plot();
     }
 
     return {
         view: () => {
-            return m("details.menu", [
+            return m("details.menu", { open: "open" }, [
                 m("summary", [m("span.vcenter-menu-name", [label])]),
                 make_dropdown({
-                    id, choices, isel, onchange, cls: "menu-primary"
+                    id, choices, onchange,
+                    isel: STATE[id],
+                    cls: "menu-primary"
                 }),
                 m("div.submenus", secondaries.map(
                     (submenu) => m(submenu, { "primary_selection": STATE[id] })
@@ -463,9 +472,6 @@ function LCRSecondaryMenu({
 
 function make_menus(colspecs) {
     let choices = [];
-    let x_isel = null;
-    let y_isel = null;
-    let m_isel = null;
     for (let [col, spec] of Object.entries(colspecs)) {
         if (spec.meta) {
             choices.push([col, col]);
@@ -474,27 +480,27 @@ function make_menus(colspecs) {
             // the second quantitative column as the y-axis default,
             // and the first qualitative column as the marker default.
             if (spec.type == "quant") {
-                if (x_isel == null) {
-                    x_isel = col;
-                } else if (y_isel == null) {
-                    y_isel = col;
+                if (STATE.x_col == null) {
+                    STATE.x_col = col;
+                } else if (STATE.y_col == null) {
+                    STATE.y_col = col;
                 }
             } else if (spec.type == "qual") {
-                if (m_isel == null) {
-                    m_isel = col;
+                if (STATE.m_col == null) {
+                    STATE.m_col = col;
                 }
             }
         }
     }
     return [
         PrimaryMenu({
-            id: "x_col", label: "x axis", isel: x_isel, choices
+            id: "x_col", label: "x axis", choices
         }),
         PrimaryMenu({
-            id: "y_col", label: "y axis", isel: y_isel, choices
+            id: "y_col", label: "y axis", choices
         }),
         PrimaryMenu({
-            id: "m_col", label: "markers", isel: m_isel, choices
+            id: "m_col", label: "markers", choices
         }),
     ];
 }
@@ -520,7 +526,7 @@ function onDOMContentLoaded () {
             m.mount(document.getElementById("main-plot"), MainPlot());
 
             // this has the side effect of working out which columns
-            // should be selected by default
+            // should be selected by default:
             m.mount(document.getElementById("menubar"),
                     MenuBar(make_menus(colspecs)));
 
