@@ -1,21 +1,14 @@
 """The MultiDEx GUI."""
 
-import logging
 import argparse
-import webbrowser
-import sys
-
-from functools import partial
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from aiohttp import web
-
-from multidex.plotter.backend import Backend
-from multidex.utilz.http import get_asset, get_any_asset
-
+if TYPE_CHECKING:
+    from aiohttp import web
 
 async def after_startup_hook(
-    app: web.Application,
+    app: "web.Application",
     *,
     port: int,
     open_browser: bool,
@@ -28,27 +21,86 @@ async def after_startup_hook(
             f"Open the GUI by visiting this URL in your web browser:\n"
             f"    <{app_url}>.\n"
         )
-    elif webbrowser.open_new(app_url):
-        message = (
-            f"=== MultiDEx GUI now open in your web browser. ===\n"
-            f"\n"
-            f"If you accidentally close it, you can get it back by\n"
-            f"visiting this URL: <{app_url}>.\n"
-        )
     else:
-        message = (
-            f"!!! Couldn't open the MultiDEx GUI in your web browser !!!\n"
-            f"\n"
-            f"The back end is running. You will have to open the GUI\n"
-            f"yourself: visit this URL: <{app_url}>.\n"
-        )
+        import webbrowser
+        if webbrowser.open_new(app_url):
+            message = (
+                f"=== MultiDEx GUI now open in your web browser. ===\n"
+                f"\n"
+                f"If you accidentally close it, you can get it back by\n"
+                f"visiting this URL: <{app_url}>.\n"
+            )
+        else:
+            message = (
+                f"!!! Couldn't open the MultiDEx GUI in your web browser !!!\n"
+                f"\n"
+                f"The back end is running. You will have to open the GUI\n"
+                f"yourself: visit this URL: <{app_url}>.\n"
+            )
 
     message += (
         "\n"
         "To quit MultiDEx, close any browser tab(s) displaying the GUI,\n"
         "and then type control-C into this window.\n"
     )
+
+    import sys
     sys.stdout.write(message)
+
+
+def run_app(
+    *,
+    dataset: Path,
+    browse_images: Path | None = None,
+    port: int = 8080,
+    debug: bool = False,
+    open_browser: bool = True,
+):
+    import logging
+    from functools import partial
+    from aiohttp import web
+    from multidex.plotter.backend import Backend
+    from multidex.utilz.http import get_asset, get_any_asset
+
+    backend = Backend(dataset, browse_images)
+    routes = [
+        get_asset("/", "plotter.html"),
+        get_asset("/favicon.ico", "logo-small.png"),
+        get_asset("/robots.txt", "robots.txt"),
+        get_any_asset("/s"),
+    ]
+    routes.extend(backend.routes())
+
+    app = web.Application()
+    app.add_routes(routes)
+    app.on_startup.append(partial(
+        after_startup_hook,
+        port = port,
+        open_browser = open_browser,
+    ))
+
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+        # yes this is how you do this (if you don't control the call
+        # to asyncio.run, which I *could*, but...)
+        from os import environ
+        environ["PYTHONASYNCIODEBUG"] = "1"
+        web.run_app(
+            app,
+            host = "127.0.0.1",
+            port = port,
+            print = None,
+        )
+
+    else:
+        logging.basicConfig(level=logging.INFO)
+        web.run_app(
+            app,
+            host = "127.0.0.1",
+            port = port,
+            access_log = None,
+            print = None,
+        )
 
 
 def main() -> None:
@@ -89,45 +141,13 @@ def main() -> None:
         ap.error(f"invalid PORT {args.port!r}:"
                  f" must be >= 1 and <= 65535")
 
-    backend = Backend(args.dataset, args.browse_images)
-    routes = [
-        get_asset("/", "plotter.html"),
-        get_asset("/favicon.ico", "logo-small.png"),
-        get_asset("/robots.txt", "robots.txt"),
-        get_any_asset("/s"),
-    ]
-    routes.extend(backend.routes())
-
-    app = web.Application()
-    app.add_routes(routes)
-    app.on_startup.append(partial(
-        after_startup_hook,
-        port = port,
-        open_browser = args.open_browser,
-    ))
-
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-        # yes this is how you do this (if you don't control the call
-        # to asyncio.run, which I *could*, but...)
-        from os import environ
-        environ["PYTHONASYNCIODEBUG"] = "1"
-        web.run_app(
-            app,
-            host = "127.0.0.1",
-            port = port,
-            print = None,
-        )
-
-    else:
-        logging.basicConfig(level=logging.INFO)
-        web.run_app(
-            app,
-            host = "127.0.0.1",
-            port = port,
-            access_log = None,
-            print = None,
-        )
+    run_app(
+        dataset=args.dataset,
+        browse_images=args.browse_images,
+        port=port,
+        debug=args.debug,
+        open_browser=args.open_browser,
+    )
 
 
 if __name__ == "__main__":

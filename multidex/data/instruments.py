@@ -3,15 +3,18 @@ Data processing operations that are intrinsically dependent on the
 instrument that collected the data.
 """
 
+# Note: there should be no imports from marslab at file scope,
+# because importing marslab currently takes a long time:
+# <https://github.com/MillionConcepts/marslab/issues/31>
+# Delaying the imports to function scope means they can run
+# somewhat in parallel with front-end initialization, and
+# makes --help complete promptly.
+
 from dataclasses import dataclass
 from typing import Sequence, TypedDict, cast
 
 import pyarrow as pa
 import pyarrow.compute as pc
-from marslab.compat.xcam import (
-    DERIVED_CAM_DICT, WAVELENGTH_TO_FILTER,
-    polish_xcam_spectrum
-)
 
 # A close-enough approximation to the actual shape of DERIVED_CAM_DICT entries.
 CamInfo = TypedDict("CamInfo", {
@@ -43,6 +46,8 @@ class Instrument:
         average_filters: bool = True,
         show_bayers: bool = True,
     ) -> dict[str, object]:
+        from marslab.compat.xcam import polish_xcam_spectrum
+
         # TODO: Handle monocular instruments (may need changes in marslab)
         if self.n_eyes != 2:
             eyes = "eye" if self.n_eyes == 1 else "eyes"
@@ -106,9 +111,12 @@ ALL_PHYS_FILTERS = None
 def all_phys_filters() -> frozenset[str]:
     global ALL_PHYS_FILTERS
     if ALL_PHYS_FILTERS is None:
+        from marslab.compat.xcam import DERIVED_CAM_DICT
+
         pfs: set[str] = set()
         for cam_info in DERIVED_CAM_DICT.values():
             pfs.update(n.lower() for n in cam_info["filters"].keys())
+
         ALL_PHYS_FILTERS = frozenset(pfs)
     return ALL_PHYS_FILTERS
 
@@ -121,6 +129,8 @@ def identify_instrument(tbl: pa.Table) -> Instrument:
     TODO: This should probably be explicit table metadata rather than
     being worked out by heuristic analysis of the table's columns.
     """
+    from marslab.compat.xcam import DERIVED_CAM_DICT, WAVELENGTH_TO_FILTER
+
     all_columns = frozenset(n.lower() for n in tbl.column_names)
     phys_filter_columns = all_columns & all_phys_filters()
 
