@@ -1,4 +1,4 @@
-root {
+:root {
     --dark-tint-0: rgba(0,0,50,0.05);
     --dark-tint-1: rgba(0, 0, 25, 0.18);
     --dark-tint-2: rgba(0,0,0,0.24);
@@ -247,7 +247,32 @@ th, td {
 }
 
 /* reflectance plot */
-#refl-no-selection, #refl-error, #refl-plot {
+#refl-plot {
+    display: grid;
+    grid-template-areas:
+        "options options options"
+        "lspace  plot    rspace"
+    ;
+    grid-template-columns: 1fr 8fr 1fr;
+    grid-template-rows: minmax(min-content, max-content) minmax(0, 1fr);
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    gap: 8px;
+    padding: 8px;
+}
+#refl-plot > .controls {
+    grid-area: options;
+    display: flex;
+    flex-direction: row;
+    background: var(--clean-parchment);
+}
+
+#refl-no-selection, #refl-error, #refl-data {
+    grid-area: plot;
+}
+
+#refl-no-selection, #refl-error {
     margin: 0;
     padding; 0;
     display: flex;
@@ -258,15 +283,11 @@ th, td {
 }
 
 #refl-no-selection {
-    width: 100%;
-    height: 100%;
     background: var(--clean-parchment);
     font-size: 2rem;
 }
 
 #refl-error {
-    width: 75%;
-    height: 75%;
     border: 2px inset #e34a33;
     background: #fee8c8;
     font-size: 2rem;

@@ -36,15 +36,27 @@ let STATE = {
     // Data backing the main plot.
     main_plot_data: {},
 
+    // Options for the reflectance plot.
+    refl_options: {
+        avg: true,
+        bayer: true,
+        scale: true,
+    },
+
     // Data backing the reflectance plot.
     refl_plot_data: null,
     refl_plot_error: null,
+
+    loading: function() {
+        return (!STATE.x_col || !STATE.y_col || !STATE.m_col
+                || !STATE.main_plot_data);
+    },
 
     refresh_main_plot: function() {
         const m = window.m;
 
         let prev_selected_id = STATE.selected_main_obs_id;
-        STATE.clear_observation();
+        STATE.select_observation(null);
 
         let columns = [];
         push_nonnull(columns, STATE.x_col);
@@ -71,11 +83,22 @@ let STATE = {
         });
     },
 
-    refresh_refl_plot: function(id, avg, bayer, scale) {
+    refresh_refl_plot: function() {
         const m = window.m;
+        if (STATE.selected_main_obs_id == null) {
+            STATE.refl_plot_data = null;
+            STATE.refl_plot_error = null;
+            return;
+        }
+
         m.request({
             url: "/data/spectrum",
-            params: { id, avg, bayer, scale }
+            params: {
+                id: STATE.selected_main_obs_id,
+                avg: STATE.refl_options.avg,
+                bayer: STATE.refl_options.bayer,
+                scale: STATE.refl_options.scale
+            },
         }).then((spectrum) => {
             STATE.refl_plot_data = spectrum;
             STATE.refl_plot_error = null;
@@ -85,35 +108,27 @@ let STATE = {
         });
     },
 
-    clear_refl_plot: function() {
-        STATE.refl_plot_data = null;
-        STATE.refl_plot_error = null;
-    },
-
-    refresh_browse_image: function(row_index) {
-        if (STATE.browse_images_available) {
+    refresh_browse_image: function() {
+        if (!STATE.browse_images_available
+            || STATE.selected_main_row == null) {
+            STATE.browse_image = null;
+        } else {
             STATE.browse_image =
-                STATE.main_plot_data[STATE.image_col][row_index];
+                STATE.main_plot_data[STATE.image_col][STATE.selected_main_row];
         }
     },
 
-    clear_browse_image: function() {
-        STATE.browse_image = null;
-    },
-
     select_observation: function(row_index) {
-        STATE.selected_main_row = row_index;
-        let obs_id = STATE.main_plot_data["id"][row_index];
-        STATE.selected_main_obs_id = obs_id;
-        STATE.refresh_refl_plot(obs_id, true, true, true);
-        STATE.refresh_browse_image(row_index);
-    },
-
-    clear_observation: function() {
-        STATE.selected_main_row = null;
-        STATE.selected_main_obs_id = null;
-        STATE.clear_refl_plot();
-        STATE.clear_browse_image();
+        if (row_index == null) {
+            STATE.selected_main_row = null;
+            STATE.selected_main_obs_id = null;
+        } else {
+            let obs_id = STATE.main_plot_data["id"][row_index];
+            STATE.selected_main_row = row_index;
+            STATE.selected_main_obs_id = obs_id;
+        }
+        STATE.refresh_refl_plot();
+        STATE.refresh_browse_image();
     },
 };
 
@@ -130,7 +145,6 @@ let STATE = {
 /// in the future.)
 function MainPlot() {
     const m = window.m;
-    // might become switchable to right in the future
 
     function onclick(event) {
         let target = event.target;
@@ -146,7 +160,7 @@ function MainPlot() {
         }
         // clicking again on the same observation clears the selection
         if (target.sectionRowIndex == STATE.selected_main_row) {
-            STATE.clear_observation();
+            STATE.select_observation(null);
         } else {
             STATE.select_observation(target.sectionRowIndex);
         }
@@ -163,8 +177,7 @@ function MainPlot() {
     }
 
     function view() {
-        if (!STATE.x_col || !STATE.y_col || !STATE.m_col
-            || !STATE.main_plot_data) {
+        if (STATE.loading()) {
             return still_loading();
         }
 
@@ -252,9 +265,39 @@ function MainPlot() {
 function ReflPlot() {
     const m = window.m;
 
+    function bool_control(id, label, property) {
+        let iattrs = {
+            type: "checkbox",
+            switch: "switch",
+            id,
+            name: id,
+            onchange: (e) => {
+                console.log(e);
+                STATE.refl_options[property] = e.target.checked;
+                STATE.refresh_refl_plot();
+            }
+        };
+        if (STATE.refl_options[property]) {
+            iattrs["checked"] = "checked";
+        }
+        return m("div", [
+            m("input", iattrs),
+            m("label", { "for": id }, [ label ])
+        ]);
+    }
+
+    function render_controls() {
+        return m("fieldset.controls", [
+            m("legend", ["Plot options:"]),
+            bool_control("refl-avg", "Averaged bands", "avg"),
+            bool_control("refl-bayer", "Bayer bands", "bayer"),
+        ]);
+    }
+
     function render_blank() {
-        return m("p#refl-no-selection",
-                 ["Select an observation to see its spectrum."]);
+        return m("p#refl-no-selection", [
+            STATE.loading() ? "" : "Select an observation to see its spectrum."
+        ]);
     }
     function render_err(err) {
         return m("p#refl-error", [err]);
@@ -270,7 +313,7 @@ function ReflPlot() {
 
         let id = STATE.selected_main_obs_id;
 
-        return m("table#refl-data", { key: id }, [
+        return m("table#refl-data", [
             m("thead", [m("tr", heads)]),
             m("tbody", rows.map(
                 (row) => m("tr", { key: `${id},${row[0]}` },
@@ -281,15 +324,18 @@ function ReflPlot() {
     function view() {
         let data = STATE.refl_plot_data;
         let err = STATE.refl_plot_error;
+        let fragment = [ render_controls() ];
+
         if (data == null && err == null) {
-            return render_blank();
+            fragment.push(render_blank());
         } else if (data != null && err == null) {
-            return render_spectrum(data);
+            fragment.push(render_spectrum(data));
         } else if (data == null && err != null) {
-            return render_err(`${err}`);
+            fragment.push(render_err(`${err}`));
         } else {
-            return render_err("impossible: data and err both non-null");
+            fragment.push(render_err("impossible: data and err both non-null"));
         }
+        return fragment;
     }
 
     return { view };
