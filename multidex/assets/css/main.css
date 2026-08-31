@@ -46,7 +46,7 @@ body {
     margin: 0;
 }
 
-nav, #main-plot, #reflectance-plot, #browse-image, footer {
+nav, #main-plot, #refl-plot, #browse-image, footer {
     /* padding: 8px; */
 }
 
@@ -62,7 +62,7 @@ nav {
 #main-plot {
     grid-area: main;
 }
-#reflectance-plot {
+#refl-plot {
     grid-area: refl;
 }
 #browse-image {
@@ -145,7 +145,7 @@ span.vcenter-menu-name {
 }
 
 /* temporary layout debugging aids */
-nav, #main-plot, #reflectance-plot, #browse-image, footer {
+nav, #main-plot, #refl-plot, #browse-image, footer {
     border: 8px solid rgba(0, 0, 0, 30%);
 }
 
@@ -156,7 +156,7 @@ nav {
 #main-plot {
     background: #beaed4;
 }
-#reflectance-plot {
+#refl-plot {
     background: #7fc97f;
 }
 #browse-image {
@@ -173,6 +173,35 @@ img.placeholder {
 }
 /* end of temporary layout debugging aids */
 
+/* semi-temporary communication debugging tables */
+table {
+    border-spacing: 0;
+    /* position:sticky will only work as expected on table elements if the
+       parent <table> is position:relative; it does no harm to set it
+       for all <table>s */
+    position: relative;
+}
+tbody > tr {
+    background: #fff;
+}
+tbody > tr:nth-of-type(even) {
+    background: #eee;
+}
+thead th {
+    /* position:sticky doesn't work on <thead> nor on <tr>, but it does
+       work on <th>.  Because it is the <th>es that are (potentially)
+       sticky, they must be the ones with the background and border.  */
+    background: #ccc;
+    border-bottom: 1px solid #333;
+}
+
+tr, th, td {
+    padding: 0.125rem 4px;
+}
+th, td {
+    text-align: left;
+}
+
 
 /* main table */
 #main-plot {
@@ -180,34 +209,16 @@ img.placeholder {
        definite height */
     overflow-y: scroll;
 }
-.main-data {
+#main-data {
     width: 100%;
-    border-spacing: 0;
-    /* position:relative on the <table> is needed to make position:sticky
-       work on the <th>s */
-    position: relative;
 }
-.main-data tr, .main-data th, .main-data td {
-    padding: 0.125rem 4px;
-}
-.main-data > thead th {
-    /* you cannot sticky a <thead> nor a <tr>, but you can sticky a <th> */
+#main-data > thead th {
     position: sticky;
     top: 0;
-    /* because it is the <th>es that are sticky, they must be the ones
-       with the background and border */
-    background: #ccc;
-    border-bottom: 1px solid #333;
-}
-.main-data > tbody > tr {
-    background: #fff;
-}
-.main-data > tbody > tr:nth-of-type(even) {
-    background: #eee;
 }
 
 /* deemphasize the 'id' column */
-.main-data > tbody > tr > td:first-child {
+#main-data > tbody > tr > td:first-child {
     background: white;
     color: #666;
     text-align: right;
@@ -216,7 +227,7 @@ img.placeholder {
     border-right: 1px solid #ccc;
     border-bottom: 0px solid transparent;
 }
-.main-data > thead > tr > th:first-child {
+#main-data > thead > tr > th:first-child {
     color: #666;
     font-size: smaller;
     border-right: 1px solid #aaa;
@@ -224,17 +235,42 @@ img.placeholder {
 
 /* the extra selectors ensure that this is the most specific rule,
    whether or not it's an even-numbered row */
-.main-data > tbody > tr.row-selected,
-.main-data > tbody > tr.row-selected:nth-of-type(even) {
+#main-data > tbody > tr.row-selected,
+#main-data > tbody > tr.row-selected:nth-of-type(even) {
     background: #386cb0;
     color: white;
 }
-.main-data > tbody > tr.row-selected > td:first-child {
+#main-data > tbody > tr.row-selected > td:first-child {
     background: #386cb0;
     border-right-color: #386cb0;
     color: white;
 }
 
+/* reflectance plot */
+#refl-no-selection, #refl-error, #refl-plot {
+    margin: 0;
+    padding; 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+#refl-no-selection {
+    width: 100%;
+    height: 100%;
+    background: var(--clean-parchment);
+    font-size: 2rem;
+}
+
+#refl-error {
+    width: 75%;
+    height: 75%;
+    border: 2px inset #e34a33;
+    background: #fee8c8;
+    font-size: 2rem;
+}
 
 /* browse image */
 #browse-image > img {

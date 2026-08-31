@@ -19,6 +19,7 @@ let STATE = {
 
     // Data row currently selected in the main view.
     selected_main_row: null,
+    selected_main_obs_id: null,
 
     // Specifications for all the columns the back end can give us.
     columns_available: {},
@@ -29,11 +30,22 @@ let STATE = {
     y_col: null,
     m_col: null,
 
+    // might become switchable in the future
+    image_col: "images_left",
+
     // Data backing the main plot.
     main_plot_data: {},
 
+    // Data backing the reflectance plot.
+    refl_plot_data: null,
+    refl_plot_error: null,
+
     refresh_main_plot: function() {
         const m = window.m;
+
+        let prev_selected_id = STATE.selected_main_obs_id;
+        STATE.clear_observation();
+
         let columns = [];
         push_nonnull(columns, STATE.x_col);
         push_nonnull(columns, STATE.y_col);
@@ -48,8 +60,61 @@ let STATE = {
             params: { columns: columns.join(",") }
         }).then((columns) => {
             STATE.main_plot_data = columns;
+            if (prev_selected_id != null) {
+                let new_index = STATE.main_plot_data["id"].findIndex(
+                    (id) => id === prev_selected_id
+                );
+                if (new_index !== -1)
+                    STATE.select_observation(new_index);
+                // if it's -1, we already cleared the active observation
+            }
         });
-    }
+    },
+
+    refresh_refl_plot: function(id, avg, bayer, scale) {
+        const m = window.m;
+        m.request({
+            url: "/data/spectrum",
+            params: { id, avg, bayer, scale }
+        }).then((spectrum) => {
+            STATE.refl_plot_data = spectrum;
+            STATE.refl_plot_error = null;
+        }).catch((err) => {
+            STATE.refl_plot_data = null;
+            STATE.refl_plot_error = err;
+        });
+    },
+
+    clear_refl_plot: function() {
+        STATE.refl_plot_data = null;
+        STATE.refl_plot_error = null;
+    },
+
+    refresh_browse_image: function(row_index) {
+        if (STATE.browse_images_available) {
+            STATE.browse_image =
+                STATE.main_plot_data[STATE.image_col][row_index];
+        }
+    },
+
+    clear_browse_image: function() {
+        STATE.browse_image = null;
+    },
+
+    select_observation: function(row_index) {
+        STATE.selected_main_row = row_index;
+        let obs_id = STATE.main_plot_data["id"][row_index];
+        STATE.selected_main_obs_id = obs_id;
+        STATE.refresh_refl_plot(obs_id, true, true, true);
+        STATE.refresh_browse_image(row_index);
+    },
+
+    clear_observation: function() {
+        STATE.selected_main_row = null;
+        STATE.selected_main_obs_id = null;
+        STATE.clear_refl_plot();
+        STATE.clear_browse_image();
+    },
 };
 
 //
@@ -66,7 +131,6 @@ let STATE = {
 function MainPlot() {
     const m = window.m;
     // might become switchable to right in the future
-    const image_col = "images_left";
 
     function onclick(event) {
         let target = event.target;
@@ -80,12 +144,12 @@ function MainPlot() {
             console.error("no <tr> found as parent of %o", event.target);
             return;
         }
-        let row_index = target.sectionRowIndex;
-        STATE.selected_main_row = row_index;
-        if (!STATE.browse_images_available) {
-            return;
+        // clicking again on the same observation clears the selection
+        if (target.sectionRowIndex == STATE.selected_main_row) {
+            STATE.clear_observation();
+        } else {
+            STATE.select_observation(target.sectionRowIndex);
         }
-        STATE.browse_image = STATE.main_plot_data[image_col][row_index];
     }
 
     function still_loading() {
@@ -110,7 +174,7 @@ function MainPlot() {
         let m_col = STATE.main_plot_data[STATE.m_col] ?? [];
         let images = (
             STATE.browse_images_available
-                ? STATE.main_plot_data[image_col]
+                ? STATE.main_plot_data[STATE.image_col]
                 : null
         ) ?? [];
 
@@ -123,7 +187,7 @@ function MainPlot() {
 
         let base_key = `${STATE.x_col},${STATE.y_col},${STATE.m_col}`;
         if (images.length > 0) {
-            base_key = `${base_key},${image_col}`;
+            base_key = `${base_key},${STATE.image_col}`;
         }
 
         let nrows = Math.max(
@@ -171,13 +235,66 @@ function MainPlot() {
             colheads.push(m("th", colscope, ["left image"]));
         }
 
-        return m("table.main-data", [
+        return m("table#main-data", [
             m("thead", [m("tr", colheads)]),
             m("tbody", { onclick }, rows)
         ]);
     }
     return { view };
 }
+
+//
+// Reflectance plot
+//
+
+/// Active view for the reflectance pane.  No arguments; all data comes
+/// from STATE (see above).
+function ReflPlot() {
+    const m = window.m;
+
+    function render_blank() {
+        return m("p#refl-no-selection",
+                 ["Select an observation to see its spectrum."]);
+    }
+    function render_err(err) {
+        return m("p#refl-error", [err]);
+    }
+    function render_spectrum(spec) {
+        let heads = [
+            "band", "wave", "mean", "std.dev."
+        ].map((label) => m("th", [label]));
+        let rows = Object.entries(spec).map(
+            ([band, { wave, mean, std }], _) => [band, wave, mean, std]
+        );
+        rows.sort((a, b) => a[0] - b[0]);
+
+        let id = STATE.selected_main_obs_id;
+
+        return m("table#refl-data", { key: id }, [
+            m("thead", [m("tr", heads)]),
+            m("tbody", rows.map(
+                (row) => m("tr", { key: `${id},${row[0]}` },
+                           row.map((cell) => m("td", cell)))
+            )),
+        ]);
+    }
+    function view() {
+        let data = STATE.refl_plot_data;
+        let err = STATE.refl_plot_error;
+        if (data == null && err == null) {
+            return render_blank();
+        } else if (data != null && err == null) {
+            return render_spectrum(data);
+        } else if (data == null && err != null) {
+            return render_err(`${err}`);
+        } else {
+            return render_err("impossible: data and err both non-null");
+        }
+    }
+
+    return { view };
+}
+
 
 //
 // Browse-image display
@@ -530,6 +647,7 @@ function onDOMContentLoaded () {
             }
 
             m.mount(document.getElementById("main-plot"), MainPlot());
+            m.mount(document.getElementById("refl-plot"), ReflPlot());
 
             // this has the side effect of working out which columns
             // should be selected by default:

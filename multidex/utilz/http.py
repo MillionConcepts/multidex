@@ -122,3 +122,16 @@ def get_any_asset(prefix: str) -> web.RouteDef:
 
     return web.get(prefix + "/{asset:[a-zA-Z0-9./_-]+}",
                    respond_with_asset_from_dir)
+
+
+def bool_query_arg(arg: str) -> bool:
+    """
+    Parse ARG as a boolean query argument.  Accepts all the things
+    YAML 1.1 thinks are booleans, because we're casual like that.
+    """
+    larg = arg.lower()
+    if larg in ("1", "t", "true", "y", "yes", "on"):
+        return True
+    if larg in ("0", "f", "false", "n", "no", "off"):
+        return False
+    raise ValueError(f"{arg} not recognized as a boolean value")

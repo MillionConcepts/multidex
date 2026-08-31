@@ -20,6 +20,7 @@ requires-python = ">=3.11"
 dependencies = [
     "aiohttp",
     "pyarrow",
+    "marslab >= 0.9",
 ]
 
 [project.optional-dependencies]
@@ -68,7 +69,8 @@ namespace_packages = false
 [[tool.mypy.overrides]]
 # Project dependencies that currently do not have type annotations.
 module = [
-    "pyarrow.*"
+    "pyarrow.*",
+    "marslab.*",
 ]
 ignore_missing_imports = true
 
@@ -77,7 +79,7 @@ ignore_missing_imports = true
 # configuration above.
 include = [
     "pyproject.toml",
-    "multidex/**/*.py"
+    "multidex/**/*.py",
 ]
 
 [tool.ruff.lint]
