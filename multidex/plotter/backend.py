@@ -90,13 +90,13 @@ class Backend:
                 ) from e
 
         if (columns := req.query.get("columns")) is not None:
-            dataset = dataset.select(columns.split(","))
+            req_cols = set(columns.split(","))
+            # we always send the "id" column as well
+            req_cols.add("id")
+            dataset = dataset.select(req_cols)
 
         return web.Response(
-            body = json.dumps(
-                dataset.to_pydict(),
-                separators=(',', ':')
-            ),
+            body = json.dumps(dataset.to_pydict(), separators=(',', ':')),
             content_type="application/json"
         )
 

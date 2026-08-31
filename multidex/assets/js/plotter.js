@@ -104,6 +104,7 @@ function MainPlot() {
             return still_loading();
         }
 
+        let ids   = STATE.main_plot_data["id"]        ?? [];
         let x_col = STATE.main_plot_data[STATE.x_col] ?? [];
         let y_col = STATE.main_plot_data[STATE.y_col] ?? [];
         let m_col = STATE.main_plot_data[STATE.m_col] ?? [];
@@ -113,7 +114,10 @@ function MainPlot() {
                 : null
         ) ?? [];
 
-        if (x_col.length == 0 || y_col.length == 0 || m_col.length == 0) {
+        if (ids.length == 0
+            || x_col.length == 0
+            || y_col.length == 0
+            || m_col.length == 0) {
             return still_loading();
         }
 
@@ -138,6 +142,7 @@ function MainPlot() {
                 let cells = [
                     // `${expr}` is the current recommended way to
                     // coerce expr to a string.
+                    m("td", [`${ids[i] ?? ""}`]),
                     m("td", [`${x_col[i] ?? ""}`]),
                     m("td", [`${y_col[i] ?? ""}`]),
                     m("td", [`${m_col[i] ?? ""}`]),
@@ -157,6 +162,7 @@ function MainPlot() {
 
         let colscope = {scope: "col"};
         let colheads = [
+            m("th", colscope, ["obs. id"]),
             m("th", colscope, [STATE.x_col]),
             m("th", colscope, [STATE.y_col]),
             m("th", colscope, [STATE.m_col]),

@@ -40,7 +40,6 @@ QUALITATIVE_METADATA_FIELDS = (
     "formation",
     "grain_size",
     "group",
-    "id",
     "lab_spectrum_type",
     "landform_type",
     "libs_before",

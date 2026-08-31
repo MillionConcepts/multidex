@@ -188,7 +188,7 @@ img.placeholder {
     position: relative;
 }
 .main-data tr, .main-data th, .main-data td {
-    padding: 0.125rem 2px;
+    padding: 0.125rem 4px;
 }
 .main-data > thead th {
     /* you cannot sticky a <thead> nor a <tr>, but you can sticky a <th> */
@@ -205,11 +205,33 @@ img.placeholder {
 .main-data > tbody > tr:nth-of-type(even) {
     background: #eee;
 }
-/* the double selector is to ensure that this is the most specific rule,
+
+/* deemphasize the 'id' column */
+.main-data > tbody > tr > td:first-child {
+    background: white;
+    color: #666;
+    text-align: right;
+    font-size: smaller;
+    padding-right: 1rem;
+    border-right: 1px solid #ccc;
+    border-bottom: 0px solid transparent;
+}
+.main-data > thead > tr > th:first-child {
+    color: #666;
+    font-size: smaller;
+    border-right: 1px solid #aaa;
+}
+
+/* the extra selectors ensure that this is the most specific rule,
    whether or not it's an even-numbered row */
 .main-data > tbody > tr.row-selected,
 .main-data > tbody > tr.row-selected:nth-of-type(even) {
     background: #386cb0;
+    color: white;
+}
+.main-data > tbody > tr.row-selected > td:first-child {
+    background: #386cb0;
+    border-right-color: #386cb0;
     color: white;
 }
 
