@@ -6,7 +6,8 @@ from django.db import models
 import numpy as np
 import pandas as pd
 from marslab.compat.mertools import (
-    MERSPECT_M20_COLOR_MAPPINGS, MERSPECT_MSL_COLOR_MAPPINGS,
+    MERSPECT_M20_COLOR_MAPPINGS, MERSPECT_MSL_COLOR_MAPPINGS, 
+    ROI_STUDIO_COLOR_MAPPINGS
 )
 from marslab.compat.xcam import DERIVED_CAM_DICT
 
@@ -67,7 +68,7 @@ class ZSpec(XSpec):
     instrument = "ZCAM"
     instrument_brief_name = "Mastcam-Z"
 
-    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
+    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | ROI_STUDIO_COLOR_MAPPINGS | {"black": "#000000"}
 
     # TODO: check if unused image_directory argument is cruft or oversight
     def overlay_browse_file_info(self, image_directory: str) -> dict:
@@ -149,7 +150,7 @@ class PSpec(XSpec):
     instrument = "PCAM"
     instrument_brief_name = "MER Pancam"
 
-    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | {"black": "#000000"}
+    color_mappings = MERSPECT_M20_COLOR_MAPPINGS | ROI_STUDIO_COLOR_MAPPINGS | {"black": "#000000"}
 
     def overlay_browse_file_info(self) -> dict:
         files = self.image_files()
