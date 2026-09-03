@@ -15,6 +15,7 @@
 
 html {
     background: var(--clean-parchment);
+    color: var(--midnight-ochre);
     font-family: Open Sans, sans-serif;
     height: 100%;
     margin: 0;
@@ -79,7 +80,6 @@ footer {
 button, input, label, select, summary {
     font-family: Fira Mono, monospace;
     font-size: 0.9rem;
-    color: var(--midnight-ochre);
 }
 
 button {
@@ -145,10 +145,6 @@ span.vcenter-menu-name {
 }
 
 /* temporary layout debugging aids */
-nav, #main-plot, #refl-plot, #browse-image, footer {
-    border: 8px solid rgba(0, 0, 0, 30%);
-}
-
 nav {
     background: #fdc086;
 }
@@ -156,20 +152,9 @@ nav {
 #main-plot {
     background: #beaed4;
 }
-#refl-plot {
-    background: #7fc97f;
-}
-#browse-image {
-    background: #ffff99;
-}
 footer {
     background: #386cb0;
     color: white;
-}
-img.placeholder {
-    margin: 16px;
-    width: calc(100% - 2 * 16px);
-    height: calc(100% - 2 * 16px);
 }
 /* end of temporary layout debugging aids */
 
@@ -248,12 +233,13 @@ th, td {
 
 /* reflectance plot */
 #refl-plot {
+    background: var(--clean-parchment);
     display: grid;
     grid-template-areas:
-        "options options options"
-        "lspace  plot    rspace"
+        "options"
+        "plot"
     ;
-    grid-template-columns: 1fr 8fr 1fr;
+    grid-template-columns: 1fr;
     grid-template-rows: minmax(min-content, max-content) minmax(0, 1fr);
     width: 100%;
     height: 100%;
@@ -265,11 +251,12 @@ th, td {
     grid-area: options;
     display: flex;
     flex-direction: row;
-    background: var(--clean-parchment);
 }
 
-#refl-no-selection, #refl-error, #refl-data {
+#refl-no-selection, #refl-error, #refl-data, #refl-chart {
     grid-area: plot;
+    width: 100%;
+    height: 100%;
 }
 
 #refl-no-selection, #refl-error {
@@ -280,20 +267,104 @@ th, td {
     justify-content: center;
     align-items: center;
     text-align: center;
-}
-
-#refl-no-selection {
-    background: var(--clean-parchment);
     font-size: 2rem;
 }
-
 #refl-error {
-    border: 2px inset #e34a33;
     background: #fee8c8;
-    font-size: 2rem;
+    color: #800026;
+}
+
+#refl-chart {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-areas:
+        "   .   ax-top"
+        "ax-lft   data"
+        "   .   ax-bot";
+    grid-template-columns: 60px 1fr;
+    grid-template-rows: 30px 1fr 50px;
+}
+#refl-chart > .p-ax-top  { grid-area: ax-top; }
+#refl-chart > .p-ax-bot  { grid-area: ax-bot; }
+#refl-chart > .p-ax-lft  { grid-area: ax-lft; }
+#refl-chart > .p-grid    { grid-area: data; z-index: 0; background: #f8f8f8; }
+#refl-chart > .p-data    { grid-area: data; z-index: 1; }
+#refl-chart > .p-overlay { grid-area: data; z-index: 2; overflow: hidden; }
+
+#refl-chart > div {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+#refl-chart > svg {
+    /* An <svg> element, specifically, with width: 100%; height: 100%
+       will not shrink below its computed intrinsic size, which seems
+       to be defaulted from the viewBox if there's no declared intrinsic
+       size.  However, an SVG element with *these* settings, contradictory
+       as they look, behaves the way we want, i.e. the same as a <div> with
+       width: 100%; height: 100%.  If you know why, please tell us. */
+    width: 0;
+    height: 0;
+    min-width: 100%;
+    min-height: 100%;
+}
+
+#refl-chart .tick {
+    font-size: 12px;
+}
+#refl-chart .ax-title {
+    font-size: 14px;
+}
+
+#refl-chart .grid-x, #refl-chart .grid-y {
+    stroke: #d7d8da;
+    stroke-width: 0.5px;
+    fill: none;
+}
+
+#refl-chart .point {
+    stroke: #443e81;
+    fill: none;
+}
+#refl-chart .point:hover {
+    stroke: #d95f02;
+}
+#refl-chart .point.selected {
+    stroke: #168765;
+}
+#refl-chart .point > .hitbox {
+    stroke: none;
+    fill: transparent;
+}
+#refl-chart .point > .h {
+    stroke-width: 1.5px;
+}
+#refl-chart .point > .v {
+    stroke-width: 1px;
+}
+
+
+/* data-reveal popups */
+.data-pop {
+    color: #0f262b;
+    background: #e9f7f9;
+    border: 2px solid #c7eaf0;
+    border-radius: 5px;
+    padding: 10px;
+
+    position: absolute;
+    display: none;
+}
+.data-pop.visible {
+    display: block;
 }
 
 /* browse image */
+#browse-image {
+    border-top: 4px solid #888;
+}
 #browse-image > img {
     width: 100%;
     height: 100%;
@@ -305,7 +376,7 @@ th, td {
 .no-image {
     width: 100%;
     height: 100%;
-    border: 2px inset #e34a33;
+    color: #800026;
     background: #fee8c8;
     font-size: 2rem;
     /* yes, this is really how you're supposed to center multiline

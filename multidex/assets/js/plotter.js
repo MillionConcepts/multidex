@@ -9,6 +9,96 @@ function push_nonnull(array, item) {
         array.push(item);
 }
 
+/// Construct an SVG element whose contents will be populated from the
+/// Mithril "oncreate" hook, presumably (but not necessarily) by D3.
+/// Embeds certain expectations about how we style and lay out SVG
+/// elements (see main.css).
+function m_svg(class_, oncreate, onupdate) {
+    const m = window.m;
+
+    // Ensure preserveAspectRatio is set properly from birth to
+    // minimize the chance of a flash of bad layout.  Also set
+    // viewBox to a harmless value at birth; the real value cannot
+    // be set until clientHeight/clientWidth are available.
+    return m("svg", {
+        "class": class_,
+        preserveAspectRatio: "none",
+        viewBox: "0 0 1 1",
+        oncreate,
+        onupdate,
+    });
+}
+
+// Set up an SVG element's attributes and overall transform matrix
+// the way we need them to be.  The 'svg' argument should be a bare
+// DOM node which is an SVG element.
+//
+// Returns a D3 selection for either the original SVG element, or for
+// a <g transform="..."> node which has been inserted as a child of
+// the original SVG node; in either case, it's the selection into
+// which graphical elements should be inserted.
+//
+// Because it might need to insert that transform node, the
+// original node must be empty when this function is called.
+// (This is why m_svg does not take a children argument.)
+function adjust_svg(dom, width, height, t_width, t_height) {
+    const d3 = window.d3;
+    let svg = d3.select(dom);
+
+    if (dom.tagName !== "svg") {
+        console.error(`adjust_svg called on a <${dom.tagName}>:`, dom);
+        return svg;
+    }
+
+    // Reiterate the setting of preserveAspectRatio here just to be sure.
+    svg.attr("preserveAspectRatio", "none")
+        .attr("viewBox", `0 0 ${width} ${height}`);
+    if (t_width == 0 && t_height == 0)
+        return svg;
+    return svg.append("g")
+        .attr("transform", `translate(${t_width},${t_height})`);
+}
+
+// Return a D3 selection for DOM node 'dom', assumed to be an SVG
+// element, _or_, if 'dom' has exactly one child which is an
+// anonymous 'g' element with a transform attribute, return a
+// D3 selection for that child.  (This mirrors the return value of
+// adjust_svg.  You call that one from an oncreate hook, and this
+// one from the matching onupdate hook.)
+function select_svg(dom) {
+    const d3 = window.d3;
+    let svg = d3.select(dom);
+
+    if (dom.tagName !== "svg") {
+        console.error(`select_svg called on a <${dom.tagName}>:`, dom);
+        return svg;
+    }
+
+    let g = svg.selectChildren();
+    return (g.size() === 1
+            && g.node().tagName === "g"
+            && g.attr("transform") != null)
+        ? g
+        : svg;
+}
+
+// Tweak the result of applying a D3 axis to a SVG element or
+// a group within an SVG element.  Intended to be used as e.g.
+// `svg.call(d3.axisLeft(...)).call(adjust_axis("left"))`.
+// This does only the tweaking that has to be done *every time*
+// an axis is applied to a particular element, not the tweaking that
+// has to be done *only the first time*.  (Do the first-time tweaks
+// directly in the oncreate hook, *after* calling this function.)
+function adjust_axis(cls) {
+    return function adjust_axis_curried(axis) {
+        axis.select(".domain").remove();
+        axis.classed(`axis axis-${cls}`, true)
+            .attr("font-size", null)
+            .attr("font-family", null);
+    };
+}
+
+
 /// Application global state
 let STATE = {
     // Whether browse images can be displayed.
@@ -100,11 +190,18 @@ let STATE = {
                 scale: STATE.refl_options.scale
             },
         }).then((spectrum) => {
-            STATE.refl_plot_data = spectrum;
+            // D3 wants this as an array of records, not an object.
+            // FIXME Maybe produce the right thing on the back end?
+            let s_array = Object.entries(spectrum).map(
+                ([band, { wave, mean, std }]) => ({ band, wave, mean, std })
+            );
+            s_array.sort((a, b) => a.wave - b.wave);
+
             STATE.refl_plot_error = null;
+            STATE.refl_plot_data = s_array;
         }).catch((err) => {
-            STATE.refl_plot_data = null;
             STATE.refl_plot_error = err;
+            STATE.refl_plot_data = null;
         });
     },
 
@@ -264,7 +361,356 @@ function MainPlot() {
 /// from STATE (see above).
 function ReflPlot() {
     const m = window.m;
+    const d3 = window.d3;
 
+    // We render the plot with fixed dimensions and then use SVG
+    // viewboxing to make the browser scale it to its container.
+    // This is not ideal, but it's the path of least resistance
+    // with D3.  I don't know yet if it will be necessary to make
+    // these parameters adjustable.
+    const plot_width = 1000;
+    const plot_height = 1000;
+    const plot_padding = 20;
+    const x_grain = 50;
+    const y_grain = 0.05;
+
+    // Internal state describing the axis scales; shared among all plot
+    // components, written only by 'update_scales'.
+    let x_scale = null;
+    let y_scale = null;
+    let wavelengths = null;
+    let wave_to_band = null;
+
+    function update_scales() {
+        wavelengths = STATE.refl_plot_data.map((rec) => rec.wave);
+        wave_to_band = Object.fromEntries(
+            STATE.refl_plot_data.map((rec) => [rec.wave, rec.band])
+        );
+
+        // X scale range reversed because conventionally longer
+        // wavelengths are on the left.
+        let xmin = Math.floor(Math.min(...wavelengths) / x_grain) * x_grain;
+        let xmax = Math.ceil(Math.max(...wavelengths) / x_grain) * x_grain;
+        x_scale = d3.scaleLinear()
+            .domain([xmax, xmin])
+            .range([0 + plot_padding, plot_width - plot_padding]);
+
+        let ymin = Math.min(...STATE.refl_plot_data.map(
+            (rec) => rec.mean - rec.std
+        ));
+        let ymax = Math.max(...STATE.refl_plot_data.map(
+            (rec) => rec.mean + rec.std
+        ));
+
+        if (ymin < 0) {
+            ymin = Math.floor(ymin / y_grain) * y_grain;
+        } else {
+            ymin = 0;
+        }
+        ymax = Math.ceil(ymax / y_grain) * y_grain;
+
+        y_scale = d3.scaleLinear()
+            .domain([ymin, ymax])
+            .range([0 + plot_padding, plot_width - plot_padding]);
+    }
+
+    // The _structure_ of the plot DOM is built by Mithril rather than
+    // D3, because Mithril's "hyperscript" notation is more congenial
+    // than D3 selector goo.  Then, D3 renders the data- and scale-
+    // dependent parts of the plot DOM into each of the sub-areas,
+    // from Mithril's "lifecycle hooks".
+
+    // I'm not happy with the positioning logic for the axis titles,
+    // but as far as I can tell there's no way to position an SVG
+    // <text> element relative to a point on its _bounding box_,
+    // and without that, I don't see how to do better.
+
+    function wave_axis() {
+        function wave_axis_refresh(svg) {
+            let axis = d3.axisBottom(x_scale)
+                .tickValues(wavelengths)
+                .tickFormat((wave) => `${wave}`);
+
+            return svg
+                .call(axis)
+                .call(adjust_axis("bot"));
+        }
+        function wave_axis_oncreate(vnode) {
+            let height = vnode.dom.clientHeight;
+            adjust_svg(vnode.dom, 1000, height, 0, 0)
+                .call(wave_axis_refresh)
+                .append("text")
+                .classed("axis-title", true)
+                .attr("x", 500)
+                .attr("y", height - 4)
+                .attr("text-anchor", "middle")
+                .attr("fill", "currentColor")
+                .text("Wavelength (nm)");
+        }
+        function wave_axis_onupdate(vnode) {
+            select_svg(vnode.dom).call(wave_axis_refresh);
+        }
+        return m_svg("p-ax-bot", wave_axis_oncreate, wave_axis_onupdate);
+    }
+
+    function band_axis() {
+        function band_axis_refresh(svg) {
+            let axis = d3.axisTop(x_scale)
+                .tickValues(wavelengths)
+                .tickFormat((wave) => wave_to_band[wave]);
+
+            return svg
+                .call(axis)
+                .call(adjust_axis("top"));
+        }
+        function band_axis_oncreate(vnode) {
+            let height = vnode.dom.clientHeight;
+            adjust_svg(vnode.dom, 1000, height, 0, height)
+                .call(band_axis_refresh);
+            // The band axis doesn't have an axis title.
+        }
+        function band_axis_onupdate(vnode) {
+            select_svg(vnode.dom).call(band_axis_refresh);
+        }
+        return m_svg("p-ax-top", band_axis_oncreate, band_axis_onupdate);
+    }
+
+    function refl_axis() {
+        function refl_axis_refresh(svg) {
+            return svg
+                .call(d3.axisLeft(y_scale))
+                .call(adjust_axis("lft"));
+        }
+        function refl_axis_oncreate(vnode) {
+            let width = vnode.dom.clientWidth;
+            adjust_svg(vnode.dom, width, 1000, width, 0)
+                .call(refl_axis_refresh)
+                .append("text")
+                .classed("axis-title", true)
+                .attr("x", -500)
+                .attr("y", -42)
+                .attr("text-anchor", "middle")
+                .attr("transform", "rotate(-90)")
+                .attr("fill", "currentColor")
+                .text("Reflectance");
+        }
+        function refl_axis_onupdate(vnode) {
+            select_svg(vnode.dom).call(refl_axis_refresh);
+        }
+
+        return m_svg("p-ax-lft", refl_axis_oncreate, refl_axis_onupdate);
+    }
+
+    function grid() {
+        function grid_refresh(svg) {
+            svg.select(".grid-x")
+                .selectAll("line")
+                .data(wavelengths)
+                .join("line")
+                .attr("x1", (d) => 0.5 + x_scale(d))
+                .attr("x2", (d) => 0.5 + x_scale(d))
+                .attr("y1", 0)
+                .attr("y2", plot_height);
+            svg.select(".grid-y")
+                .selectChildren()
+                .data(y_scale.ticks())
+                .join("line")
+                .attr("y1", (d) => 0.5 + y_scale(d))
+                .attr("y2", (d) => 0.5 + y_scale(d))
+                .attr("x1", 0)
+                .attr("x2", plot_width);
+        }
+        function grid_oncreate(vnode) {
+            let svg = adjust_svg(vnode.dom, 1000, 1000, 0, 0);
+            svg.append("g").classed("grid-x", true);
+            svg.append("g").classed("grid-y", true);
+            svg.call(grid_refresh);
+        }
+        function grid_onupdate(vnode) {
+            select_svg(vnode.dom).call(grid_refresh);
+        }
+        return m_svg("p-grid", grid_oncreate, grid_onupdate);
+    }
+
+    function data() {
+        function point_refresh(datum) {
+            let x = x_scale(datum.wave);
+            // x-axis is reversed
+            let xmin = x_scale(datum.wave + 5);
+            let xmax = x_scale(datum.wave - 5);
+            let xdelta = xmax - xmin;
+
+            let y = y_scale(datum.mean);
+            let ymin = y_scale(datum.mean - datum.std);
+            let ymax = y_scale(datum.mean + datum.std);
+            let ydelta = ymax - ymin;
+
+            let point = d3.select(this);
+
+            // have Mithril optimize the DOM update within the point
+            m.render(this, [
+                // the rect defines the point's hitbox, so you don't
+                // have to click exactly on the lines; see overlay_onclick
+                m("rect", {
+                    "class": "hitbox",
+                    x: xmin, y: ymin, width: xdelta, height: ydelta,
+                }),
+                m("line", {
+                    "class": "h",
+                    x1: xmin, x2: xmax, y1: y, y2: y
+                }),
+                m("line", {
+                    "class": "v",
+                    x1: x, x2: x, y1: ymin, y2: ymax
+                }),
+            ]);
+        }
+        function data_refresh(svg) {
+            svg.selectAll("g.point")
+                .data(STATE.refl_plot_data, (d) => `${d.wave}`)
+                .join("g")
+                .classed("point", true)
+                .each(point_refresh);
+        }
+        function data_oncreate(vnode) {
+            adjust_svg(vnode.dom, 1000, 1000, 0, 0)
+                .call(data_refresh);
+        }
+
+        function data_onupdate(vnode) {
+            select_svg(vnode.dom).call(data_refresh);
+        }
+
+        return m_svg("p-data", data_oncreate, data_onupdate);
+    }
+
+    function overlay() {
+        function overlay_onclick(event) {
+            let overlay = event.currentTarget;
+            let popover = overlay.querySelector(":scope > .data-pop");
+            let data_box = d3.select("#refl-chart > .p-data");
+            if (popover == null) {
+                console.error("popover missing from overlay", overlay);
+            }
+
+            let hits = document.elementsFromPoint(event.clientX, event.clientY)
+                .filter((el) => (el.classList.contains("hitbox")
+                                 || el.classList.contains("data-pop")));
+
+            if (hits.length === 0) {
+                console.log("click: plot area");
+                // a click on the plot area, not within any point or
+                // the popover, clears the selection
+                data_box.selectAll(".point.selected")
+                    .classed("selected", false);
+                popover.classList.remove("visible");
+                return;
+            }
+
+            let hit = hits[0];
+            if (hit.classList.contains("data-pop")) {
+                console.log("click: popover");
+                // click within the popover does not affect the selection
+                return;
+            }
+
+            // The D3 datum is attached to the hitbox's parent, and the
+            // parent is also the node that needs to be marked selected
+            hit = hit.parentNode;
+            if (hit.classList.contains("selected")) {
+                console.log("click: deselect");
+                // clicking the last selected point again deselects it
+                hit.classList.remove("selected");
+                popover.classList.remove("visible");
+                return;
+            }
+
+            // selecting a new point; clear any previous selection
+            console.log("click: selecting", hit);
+            data_box.selectAll(".point.selected").classed("selected", false);
+            hit.classList.add("selected");
+
+            let datum = d3.select(hit).datum();
+            if (datum == null) {
+                // no data to show in the popover
+                popover.classList.remove("visible");
+                return;
+            }
+            let label = `${datum.band}: ${datum.wave} nm<br>`
+                + `Reflectance: ${datum.mean.toFixed(4)}`
+                + ` ± ${datum.std.toFixed(4)} (1 σ)`;
+
+            // The overlay box has the *actual* dimensions of the plot
+            // area, after viewbox scaling.  We need to manually apply
+            // that scaling to the abstract plot coordinates that come
+            // out of x_scale and y_scale.
+            let cws = event.currentTarget.clientWidth / 1000;
+            let chs = event.currentTarget.clientHeight / 1000;
+
+            let px = x_scale(datum.wave);
+            let py = y_scale(datum.mean);
+
+            // Initially try to position the popover below and to the
+            // right of the selected element.
+            let left = (px + 10) * cws;
+            let top = (py + 10) * chs;
+
+            let pop = d3.select(popover);
+            pop.html(label)
+                .style("top", `${top}px`)
+                .style("left", `${left}px`)
+                .style("bottom", null)
+                .style("right", null)
+                .classed("visible", true);
+
+            // If that caused overflow, move the popover to the
+            // opposite side of the selected element in each affected
+            // dimension. Note: the overlay box is known to have
+            // overflow:hidden.
+            if (overlay.clientWidth < overlay.scrollWidth) {
+                let right = (1000 - (px - 10)) * cws;
+                pop.style("left", null).style("right", `${right}px`);
+            }
+            if (overlay.clientHeight < overlay.scrollHeight) {
+                let bottom = (1000 - (py - 10)) * chs;
+                pop.style("top", null).style("bottom", `${bottom}px`);
+            }
+        }
+
+        function overlay_onupdate(vnode) {
+            let overlay = vnode.dom;
+            let popover = overlay.querySelector(":scope > .data-pop");
+            let data_box = d3.select("#refl-chart > .p-data");
+            if (popover == null) {
+                console.error("popover missing from overlay", overlay);
+            }
+
+            // if the point that used to be selected has just been removed
+            // from the data set, hide the popover
+            if (data_box.selectAll(".point.selected").empty()) {
+                popover.classList.remove("visible");
+            }
+        }
+
+        return m("div",
+                 { "class": "p-overlay",
+                   "onclick": overlay_onclick,
+                   "onupdate": overlay_onupdate },
+                 [ m("div", { "class": "data-pop" }) ]);
+    }
+
+    function plot_skeleton() {
+        return m("div#refl-chart", [
+            wave_axis(),
+            band_axis(),
+            refl_axis(),
+            grid(),
+            data(),
+            overlay(),
+        ]);
+    }
+
+    // Controls
     function bool_control(id, label, property) {
         let iattrs = {
             type: "checkbox",
@@ -272,7 +718,6 @@ function ReflPlot() {
             id,
             name: id,
             onchange: (e) => {
-                console.log(e);
                 STATE.refl_options[property] = e.target.checked;
                 STATE.refresh_refl_plot();
             }
@@ -286,7 +731,7 @@ function ReflPlot() {
         ]);
     }
 
-    function render_controls() {
+    function controls() {
         return m("fieldset.controls", [
             m("legend", ["Plot options:"]),
             bool_control("refl-avg", "Averaged bands", "avg"),
@@ -294,48 +739,38 @@ function ReflPlot() {
         ]);
     }
 
-    function render_blank() {
-        return m("p#refl-no-selection", [
-            STATE.loading() ? "" : "Select an observation to see its spectrum."
-        ]);
-    }
-    function render_err(err) {
-        return m("p#refl-error", [err]);
-    }
-    function render_spectrum(spec) {
-        let heads = [
-            "band", "wave", "mean", "std.dev."
-        ].map((label) => m("th", [label]));
-        let rows = Object.entries(spec).map(
-            ([band, { wave, mean, std }], _) => [band, wave, mean, std]
-        );
-        rows.sort((a, b) => a[0] - b[0]);
-
-        let id = STATE.selected_main_obs_id;
-
-        return m("table#refl-data", [
-            m("thead", [m("tr", heads)]),
-            m("tbody", rows.map(
-                (row) => m("tr", { key: `${id},${row[0]}` },
-                           row.map((cell) => m("td", cell)))
-            )),
-        ]);
-    }
-    function view() {
-        let data = STATE.refl_plot_data;
-        let err = STATE.refl_plot_error;
-        let fragment = [ render_controls() ];
-
-        if (data == null && err == null) {
-            fragment.push(render_blank());
-        } else if (data != null && err == null) {
-            fragment.push(render_spectrum(data));
-        } else if (data == null && err != null) {
-            fragment.push(render_err(`${err}`));
-        } else {
-            fragment.push(render_err("impossible: data and err both non-null"));
+    function plot_container(data, err) {
+        if (err == null && data == null) {
+            return m("p#refl-no-selection", [
+                STATE.loading()
+                    ? "" : "Select an observation to see its spectrum."
+            ]);
         }
-        return fragment;
+
+        if (err != null && data != null) {
+            return m("p#refl-error", [
+                "impossible: data and err both non-null"
+            ]);
+        }
+        if (err != null && data == null) {
+            // FIXME The actual back-end error message gets eaten
+            // somewhere in the guts of m.request.  It's really hard
+            // to trigger this case from inside the GUI, so not urgent.
+            return m("p#refl-error", [`${err.code ?? err}`]);
+        }
+
+        // data != null, err == null
+        // we need to be sure the scales are set before any of the oncreate
+        // hooks fire
+        update_scales();
+        return plot_skeleton();
+    }
+
+    function view() {
+        return [
+            controls(),
+            plot_container(STATE.refl_plot_data, STATE.refl_plot_error),
+        ];
     }
 
     return { view };
