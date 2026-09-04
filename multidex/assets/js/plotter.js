@@ -387,12 +387,12 @@ function ReflPlot() {
             STATE.refl_plot_data.map((rec) => [rec.wave, rec.band])
         );
 
-        // X scale range reversed because conventionally longer
-        // wavelengths are on the left.
         let xmin = Math.floor(Math.min(...wavelengths) / x_grain) * x_grain;
         let xmax = Math.ceil(Math.max(...wavelengths) / x_grain) * x_grain;
+
+        // Geologists working with spectra want longer wavelengths on the right.
         x_scale = d3.scaleLinear()
-            .domain([xmax, xmin])
+            .domain([xmin, xmax])
             .range([0 + plot_padding, plot_width - plot_padding]);
 
         let ymin = Math.min(...STATE.refl_plot_data.map(
@@ -409,9 +409,13 @@ function ReflPlot() {
         }
         ymax = Math.ceil(ymax / y_grain) * y_grain;
 
+        // The Y-axis range is reversed because the SVG coordinate
+        // system maps larger numbers to positions lower on the screen,
+        // but we want larger numbers in the data to be mapped to
+        // positions *higher* on the scren.
         y_scale = d3.scaleLinear()
             .domain([ymin, ymax])
-            .range([0 + plot_padding, plot_width - plot_padding]);
+            .range([plot_height - plot_padding, 0 + plot_padding]);
     }
 
     // The _structure_ of the plot DOM is built by Mithril rather than
@@ -534,18 +538,34 @@ function ReflPlot() {
 
     function data() {
         function point_refresh(datum) {
+            let prev_datum = this.__oldData__;
+            if (prev_datum != null
+                && datum.band === prev_datum.band
+                && datum.wave === prev_datum.wave
+                && datum.mean === prev_datum.mean
+                && datum.std  === prev_datum.std) {
+                // this point does not need to be updated at all
+                return;
+            }
+
+            // something about the datum represented by this point has
+            // changed, or we're creating a new point from scratch.
             let x = x_scale(datum.wave);
-            // x-axis is reversed
-            let xmin = x_scale(datum.wave + 5);
-            let xmax = x_scale(datum.wave - 5);
+            let xmin = x_scale(datum.wave - 5);
+            let xmax = x_scale(datum.wave + 5);
             let xdelta = xmax - xmin;
 
             let y = y_scale(datum.mean);
-            let ymin = y_scale(datum.mean - datum.std);
-            let ymax = y_scale(datum.mean + datum.std);
+            // y-axis is reversed
+            let ymin = y_scale(datum.mean + datum.std);
+            let ymax = y_scale(datum.mean - datum.std);
             let ydelta = ymax - ymin;
 
-            let point = d3.select(this);
+            // Setting the entire class attribute ensures that the
+            // new-or-altered point is not marked selected.
+            // 'this.className = "point"' won't work because this is
+            // an SVGElement; className is read-only on SVGElements.
+            this.setAttribute("class", "point");
 
             // have Mithril optimize the DOM update within the point
             m.render(this, [
@@ -567,9 +587,9 @@ function ReflPlot() {
         }
         function data_refresh(svg) {
             svg.selectAll("g.point")
+                .property("__oldData__", (d) => d)
                 .data(STATE.refl_plot_data, (d) => `${d.wave}`)
                 .join("g")
-                .classed("point", true)
                 .each(point_refresh);
         }
         function data_oncreate(vnode) {
@@ -598,7 +618,6 @@ function ReflPlot() {
                                  || el.classList.contains("data-pop")));
 
             if (hits.length === 0) {
-                console.log("click: plot area");
                 // a click on the plot area, not within any point or
                 // the popover, clears the selection
                 data_box.selectAll(".point.selected")
@@ -609,7 +628,6 @@ function ReflPlot() {
 
             let hit = hits[0];
             if (hit.classList.contains("data-pop")) {
-                console.log("click: popover");
                 // click within the popover does not affect the selection
                 return;
             }
@@ -618,7 +636,6 @@ function ReflPlot() {
             // parent is also the node that needs to be marked selected
             hit = hit.parentNode;
             if (hit.classList.contains("selected")) {
-                console.log("click: deselect");
                 // clicking the last selected point again deselects it
                 hit.classList.remove("selected");
                 popover.classList.remove("visible");
@@ -626,7 +643,6 @@ function ReflPlot() {
             }
 
             // selecting a new point; clear any previous selection
-            console.log("click: selecting", hit);
             data_box.selectAll(".point.selected").classed("selected", false);
             hit.classList.add("selected");
 
