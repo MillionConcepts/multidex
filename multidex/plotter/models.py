@@ -145,6 +145,7 @@ class PSpec(XSpec):
     compression = models.CharField("compression", max_length=40, **B_N_I)
     compression_quality = models.IntegerField("compression quality", **B_N_I)
     distance = models.CharField("distance", max_length=20, **B_N_I)
+    analysis_name = models.CharField("analysis name", max_length=30, **B_N_I)
 
     tau = models.FloatField("Tau", **B_N_I)
     instrument = "PCAM"

@@ -194,6 +194,7 @@ class Migration(migrations.Migration):
                 ('compression', models.CharField(blank=True, db_index=True, max_length=40, null=True, verbose_name='compression')),
                 ('compression_quality', models.IntegerField(blank=True, db_index=True, null=True, verbose_name='compression quality')),
                 ('distance', models.CharField(blank=True, db_index=True, max_length=20, null=True, verbose_name='distance')),
+                ('analysis_name', models.CharField(blank=True, db_index=True, max_length=30, null=True, verbose_name='analysis name')),
                 ('tau', models.FloatField(blank=True, db_index=True, null=True, verbose_name='Tau')),
                 ('l7', models.FloatField(blank=True, db_index=True, null=True, verbose_name='l7 mean')),
                 ('l7_std', models.FloatField(blank=True, db_index=True, null=True, verbose_name='l7 stdev')),
