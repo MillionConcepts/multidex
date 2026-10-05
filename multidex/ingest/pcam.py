@@ -108,8 +108,8 @@ def find_ingest_files(path: Path, recursive: bool = False):
         for subpath, _dirs, files in os.walk(path):
             for f in files:
                 all_files.append(Path(subpath) / f)
-        marslab_files = tuple(filter(looks_like_marslab, all_files))
-        context_files = tuple(filter(looks_like_context, all_files))
+        marslab_files = tuple(filter(looks_like_marslab, map(str, all_files)))
+        context_files = tuple(filter(looks_like_context, map(str, all_files)))
     elif path.is_dir():
         marslab_files = filter(looks_like_marslab, map(str, path.iterdir()))
         context_files = filter(looks_like_context, map(str, path.iterdir()))

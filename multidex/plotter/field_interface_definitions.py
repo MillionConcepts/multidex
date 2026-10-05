@@ -120,8 +120,12 @@ QUANTITATIVE_METADATA_FIELDS = (
     "p2300",
     "saturation",
     "focus_position_mm",
-    "row",
-    "column"
+    "right_row",
+    "right_column",
+    "left_row",
+    "left_column",
+    "left_lines",
+    "right_lines",
 )
 # properties computed at runtime from metadata
 CALCULATED_FIELDS = (
