@@ -6,7 +6,7 @@ dependencies:
   - async_timeout
   - conda-build
   - cytoolz
-  - dash
+  - dash<=4.1.0
   - django
   - django-extensions
   - dustgoggles
