@@ -989,7 +989,9 @@ def dump_model_table(
     dict_function: Optional[Callable] = None,
 ):
     spec_model = INSTRUMENT_MODEL_MAPPING[spec_model_code]
-    data = data_df_from_queryset(spec_model.objects.all(), r_star=r_star)
+    data = data_df_from_queryset(
+        spec_model.objects.all(), spec_model, r_star=r_star
+    )
     metadata = model_metadata_df(spec_model, dict_function=dict_function)
     data.columns = [column.upper() for column in data.columns]
     metadata.columns = [column.upper() for column in metadata.columns]
