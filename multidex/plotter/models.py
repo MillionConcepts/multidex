@@ -83,9 +83,7 @@ class ZSpec(XSpec):
     @staticmethod
     def permissibly_explanatory_bandpasses(filts):
         # return filts
-        return [
-            f for f in filts if not f.endswith(("R", "G", "B"))
-        ]
+        return [f for f in filts if not f[1] == "0"]
 
     # TODO: messy
     @classmethod
