@@ -99,7 +99,7 @@ def process_marslab_row(row, marslab_file, context_df):
 
     metadata = dict(row[relevant_indices]) | {
         "filename": Path(marslab_file).name,
-        "images": [obs_image],
+        "images": [obs_image]
     }
 
     try:
