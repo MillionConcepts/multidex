@@ -61,6 +61,20 @@ if TYPE_CHECKING:
     from multidex.plotter.models import ZSpec, MSpec
 
 
+def _format_qual_marker_value(value: Any) -> str:
+    if value is None or pd.isna(value):
+        return "None"
+    if isinstance(value, (int, np.integer)) and not isinstance(value, bool):
+        return str(int(value))
+    if (
+        isinstance(value, (float, np.floating))
+        and np.isfinite(value)
+        and value.is_integer()
+    ):
+        return str(int(value))
+    return str(value).title()
+
+
 # ### cache functions ###
 
 # many of the other functions in this module take outputs of these two
@@ -411,7 +425,8 @@ def make_markers(
         colormap = re_get(settings, "palette-name-drop.value")
         if props["value_type"] == "qual":
             property_list = tuple(
-                map(str.title, none_to_quote_unquote_none(property_list))
+                _format_qual_marker_value(value)
+                for value in none_to_quote_unquote_none(property_list)
             )
             carr = get_ordering(
                 props["value"], spec_model.instrument
@@ -423,7 +438,7 @@ def make_markers(
             color = [string_hash[prop] for prop in property_list]
             colorbar_dict |= {
                 "tickvals": list(string_hash.values()),
-                "ticktext": list(map(str.title, string_hash.keys())),
+                "ticktext": list(string_hash.keys()),
             }
             if palette_type == "qualitative":
                 # only do this for "qualitative" scales to trick plotly...
