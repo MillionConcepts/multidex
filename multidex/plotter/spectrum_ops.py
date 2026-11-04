@@ -98,9 +98,6 @@ def data_df_from_queryset(
     queryset, spec_model, r_star=True, average_filters=False, scale_to=None
 ):
     filter_df = _build_base_df(average_filters, queryset, scale_to)
-    filter_df = pd.concat(
-        [filter_df, spikiness_metrics(filter_df, spec_model)], axis=1
-    )
     # TODO: I'm not actually sure this should be happening here. Assess whether
     #   it's preferable to have rules for this on models.
     if r_star is True:
@@ -110,12 +107,19 @@ def data_df_from_queryset(
         theta_i.index = filter_df.index
         for column in filter_df.columns:
             filter_df[column] = filter_df[column] / theta_i
+    spike_df = spikiness_metrics(filter_df, spec_model)
+    if "permissibly_explanatory_bandpasses" in dir(spec_model):
+        filts_for_avg = (
+            spec_model().permissibly_explanatory_bandpasses(filter_df.columns)
+        )
+    else:
+        filts_for_avg = filter_df.columns
     filter_avg = filter_df[
-        [c for c in filter_df.columns if "std" not in c]
+        [c for c in filts_for_avg if "std" not in c]
     ].mean(axis=1)
     filter_df["filter_avg"] = np.round(filter_avg, 5)
     filter_df["std_avg"] = np.round(
-        filter_df[[c for c in filter_df.columns if "std" in c]].mean(axis=1), 5
+        filter_df[[c for c in filts_for_avg if "std" in c]].mean(axis=1), 5
     )
     filter_df["rel_std_avg"] = filter_df["std_avg"] / filter_df["filter_avg"]
     if queryset.model.__name__ == 'ZSpec':
@@ -137,7 +141,7 @@ def data_df_from_queryset(
         filter_df['r_rmad'] = None
         filter_df['l_rstd'] = None
         filter_df['r_rstd'] = None
-    return filter_df
+    return pd.concat([filter_df, spike_df], axis=1)
 
 
 def spikiness_metrics(spike_df: pd.DataFrame, spec_model):

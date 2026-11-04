@@ -89,7 +89,7 @@ def seconds_since_beginning_of_day(time: dt.time) -> float:
 def seconds_since_beginning_of_day_to_iso(
     seconds: Optional[int], round_to=0
 ) -> Optional[str]:
-    if seconds is None:
+    if np.isnan(seconds):
         return None
     hour = int(seconds // 3600)
     remainder = seconds - hour * 3600
@@ -238,18 +238,16 @@ def dict_to_paragraphs(
     if filterfalse is True:
         dictionary = valfilter(lambda x: x not in (False, None), dictionary)
     ordered_grafs = [
-        make_paragraph(key, dictionary.get(key))
-        for key in ordering
-        if key in dictionary.keys()
+        f"{k}: {dictionary[k]}" for k in ordering if k in dictionary.keys()
     ]
     unordered_grafs = [
-        make_paragraph(key, value)
-        for key, value in dictionary.items()
-        if key not in ordering
+        f"{k}: {v}"
+        for k, v in dictionary.items()
+        if k not in ordering
         # TODO: very, very hacky
-        and not re.search(r"_[hwad]+mag$", key)
+        and not re.search(r"_[hwad]+mag$", k)
     ]
-    return ordered_grafs + unordered_grafs
+    return "\n".join(ordered_grafs + unordered_grafs)
 
 
 def pickitems(dictionary: Mapping, some_list: Iterable) -> dict:
@@ -642,8 +640,11 @@ def tokenize_series(series):
 
 def make_tokens(metadata):
     fields = {}
-    # TODO: don't tokenize quant fields, waste of time
-    for colname, col in metadata.astype(str).items():
+    for colname, col in metadata.items():
+        if col.dtype.kind != "O":
+            continue
+        col = col.astype(pd.StringDtype())
+        col.loc[col.isna()] = "nan"
         coltoks = tokenize_series(col).tolist()
         lower = col.str.lower().tolist()
         records = [
