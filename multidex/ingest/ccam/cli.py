@@ -164,7 +164,6 @@ def ingest_cspec_file(cspec_file, context_df):
 
 
 def save_thumb(filename, row):
-    print("writing " + filename)
     try:
         shutil.copyfile(row['path'], filename)
         return True, None

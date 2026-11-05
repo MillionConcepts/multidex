@@ -20,6 +20,12 @@ ASDF_PHOT_COLS = [
 #  controls; maybe this doesn't go here, it's a separate interface,
 #  something like that
 REDUCTION_OP_FIELDS = ("PCA",)
+# supercam quality flags are stored as ints but should behave like binary categories
+BINARY_QUALITATIVE_METADATA_FIELDS = (
+    "powerfail",
+    "corrected",
+)
+
 # metadata fields we should treat as qualitative / categorical
 QUALITATIVE_METADATA_FIELDS = (
     "analysis_name",
@@ -60,7 +66,7 @@ QUALITATIVE_METADATA_FIELDS = (
     "caltarget_element",
     # supercam
     "red_rows",
-    "powerfail",
+    *BINARY_QUALITATIVE_METADATA_FIELDS,
     "tdb_name"
 )
 
