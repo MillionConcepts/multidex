@@ -7,22 +7,47 @@
     <link rel="icon" type="image/png" href="/favicon.ico">
     <link rel="stylesheet" href="/s/css/fonts.css">
     <link rel="stylesheet" href="/s/css/main.css">
-    <script defer src="/s/js/d3.js"></script>
-    <script defer src="/s/js/mithril.js"></script>
-    <script defer src="/s/js/plotter.js"></script>
+    <script type="importmap">
+      {
+          "imports": {
+              "d3-array": "/s/js/d3-array/index.js",
+              "d3-color": "/s/js/d3-color/index.js",
+              "d3-format": "/s/js/d3-format/index.js",
+              "d3-interpolate": "/s/js/d3-interpolate/index.js",
+              "d3-scale": "/s/js/d3-scale/index.js",
+              "d3-time": "/s/js/d3-time/index.js",
+              "d3-time-format": "/s/js/d3-time-format/index.js",
+              "data-limits": "/s/js/data-limits.js",
+              "hscrpt": "/s/js/hscrpt.js",
+              "internmap": "/s/js/internmap.js",
+              "js-utilz": "/s/js/js-utilz.js",
+              "toolbar-icons": "/s/js/toolbar-icons.js",
+              "toolbar": "/s/js/toolbar.js",
+              "plotter/browse-images": "/s/js/plotter/browse-images.js",
+              "plotter/data-limits": "/s/js/plotter/data-limits.js",
+              "plotter/dataset": "/s/js/plotter/dataset.js",
+              "plotter/maindataset": "/s/js/plotter/maindataset.js",
+              "plotter/menubars": "/s/js/plotter/menubars.js",
+              "plotter/plotpane": "/s/js/plotter/plotpane.js",
+              "plotter/refldataset": "/s/js/plotter/refldataset.js",
+              "plotter/size-tracker": "/s/js/plotter/size-tracker.js"
+          }
+      }
+    </script>
+    <script type="module" src="/s/js/plotter/main.js"></script>
   </head>
   <body>
     <nav id="menubar"></nav>
-    <div id="main-plot">
+    <div id="main-plot-container">
       <!-- loading spinner present from initial page load, will be
            replaced by the plotter scripts -->
       <div class="pinwheel-holder">
         <img src="/s/loading.svg">
-        <p>Loading…</p>
+        <p>This loading spinner brought to you by d3-scale's 151 submodules…</p>
       </div>
     </div>
-    <div id="refl-plot"></div>
-    <div id="browse-image"></div>
+    <div id="refl-plot-container"></div>
+    <div id="browse-image-container"></div>
     <footer>MultiDEx 0.20</footer>
   </body>
 </html>

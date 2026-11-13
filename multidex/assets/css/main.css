@@ -47,8 +47,39 @@ body {
     margin: 0;
 }
 
-nav, #main-plot, #refl-plot, #browse-image, footer {
-    /* padding: 8px; */
+#main-plot-container, #refl-plot-container, #browse-image-container {
+    display: flex;
+    padding: 0.5rem;
+    justify-content: stretch;
+}
+#main-plot-container {
+    grid-area: main;
+}
+#refl-plot-container {
+    grid-area: refl;
+}
+#browse-image-container {
+    grid-area: brow;
+}
+
+#main-plot-container > fieldset,
+#refl-plot-container > fieldset,
+#browse-image-container > fieldset {
+    flex: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.controls-box {
+    justify-content: end;
+}
+.plot-box {
+    flex: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 nav {
@@ -60,20 +91,12 @@ nav {
     scrollbar-color: rgba(0, 0, 0, 60%) transparent;
 }
 
-#main-plot {
-    grid-area: main;
-}
-#refl-plot {
-    grid-area: refl;
-}
-#browse-image {
-    grid-area: brow;
-}
 footer {
     grid-area: foot;
     display: flex;
     align-items: center;
     flex-direction: row;
+    padding: 0.5rem;
 }
 
 /* per-element formatting */
@@ -87,6 +110,19 @@ button {
     border: 1px solid var(--dark-tint-2);
     max-height: 2rem;
     margin-top: 0.2rem;
+}
+
+legend {
+    font-size: 1.5rem;
+    padding-left: .5rem;
+    padding-right: .5rem;
+    color: #4d4d4d;
+}
+
+.no-plot {
+    font-size: 2rem;
+    font-style: italic;
+    color: #4d4d4d;
 }
 
 /* menus */
@@ -144,248 +180,86 @@ span.vcenter-menu-name {
     bottom: 2px;
 }
 
-/* temporary layout debugging aids */
-nav {
-    background: #fdc086;
-}
+/* plot furniture */
 
-#main-plot {
-    background: #beaed4;
-}
-footer {
-    background: #386cb0;
-    color: white;
-}
-/* end of temporary layout debugging aids */
+.plot-box > svg {
+    /* this peculiar little incantation forces the svg to adapt to the size
+       of its container _without_ the JS-level "reposition" hook helping out,
+       which reduces visual stuttering on resize, and also enables it
+       to shrink vertically; the reposition hook won't do that by itself
+       because "this box insists on being yea tall" wins over the parent's
+       "i want to have this aspect ratio".  we still need the JS-level
+       reposition hook to control *what gets stretched*; by itself this
+       would stretch *everything*, including stroke widths and text.
 
-/* semi-temporary communication debugging tables */
-table {
-    border-spacing: 0;
-    /* position:sticky will only work as expected on table elements if the
-       parent <table> is position:relative; it does no harm to set it
-       for all <table>s */
-    position: relative;
-}
-tbody > tr {
-    background: #fff;
-}
-tbody > tr:nth-of-type(even) {
-    background: #eee;
-}
-thead th {
-    /* position:sticky doesn't work on <thead> nor on <tr>, but it does
-       work on <th>.  Because it is the <th>es that are (potentially)
-       sticky, they must be the ones with the background and border.  */
-    background: #ccc;
-    border-bottom: 1px solid #333;
-}
+       "width: 100%; height: 100%" doesn't work, but this does.
+       again my interest in these matters is not enough to dig deeper.
 
-tr, th, td {
-    padding: 0.125rem 4px;
-}
-th, td {
-    text-align: left;
-}
-
-
-/* main table */
-#main-plot {
-    /* this has to be on the table's *container*, because that's what has a
-       definite height */
-    overflow-y: scroll;
-}
-#main-data {
-    width: 100%;
-}
-#main-data > thead th {
-    position: sticky;
-    top: 0;
-}
-
-/* deemphasize the 'id' column */
-#main-data > tbody > tr > td:first-child {
-    background: white;
-    color: #666;
-    text-align: right;
-    font-size: smaller;
-    padding-right: 1rem;
-    border-right: 1px solid #ccc;
-    border-bottom: 0px solid transparent;
-}
-#main-data > thead > tr > th:first-child {
-    color: #666;
-    font-size: smaller;
-    border-right: 1px solid #aaa;
-}
-
-/* the extra selectors ensure that this is the most specific rule,
-   whether or not it's an even-numbered row */
-#main-data > tbody > tr.row-selected,
-#main-data > tbody > tr.row-selected:nth-of-type(even) {
-    background: #386cb0;
-    color: white;
-}
-#main-data > tbody > tr.row-selected > td:first-child {
-    background: #386cb0;
-    border-right-color: #386cb0;
-    color: white;
-}
-
-/* reflectance plot */
-#refl-plot {
-    background: var(--clean-parchment);
-    display: grid;
-    grid-template-areas:
-        "options"
-        "plot"
-    ;
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(min-content, max-content) minmax(0, 1fr);
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    gap: 8px;
-    padding: 8px;
-}
-#refl-plot > .controls {
-    grid-area: options;
-    display: flex;
-    flex-direction: row;
-}
-
-#refl-no-selection, #refl-error, #refl-data, #refl-chart {
-    grid-area: plot;
-    width: 100%;
-    height: 100%;
-}
-
-#refl-no-selection, #refl-error {
-    margin: 0;
-    padding; 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    font-size: 2rem;
-}
-#refl-error {
-    background: #fee8c8;
-    color: #800026;
-}
-
-#refl-chart {
-    width: 100%;
-    height: 100%;
-    display: grid;
-    grid-template-areas:
-        "   .   ax-top"
-        "ax-lft   data"
-        "   .   ax-bot";
-    grid-template-columns: 60px 1fr;
-    grid-template-rows: 30px 1fr 50px;
-}
-#refl-chart > .p-ax-top  { grid-area: ax-top; }
-#refl-chart > .p-ax-bot  { grid-area: ax-bot; }
-#refl-chart > .p-ax-lft  { grid-area: ax-lft; }
-#refl-chart > .p-grid    { grid-area: data; z-index: 0; background: #f8f8f8; }
-#refl-chart > .p-data    { grid-area: data; z-index: 1; }
-#refl-chart > .p-overlay { grid-area: data; z-index: 2; overflow: hidden; }
-
-#refl-chart > div {
-    width: 100%;
-    height: 100%;
-    position: relative;
-}
-
-#refl-chart > svg {
-    /* An <svg> element, specifically, with width: 100%; height: 100%
-       will not shrink below its computed intrinsic size, which seems
-       to be defaulted from the viewBox if there's no declared intrinsic
-       size.  However, an SVG element with *these* settings, contradictory
-       as they look, behaves the way we want, i.e. the same as a <div> with
-       width: 100%; height: 100%.  If you know why, please tell us. */
+       TODO: figure out if we can get away with merging the <svg> into
+       the parent <div class="plot-box">.  */
     width: 0;
     height: 0;
     min-width: 100%;
     min-height: 100%;
 }
-
-#refl-chart .tick {
-    font-size: 12px;
+.plot-box > svg.zoombox-active {
+    cursor: zoom-in;
 }
-#refl-chart .ax-title {
-    font-size: 14px;
+.plot-box > svg.pan-active {
+    cursor: grab;
+}
+.plot-box > svg.pan-active.panning {
+    cursor: grabbing;
 }
 
-#refl-chart .grid-x, #refl-chart .grid-y {
-    stroke: #d7d8da;
-    stroke-width: 0.5px;
+text {
+    text-anchor: middle;
+    dominant-baseline: central;
+    transform-origin: center;
+    transform-box: content-box;
+    font-size: 18px;
+}
+
+.axis-left > text.axis-label { transform: rotate(-90deg); }
+.axis-right > text.axis-label { transform: rotate(90deg); }
+
+text.tick-label { font-size: 16px; }
+
+.axis-bg {
     fill: none;
 }
+rect.drag-box {
+    fill: #222;
+    fill-opacity: 10%;
+    stroke: #000;
+    stroke-width: 1px;
+    stroke-opacity: 100%;
+    stroke-dasharray: 3 3;
+}
 
-#refl-chart .point {
-    stroke: #443e81;
+line.axis-line, line.tick-major, line.tick-minor {
     fill: none;
+    stroke: #444;
+    stroke-width: 1.5px;
+    stroke-linecap: square;
 }
-#refl-chart .point:hover {
-    stroke: #d95f02;
-}
-#refl-chart .point.selected {
-    stroke: #168765;
-}
-#refl-chart .point > .hitbox {
-    stroke: none;
-    fill: transparent;
-}
-#refl-chart .point > .h {
+
+line.gridline-major {
+    fill: none;
+    stroke: #dadada;
     stroke-width: 1.5px;
 }
-#refl-chart .point > .v {
+line.gridline-minor {
+    fill: none;
+    stroke: #e8e8e8;
     stroke-width: 1px;
 }
 
 
-/* data-reveal popups */
-.data-pop {
-    color: #0f262b;
-    background: #e9f7f9;
-    border: 2px solid #c7eaf0;
-    border-radius: 5px;
-    padding: 10px;
-
-    position: absolute;
-    display: none;
-}
-.data-pop.visible {
-    display: block;
-}
-
-/* browse image */
-#browse-image {
-    border-top: 4px solid #888;
-}
-#browse-image > img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-/* when the browse image fails to load it's replaced with an
-   error message div styled like this: */
-.no-image {
-    width: 100%;
-    height: 100%;
-    color: #800026;
-    background: #fee8c8;
-    font-size: 2rem;
-    /* yes, this is really how you're supposed to center multiline
-       text within a <div> both horizontally and vertically. */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
+/* main plot data points */
+.obs-point {
+    r: 2px;
+    fill: #444;
 }
 
 /* loading spinner container box */
@@ -402,4 +276,20 @@ th, td {
     font-size: 2rem;
     font-style: italic;
     color: #4d4d4d;
+}
+
+/* data/image load errors are in a container styled like so: */
+.load-error {
+    width: 100%;
+    height: 100%;
+    color: #800026;
+    background: #fee8c8;
+    font-size: 2rem;
+    /* yes, this is really how you're supposed to center multiline
+       text within a <div> both horizontally and vertically. */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
