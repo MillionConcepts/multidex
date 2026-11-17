@@ -202,13 +202,13 @@ span.vcenter-menu-name {
     min-width: 100%;
     min-height: 100%;
 }
-.plot-box > svg.zoombox-active {
+.plot-box.zoombox-active {
     cursor: zoom-in;
 }
-.plot-box > svg.pan-active {
+.plot-box.pan-active {
     cursor: grab;
 }
-.plot-box > svg.pan-active.panning {
+.plot-box.pan-active.panning {
     cursor: grabbing;
 }
 

@@ -119,8 +119,8 @@ const TOOLBAR_STYLES = `
  * enabled, you can enable or disable individual buttons by firing custom
  * events at the toolbar, named "enableButton" or "disableButton"
  * respectively, whose `detail` is the icon name of the button you want to
- * enable or disable.  Disabling the currently selected tool also causes it to
- * be deselected.
+ * enable or disable (or a list of such icon names).  Disabling the currently
+ * selected tool also causes it to be deselected.
  *
  * (Note that when the entire toolbar is disabled, all its buttons have to be
  * given the "disabled" attribute so they behave correctly; for this reason,
@@ -232,13 +232,25 @@ export class PlotToolbarElement extends HTMLElement {
     #enableButtonEvent(event) {
         if (this.disabled)
             return;
-        this.#ableButton(this.#buttonForTool(event.detail), true);
+        let tools = event.detail;
+        if (!Array.isArray(tools))
+            tools = [tools];
+
+        for (let tool of tools) {
+            this.#ableButton(this.#buttonForTool(tool), true);
+        }
     }
 
     #disableButtonEvent(event) {
         if (this.disabled)
             return;
-        this.#ableButton(this.#buttonForTool(event.detail), false);
+        let tools = event.detail;
+        if (!Array.isArray(tools))
+            tools = [tools];
+
+        for (let tool of tools) {
+            this.#ableButton(this.#buttonForTool(tool), false);
+        }
     }
 
     #activateButtonEvent(event) {
@@ -287,7 +299,7 @@ export class PlotToolbarElement extends HTMLElement {
 
         lose_interest(btn);
         if (btn.dataset.behavior === "trigger")
-            this.#queueTriggerEvent(btn.dataset.tool);
+            this.#queueTriggerEvent(btn);
         else
             this.#selectButton(btn, sense);
     }
@@ -351,7 +363,7 @@ export class PlotToolbarElement extends HTMLElement {
                 cancelable: true,
                 composed: true,
                 detail: {
-                    triggered,
+                    triggered: triggered?.dataset?.tool,
                 }
             })));
     }
@@ -363,8 +375,8 @@ export class PlotToolbarElement extends HTMLElement {
                 cancelable: true,
                 composed: true,
                 detail: {
-                    selected,
-                    previous,
+                    selected: selected?.dataset?.tool,
+                    previous: previous?.dataset?.tool,
                 }
             })));
     }

@@ -16,6 +16,9 @@ let STATE = {
     data_set: null,
 };
 
+// debugging
+window.STATE = STATE;
+
 async function onDOMContentLoaded () {
     let colspecs = await fetch_json("/data/columns");
 
@@ -29,12 +32,16 @@ async function onDOMContentLoaded () {
         dataset: STATE.data_set,
         container: document.getElementById("main-plot-container"),
         plot_title: "Observations",
+        x_label: STATE.data_set.columns.x,
+        y_label: STATE.data_set.columns.y,
     });
     STATE.panes.refl_plot = new PlotPane({
         id: "refl-plot",
         dataset: new ReflDataSet(),
         container: document.getElementById("refl-plot-container"),
-        plot_title: "Reflectance",
+        plot_title: "Reflectance of selected ROIs",
+        x_label: "Wavelength (nm)",
+        y_label: "Reflectance",
         no_data: () => h("p", ["Select observations to see spectra"]),
     });
 

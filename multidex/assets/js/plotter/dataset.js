@@ -159,6 +159,18 @@ export class DataSet {
             );
         }
     }
+
+    /** Returns true if either the current X or Y scale is smaller than
+     *  the nice limits for that axis.
+     */
+    can_zoom_out() {
+        let dom = { x: this.scales.x.domain(),
+                    y: this.scales.y.domain() };
+        return (   dom.x[0] > this.limits_nice.x.lo
+                || dom.x[1] < this.limits_nice.x.hi
+                || dom.y[0] > this.limits_nice.y.lo
+                || dom.y[1] < this.limits_nice.y.hi);
+    }
 }
 
 export default DataSet;

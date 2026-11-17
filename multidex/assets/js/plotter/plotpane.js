@@ -100,7 +100,11 @@ export class PlotPane {
 
         let plot_box = h("div", {
             "class": "plot-box no-plot",
-            "onresize": this.#onresize.bind(this),
+            "onresize":        this.#on_resize.bind(this),
+            "onpointerdown":   this.#on_pointerdown.bind(this),
+            "onpointerup":     this.#on_pointerup.bind(this),
+            "onpointercancel": this.#on_pointercancel.bind(this),
+            // the pointer-move event handler is only present while dragging
         }, this.no_data());
         SIZE_TRACKER.track(plot_box);
 
@@ -427,34 +431,26 @@ export class PlotPane {
         let x_axis = this.#grid_is_x(grid);
         let scale = this.#dataset.scales[x_axis ? "x" : "y"];
         const line_coords = x_axis
-              ? (([line, val]) => ({
-                  line,
+              ? ((val) => ({
                   x1: val,
                   x2: val,
                   y1: axis_margin.top,
                   y2: height - axis_margin.bottom }))
-
-              : (([line, val]) => ({
-                  line,
+              : ((val) => ({
                   x1: axis_margin.left,
                   x2: width - axis_margin.right,
                   y1: val,
                   y2: val }));
 
-        // this will be called via flatMap
-        const filter_line_children_map_scaled_values = (node) => {
-            if (!(node instanceof SVGLineElement))
-                return [];
-            let val = node.dataset.value;
+        for (let line of grid.children) {
+            if (!(line instanceof SVGLineElement))
+                continue;
+            let val = line.dataset.value;
             if (val == null)
-                return [];
-            return [ [node, scale(0 + val) ] ];
-        };
-
-        Array.from(grid.children)
-            .flatMap(filter_line_children_map_scaled_values)
-            .map(line_coords)
-            .forEach(({ line, ...coords }) => set_attrs(line, coords));
+                continue;
+            let coords = line_coords(scale(+val));
+            set_attrs(line, coords);
+        }
     }
 
     /** Set the final position of the clipping box for the data area
@@ -479,9 +475,8 @@ export class PlotPane {
     }
 
     /** Event handler: called whenever the plot is resized. */
-    #onresize(event) {
+    #on_resize(event) {
         let plot_box = event.currentTarget;
-
         if (plot_box.classList.contains("no-plot")
             || plot_box.classList.contains("load-error")
             || plot_box.classList.contains("loading"))
@@ -675,7 +670,7 @@ export class PlotPane {
                     return;
                 default:
                     console.error(
-                        `select event for unregistered tool ${tool}`
+                        `select event for unregistered tool`, tool
                     );
                 }
             },
@@ -697,10 +692,6 @@ export class PlotPane {
             viewBox: "0 0 0 0",
             id: this.base_id,
             preserveAspectRatio: "none",
-            // the pointer-move event handler is only present while dragging
-            onpointerdown:   this.#on_plot_pointerdown.bind(this),
-            onpointerup:     this.#on_plot_pointerup.bind(this),
-            onpointercancel: this.#on_plot_pointercancel.bind(this),
         }, [
             h("defs", [h("clipPath", { "id": this.bounds_id }, [h_rect()])]),
             h("g", { "class": "main-layer" }, [
@@ -712,7 +703,7 @@ export class PlotPane {
                          label: this.y_label }),
                 h_grid("x", x_tick_vals),
                 h_grid("y", y_tick_vals),
-                h("g", { "clip-path": this.bounds_id },
+                h("g", { "attr-clip-path": `url(#${this.bounds_id})` },
                   this.#dataset.represent_data()),
             ]),
             h_rect("drag-box"),
@@ -728,6 +719,17 @@ export class PlotPane {
      *  the entire SVG structure from scratch.
      */
     #after_rescale() {
+        let controls_box = this.#container.querySelector(":scope .controls-box");
+        if (this.#dataset.can_zoom_out()) {
+            controls_box.dispatchEvent(new CustomEvent(
+                "enableButton", { detail: ["pan", "zoom-minus", "autoscale"] }
+            ));
+        } else {
+            controls_box.dispatchEvent(new CustomEvent(
+                "disableButton", { detail: ["pan", "zoom-minus", "autoscale"] }
+            ));
+        }
+
         let plot_box = this.#container.querySelector(":scope .plot-box");
         plot_box.replaceChildren(this.#h_plot_svg());
 
@@ -813,7 +815,7 @@ export class PlotPane {
      *  plot area grabbable and draggable.
      */
     #on_select_pan() {
-        let plot = this.#container.querySelector(":scope .plot-box > svg");
+        let plot = this.#container.querySelector(":scope .plot-box");
 
         plot.classList.remove("zoombox-active");
         plot.classList.add("pan-active");
@@ -824,7 +826,7 @@ export class PlotPane {
      *  prepare to draw a selection rectangle on top of the plot.
      */
     #on_select_zoom_box() {
-        let plot = this.#container.querySelector(":scope .plot-box > svg");
+        let plot = this.#container.querySelector(":scope .plot-box");
 
         plot.classList.add("zoombox-active");
         plot.classList.remove("pan-active");
@@ -837,7 +839,7 @@ export class PlotPane {
      *  with a tool being active.
      */
     #on_deselect_tools() {
-        let plot = this.#container.querySelector(":scope .plot-box > svg");
+        let plot = this.#container.querySelector(":scope .plot-box");
         if (plot) {
             plot.classList.remove("zoombox-active");
             plot.classList.remove("pan-active");
@@ -866,7 +868,7 @@ export class PlotPane {
      * course of that drag.
      */
     #begin_drag(event) {
-        let plot = this.#container.querySelector(":scope .plot-box > svg");
+        let plot = event.currentTarget;
         let plot_area = plot.getBoundingClientRect();
 
         let drag = {
@@ -876,7 +878,7 @@ export class PlotPane {
             down_x: event.clientX,
             down_y: event.clientY,
             pointer_id: event.pointerId,
-            onmove: this.#on_plot_pointermove.bind(this),
+            onmove: this.#on_pointermove.bind(this),
         };
 
         plot.addEventListener("pointermove", drag.onmove, {
@@ -1033,7 +1035,13 @@ export class PlotPane {
     /** Event handler: Primary mouse button pressed and held within the
      *  plot area.
      */
-    #on_plot_pointerdown(event) {
+    #on_pointerdown(event) {
+        let plot_box = event.currentTarget;
+        if (plot_box.classList.contains("no-plot")
+            || plot_box.classList.contains("load-error")
+            || plot_box.classList.contains("loading"))
+            return;
+
         // only start a drag if we have an active tool
         // only start a drag if it's specifically the primary button of
         // the primary pointer that was depressed
@@ -1058,8 +1066,12 @@ export class PlotPane {
      *  the plot area.  (This event handler is only registered while
      *  the button is held down.)
      */
-    #on_plot_pointermove(event) {
-        if (this.#current_tool == null
+    #on_pointermove(event) {
+        let plot_box = event.currentTarget;
+        if (plot_box.classList.contains("no-plot")
+            || plot_box.classList.contains("load-error")
+            || plot_box.classList.contains("loading")
+            || this.#current_tool == null
             || this.#current_drag == null) {
             console.error("pointermove: should not have been called");
             return;
@@ -1077,7 +1089,7 @@ export class PlotPane {
     /** Event handler: Primary mouse button released, completing a drag
      *  action begun within the plot area.
      */
-    #on_plot_pointerup(event) {
+    #on_pointerup(event) {
         let drag = this.#end_drag(event);
         if (this.#current_tool === "zoombox")
             this.#end_zoom(drag);
@@ -1093,7 +1105,7 @@ export class PlotPane {
     /** Event handler: User has done something that cancels a drag action
      *  that was in progress.
      */
-    #on_plot_pointercancel(event) {
+    #on_pointercancel(event) {
         let drag = this.#end_drag(event);
         if (this.#current_tool === "zoombox")
             this.#cancel_zoom(drag);

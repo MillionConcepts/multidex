@@ -3,6 +3,10 @@ import { h_circle } from "plotter/plotpane";
 import DataSet from "plotter/dataset";
 import { set_attrs } from "js-utilz";
 
+const MIN = Math.min;
+const MAX = Math.max;
+const ISNAN = Number.isNaN;
+
 export class MainDataSet extends DataSet {
 
     constructor(colspecs) {
@@ -36,6 +40,7 @@ export class MainDataSet extends DataSet {
         }
 
         this.columns = columns;
+        this.filtered = { x: [], y: [], m: [] };
     }
 
 
@@ -55,35 +60,57 @@ export class MainDataSet extends DataSet {
     find_data_limits() {
         let x = this.data[this.columns.x];
         let y = this.data[this.columns.y];
+        let m = this.data[this.columns.m];
 
-        if (x.length != y.length)
-            throw new Error(
-                `length mismatch: ${this.columns.x}[${x.length}] !=` +
-                    ` ${this.columns.y}[${y.length}]`
-            );
+        let fx = [];
+        let fy = [];
+        let fm = [];
 
+        let xmin = Infinity;
+        let ymin = Infinity;
+        let xmax = -Infinity;
+        let ymax = -Infinity;
+        for (let i = 0; i < MAX(x.length, y.length, m.length); i++) {
+            if (x[i] == null || y[i] == null || m[i] == null
+                || ISNAN(x[i]) || ISNAN(y[i])) {
+                continue;
+            }
+            xmin = MIN(x[i], xmin);
+            xmax = MAX(x[i], xmax);
+            ymin = MIN(y[i], ymin);
+            ymax = MAX(y[i], ymax);
+
+            fx.push(x[i]);
+            fy.push(y[i]);
+            fm.push(m[i]);
+        }
+
+        this.filtered.x = fx;
+        this.filtered.y = fy;
+        this.filtered.m = fm;
         return {
-            x: [Math.min(...x), Math.max(...x)],
-            y: [Math.min(...y), Math.max(...y)]
+            x: [xmin, xmax],
+            y: [ymin, ymax],
         };
     }
 
     represent_data() {
-        let x = this.data[this.columns.x];
-        let y = this.data[this.columns.y];
+        let x = this.filtered.x;
+        let y = this.filtered.y;
+        let m = this.filtered.m;
 
-        if (x.length != y.length)
+        if (x.length != y.length || x.length != m.length)
             throw new Error(
                 `length mismatch: ${this.columns.x}[${x.length}] !=` +
                     ` ${this.columns.y}[${y.length}]`
             );
 
-        // TODO: marker scale
         let points = [];
         for (let i = 0; i < x.length; i++) {
             points.push(h_circle("obs-point", {
                 "data-x": x[i],
                 "data-y": y[i],
+                "data-m": m[i],
                 "r": 2,
             }));
         }
@@ -93,6 +120,7 @@ export class MainDataSet extends DataSet {
     place_data(plot) {
         let x_scale = this.scales.x;
         let y_scale = this.scales.y;
+        // TODO: marker scale
         for (let point of plot.getElementsByClassName("obs-point")) {
             set_attrs(point, {
                 cx: x_scale(point.dataset.x),
