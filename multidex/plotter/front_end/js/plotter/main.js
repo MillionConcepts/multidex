@@ -13,7 +13,10 @@ let STATE = {
 
     // The main data set, which acts as a DataSet for the main plot
     // pane but also manages a bunch of other stuff.
-    data_set: null,
+    main_data_set: null,
+
+    // The reflectance data set
+    refl_data_set: null,
 };
 
 // debugging
@@ -22,22 +25,35 @@ window.STATE = STATE;
 async function onDOMContentLoaded () {
     let colspecs = await fetch_json("/data/columns");
 
-    STATE.data_set = new MainDataSet(colspecs);
+    STATE.refl_data_set = new ReflDataSet();
+    STATE.main_data_set = new MainDataSet(
+        colspecs,
+        (ids) => {
+            if (ids.length > 0) {
+                STATE.panes.refl_plot.refresh({ ids });
+            } else {
+                STATE.panes.refl_plot.clear();
+            }
+        }
+    );
+
     STATE.panes.browse_image_viewer = new BrowseImageViewer(
         document.getElementById("browse-image-container"),
         colspecs,
     );
     STATE.panes.main_plot = new PlotPane({
         id: "main-plot",
-        dataset: STATE.data_set,
+        dataset: STATE.main_data_set,
         container: document.getElementById("main-plot-container"),
         plot_title: "Observations",
-        x_label: STATE.data_set.columns.x,
-        y_label: STATE.data_set.columns.y,
+        tools: "select-one zoom-box pan | zoom-plus zoom-minus autoscale",
+        autoselect_tool: "select-one",
+        x_label: STATE.main_data_set.columns.x,
+        y_label: STATE.main_data_set.columns.y,
     });
     STATE.panes.refl_plot = new PlotPane({
         id: "refl-plot",
-        dataset: new ReflDataSet(),
+        dataset: STATE.refl_data_set,
         container: document.getElementById("refl-plot-container"),
         plot_title: "Reflectance of selected ROIs",
         x_label: "Wavelength (nm)",

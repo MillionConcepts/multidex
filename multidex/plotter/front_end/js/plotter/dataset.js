@@ -16,10 +16,6 @@ import { abstract_method } from "js-utilz";
  *  DataSet.data holds the actual data, when available; its structure
  *  is up to your subclass.
  *
- *  DataSet.view is a reference to the view object (not the DOM node
- *  managed by the view object).  Your subclass should not hold onto
- *  references to any DOM nodes.
- *
  *  DataSet.limits_data, DataSet.limits_nice, and DataSet.scales are
  *  all objects with two properties, { x: ..., y: ... }; each describes
  *  something about the data's projection onto the X and Y axes of the
@@ -93,17 +89,27 @@ export class DataSet {
         abstract_method("DataSet.place_data");
     }
 
-    // Methods subclasses should not need to override
-
-    /** Construct a new DataSet object associated with VIEW (a PlotPane).
-     *  You may override this method but you shouldn't need to.
+    /** Called when one or more points of your data set become
+     *  selected.  (If your pane never selects anything, implement
+     *  this as a method which does nothing.)  PLOT is the DOM node for
+     *  the entire plot (the <svg> element), and POINTS is a list of SVG
+     *  elements representing the selected points.  Take whatever
+     *  action is appropriate to mark those points as selected and
+     *  unmark all other points.
      */
-    constructor(view) {
+    select_points(plot, points) {
+        abstract_method("DataSet.select_points");
+    }
+
+    /** Construct a new DataSet object.
+     *  You may override this method if you need to, but make sure
+     *  to call super() first thing in your override.
+     */
+    constructor() {
         if (new.target === DataSet)
             throw new TypeError("cannot create an abstract DataSet");
 
         this.data = null;
-        this.view = view;
         this.limits_data = { x: new DataLimits(), y: new DataLimits() };
         this.limits_nice = { x: new DataLimits(), y: new DataLimits() };
         this.scales      = { x: scaleLinear(),    y: scaleLinear() };
@@ -111,6 +117,8 @@ export class DataSet {
 
     /** Reset this data set to its initial state of having no actual
      *  data loaded.
+     *  You may override this method if you need to, but make sure
+     *  to call super.clear_data() first thing in your override.
      */
     clear_data() {
         for (let axis of ["x", "y"]) {
@@ -120,6 +128,8 @@ export class DataSet {
         }
         this.data = null;
     }
+
+    // Methods subclasses should not need to override
 
     /** Orchestrate loading new data into this data set.
      *  PARAMS are TBD and subclass-dependent.

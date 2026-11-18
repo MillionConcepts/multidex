@@ -258,9 +258,34 @@ line.gridline-minor {
 
 /* main plot data points */
 .obs-point {
-    r: 2px;
+    r: 4px;
     fill: #444;
 }
+
+.obs-point.selected {
+    stroke-width: 3px;
+    stroke: #2b2;
+}
+
+/* reflectance plot data points */
+circle.refl-dot {
+    fill: var(--rl-group-color);
+    r: 3.5px;
+}
+path.refl-bar, polyline.refl-connline {
+    fill: none;
+    stroke: var(--rl-group-color);
+    stroke-width: 2px;
+}
+
+g.rl-black   { --rl-group-color: #444444 }
+g.rl-azure   { --rl-group-color: #80b1d3 }
+g.rl-cyan    { --rl-group-color: #8dd3c7 }
+g.rl-green   { --rl-group-color: #4daf4a }
+g.rl-magenta { --rl-group-color: #f781bf }
+g.rl-orange  { --rl-group-color: #ff7f00 }
+g.rl-purple  { --rl-group-color: #984ea3 }
+
 
 /* loading spinner container box */
 .pinwheel-holder {

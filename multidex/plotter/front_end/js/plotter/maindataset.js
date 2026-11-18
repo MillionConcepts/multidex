@@ -9,22 +9,25 @@ const ISNAN = Number.isNaN;
 
 export class MainDataSet extends DataSet {
 
-    constructor(colspecs) {
+    constructor(colspecs, on_select_hook) {
         super();
 
-        let columns = { x: null, y: null, m: null, };
+        let columns = { x: null, y: null, m: null, id: null };
         for (let [col, spec] of Object.entries(colspecs)) {
-            if (!spec.meta)
-                continue;
-            // The columns "id", "name", "sol", "ltst", and "seq_id" are
-            // special and should not be the default for any axis.
-            if (/^(?:id|name|sol|ltst|seq_id)$/i.test(col))
-                continue;
-
             // Use the first quantitative column as the x-axis default,
             // the second quantitative column as the y-axis default,
             // and the first qualitative column as the marker default.
-            if (spec.type == "quant") {
+            // The columns "id", "name", "sol", "ltst", and "seq_id" are
+            // special.
+            if (col === "id") {
+                columns.id = col;
+            } else if (col === "seq_id") {
+                // only take seq_id if we don't have id
+                if (columns.id == null)
+                    columns.id = col;
+            } else if (/^(?:name|sol|ltst)$/i.test(col) || !spec.meta) {
+                // skip this one
+            } else if (spec.type == "quant") {
                 if (columns.x == null) {
                     columns.x = col;
                 } else if (columns.y == null) {
@@ -34,15 +37,27 @@ export class MainDataSet extends DataSet {
                 if (columns.m == null) {
                     columns.m = col;
                 }
+            } else {
+                console.error(`${col}: unrecognized type ${spec.type}`);
             }
-            if (columns.x != null && columns.y != null && columns.m != null)
+
+            // stop if we have everything we need
+            if (columns.x != null
+                && columns.y != null
+                && columns.m != null
+                && columns.id != null)
                 break;
         }
 
         this.columns = columns;
-        this.filtered = { x: [], y: [], m: [] };
+        this.filtered = { x: [], y: [], m: [], id: [] };
+        this.on_select_hook = on_select_hook ?? ((ignore) => {});
     }
 
+    clear_data() {
+        super.clear_data();
+        this.filtered = { x: [], y: [], m: [], id: [] };
+    }
 
     query_for_data(params) {
         if (params == null || typeof params !== "object") {
@@ -61,17 +76,19 @@ export class MainDataSet extends DataSet {
         let x = this.data[this.columns.x];
         let y = this.data[this.columns.y];
         let m = this.data[this.columns.m];
+        let id = this.data[this.columns.id];
 
         let fx = [];
         let fy = [];
         let fm = [];
+        let fid = [];
 
         let xmin = Infinity;
         let ymin = Infinity;
         let xmax = -Infinity;
         let ymax = -Infinity;
         for (let i = 0; i < MAX(x.length, y.length, m.length); i++) {
-            if (x[i] == null || y[i] == null || m[i] == null
+            if (x[i] == null || y[i] == null || m[i] == null || id[i] == null
                 || ISNAN(x[i]) || ISNAN(y[i])) {
                 continue;
             }
@@ -83,11 +100,13 @@ export class MainDataSet extends DataSet {
             fx.push(x[i]);
             fy.push(y[i]);
             fm.push(m[i]);
+            fid.push(id[i]);
         }
 
         this.filtered.x = fx;
         this.filtered.y = fy;
         this.filtered.m = fm;
+        this.filtered.id = fid;
         return {
             x: [xmin, xmax],
             y: [ymin, ymax],
@@ -95,15 +114,17 @@ export class MainDataSet extends DataSet {
     }
 
     represent_data() {
-        let x = this.filtered.x;
-        let y = this.filtered.y;
-        let m = this.filtered.m;
-
-        if (x.length != y.length || x.length != m.length)
-            throw new Error(
-                `length mismatch: ${this.columns.x}[${x.length}] !=` +
-                    ` ${this.columns.y}[${y.length}]`
-            );
+        let { x, y, m, id } = this.filtered;
+        if (x.length != y.length
+            || x.length != m.length
+            || x.length != id.length)
+            throw new Error([
+                "length mismatch",
+                `${this.columns.x}[${x.length}]`,
+                `${this.columns.y}[${y.length}]`,
+                `${this.columns.m}[${m.length}]`,
+                `${this.columns.id}[${id.length}]`,
+            ].join(", "));
 
         let points = [];
         for (let i = 0; i < x.length; i++) {
@@ -111,7 +132,7 @@ export class MainDataSet extends DataSet {
                 "data-x": x[i],
                 "data-y": y[i],
                 "data-m": m[i],
-                "r": 2,
+                "data-id": id[i],
             }));
         }
         return points;
@@ -127,6 +148,20 @@ export class MainDataSet extends DataSet {
                 cy: y_scale(point.dataset.y),
             });
         }
+    }
+
+    select_points(plot, points) {
+        let selected_ids = points.map((point) => point.dataset.id);
+
+        for (let point of plot.getElementsByClassName("obs-point")) {
+            if (selected_ids.includes(point.dataset.id)) {
+                point.classList.add("selected");
+            } else {
+                point.classList.remove("selected");
+            }
+        }
+
+        this.on_select_hook(selected_ids);
     }
 }
 

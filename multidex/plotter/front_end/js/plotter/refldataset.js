@@ -7,9 +7,22 @@ import { set_attrs } from "js-utilz";
 const MIN = Math.min;
 const MAX = Math.max;
 
+// TODO make this come from the view (and then make it adjustable)
+const error_bar_delta = 5;
+
 export class ReflDataSet extends DataSet {
     query_for_data(params) {
-        // TODO
+        if (params == null || typeof params !== "object"
+            || !Object.hasOwn(params, "ids")) {
+            throw new Error("bad params to ReflDataSet.query_for_data");
+        }
+        let {ids} = params;
+        if (!Array.isArray(ids))
+            ids = [ids];
+
+        let query = new URLSearchParams();
+        query.append("id", ids.join(","));
+        return fetch(`/data/spectrum?${query}`);
     }
 
     find_data_limits() {
@@ -22,10 +35,9 @@ export class ReflDataSet extends DataSet {
         // in the opposite direction for the _max variables
         let xmin = Infinity, xmax = -Infinity;
         let ymin = Infinity, ymax = -Infinity;
-        for (let [i, grp] of this.data.entries()) {
-            let points = grp.points;
+        for (let [id, points] of this.data) {
             if (!Array.isArray(points)) {
-                throw new Error(`Plot group ${i} isn't an array`);
+                throw new Error(`Plot group for ${id} isn't an array`);
             }
             for (let { band, wave, mean, std } of points) {
                 xmin = MIN(wave, xmin);
@@ -52,10 +64,12 @@ export class ReflDataSet extends DataSet {
     }
 
     #h_refl_line(group) {
+        let [id, points] = group;
+        // TODO colors
         return h_g(
-            `refl-line rl-${group.color}`, { "data-id": group.id },
+            `refl-line rl-black`, { "data-id": id },
             h_polyline("refl-connline"),
-            group.points.map((pt) => [
+            points.map((pt) => [
                 h_circle("refl-dot", { "data-x": pt.wave,
                                        "data-y": pt.mean }),
                 h_path("refl-bar", { "data-x": pt.wave,
@@ -83,8 +97,8 @@ export class ReflDataSet extends DataSet {
 
         for (let b of bars) {
             let x = x_scale(b.dataset.x);
-            let xleft = x - this.error_bar_delta;
-            let xdelta = this.error_bar_delta * 2;
+            let xleft = x - error_bar_delta;
+            let xdelta = error_bar_delta * 2;
             let ymax = y_scale(b.dataset.ymax);
             let ymin = y_scale(b.dataset.ymin);
             let ybeg = MIN(ymin, ymax);

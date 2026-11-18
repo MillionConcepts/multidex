@@ -30,6 +30,18 @@ const DEF = deepfreeze({
     // Side to draw the y-axis furniture on
     y_side: "left",
 
+    // Toolbar tools to include, as a string holding a space-separated
+    // list of icon names.  See `PlotPane.#check_tools_option` for the
+    // set of tools that PlotPane knows what to do with.  A vertical
+    // bar as a list entry means "put a gap here in the toolbar".
+    // This has to pass through an HTML attribute and therefore cannot
+    // be a list.
+    tools: "zoom-box pan | zoom-plus zoom-minus autoscale",
+
+    // If this is not null, the tool it names will be automatically
+    // selected when the plot loads.
+    autoselect_tool: null,
+
     // In messages about loading data, this can be changed to a more
     // specific word than "data".
     loading_what: "data",
@@ -104,9 +116,12 @@ export class PlotPane {
             this[option] = options[option] ?? DEF[option];
         }
 
+        this.#check_tools_option();
+
         let plot_box = h("div", {
             "class": "plot-box no-plot",
             "onresize":        this.#on_resize.bind(this),
+            "onclick":         this.#on_click.bind(this),
             "onpointerdown":   this.#on_pointerdown.bind(this),
             "onpointerup":     this.#on_pointerup.bind(this),
             "onpointercancel": this.#on_pointercancel.bind(this),
@@ -602,6 +617,11 @@ export class PlotPane {
 
         plot_box.classList.remove("loading");
         controls.disabled = false;
+        if (this.autoselect_tool != null) {
+            controls.dispatchEvent(new CustomEvent("activateButton", {
+                detail: this.autoselect_tool,
+            }));
+        }
         this.autoscale();
     }
 
@@ -642,13 +662,35 @@ export class PlotPane {
         }
     }
 
+    /** Check the setting of the `tools` option to the constructor
+     *  for any tools we don't implement.
+     */
+    #check_tools_option() {
+        let bad_tools = [];
+        for (let tool of this.tools.split(/\s+/)) {
+            switch (tool) {
+            case "|":  // visual gap between tools
+            case "autoscale":
+            case "pan":
+            case "select-one":
+            case "zoom-box":
+            case "zoom-minus":
+            case "zoom-plus":
+                continue;
+            default:
+                bad_tools.push(tool);
+            }
+        }
+        if (bad_tools.length > 0)
+            throw new Error("unimplemented tools: " + bad_tools.join(" "));
+    }
+
     /** Construct the HTML structure for the plot's toolbar. */
     #h_plot_controls() {
-        // TODO options to control which controls you get
         return h("plot-toolbar", {
             "class": "controls-box",
             "disabled": "disabled",
-            "buttons": "pan zoom-box | zoom-plus zoom-minus autoscale",
+            "buttons": this.tools,
             "ontoolTriggered": (e) => {
                 let action = e.detail.triggered;
                 switch (action) {
@@ -662,17 +704,23 @@ export class PlotPane {
                 }
             },
             "ontoolSelected": (e) => {
+                if (e.detail.previous != null) {
+                    this.#on_deselect_tools();
+                }
+
                 let tool = e.detail.selected;
                 switch(tool) {
                 case null:
                 case undefined:
-                    this.#on_deselect_tools();
                     return;
                 case "pan":
                     this.#on_select_pan();
                     return;
                 case "zoom-box":
                     this.#on_select_zoom_box();
+                    return;
+                case "select-one":
+                    this.#on_select_select_one();
                     return;
                 default:
                     console.error(
@@ -835,8 +883,15 @@ export class PlotPane {
         let plot = this.#container.querySelector(":scope .plot-box");
 
         plot.classList.add("zoombox-active");
-        plot.classList.remove("pan-active");
         this.#current_tool = "zoombox";
+    }
+
+    /** Event handler: The "select point" button was clicked.
+     *  This doesn't actually need to do anything besides record
+     *  the current tool.
+     */
+    #on_select_select_one() {
+        this.#current_tool = "selectone";
     }
 
     /** Event handler: The currently active tool was clicked again
@@ -852,6 +907,19 @@ export class PlotPane {
         }
         this.#current_tool = undefined;
         this.#end_drag();
+    }
+
+    /** Event handler subroutine: Select a point within the plot area.  */
+    #apply_select_one(event) {
+        let plot = this.#container.querySelector(":scope .plot-box");
+
+        // TODO: handle shift-click
+        // TODO: "obs-point" is specific to MainDataSet
+        if (event.target.classList.contains("obs-point")) {
+            this.#dataset.select_points(plot, [event.target]);
+        } else {
+            this.#dataset.select_points(plot, []);
+        }
     }
 
     /** Event handler subroutine: Start a drag action within the plot area.
@@ -1038,6 +1106,30 @@ export class PlotPane {
         this.#zoom_to(drag.original_limits);
     }
 
+    /** Event handler: Primary mouse button clicked within the plot area.
+     */
+    #on_click(event) {
+        let plot_box = event.currentTarget;
+        if (plot_box.classList.contains("no-plot")
+            || plot_box.classList.contains("load-error")
+            || plot_box.classList.contains("loading"))
+            return;
+
+        switch (this.#current_tool) {
+        case null:
+        case undefined:
+        case "zoombox":
+        case "pan":
+            /* do nothing */
+            break;
+        case "selectone":
+            this.#apply_select_one(event);
+            break;
+        default:
+            console.error("click: unknown tool", this.#current_tool);
+        }
+    }
+
     /** Event handler: Primary mouse button pressed and held within the
      *  plot area.
      */
@@ -1048,22 +1140,26 @@ export class PlotPane {
             || plot_box.classList.contains("loading"))
             return;
 
-        // only start a drag if we have an active tool
         // only start a drag if it's specifically the primary button of
         // the primary pointer that was depressed
-        if (this.#current_tool == null
-            || !event.isPrimary
+        if (!event.isPrimary
             || event.buttons !== 1)
             return;
 
-        if (this.#current_tool === "zoombox")
+        switch (this.#current_tool) {
+        case null:
+        case undefined:
+        case "selectone":
+            /* do nothing */
+            break;
+        case "zoombox":
             this.#begin_zoom(this.#begin_drag(event));
-        else if (this.#current_tool === "pan")
+            break;
+        case "pan":
             this.#begin_pan(this.#begin_drag(event));
-        else if (!this.#current_tool)
-            /* do nothing */;
-        else {
-            console.error("pointerup: unknown tool", this.#current_tool);
+            break;
+        default:
+            console.error("pointerdown: unknown tool", this.#current_tool);
         }
     }
 
@@ -1083,11 +1179,19 @@ export class PlotPane {
             return;
         }
 
-        if (this.#current_tool === "zoombox") {
+        switch (this.#current_tool) {
+        case null:
+        case undefined:
+        case "selectone":
+            /* do nothing */
+            break;
+        case "zoombox":
             this.#move_zoom(event, this.#current_drag);
-        } else if (this.#current_tool === "pan") {
+            break;
+        case "pan":
             this.#move_pan(event, this.#current_drag);
-        } else {
+            break;
+        default:
             console.error("pointermove: unknown tool", this.#current_tool);
         }
     }
@@ -1097,13 +1201,22 @@ export class PlotPane {
      */
     #on_pointerup(event) {
         let drag = this.#end_drag(event);
-        if (this.#current_tool === "zoombox")
+        if (!drag)
+            return;
+
+        switch (this.#current_tool) {
+        case null:
+        case undefined:
+        case "selectone":
+            /* do nothing */
+            break;
+        case "zoombox":
             this.#end_zoom(drag);
-        else if (this.#current_tool === "pan")
+            break;
+        case "pan":
             this.#end_pan(drag);
-        else if (!this.#current_tool)
-            /* do nothing */;
-        else {
+            break;
+        default:
             console.error("pointerup: unknown tool", this.#current_tool);
         }
     }
@@ -1113,13 +1226,22 @@ export class PlotPane {
      */
     #on_pointercancel(event) {
         let drag = this.#end_drag(event);
-        if (this.#current_tool === "zoombox")
+        if (!drag)
+            return;
+
+        switch (this.#current_tool) {
+        case null:
+        case undefined:
+        case "selectone":
+            /* do nothing */
+            break;
+        case "zoombox":
             this.#cancel_zoom(drag);
-        else if (this.#current_tool === "pan")
+            break;
+        case "pan":
             this.#cancel_pan(drag);
-        else if (!this.#current_tool)
-            /* do nothing */;
-        else {
+            break;
+        default:
             console.error("pointercancel: unknown tool", this.#current_tool);
         }
     }

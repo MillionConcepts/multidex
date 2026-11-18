@@ -26,6 +26,23 @@ METADATA_FIELD_PROPS = {
     for props in METADATA_PROPERTIES
 }
 
+
+def spectrum_to_frontend(
+    spectrum: dict[str, dict[str, int|float]]
+) -> list[dict[str, str|int|float]]:
+    """Convert a reflectance spectrum from the way we get it from
+       Instrument.compute_spectrum, to the way the front end wants it."""
+    frontend_spectrum = [
+        { "wave": v["wave"],
+          "band": band,
+          "mean": v["mean"],
+          "std": v["std"] }
+        for band, v in spectrum.items()
+    ]
+    frontend_spectrum.sort(key = lambda pt: pt["wave"])
+    return frontend_spectrum
+
+
 class Backend:
     dataset: Table
     instrument: Instrument
@@ -110,23 +127,26 @@ class Backend:
         )
 
     async def send_spectrum(self, req: web.Request) -> web.StreamResponse:
-        rowid = req.query.get("id")
-        if rowid is None:
+        raw_rowids = req.query.get("id")
+        if raw_rowids is None:
             raise web.HTTPBadRequest(text = (
                 "400 Bad Request\n\n"
                 "/data/spectrum: ?id=<n> argument required\n"
             ))
-        try:
-            rowid = int(rowid)
-            # Table row IDs start at 1, not 0, because SQL.
-            if rowid <= 0:
-                raise ValueError("out of domain")
-        except ValueError:
-            raise web.HTTPBadRequest(text = (
-                f"400 Bad Request\n\n"
-                f"/data/spectrum: invalid argument {rowid!r} to 'id':"
-                f" must be a positive integer\n"
-            )) from None
+        rowids = []
+        for raw_rowid in raw_rowids.split(","):
+            try:
+                rowid = int(raw_rowid)
+                # Table row IDs start at 1, not 0, because SQL.
+                if rowid <= 0:
+                    raise ValueError("out of domain")
+                rowids.append(rowid)
+            except ValueError:
+                raise web.HTTPBadRequest(text = (
+                    f"400 Bad Request\n\n"
+                    f"/data/spectrum: invalid argument {raw_rowid!r} to 'id':"
+                    f" must be a positive integer\n"
+                )) from None
 
         try:
             avg = bool_query_arg(req.query.get("avg", "true"))
@@ -158,32 +178,37 @@ class Backend:
                     f" cannot parse {raw_scale!r} as boolean or filter pair\n"
                 )) from None
 
-        # can't use functools.lru_cache because it would try to put the
-        # dataset into the cache key
-        cache_key = (rowid, avg, bayer, scale)
-        if (spectrum := self.cached_spectra.get(cache_key)) is None:
-            try:
-                spectrum = self.instrument.compute_spectrum(
-                    rowid, self.dataset,
-                    scale = scale,
-                    average_filters = avg,
-                    show_bayers = bayer,
-                )
-            except (TypeError, ValueError) as e:
-                raise web.HTTPBadRequest(text = (
-                    f"400 Bad Request\n\n"
-                    f"/data/spectrum: invalid arguments: {e}\n"
-                )) from None
-            except Exception as e:
-                raise web.HTTPInternalServerError(text = (
-                    f"500 Internal Server Error\n\n"
-                    f"/data/spectrum: calculation failed: {e}\n"
-                )) from None
+        groups = []
+        for rowid in rowids:
+            # can't use functools.lru_cache because it would try to put the
+            # dataset into the cache key
+            cache_key = (rowid, avg, bayer, scale)
+            if (spectrum := self.cached_spectra.get(cache_key)) is None:
+                try:
+                    raw_spectrum = self.instrument.compute_spectrum(
+                        rowid, self.dataset,
+                        scale = scale,
+                        average_filters = avg,
+                        show_bayers = bayer,
+                    )
+                except (TypeError, ValueError) as e:
+                    raise web.HTTPBadRequest(text = (
+                        f"400 Bad Request\n\n"
+                        f"/data/spectrum: invalid arguments: {e}\n"
+                    )) from None
+                except Exception as e:
+                    raise web.HTTPInternalServerError(text = (
+                        f"500 Internal Server Error\n\n"
+                        f"/data/spectrum: calculation failed: {e}\n"
+                    )) from None
 
-            self.cached_spectra[cache_key] = spectrum
+                spectrum = spectrum_to_frontend(raw_spectrum)
+                self.cached_spectra[cache_key] = spectrum
+
+            groups.append((rowid, spectrum))
 
         return web.Response(
-            body = json.dumps(spectrum, separators=(',', ':')),
+            body = json.dumps(groups, separators=(',', ':')),
             content_type="application/json"
         )
 
