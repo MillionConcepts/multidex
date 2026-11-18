@@ -42,6 +42,7 @@ async function onDOMContentLoaded () {
         plot_title: "Reflectance of selected ROIs",
         x_label: "Wavelength (nm)",
         y_label: "Reflectance",
+        y_side: "right",
         no_data: () => h("p", ["Select observations to see spectra"]),
     });
 

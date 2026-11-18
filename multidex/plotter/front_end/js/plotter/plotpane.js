@@ -24,6 +24,12 @@ const DEF = deepfreeze({
     // Label for the Y-axis
     y_label: "",
 
+    // Side to draw the x-axis furniture on
+    x_side: "bottom",
+
+    // Side to draw the y-axis furniture on
+    y_side: "left",
+
     // In messages about loading data, this can be changed to a more
     // specific word than "data".
     loading_what: "data",
@@ -695,10 +701,10 @@ export class PlotPane {
         }, [
             h("defs", [h("clipPath", { "id": this.bounds_id }, [h_rect()])]),
             h("g", { "class": "main-layer" }, [
-                h_axis("bottom",
+                h_axis(this.x_side,
                        { tick_vals: x_tick_vals, tick_labels: true,
                          label: this.x_label }),
-                h_axis("right",
+                h_axis(this.y_side,
                        { tick_vals: y_tick_vals, tick_labels: true,
                          label: this.y_label }),
                 h_grid("x", x_tick_vals),
