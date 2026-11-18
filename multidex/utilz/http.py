@@ -9,7 +9,7 @@ from pathlib import Path
 
 from aiohttp import web
 
-from multidex.assets import load_asset
+from multidex.plotter.front_end import load_resource
 from multidex.utilz.exceptions import format_oserror
 
 
@@ -47,15 +47,15 @@ def content_type_for_path(path: str) -> str:
     )
 
 
-async def respond_with_asset(
+async def respond_with_resource(
     req: web.Request,
     *,
-    asset_path: str,
+    resource_path: str,
 ) -> web.StreamResponse:
-    content_type = content_type_for_path(asset_path)
+    content_type = content_type_for_path(resource_path)
 
     try:
-        body = load_asset(asset_path)
+        body = load_resource(resource_path)
     except OSError as e:
         raise web.HTTPNotFound(
             text=f"{req.rel_url}: 404 Not Found: {format_oserror(e)}"
@@ -99,29 +99,29 @@ async def respond_with_file(
     )
 
 
-def get_asset(path: str, asset: str) -> web.RouteDef:
+def get_resource(path: str, resource: str) -> web.RouteDef:
     """
-    Route definition: 'GET /{path}' should produce the asset whose
-    name is {asset}.
+    Route definition: 'GET /{path}' should produce the resource file
+    whose name is {resource}.
     """
-    return web.get(path, partial(respond_with_asset, asset_path=asset))
+    return web.get(path, partial(respond_with_resource, resource_path=resource))
 
 
-def get_any_asset(prefix: str) -> web.RouteDef:
+def get_any_resource(prefix: str) -> web.RouteDef:
     """
-    Route definition: 'GET /{prefix}/<asset_name>' should produce
-    the asset whose name is <asset_name>, if it exists.
+    Route definition: 'GET /{prefix}/<name>' should produce
+    the resource file whose name is <name>, if it exists.
     """
-    def respond_with_asset_from_dir(
+    def respond_with_resource_from_dir(
         req: web.Request
     ) -> Awaitable[web.StreamResponse]:
-        return respond_with_asset(
+        return respond_with_resource(
             req,
-            asset_path = req.match_info["asset"]
+            resource_path = req.match_info["resource"]
         )
 
-    return web.get(prefix + "/{asset:[a-zA-Z0-9./_-]+}",
-                   respond_with_asset_from_dir)
+    return web.get(prefix + "/{resource:[a-zA-Z0-9./_-]+}",
+                   respond_with_resource_from_dir)
 
 
 def bool_query_arg(arg: str) -> bool:

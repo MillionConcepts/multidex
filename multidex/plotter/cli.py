@@ -59,15 +59,15 @@ def run_app(
     import logging
     from functools import partial
     from aiohttp import web
-    from multidex.plotter.backend import Backend
-    from multidex.utilz.http import get_asset, get_any_asset
+    from multidex.plotter.back_end import Backend
+    from multidex.utilz.http import get_resource, get_any_resource
 
     backend = Backend(dataset, browse_images)
     routes = [
-        get_asset("/", "plotter.html"),
-        get_asset("/favicon.ico", "logo-small.png"),
-        get_asset("/robots.txt", "robots.txt"),
-        get_any_asset("/s"),
+        get_resource("/", "plotter.html"),
+        get_resource("/favicon.ico", "logo-small.png"),
+        get_resource("/robots.txt", "robots.txt"),
+        get_any_resource("/s"),
     ]
     routes.extend(backend.routes())
 

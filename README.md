@@ -27,4 +27,4 @@ please act accordingly.**
 
 MultiDEx bundles several open-source fonts subject to the OFL with various
 copyrights. Their licenses are included in
-[this directory](multidex/plotter/application/assets/fonts).
+[this directory](multidex/plotter/front_end/fonts).
