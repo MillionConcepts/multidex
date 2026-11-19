@@ -73,11 +73,15 @@ class Backend:
         for col in self.dataset.column_names:
             if (props := METADATA_FIELD_PROPS.get(col)) is None:
                 ctype = self.dataset.schema.field(col).type
+                if arrow_types.is_floating(ctype):
+                    ty = "quant"
+                elif col.startswith("image_") and arrow_types.is_string(ctype):
+                    ty = "image"
+                else:
+                    ty = "qual"
                 columns[col] = {
                     "meta": False,
-                    "type": (
-                        "quant" if arrow_types.is_floating(ctype) else "qual"
-                    )
+                    "type": ty
                 }
             else:
                 assert props.type == FieldType.ATTRIBUTE

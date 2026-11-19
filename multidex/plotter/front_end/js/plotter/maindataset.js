@@ -38,7 +38,10 @@ export class MainDataSet extends DataSet {
                     columns.m = col;
                 }
             } else {
-                console.error(`${col}: unrecognized type ${spec.type}`);
+                console.error(
+                    `${col}: unrecognized type '${spec.type}'` +
+                    ` (meta: ${spec.meta})`
+                );
             }
 
             // stop if we have everything we need

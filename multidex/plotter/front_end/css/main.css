@@ -63,8 +63,7 @@ body {
 }
 
 #main-plot-container > fieldset,
-#refl-plot-container > fieldset,
-#browse-image-container > fieldset {
+#refl-plot-container > fieldset {
     flex: auto;
     display: flex;
     flex-direction: column;
@@ -287,6 +286,35 @@ g.rl-orange  { --rl-group-color: #ff7f00 }
 g.rl-purple  { --rl-group-color: #984ea3 }
 
 
+/* browse images */
+.browse-image-container {
+}
+.browse-image-holder {
+    flex: 1 1 0px;
+    display: flex;
+    display: flex;
+}
+.browse-image {
+    width: 100%;
+    height: 100%;
+}
+.no-image {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    color: #444444;
+    background: #f0f0f0;
+    border: 2px inset #444444;
+    font-size: 2rem;
+    /* yes, this is really how you're supposed to center multiline
+       text within a <div> both horizontally and vertically. */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
 /* loading spinner container box */
 .pinwheel-holder {
     width: 100%;
@@ -305,6 +333,7 @@ g.rl-purple  { --rl-group-color: #984ea3 }
 
 /* data/image load errors are in a container styled like so: */
 .load-error {
+    margin: 0;
     width: 100%;
     height: 100%;
     color: #800026;

@@ -29,6 +29,7 @@ class PlotterState {
         } else {
             this.panes.reflectance.clear();
         }
+        this.panes.browse.select_obs(ids);
     }
 
     /** Initialization hook triggered by page load. */

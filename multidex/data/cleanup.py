@@ -34,43 +34,62 @@ def drop_all_null_columns(tbl: pa.Table) -> pa.Table:
 def decode_image_json(tbl: pa.Table, *, have_browse_images: bool) -> pa.Table:
     """
     Return (a copy of) 'tbl' with the "images" column, which contains
-    stringified JSON structures like '{"left": "filename", "right": "filename"}'
+    stringified JSON structures like
+
+        {"left": "filename", "right": "filename"}
+
     (except sometimes with single-quoted strings, which is why we use
-    literal_eval instead of json.loads below) replaced with "image_left"
-    and "image_right" columns that directly hold the file names.
+    literal_eval instead of json.loads below) replaced with a set of
+    "image_xxx" columns that directly hold the file names.
 
     If there isn't an "images" column, 'tbl' is returned unmodified.
-    If there is an "images" column but it's not as we expect, a warning
-    message is generated and 'tbl' is returned unmodified.
+    If there are both "images" and "image_*" columns, we issue a warning
+    and return (a copy of) 'tbl' with the "images" column dropped and
+    the "image_*" columns unaltered (this may change in the future).
+    If "images" column cells can't be parsed, we issue a warning and
+    return 'tbl' unmodified.
 
-    If 'have_browse_images' is false, instead return (a copy of) 'tbl'
-    with the "images" column, if any, dropped, and no other changes.
-    In this case the contents of the "images" column are not validated.
+    If 'have_browse_images' is false, instead we return (a copy of) 'tbl'
+    with "images" and all "image_*" columns dropped, and no other changes.
+    In this case we do not check for any consistency issues among the
+    image columns.
     """
+    if not have_browse_images:
+        return tbl.drop_columns([
+            col for col in tbl.column_names
+            if col == "images" or col.startswith("image_")
+        ])
+
     if "images" not in tbl.column_names:
         return tbl
-    if not have_browse_images:
-        return tbl.drop_columns("images")
 
-    images_left = []
-    images_right = []
+    if any(col.startswith("image_") for col in tbl.column_names):
+        import warnings
+        warnings.warn("table has both images and image_* columns, "
+                      "leaving images column alone")
+        return tbl
+
+    blobs = []
+    columns = {}
     for cell in tbl["images"]:
         try:
             blob = literal_eval(cell.as_py())
-            left = blob.pop("left", None)
-            right = blob.pop("right", None)
-            if blob:
-                raise ValueError("unexpected keys: " + ", ".join(blob.keys()))
-            images_left.append(left)
-            images_right.append(right)
+            blobs.append(blob)
+            for eye in blob.keys():
+                if eye not in columns:
+                    columns[eye] = []
+
         except Exception as e:
             import warnings
-            warnings.warn(f"images cell {cell!r} not as expected: {e}")
-            warnings.warn("leaving images column alone")
+            warnings.warn(f"parse error in images cell {cell!r}: {e}; "
+                          "leaving images column alone")
             return tbl
 
-    return (
-        tbl.drop_columns("images")
-           .append_column("images_left", pa.array(images_left))
-           .append_column("images_right", pa.array(images_right))
-    )
+    for blob in blobs:
+        for eye, col in columns.items():
+            col.append(blob.get(eye))
+
+    tbl = tbl.drop_columns(["images"])
+    for eye, col in columns.items():
+        tbl = tbl.append_column("image_"+eye, pa.array(col))
+    return tbl
