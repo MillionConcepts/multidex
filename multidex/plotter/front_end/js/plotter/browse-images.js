@@ -11,6 +11,7 @@ export class BrowseImageViewer {
     #pending_selection;
 
     constructor(container, colspecs) {
+        this.#image_files = [];
         this.#container = container;
         this.#container.addEventListener(
             "selectObs",
@@ -21,7 +22,6 @@ export class BrowseImageViewer {
             (!spec.meta && spec.type === "image") ? [name] : []
         );
         if (image_cols.length === 0) {
-            this.#image_files = [];
             this.#pending_image_files = false;
             this.#container.replaceChildren(
                 h("p", {"class": "no-image", }, [
@@ -110,9 +110,9 @@ export class BrowseImageViewer {
             return;
         }
 
-        // If #pending_image_files is false and #image_files is still
-        // null, no browse images are available, drop the request.
-        if (this.#image_files == null) {
+        // If we know for sure we can't display browse images,
+        // drop this request.
+        if ((this.#image_files?.length ?? 0) == 0) {
             return;
         }
 
@@ -125,7 +125,7 @@ export class BrowseImageViewer {
             ids = ids[0];
         }
 
-        for (let [eye, file] of this.#image_files[+ids]) {
+        for (let [eye, file] of this.#image_files[+ids] ?? []) {
             let holder = document.getElementById(
                 `${this.#container.id}-${eye}`
             );
