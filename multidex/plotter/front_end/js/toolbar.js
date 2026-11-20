@@ -23,7 +23,7 @@ const TOOLBAR_STYLES = `
     align-items: center;
     text-align: center;
     background: transparent;
-    border-color: #aaa;
+    border-color: light-dark(#aaa, #555);
     border-style: solid;
     border-width: 1px 0 1px 1px;
     border-radius: 0;
@@ -40,10 +40,10 @@ const TOOLBAR_STYLES = `
     margin-right: 0px;
 }
 .tool-button:hover {
-    background: rgb(0,0,0,.2);
+    background: light-dark(rgb(0,0,0,.2), rgb(255, 255, 255, .2))
 }
 .tool-button:active {
-    background: rgb(0,0,0,.4);
+    background: light-dark(rgb(0,0,0,.4), rgb(255, 255, 255, .4));
 }
 .tool-button:disabled:hover, .tool-button:disabled:active {
     background: transparent;
@@ -52,17 +52,17 @@ const TOOLBAR_STYLES = `
 .tool-icon {
     width: 1.4rem;
     height: 1.4rem;
-    fill: #444;
+    fill: light-dark(#444, #bbb);
 }
 
 .tool-button.selected {
-    background: #444;
+    background: light-dark(#444, #bbb);
 }
 .tool-button.selected > .tool-icon {
-    fill: #ddd;
+    fill: light-dark(#ddd, #222);
 }
 .tool-button:disabled > .tool-icon {
-    fill: #aaa;
+    fill: light-dark(#aaa, #555);
 }
 
 /* tooltips are TODO */
