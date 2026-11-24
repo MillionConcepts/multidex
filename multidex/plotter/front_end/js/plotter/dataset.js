@@ -90,10 +90,10 @@ export class DataSet {
     }
 
     /** Called when one or more points of your data set become
-     *  selected.  (If your pane never selects anything, implement
-     *  this as a method which does nothing.)  PLOT is the DOM node for
-     *  the entire plot (the <svg> element), and POINTS is a list of SVG
-     *  elements representing the selected points.  Take whatever
+     *  selected.  (If your pane never selects anything, you don't
+     *  need to implement this method.)  PLOT is the DOM node for
+     *  the entire plot (the <svg> element), and POINTS is a list of
+     *  SVG elements representing the selected points.  Take whatever
      *  action is appropriate to mark those points as selected and
      *  unmark all other points.
      */
