@@ -53,7 +53,7 @@ export class BrowseImageViewer {
         // { "image_XXX": [...], "image_YYY": [...], "id": [...] }
         // turn this into { id1: [ ["XXX", "..."], ["YYY", "..."] ], ... }
         // for efficient lookup later
-        let image_files = {};
+        let image_files = [];
         let eyes = Object.keys(blob)
             .filter((k) => k != "id")
             .map((k) => [k.replace(/^image_/, ""), k]);
