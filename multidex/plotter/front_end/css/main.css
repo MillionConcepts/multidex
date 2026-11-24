@@ -87,13 +87,15 @@ body {
     text-align: center;
 }
 
-nav {
+nav#menubar {
     grid-area: menu;
     display: flex;
     align-items: stretch;
     flex-direction: row;
     overflow: scroll;
     scrollbar-color: light-dark(rgba(0, 0, 0, 60%), rgba(255, 255, 255, 60%)) transparent;
+    gap: 2rem;
+    padding: 1rem 0 1rem 1rem;
 }
 
 footer {
