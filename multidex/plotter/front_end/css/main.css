@@ -13,6 +13,10 @@
 
 * {
     box-sizing: border-box;
+    /* make SVG elements and HTML elements behave the same way under
+       CSS transforms */
+    transform-origin: center;
+    transform-box: stroke-box;
 }
 
 html {
@@ -141,10 +145,7 @@ legend {
        would stretch *everything*, including stroke widths and text.
 
        "width: 100%; height: 100%" doesn't work, but this does.
-       again my interest in these matters is not enough to dig deeper.
-
-       TODO: figure out if we can get away with merging the <svg> into
-       the parent <div class="plot-box">.  */
+       again my interest in these matters is not enough to dig deeper.  */
     width: 0;
     height: 0;
     min-width: 100%;
@@ -163,8 +164,6 @@ legend {
 text {
     text-anchor: middle;
     dominant-baseline: central;
-    transform-origin: center;
-    transform-box: content-box;
     font-size: 18px;
     fill: var(--midnight-ochre);
 }
