@@ -32,6 +32,19 @@ class PlotterState {
         this.panes.browse.select_obs(ids);
     }
 
+    /** Glue: upon selecting a new column for any axis of the main plot,
+     *  trigger an update of the main plot.
+     */
+    on_main_axis_change(axis, value) {
+        this.panes.main.refresh({});
+        // FIXME: We currently clear both secondary panes.  This is
+        // not desirable -- the selected point(s) could, and *should*,
+        // stay selected -- but we don't currently have a good way to
+        // track the selected points across a column change.
+        this.panes.reflectance.clear();
+        this.panes.browse.select_obs([]);
+    }
+
     /** Initialization hook triggered by page load. */
     async on_DOMContentLoaded () {
         let colspecs = await fetch_json("/data/columns");
@@ -39,7 +52,15 @@ class PlotterState {
         this.data.reflectance = new ReflDataSet();
         this.data.main = new MainDataSet(
             colspecs,
-            this.on_main_points_selected.bind(this)
+            this.on_main_points_selected.bind(this),
+            this.on_main_axis_change.bind(this),
+        );
+
+        // temporary, the menu bar should be a real pane object
+        document.getElementById("menubar").replaceChildren(
+            this.data.main.axis_selector("x"),
+            this.data.main.axis_selector("y"),
+            // this.data.main.axis_selector("m"), // marker scales are todo
         );
 
         this.panes.browse = new BrowseImageViewer(
@@ -53,8 +74,8 @@ class PlotterState {
             plot_title: "Observations",
             tools: "select-one zoom-box pan | zoom-plus zoom-minus autoscale",
             autoselect_tool: "select-one",
-            x_label: this.data.main.columns.x,
-            y_label: this.data.main.columns.y,
+            x_label: this.data.main.axis_label("x"),
+            y_label: this.data.main.axis_label("y"),
         });
         this.panes.reflectance = new PlotPane({
             id: "refl-plot",

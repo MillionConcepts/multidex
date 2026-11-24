@@ -7,54 +7,66 @@ const MIN = Math.min;
 const MAX = Math.max;
 const ISNAN = Number.isNaN;
 
-export class MainDataSet extends DataSet {
+// FIXME: this is only good for MCAM and belongs in the back end anyway
+const SKIP_COLUMNS = [
+    "ltst", "seq_id", "name", "modification_time",
+];
 
-    constructor(colspecs, on_select_hook) {
+export class MainDataSet extends DataSet {
+    //
+    // core DataSet functionality
+    //
+
+    constructor(colspecs, on_select_hook, on_axis_change_hook) {
         super();
 
+        let avail_columns = { qual: [], quant: [] };
         let columns = { x: null, y: null, m: null, id: null };
         for (let [col, spec] of Object.entries(colspecs)) {
-            // Use the first quantitative column as the x-axis default,
-            // the second quantitative column as the y-axis default,
-            // and the first qualitative column as the marker default.
-            // The columns "id", "name", "sol", "ltst", and "seq_id" are
-            // special.
+            // we do this because there might not *be* an "id" column
+            // (although there are probably going to be problems if there
+            // isn't)
             if (col === "id") {
                 columns.id = col;
-            } else if (col === "seq_id") {
-                // only take seq_id if we don't have id
-                if (columns.id == null)
-                    columns.id = col;
-            } else if (/^(?:name|sol|ltst)$/i.test(col) || !spec.meta) {
-                // skip this one
-            } else if (spec.type == "quant") {
-                if (columns.x == null) {
-                    columns.x = col;
-                } else if (columns.y == null) {
-                    columns.y = col;
-                }
-            } else if (spec.type == "qual") {
-                if (columns.m == null) {
-                    columns.m = col;
-                }
-            } else {
-                console.error(
-                    `${col}: unrecognized type '${spec.type}'` +
-                    ` (meta: ${spec.meta})`
-                );
+                continue;
             }
 
-            // stop if we have everything we need
-            if (columns.x != null
-                && columns.y != null
-                && columns.m != null
-                && columns.id != null)
-                break;
+            if (!spec.meta || SKIP_COLUMNS.includes(col)) {
+                continue;
+            }
+
+            avail_columns[spec.type].push(col);
         }
+        this.avail_columns = avail_columns;
+
+        // Use the first available quantitative meta column as the default X
+        // axis and the second as the default Y axis.  But don't pick "sol"
+        // as the default X or Y axis (it's fine if it gets selected later).
+        for (let col of avail_columns.quant) {
+            if (col === "sol") {
+                continue;
+            }
+            if (columns.x == null) {
+                columns.x = col;
+                continue;
+            }
+            if (columns.y == null) {
+                columns.y = col;
+                continue;
+            }
+            break;
+        }
+
+        // Use the first available qualitative meta column as the default
+        // marker axis.
+        columns.m = avail_columns.qual[0] ?? "";
 
         this.columns = columns;
         this.filtered = { x: [], y: [], m: [], id: [] };
-        this.on_select_hook = on_select_hook ?? ((ignore) => {});
+        this.on_select_hook =
+            on_select_hook ?? ((ignore) => undefined);
+        this.on_axis_change_hook =
+            on_axis_change_hook ?? ((...ignore) => undefined);
     }
 
     clear_data() {
@@ -81,10 +93,7 @@ export class MainDataSet extends DataSet {
         let m = this.data[this.columns.m];
         let id = this.data[this.columns.id];
 
-        let fx = [];
-        let fy = [];
-        let fm = [];
-        let fid = [];
+        let f = { x: [], y: [], m: [], id: [] };
 
         let xmin = Infinity;
         let ymin = Infinity;
@@ -100,16 +109,13 @@ export class MainDataSet extends DataSet {
             ymin = MIN(y[i], ymin);
             ymax = MAX(y[i], ymax);
 
-            fx.push(x[i]);
-            fy.push(y[i]);
-            fm.push(m[i]);
-            fid.push(id[i]);
+            f.x.push(x[i]);
+            f.y.push(y[i]);
+            f.m.push(m[i]);
+            f.id.push(id[i]);
         }
 
-        this.filtered.x = fx;
-        this.filtered.y = fy;
-        this.filtered.m = fm;
-        this.filtered.id = fid;
+        this.filtered = f;
         return {
             x: [xmin, xmax],
             y: [ymin, ymax],
@@ -165,6 +171,60 @@ export class MainDataSet extends DataSet {
         }
 
         this.on_select_hook(selected_ids);
+    }
+
+    //
+    // Axis controls
+    //
+
+    // Generate the label for axis AXIS.
+    axis_label(axis) {
+        // This returns a lambda because columns[axis] can change, so
+        // we want PlotPane to check for a change on every repaint.
+        return () => this.columns[axis];
+    }
+
+    // Generate a menu for choosing what column of the data set is
+    // displayed on axis AXIS.
+    axis_selector(axis) {
+        let select_id = "axis-menu-main-"+axis;
+        let select = h(
+            "select",
+            {
+                "class": "axis-menu",
+                "id": select_id,
+                "onchange": (e) => this.#axis_selector_onchange(axis, e),
+            },
+            this.avail_columns[axis === "m" ? "qual" : "quant"]
+                .map((col) => {
+                    let attrs = { value: col };
+                    if (col == this.columns[axis]) {
+                        attrs["selected"] = "selected";
+                    }
+                    return h("option", attrs, [col]);
+                })
+        );
+        let label = h(
+            "label", { "for": select_id }, [ `${axis} axis: ` ]
+        );
+        return h("div", { "class": "labeled-menu", }, label, select);
+    }
+
+    // Event handler called when the column for AXIS is changed.
+    #axis_selector_onchange(axis, event) {
+        let target = event.target;
+        let value = event.target.value;
+        for (let option of target.querySelectorAll(":scope option")) {
+            if (option.getAttribute("value") === value) {
+                if (option.getAttribute("selected") == null) {
+                    option.setAttribute("selected", "selected");
+                }
+            } else if (option.getAttribute("selected") != null) {
+                option.removeAttribute("selected");
+            }
+        }
+        this.columns[axis] = value;
+        this.on_axis_change_hook(axis, value);
     }
 }
 

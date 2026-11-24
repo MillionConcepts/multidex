@@ -18,10 +18,18 @@ const DEF = deepfreeze({
     // Title for the entire plot
     plot_title: "",
 
-    // Label for the X-axis
+    // Label for the X-axis.  This can be nullish, a string, or a function
+    // that returns one of those things.  If it is a function, it will get
+    // a chance to change the axis label every time the plot is rerendered,
+    // which happens more often han you might think.
+    //
+    // If the resolved value (i.e. after calling the function, if necessary)
+    // is nullish or the empty string, there will not be any <text
+    // class="axis-label"> element for the X-axis and no space will be
+    // allocated for the axis label.
     x_label: "",
 
-    // Label for the Y-axis
+    // Label for the Y-axis.  Same rules apply as for the X-axis.
     y_label: "",
 
     // Side to draw the x-axis furniture on
@@ -1422,9 +1430,14 @@ function h_axis(side, { label, tick_vals, tick_labels }) {
     }
 
     let furniture = [h_rect("axis-bg"), h_line("axis-line")];
+
+    if (typeof label === "function") {
+        label = label();
+    }
     if (label != null && label !== "") {
         furniture.push(h_text("axis-label", `${label}`));
     }
+
     if (want_ticks) {
         let ix = 0;
         for (let tick of tick_vals) {
